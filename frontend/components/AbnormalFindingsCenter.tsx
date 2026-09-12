@@ -425,62 +425,110 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       const normalize = (s?: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const matchedFindingIds = new Set<string>();
 
+      // Helper pembanding tanggal fleksibel (mendukung format "02 Sep 2026", "2026-09-02", "02/09/2026")
+      const datesCompatible = (d1?: string, d2?: string): boolean => {
+        if (!d1 || !d2) return true;
+        if (d1 === d2) return true;
+
+        // Cek kecocokan tahun (4 digit)
+        const y1 = d1.match(/\b(20\d\d)\b/)?.[1];
+        const y2 = d2.match(/\b(20\d\d)\b/)?.[1];
+        if (y1 && y2 && y1 !== y2) return false;
+
+        // Cek kecocokan bulan (nama bulan ID/EN atau angka MM)
+        const getMonthNum = (str: string): number => {
+          const s = str.toLowerCase();
+          const months = ['jan', 'feb', 'mar', 'apr', 'mei', 'may', 'jun', 'jul', 'agu', 'aug', 'sep', 'okt', 'oct', 'nop', 'nov', 'des', 'dec'];
+          for (let i = 0; i < months.length; i++) {
+            if (s.includes(months[i])) return Math.floor(i / 2) + 1;
+          }
+          const mIso = s.match(/^\d{4}-(\d{2})-\d{2}/);
+          if (mIso) return parseInt(mIso[1], 10);
+          return 0;
+        };
+
+        const m1 = getMonthNum(d1);
+        const m2 = getMonthNum(d2);
+        if (m1 > 0 && m2 > 0 && m1 !== m2) return false;
+
+        return true;
+      };
+
       const enrichItemWithFinding = (it: AbnormalItem): AbnormalItem => {
         const currentDesc = it.abnormalFinding?.description || '';
         const isGenericFallback = !currentDesc || 
           currentDesc === 'Temuan abnormal tercatat pada dokumen ini.' || 
           currentDesc === 'Temuan abnormal tercatat pada dokumen HSE ini.' ||
+          currentDesc === 'Ditemukan kondisi kelainan / abnormal pada unit ini.' ||
           currentDesc.startsWith('Temuan abnormal pada part:');
+
+        const sCreated = normalize(it.createdBy);
+        const sSpec = normalize(it.specificDetail);
+        const sMaint = normalize(it.maintenanceName);
 
         const matched = findingsList.find(f => {
           if (!f || matchedFindingIds.has(f.id)) return false;
+
           // 1. Strict ID matching (prioritas utama)
           if (it.docId && f.docId && it.docId === f.docId) return true;
           if (it.docId && f.reportId && it.docId === f.reportId) return true;
           if (it.findingId && f.id && it.findingId === f.id) return true;
 
-          // 2. Strict exact match: unitName AND creator AND date harus sama persis
-          const sSpec = normalize(it.specificDetail);
+          // 2. Creator matching
+          const fCreated = normalize(f.createdByEmail);
+          const creatorMatch = sCreated && fCreated && (
+            sCreated === fCreated ||
+            sCreated.includes(fCreated) ||
+            fCreated.includes(sCreated) ||
+            (sCreated.replace(/@.*$/, '') === fCreated.replace(/@.*$/, ''))
+          );
+          if (!creatorMatch) return false;
+
+          // Cek tanggal apakah bertentangan
+          if (!datesCompatible(it.maintenanceTime, f.findingDate)) return false;
+
+          // 3. Unit / Specific Detail matching
           const fSpec = normalize(f.specificDetail);
           const fPart = normalize(f.partName);
-          const sCreated = normalize(it.createdBy);
-          const fCreated = normalize(f.createdByEmail);
 
-          if (sSpec && fPart && sSpec === fPart && sCreated === fCreated && it.maintenanceTime && f.findingDate && it.maintenanceTime === f.findingDate) return true;
-          if (sSpec && fSpec && sSpec === fSpec && sCreated === fCreated && it.maintenanceTime && f.findingDate && it.maintenanceTime === f.findingDate) return true;
+          if (sSpec && fSpec && (sSpec === fSpec || sSpec.includes(fSpec) || fSpec.includes(sSpec))) return true;
+          if (sSpec && fPart && (sSpec === fPart || sSpec.includes(fPart) || fPart.includes(sSpec))) return true;
+
+          // 4. Maintenance name matching
+          const fMaint = normalize(f.maintenanceName);
+          if (sMaint && fMaint && (sMaint === fMaint || sMaint.includes(fMaint) || fMaint.includes(sMaint))) {
+            if (sSpec && fSpec && sSpec !== fSpec && !sSpec.includes(fSpec) && !fSpec.includes(sSpec)) {
+              return false;
+            }
+            return true;
+          }
+
           return false;
         });
 
         if (matched) {
           matchedFindingIds.add(matched.id);
 
-          // PENTING: Jangan memaksakan memasukkan data foto/gambar jika dokumen abnormal asli tidak memiliki lampiran foto!
-          const isStrictIdMatch = Boolean(
-            (it.docId && matched.docId && it.docId === matched.docId) ||
-            (it.docId && matched.reportId && it.docId === matched.reportId) ||
-            (it.findingId && matched.id && it.findingId === matched.id)
-          );
-
           const hasOwnPhoto = Boolean(
             it.abnormalFinding?.photoBase64 || 
             (it.abnormalFinding?.photos && it.abnormalFinding.photos.length > 0)
           );
 
-          // Jika dokumen asli tidak ada fotonya, JANGAN PERNAH dipaksakan memasukkan foto dari temuan lain
+          // PENTING: Hanya ambil foto dari finding jika dokumen asli belum ada foto dan finding memiliki foto
+          const matchedPhoto = (matched.photos && matched.photos[0]?.base64) || matched.photoBase64 || '';
           const realPhoto = hasOwnPhoto
             ? (it.abnormalFinding?.photoBase64 || (it.abnormalFinding?.photos && it.abnormalFinding.photos[0]?.base64) || '')
-            : (isStrictIdMatch ? ((matched.photos && matched.photos[0]?.base64) || matched.photoBase64 || '') : '');
+            : matchedPhoto;
 
           const realPhotos = hasOwnPhoto
             ? (it.abnormalFinding?.photos && it.abnormalFinding.photos.length > 0 
                 ? it.abnormalFinding.photos 
                 : (it.abnormalFinding?.photoBase64 ? [{ base64: it.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : []))
-            : (isStrictIdMatch 
-                ? (matched.photos && matched.photos.length > 0 
-                    ? matched.photos 
-                    : (matched.photoBase64 ? [{ base64: matched.photoBase64, description: 'Bukti Temuan Abnormal' }] : []))
-                : []);
+            : (matched.photos && matched.photos.length > 0
+                ? matched.photos
+                : (matchedPhoto ? [{ base64: matchedPhoto, description: 'Bukti Temuan Abnormal' }] : []));
 
+          // Ambil deskripsi dan rekomendasi yang diinputkan oleh teknisi
           const realDesc = (isGenericFallback ? (matched.remark || matched.description || (matched.partName ? `Temuan abnormal pada: ${matched.partName}` : '')) : currentDesc) 
             || matched.remark 
             || matched.description 
@@ -489,13 +537,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             || matched.actionRecommendation 
             || (matched.partName ? `Perlu perbaikan / penggantian ${matched.partName}${matched.brandName ? ` (${matched.brandName})` : ''}` : '');
 
+          const realPartName = it.abnormalFinding?.partName || matched.partName || it.partName;
+          const realPartNumber = it.abnormalFinding?.partNumber || matched.partNumber || it.partNumber;
+          const realBrandName = it.abnormalFinding?.brandName || matched.brandName || it.brandName;
+          const realQuantity = it.abnormalFinding?.quantity || matched.quantity || it.quantity;
+
           return {
             ...it,
             findingId: matched.id,
-            partName: matched.partName || it.partName,
-            partNumber: matched.partNumber || it.partNumber,
-            brandName: matched.brandName || it.brandName,
-            quantity: matched.quantity || it.quantity,
+            partName: realPartName,
+            partNumber: realPartNumber,
+            brandName: realBrandName,
+            quantity: realQuantity,
             abnormalFinding: {
               ...it.abnormalFinding,
               unitName: it.abnormalFinding?.unitName || matched.specificDetail || matched.partName || it.specificDetail || it.maintenanceName,
@@ -505,6 +558,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               photos: realPhotos,
               reportedBy: it.abnormalFinding?.reportedBy || matched.createdByEmail || it.createdBy,
               reportedAt: it.abnormalFinding?.reportedAt || matched.findingDate || it.maintenanceTime,
+              partName: realPartName,
+              partNumber: realPartNumber,
+              brandName: realBrandName,
+              quantity: realQuantity,
             }
           };
         }
@@ -516,8 +573,25 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       const enrichedExcel = excelList.map(enrichItemWithFinding);
       const enrichedHse = hseList.map(enrichItemWithFinding);
 
+      // Standalone findings: HANYA temuan mandiri tanpa dokumen induk PM (misal dari form input temuan lepas)
+      // Jangan pernah melipatgandakan temuan PM yang sudah memiliki dokumen atau dokumennya sudah Normal/dihapus!
       const standaloneFindings: AbnormalItem[] = findingsList
-        .filter(f => !matchedFindingIds.has(f.id))
+        .filter(f => {
+          if (!f || matchedFindingIds.has(f.id)) return false;
+
+          // Jika finding memiliki docId/reportId atau terikat ke dokumen yang sudah dihapus/Normal -> JANGAN tampilkan
+          if (f.docId || f.reportId) return false;
+
+          // Jika finding memiliki specificDetail atau maintenanceName PM (dibuat dari form laporan PM),
+          // dan akun bersangkutan sudah dikelola lewat dokumen PM, jangan munculkan sisa duplikatnya sebagai unit terpisah
+          const fSpec = normalize(f.specificDetail);
+          const fMaint = normalize(f.maintenanceName);
+          if (fSpec || (fMaint && fMaint !== 'temuanlapangan' && fMaint !== normalize(f.partName))) {
+            return false;
+          }
+
+          return true;
+        })
         .map(f => {
           const createdAt = f.createdAt?.toDate ? f.createdAt.toDate() : (f.createdAt ? new Date(f.createdAt) : new Date());
           const photoB64 = (f.photos && f.photos[0]?.base64) || f.photoBase64 || '';
@@ -540,11 +614,16 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             quantity: f.quantity,
             abnormalFinding: {
               unitName: f.partName || f.specificDetail || 'Unit',
-              description: f.remark || `Temuan abnormal pada: ${f.partName || 'Peralatan'}`,
+              description: f.remark || f.description || `Temuan abnormal pada: ${f.partName || 'Peralatan'}`,
               actionRecommendation: f.actionRecommendation || (f.partName ? `Perlu perbaikan / penggantian ${f.partName}${f.brandName ? ` (${f.brandName})` : ''}` : ''),
               photoBase64: photoB64 || undefined,
+              photos: f.photos || (photoB64 ? [{ base64: photoB64, description: 'Bukti Temuan Abnormal' }] : []),
               reportedBy: f.createdByEmail || 'Engineer',
               reportedAt: f.findingDate || createdAt,
+              partName: f.partName,
+              partNumber: f.partNumber,
+              brandName: f.brandName,
+              quantity: f.quantity,
             }
           };
         });
@@ -780,14 +859,19 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     const toastId = toast.loading(`Mengembalikan unit "${confirmNormalItem.abnormalFinding?.unitName || confirmNormalItem.maintenanceName}" ke status Normal...`);
 
     try {
-      await updateDoc(doc(db, confirmNormalItem.collectionName, confirmNormalItem.docId), {
-        hasAbnormal: false,
-        abnormalFinding: deleteField(),
-        updatedAt: serverTimestamp(),
-      });
-
-      // Update offline IndexedDB juga
-      await offlineReportStorage.updateReportAbnormal(confirmNormalItem.docId, false, null);
+      if (confirmNormalItem.collectionName === 'findings') {
+        await deleteDoc(doc(db, 'findings', confirmNormalItem.docId));
+      } else {
+        await updateDoc(doc(db, confirmNormalItem.collectionName, confirmNormalItem.docId), {
+          hasAbnormal: false,
+          abnormalFinding: deleteField(),
+          updatedAt: serverTimestamp(),
+        });
+        await offlineReportStorage.updateReportAbnormal(confirmNormalItem.docId, false, null);
+        if (confirmNormalItem.findingId) {
+          await deleteDoc(doc(db, 'findings', confirmNormalItem.findingId)).catch(() => {});
+        }
+      }
 
       toast.success(`Unit berhasil ditandai Normal. Temuan abnormal telah diselesaikan oleh QC DME!`, { id: toastId });
       setConfirmNormalItem(null);

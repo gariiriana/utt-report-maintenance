@@ -1262,9 +1262,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const toastId = toast.loading('Menyimpan pembaruan dokumen ke arsip...');
     try {
       // Save finding to Firestore collection 'findings' if abnormal
+      let createdFindingId = '';
       if (abnormalStatus === 'abnormal' && user) {
         try {
-          await addDoc(collection(db, 'findings'), {
+          const fRef = await addDoc(collection(db, 'findings'), {
             partName: findingData.partName,
             partNumber: findingData.partNumber,
             brandName: findingData.brandName,
@@ -1279,6 +1280,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             createdByEmail: (user.email || '').toLowerCase(),
             createdAt: serverTimestamp(),
           });
+          createdFindingId = fRef.id;
         } catch (fErr) {
           console.error('Error saving finding:', fErr);
         }
@@ -1286,6 +1288,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       const saveResult = await saveReportToFirestore(targetUnit);
       if (saveResult) {
+        if (createdFindingId && typeof saveResult === 'string') {
+          updateDoc(doc(db, 'findings', createdFindingId), {
+            docId: saveResult,
+            reportId: saveResult,
+          }).catch(() => {});
+          const effectiveCol = (targetUnit.archiveType === 'excel' ? 'excel_documents' : (targetUnit.archiveType === 'hse' ? 'hse' : 'pdf_documents'));
+          updateDoc(doc(db, effectiveCol, saveResult), {
+            findingId: createdFindingId,
+            'abnormalFinding.findingId': createdFindingId,
+          }).catch(() => {});
+        }
         toast.success('Perubahan laporan berhasil diperbarui di Arsip Dokumen!', { id: toastId });
         if (onClearEdit) {
           onClearEdit();
@@ -1333,9 +1346,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const toastId = toast.loading(isDME ? 'Memproses export PDF...' : 'Memproses export PDF & Menyimpan data...');
     try {
       // Save finding to Firestore collection 'findings' if abnormal
+      let createdFindingId = '';
       if (abnormalStatus === 'abnormal' && user) {
         try {
-          await addDoc(collection(db, 'findings'), {
+          const fRef = await addDoc(collection(db, 'findings'), {
             partName: findingData.partName,
             partNumber: findingData.partNumber,
             brandName: findingData.brandName,
@@ -1350,6 +1364,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             createdByEmail: (user.email || '').toLowerCase(),
             createdAt: serverTimestamp(),
           });
+          createdFindingId = fRef.id;
         } catch (fErr) {
           console.error('Error saving finding:', fErr);
         }
@@ -1357,16 +1372,27 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       const result = await generatePDFDocument(targetUnit);
       if (result) {
-        const { doc, fileName } = result;
+        const { doc: pdfDoc, fileName } = result;
 
         // Trigger immediate download while user gesture is active
-        triggerImmediatePDFDownload(doc, fileName);
+        triggerImmediatePDFDownload(pdfDoc, fileName);
 
         if (isDME) {
           toast.success("Laporan berhasil diekspor!", { id: toastId });
         } else {
           const saveResult = await saveReportToFirestore(targetUnit, result);
           if (saveResult) {
+            if (createdFindingId && typeof saveResult === 'string') {
+              updateDoc(doc(db, 'findings', createdFindingId), {
+                docId: saveResult,
+                reportId: saveResult,
+              }).catch(() => {});
+              const effectiveCol = (targetUnit.archiveType === 'excel' ? 'excel_documents' : (targetUnit.archiveType === 'hse' ? 'hse' : 'pdf_documents'));
+              updateDoc(doc(db, effectiveCol, saveResult), {
+                findingId: createdFindingId,
+                'abnormalFinding.findingId': createdFindingId,
+              }).catch(() => {});
+            }
             if (onClearEdit) onClearEdit();
 
             setUnits(prev => {
