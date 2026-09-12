@@ -23,7 +23,8 @@ import {
   RefreshCw,
   Wrench,
   ShieldCheck,
-  Loader2
+  Loader2,
+  PenTool
 } from 'lucide-react';
 import {
   collection,
@@ -48,7 +49,8 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoK2 from '@/assets/logo_k2.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
-import { AbnormalFinding } from './DocumentList';
+import { AbnormalFinding, ExcelDocument } from './DocumentList';
+import { AbnormalReportModal } from './AbnormalReportModal';
 
 export interface AbnormalItem {
   id: string;
@@ -90,6 +92,27 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   // Modal konfirmasi tandai normal oleh QC
   const [confirmNormalItem, setConfirmNormalItem] = useState<AbnormalItem | null>(null);
   const [isProcessingNormal, setIsProcessingNormal] = useState(false);
+
+  // Modal edit / lengkapi temuan abnormal
+  const [editingModalDoc, setEditingModalDoc] = useState<ExcelDocument | null>(null);
+
+  // Helper konversi AbnormalItem ke ExcelDocument untuk AbnormalReportModal
+  const itemToExcelDoc = (item: AbnormalItem): ExcelDocument => ({
+    id: item.docId,
+    fileName: item.fileName,
+    maintenanceName: item.maintenanceName,
+    maintenanceTime: item.maintenanceTime,
+    specificDetail: item.specificDetail,
+    documentType: item.documentType,
+    hasAbnormal: item.hasAbnormal,
+    abnormalFinding: item.abnormalFinding,
+    createdBy: item.createdBy,
+    createdAt: item.createdAt,
+    fileSize: 0,
+    totalPhotos: 0,
+    photosWithImage: 0,
+    photosData: []
+  });
 
   // Real-time listener ke seluruh koleksi dokumen yang berstatus hasAbnormal == true
   useEffect(() => {
@@ -796,8 +819,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                       </p>
                     </div>
 
-                    {/* Rekomendasi Tindakan (Jika ada) */}
-                    {abnormal.actionRecommendation && (
+                    {/* Rekomendasi Tindakan (Jika ada / prompt tambah) */}
+                    {abnormal.actionRecommendation ? (
                       <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
                         <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider flex items-center gap-1">
                           <Wrench className="w-3 h-3 text-amber-600" /> Rekomendasi / Tindakan Lanjutan:
@@ -805,6 +828,20 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                         <p className="text-xs text-amber-950 font-medium leading-relaxed">
                           {abnormal.actionRecommendation}
                         </p>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 bg-slate-50 border border-dashed border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-500">
+                        <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                          <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>Rekomendasi tindakan belum diisi</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingModalDoc(itemToExcelDoc(item))}
+                          className="text-[11px] font-bold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer shrink-0"
+                        >
+                          + Lengkapi
+                        </button>
                       </div>
                     )}
 
@@ -875,7 +912,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
                 {/* Footer Action Buttons */}
                 <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {onNavigateToDocument && (
                       <button
                         type="button"
@@ -896,6 +933,16 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     >
                       <Download className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Download PDF</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditingModalDoc(itemToExcelDoc(item))}
+                      className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Edit / lengkapi deskripsi temuan, rekomendasi lanjutan, atau foto bukti"
+                    >
+                      <PenTool className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Edit Temuan</span>
                     </button>
                   </div>
 
@@ -1028,6 +1075,28 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal Edit / Lengkapi Temuan Abnormal */}
+      {editingModalDoc && (
+        <AbnormalReportModal
+          isOpen={!!editingModalDoc}
+          onClose={() => setEditingModalDoc(null)}
+          document={editingModalDoc}
+          onSuccess={(updated) => {
+            setItems(prev => prev.map(it => {
+              if (it.docId === editingModalDoc.id) {
+                return {
+                  ...it,
+                  hasAbnormal: Boolean(updated.hasAbnormal ?? it.hasAbnormal),
+                  abnormalFinding: (updated.abnormalFinding || it.abnormalFinding) as AbnormalFinding
+                };
+              }
+              return it;
+            }));
+            setEditingModalDoc(null);
+          }}
+        />
+      )}
     </div>
   );
 }

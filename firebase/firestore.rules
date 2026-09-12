@@ -182,6 +182,7 @@ service cloud.firestore {
     
     match /files/{fileId} {
       allow create: if request.auth != null 
+                    && !isStandbyEngineer()
                     && (isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || request.auth.uid != null)
                     && request.resource.data.keys().hasAll([
                       'fileName',
@@ -200,6 +201,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
       
       allow update: if request.auth != null 
+                    && !isStandbyEngineer()
                     && (
                       isAdminOrQcDme()
                       || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -217,6 +219,7 @@ service cloud.firestore {
 
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
+                      && !isStandbyEngineer()
                       && (isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || request.auth.uid != null)
                       && hasAcceptableFieldCount(request.resource.data, 10);
         

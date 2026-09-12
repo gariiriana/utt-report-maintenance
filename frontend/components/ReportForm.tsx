@@ -998,6 +998,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         totalPhotos: cardsToSave.length,
         photosWithImage,
         hasAbnormal: abnormalStatus === 'abnormal',
+        abnormalFinding: abnormalStatus === 'abnormal' ? {
+          unitName: finalSpecificDetail || maintenanceName || 'Unit',
+          description: (findingData.remark && findingData.remark.trim())
+            || (findingData.partName ? `Temuan abnormal pada part: ${findingData.partName}` : 'Temuan abnormal tercatat pada dokumen ini.'),
+          actionRecommendation: findingData.partName
+            ? `Perlu tindak lanjut / perbaikan pada ${findingData.partName}${findingData.brandName ? ` (${findingData.brandName})` : ''}`
+            : '',
+          photoBase64: findingPhotos[0]?.base64 || (editingData?.abnormalFinding?.photoBase64 || null),
+          reportedBy: user?.displayName || user?.email || 'Engineer',
+          reportedAt: new Date().toISOString(),
+        } : (editingData?.abnormalFinding || null),
         // Status SR dan file SR HANYA dikelola dari fitur Upload SR di Arsip Dokumen
         serviceReportPayload: hasExistingRealSR ? (editingData?.serviceReportPayload || null) : null,
         hasServiceReport: hasExistingRealSR,
@@ -1044,6 +1055,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             totalPhotos: cardsToSave.length,
             photosWithImage,
             hasAbnormal: reportData.hasAbnormal,
+            abnormalFinding: reportData.abnormalFinding,
             serviceReportPayload: reportData.serviceReportPayload,
             hasServiceReport: reportData.hasServiceReport,
             attachedSrFile: reportData.attachedSrFile || undefined,
@@ -1109,6 +1121,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           totalPhotos: cardsToSave.length,
           photosWithImage,
           hasAbnormal: reportData.hasAbnormal,
+          abnormalFinding: reportData.abnormalFinding,
           serviceReportPayload: reportData.serviceReportPayload,
           hasServiceReport: reportData.hasServiceReport,
           attachedSrFile: reportData.attachedSrFile || undefined,

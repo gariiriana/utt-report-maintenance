@@ -400,6 +400,7 @@ interface FileManagementProps {
     searchQuery?: string;
     onSearchChange?: (query: string) => void;
     deleteRequestMode?: boolean;
+    readOnly?: boolean;
 }
 
 export function FileManagement({
@@ -413,17 +414,21 @@ export function FileManagement({
     searchQuery: propSearchQuery,
     onSearchChange: propOnSearchChange,
     deleteRequestMode = false,
+    readOnly = false,
 }: FileManagementProps = {}) {
     const { user, userRole } = useAuth();
     const userEmailLower = (user?.email || '').toLowerCase();
     const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower.includes('qc_dme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
     const isAdmin = userRole === 'admin' || isQcDme;
-    const canUpload = propAllowUpload !== undefined
+    const isStandby = userRole === 'standby_engineer';
+    const isReadOnly = Boolean(readOnly || isStandby);
+
+    const canUpload = !isReadOnly && (propAllowUpload !== undefined
         ? propAllowUpload
-        : (isAdmin || (collectionName !== 'files' && userRole === collectionName));
-    // Semua role authenticated berhak mengajukan permohonan hapus berkas ke qcdme@dme.com (hanya QC DME yang berhak approve & hapus permanen)
-    const canDeleteOrRequest = Boolean(user);
-    const isEngineer = userRole === 'engineer' || userRole === 'standby_engineer';
+        : (isAdmin || (collectionName !== 'files' && userRole === collectionName)));
+    // Semua role authenticated berhak mengajukan permohonan hapus berkas ke qcdme@dme.com (hanya QC DME yang berhak approve & hapus permanen), kecuali role read-only / standby
+    const canDeleteOrRequest = !isReadOnly && Boolean(user);
+    const isEngineer = userRole === 'engineer';
 
     useEffect(() => {
         if (isEngineer && !simpleMode) {
@@ -686,6 +691,7 @@ export function FileManagement({
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!canUpload) return;
         if (e.target.files) {
             const newFiles = Array.from(e.target.files);
             const validFiles: File[] = [];
@@ -755,7 +761,7 @@ export function FileManagement({
     };
 
     const handleUpload = async () => {
-        if (selectedFiles.length === 0 || !user) return;
+        if (!canUpload || selectedFiles.length === 0 || !user) return;
 
         const finalCategory =
             simpleMode ? 'Dokumen' : (selectedCategory === 'Custom' ? customCategory : selectedCategory);
@@ -919,6 +925,7 @@ export function FileManagement({
     const targetFiles = files.filter(f => targetFileIds.includes(f.id));
 
     const openDeleteDialog = (file: FileData | null) => {
+        if (!canDeleteOrRequest) return;
         setFileToDelete(file);
         setDeleteReason(file?.deleteReason || '');
 
@@ -1394,6 +1401,28 @@ export function FileManagement({
                         Kelola dan akses dokumentasi ISO untuk divisi {divisionName}.
                     </p>
                 </div>
+            )}
+
+            {isReadOnly && !divisionName && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 flex items-center justify-between bg-blue-50/90 border border-blue-200/90 rounded-2xl px-4 py-3.5 text-blue-900 shadow-sm"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
+                            <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-slate-900">Mode Akses: Hanya Baca (Read-Only)</p>
+                            <p className="text-xs text-slate-600 font-medium">Role Anda dapat melihat, mencari, memfilter, dan mengunduh seluruh berkas dokumentasi data center.</p>
+                        </div>
+                    </div>
+                    <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-blue-100/80 text-blue-800 rounded-xl border border-blue-200">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        Read-Only
+                    </span>
+                </motion.div>
             )}
 
             {canUpload && (

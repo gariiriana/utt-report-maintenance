@@ -56,18 +56,20 @@ export function MainApp() {
 
   // Flag evaluasi hak akses peranan user
   const userEmailLower = (user?.email || '').toLowerCase();
+  const isDwimitra = userEmailLower === 'dwimitra@co.id' || userEmailLower.includes('dwimitra');
   const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
+  const canViewAbnormal = isQcDme || isDwimitra;
   const isAdmin = userRole === 'admin' || isQcDme;
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
   const isStandby = userRole === 'standby_engineer';
   const isK2Engineer = userRole === 'Engineer_K2' || userRole === 'engineer_k2';
 
-  // Badge jumlah pengajuan delete & temuan abnormal (khusus akun QC DME)
+  // Badge jumlah pengajuan delete & temuan abnormal (khusus akun QC DME & Dwimitra)
   const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
   const [totalAbnormalCount, setTotalAbnormalCount] = useState(0);
 
   useEffect(() => {
-    if (!isQcDme) return;
+    if (!isQcDme && !isDwimitra) return;
 
     let cFiles = 0;
     let cCM = 0;
@@ -128,7 +130,7 @@ export function MainApp() {
       unsubExcel();
       unsubHse();
     };
-  }, [isQcDme]);
+  }, [isQcDme, isDwimitra]);
 
   // State data laporan yang sedang disunting (edit mode)
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
@@ -137,12 +139,12 @@ export function MainApp() {
   const navItems = [
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'delete_requests', label: 'Pengajuan Hapus', icon: Trash2, color: 'from-rose-600 to-red-600', show: isQcDme },
-    { id: 'abnormal_findings', label: 'Temuan Abnormal', icon: AlertTriangle, color: 'from-red-600 to-amber-600', show: isQcDme },
+    { id: 'abnormal_findings', label: 'Temuan Abnormal', icon: AlertTriangle, color: 'from-red-600 to-amber-600', show: canViewAbnormal },
     { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: false },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
-    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' && !isK2Engineer },
+    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: userRole !== 'DME' && !isK2Engineer },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
     { id: 'standby_kpi', label: 'Input KPI Monthly', icon: Award, color: 'from-emerald-600 to-teal-700', show: isStandby && !isAdmin },
     { id: 'spareparts', label: 'Log Sparepart', icon: Package, color: 'from-indigo-600 to-violet-700', show: !isAdmin && (isStandby || userRole === 'DME' || userRole === 'site_manager_dme') },
@@ -424,7 +426,7 @@ export function MainApp() {
             ) : activeTab === 'ptw' ? (
               <PTWManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'files' ? (
-              <FileManagement initialSearchQuery={navSearchQuery} />
+              <FileManagement initialSearchQuery={navSearchQuery} readOnly={isStandby} />
             ) : activeTab === 'report' ? (
               <ReportForm
                 editingData={editingData}
