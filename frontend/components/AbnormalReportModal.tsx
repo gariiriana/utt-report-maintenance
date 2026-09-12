@@ -18,7 +18,9 @@ import {
   RefreshCw,
   FileText,
   Loader2,
-  ShieldAlert
+  ShieldAlert,
+  Scissors,
+  Crop
 } from 'lucide-react';
 import { doc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
@@ -26,6 +28,8 @@ import { toast } from 'sonner';
 import { ExcelDocument, AbnormalFinding } from './DocumentList';
 import { useAuth } from './AuthContext';
 import { offlineReportStorage } from '@/utils/offlineReportStorage';
+import { ImageEditor } from './ImageEditor';
+import { autoCropTextFromImage } from '@/utils/cropUtils';
 
 interface AbnormalReportModalProps {
   isOpen: boolean;
@@ -53,6 +57,7 @@ export function AbnormalReportModal({
   const [isClearing, setIsClearing] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [isManualCropping, setIsManualCropping] = useState(false);
 
   // Inisialisasi state dari data dokumen saat modal terbuka
   useEffect(() => {
@@ -156,6 +161,19 @@ export function AbnormalReportModal({
     setPhotoFileName('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     toast.info('Foto bukti temuan dihapus.');
+  };
+
+  const handleAutoCropText = async () => {
+    if (!photoBase64) return;
+    const toastId = toast.loading('Memotong bagian teks atas...');
+    try {
+      const cropped = await autoCropTextFromImage(photoBase64, 0.46);
+      setPhotoBase64(cropped);
+      setPhotoFileName((prev) => (prev ? `cropped_${prev}` : 'foto_bukti_cropped.jpg'));
+      toast.success('Berhasil! Bagian teks telah dibuang, kini hanya tersisa foto dokumentasi.', { id: toastId });
+    } catch (e: any) {
+      toast.error(`Gagal memotong foto: ${e.message || 'Kesalahan browser'}`, { id: toastId });
+    }
   };
 
   // Simpan temuan abnormal ke Firestore & Offline Storage
@@ -374,13 +392,31 @@ export function AbnormalReportModal({
                   Foto Bukti Temuan Abnormal <span className="text-emerald-600 font-bold lowercase">(opsional)</span>
                 </label>
                 {photoBase64 && (
-                  <button
-                    type="button"
-                    onClick={handleRemovePhoto}
-                    className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Hapus Foto
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAutoCropText}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition"
+                      title="Potong otomatis bagian atas teks dan hanya simpan bagian foto"
+                    >
+                      <Scissors className="w-3.5 h-3.5" /> Ambil Foto Saja
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsManualCropping(true)}
+                      className="text-xs font-bold text-slate-600 hover:text-slate-800 flex items-center gap-1 cursor-pointer transition"
+                      title="Buka pemotong gambar manual"
+                    >
+                      <Crop className="w-3.5 h-3.5" /> Crop Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Hapus Foto
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -391,7 +427,22 @@ export function AbnormalReportModal({
                     alt="Bukti Temuan Abnormal"
                     className="w-full max-h-56 object-contain mx-auto bg-slate-950/80"
                   />
-                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-wrap items-center justify-center gap-2 p-2">
+                    <button
+                      type="button"
+                      onClick={handleAutoCropText}
+                      className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-indigo-700 cursor-pointer flex items-center gap-1"
+                      title="Potong otomatis bagian atas teks dan simpan foto saja"
+                    >
+                      <Scissors className="w-3.5 h-3.5" /> Ambil Foto Saja
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsManualCropping(true)}
+                      className="px-3 py-1.5 bg-white text-slate-800 rounded-xl text-xs font-bold shadow-md hover:bg-slate-100 cursor-pointer flex items-center gap-1"
+                    >
+                      <Crop className="w-3.5 h-3.5 text-slate-600" /> Crop Manual
+                    </button>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -543,6 +594,24 @@ export function AbnormalReportModal({
           </div>
         </motion.div>
       </div>
+
+      {/* Modal ImageEditor untuk Crop Manual */}
+      <AnimatePresence>
+        {isManualCropping && photoBase64 && (
+          <ImageEditor
+            image={photoBase64}
+            onSave={(editedImage) => {
+              setPhotoBase64(editedImage);
+              setPhotoFileName((prev) => (prev ? `cropped_${prev}` : 'foto_cropped.jpg'));
+              setIsManualCropping(false);
+              toast.success('Foto bukti temuan abnormal berhasil dipotong/crop!');
+            }}
+            onCancel={() => setIsManualCropping(false)}
+            maintenanceName={unitName}
+            specificDetail={description}
+          />
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }

@@ -26,7 +26,9 @@ import {
   Loader2,
   PenTool,
   Eye,
-  Trash2
+  Trash2,
+  Scissors,
+  Crop
 } from 'lucide-react';
 import {
   collection,
@@ -54,6 +56,8 @@ import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { AbnormalFinding, ExcelDocument } from './DocumentList';
 import { AbnormalReportModal } from './AbnormalReportModal';
+import { ImageEditor } from './ImageEditor';
+import { autoCropTextFromImage } from '@/utils/cropUtils';
 
 export interface AbnormalItem {
   id: string;
@@ -116,6 +120,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   // Modal edit / lengkapi temuan abnormal
   const [editingModalDoc, setEditingModalDoc] = useState<ExcelDocument | null>(null);
 
+  // Modal crop foto temuan abnormal (ImageEditor)
+  const [editingCropItem, setEditingCropItem] = useState<AbnormalItem | null>(null);
+
   // Helper konversi AbnormalItem ke ExcelDocument untuk AbnormalReportModal
   const itemToExcelDoc = (item: AbnormalItem): ExcelDocument => ({
     id: item.docId,
@@ -166,6 +173,152 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       toast.error(`Gagal menghapus temuan: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Handler: Potong otomatis bagian teks atas dan hanya simpan foto dokumentasi unit
+  const handleAutoCropText = async (targetItem: AbnormalItem) => {
+    const rawPhoto = targetItem.abnormalFinding?.photoBase64;
+    if (!rawPhoto) {
+      toast.error('Tidak ada foto bukti yang dapat dipotong.');
+      return;
+    }
+
+    const toastId = toast.loading('Memotong bagian teks dan mengambil foto saja...');
+    try {
+      const croppedBase64 = await autoCropTextFromImage(rawPhoto, 0.46);
+
+      // Simpan perubahan ke Firestore
+      if (targetItem.collectionName === 'findings') {
+        await updateDoc(doc(db, 'findings', targetItem.findingId || targetItem.docId), {
+          photoBase64: croppedBase64,
+          photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(doc(db, targetItem.collectionName, targetItem.docId), {
+          'abnormalFinding.photoBase64': croppedBase64,
+          'abnormalFinding.photos': [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      // Update offline storage juga
+      await offlineReportStorage.updateReportAbnormal(
+        targetItem.docId,
+        true,
+        {
+          ...(targetItem.abnormalFinding || {}),
+          photoBase64: croppedBase64,
+          photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+        }
+      );
+
+      // Update local state items
+      setItems((prev) =>
+        prev.map((it) => {
+          if (it.id === targetItem.id) {
+            return {
+              ...it,
+              abnormalFinding: {
+                ...it.abnormalFinding,
+                photoBase64: croppedBase64,
+                photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+              },
+            };
+          }
+          return it;
+        })
+      );
+
+      // Update viewingDetailItem jika sedang terbuka di pop-up
+      if (viewingDetailItem && viewingDetailItem.id === targetItem.id) {
+        setViewingDetailItem((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            abnormalFinding: {
+              ...prev.abnormalFinding,
+              photoBase64: croppedBase64,
+              photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+            },
+          };
+        });
+      }
+
+      toast.success('Berhasil! Bagian teks telah dibuang, kini hanya menyisakan foto dokumentasi.', { id: toastId });
+    } catch (err: any) {
+      console.error('Error auto cropping finding photo:', err);
+      toast.error(`Gagal memotong foto: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
+    }
+  };
+
+  // Handler: Simpan hasil pemotongan foto manual via ImageEditor
+  const handleSaveManualCrop = async (newBase64: string) => {
+    if (!editingCropItem) return;
+    const targetItem = editingCropItem;
+    setEditingCropItem(null);
+
+    const toastId = toast.loading('Menyimpan hasil potongan foto bukti...');
+    try {
+      if (targetItem.collectionName === 'findings') {
+        await updateDoc(doc(db, 'findings', targetItem.findingId || targetItem.docId), {
+          photoBase64: newBase64,
+          photos: [{ base64: newBase64, description: 'Bukti Temuan Abnormal' }],
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(doc(db, targetItem.collectionName, targetItem.docId), {
+          'abnormalFinding.photoBase64': newBase64,
+          'abnormalFinding.photos': [{ base64: newBase64, description: 'Bukti Temuan Abnormal' }],
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      await offlineReportStorage.updateReportAbnormal(
+        targetItem.docId,
+        true,
+        {
+          ...(targetItem.abnormalFinding || {}),
+          photoBase64: newBase64,
+          photos: [{ base64: newBase64, description: 'Bukti Temuan Abnormal' }],
+        }
+      );
+
+      setItems((prev) =>
+        prev.map((it) => {
+          if (it.id === targetItem.id) {
+            return {
+              ...it,
+              abnormalFinding: {
+                ...it.abnormalFinding,
+                photoBase64: newBase64,
+                photos: [{ base64: newBase64, description: 'Bukti Temuan Abnormal' }],
+              },
+            };
+          }
+          return it;
+        })
+      );
+
+      if (viewingDetailItem && viewingDetailItem.id === targetItem.id) {
+        setViewingDetailItem((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            abnormalFinding: {
+              ...prev.abnormalFinding,
+              photoBase64: newBase64,
+              photos: [{ base64: newBase64, description: 'Bukti Temuan Abnormal' }],
+            },
+          };
+        });
+      }
+
+      toast.success('Foto bukti temuan abnormal berhasil diperbarui!', { id: toastId });
+    } catch (err: any) {
+      console.error('Error saving cropped photo:', err);
+      toast.error(`Gagal menyimpan foto: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
     }
   };
 
@@ -1067,20 +1220,38 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                         </div>
                         <div className="p-2 bg-slate-100/90 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-600">
                           <span className="font-semibold flex items-center gap-1">
-                            <Camera className="w-3.5 h-3.5 text-rose-600" /> Bukti Temuan Foto Terlampir
+                            <Camera className="w-3.5 h-3.5 text-rose-600" /> Bukti Foto Terlampir
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setPreviewPhoto({
-                              src: abnormal.photoBase64!,
-                              title: targetUnit,
-                              unit: targetUnit,
-                              account: item.createdBy
-                            })}
-                            className="text-rose-700 hover:text-rose-900 font-bold underline cursor-pointer"
-                          >
-                            Perbesar
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleAutoCropText(item)}
+                              className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
+                              title="Potong otomatis bagian atas teks dan hanya simpan bagian foto"
+                            >
+                              <Scissors className="w-3 h-3" /> Ambil Foto Saja
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCropItem(item)}
+                              className="text-slate-600 hover:text-slate-800 font-bold flex items-center gap-1 cursor-pointer"
+                              title="Crop manual foto ini"
+                            >
+                              <Crop className="w-3 h-3" /> Crop
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPhoto({
+                                src: abnormal.photoBase64!,
+                                title: targetUnit,
+                                unit: targetUnit,
+                                account: item.createdBy
+                              })}
+                              className="text-rose-700 hover:text-rose-900 font-bold underline cursor-pointer"
+                            >
+                              Perbesar
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -1383,9 +1554,31 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                 {/* Foto Bukti Temuan (Jika Ada) */}
                 {viewingDetailItem.abnormalFinding?.photoBase64 ? (
                   <div className="space-y-1.5">
-                    <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
-                      <Camera className="w-3.5 h-3.5 text-rose-600" /> Foto Bukti Temuan Abnormal:
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 text-rose-600" /> Foto Bukti Temuan Abnormal:
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleAutoCropText(viewingDetailItem)}
+                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                          title="Potong otomatis bagian atas teks dan hanya simpan bagian foto dokumentasi unit"
+                        >
+                          <Scissors className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Ambil Foto Saja (Buang Teks)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCropItem(viewingDetailItem)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                          title="Buka pemotong gambar manual"
+                        >
+                          <Crop className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Crop Manual</span>
+                        </button>
+                      </div>
+                    </div>
                     <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 group">
                       <img
                         src={viewingDetailItem.abnormalFinding.photoBase64}
@@ -1633,6 +1826,19 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           }}
         />
       )}
+
+      {/* Modal ImageEditor untuk Crop Manual Foto Temuan Abnormal */}
+      <AnimatePresence>
+        {editingCropItem && editingCropItem.abnormalFinding?.photoBase64 && (
+          <ImageEditor
+            image={editingCropItem.abnormalFinding.photoBase64}
+            onSave={handleSaveManualCrop}
+            onCancel={() => setEditingCropItem(null)}
+            maintenanceName={editingCropItem.abnormalFinding?.unitName || editingCropItem.maintenanceName}
+            specificDetail={editingCropItem.abnormalFinding?.description}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -429,29 +429,53 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
       const fPhotos = abnormalFinding.photos;
       const fCols = Math.min(fPhotos.length, 2);
-      const fPhotoW = (contentW - (fCols - 1) * 5) / fCols;
-      const fPhotoH = 55;
+      const colW = (contentW - (fCols - 1) * 5) / fCols;
 
       fPhotos.slice(0, 4).forEach((p, pIdx) => {
-        const row = Math.floor(pIdx / 2);
-        const col = pIdx % 2;
-        const extraH = p.description ? 8 : 0;
-        const x = margin + col * (fPhotoW + 5);
-        const y = findY + row * (fPhotoH + extraH + 5);
+        const col = pIdx % fCols;
+        const row = Math.floor(pIdx / fCols);
+        const colX = margin + col * (colW + 5);
 
         if (p.base64) {
           try {
-            doc.addImage(p.base64, 'JPEG', x, y, fPhotoW, fPhotoH);
-            doc.setDrawColor(226, 232, 240);
-            doc.rect(x, y, fPhotoW, fPhotoH, 'S');
+            let renderW = colW;
+            let renderH = fCols === 1 ? 75 : 55;
+            let renderX = colX;
+            let renderY = findY + row * (renderH + 12);
+
+            try {
+              const imgProps = (doc as any).getImageProperties(p.base64);
+              if (imgProps && imgProps.width && imgProps.height) {
+                const aspect = imgProps.width / imgProps.height;
+                const maxBoxW = colW;
+                const maxBoxH = fCols === 1 ? 85 : 60;
+
+                if (aspect >= maxBoxW / maxBoxH) {
+                  renderW = maxBoxW;
+                  renderH = maxBoxW / aspect;
+                } else {
+                  renderH = maxBoxH;
+                  renderW = maxBoxH * aspect;
+                }
+                renderX = colX + (colW - renderW) / 2;
+              }
+            } catch (propErr) {
+              console.warn('Could not read image properties:', propErr);
+            }
+
+            // Draw image with natural proportional aspect ratio
+            const imgFormat = p.base64.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+            doc.addImage(p.base64, imgFormat, renderX, renderY, renderW, renderH, undefined, 'FAST');
+            doc.setDrawColor(203, 213, 225);
+            doc.rect(renderX, renderY, renderW, renderH, 'S');
 
             if (p.description) {
               doc.setFillColor(248, 250, 252);
-              doc.rect(x, y + fPhotoH, fPhotoW, 7, 'F');
-              doc.setDrawColor(226, 232, 240);
-              doc.rect(x, y + fPhotoH, fPhotoW, 7, 'S');
+              doc.rect(renderX, renderY + renderH, renderW, 6.5, 'F');
+              doc.setDrawColor(203, 213, 225);
+              doc.rect(renderX, renderY + renderH, renderW, 6.5, 'S');
               doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(51, 65, 85);
-              doc.text(doc.splitTextToSize(p.description, fPhotoW - 4), x + 2, y + fPhotoH + 4.8);
+              doc.text(doc.splitTextToSize(p.description, renderW - 4), renderX + 2, renderY + renderH + 4.5);
             }
           } catch (e) {
             console.error('Error adding finding photo to PDF', e);
