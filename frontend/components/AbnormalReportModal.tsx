@@ -20,7 +20,7 @@ import {
   Loader2,
   ShieldAlert
 } from 'lucide-react';
-import { doc, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import { ExcelDocument, AbnormalFinding } from './DocumentList';
@@ -181,15 +181,27 @@ export function AbnormalReportModal({
 
       // Sanitize data agar tidak ada undefined values yang ditolak Firestore
       const cleanAbnormal = JSON.parse(JSON.stringify(abnormalPayload));
-      const colName = docItem.documentType === 'excel'
-        ? 'excel_documents'
-        : (docItem.documentType === 'hse' ? 'hse' : 'pdf_documents');
+      const colName = docItem.collectionName === 'findings'
+        ? 'findings'
+        : (docItem.documentType === 'excel'
+          ? 'excel_documents'
+          : (docItem.documentType === 'hse' ? 'hse' : 'pdf_documents'));
 
-      await updateDoc(doc(db, colName, docItem.id), {
-        hasAbnormal: true,
-        abnormalFinding: cleanAbnormal,
-        updatedAt: serverTimestamp(),
-      });
+      if (colName === 'findings') {
+        await updateDoc(doc(db, 'findings', docItem.id), {
+          partName: targetUnitName,
+          remark: description.trim(),
+          actionRecommendation: actionRecommendation.trim() || '',
+          photoBase64: photoBase64 || '',
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(doc(db, colName, docItem.id), {
+          hasAbnormal: true,
+          abnormalFinding: cleanAbnormal,
+          updatedAt: serverTimestamp(),
+        });
+      }
 
       // Update offline IndexedDB agar sinkron
       await offlineReportStorage.updateReportAbnormal(docItem.id, true, cleanAbnormal);
@@ -214,15 +226,21 @@ export function AbnormalReportModal({
     const toastId = toast.loading('Mengembalikan status unit ke Normal...');
 
     try {
-      const colName = docItem.documentType === 'excel'
-        ? 'excel_documents'
-        : (docItem.documentType === 'hse' ? 'hse' : 'pdf_documents');
+      const colName = docItem.collectionName === 'findings'
+        ? 'findings'
+        : (docItem.documentType === 'excel'
+          ? 'excel_documents'
+          : (docItem.documentType === 'hse' ? 'hse' : 'pdf_documents'));
 
-      await updateDoc(doc(db, colName, docItem.id), {
-        hasAbnormal: false,
-        abnormalFinding: deleteField(),
-        updatedAt: serverTimestamp(),
-      });
+      if (colName === 'findings') {
+        await deleteDoc(doc(db, 'findings', docItem.id));
+      } else {
+        await updateDoc(doc(db, colName, docItem.id), {
+          hasAbnormal: false,
+          abnormalFinding: deleteField(),
+          updatedAt: serverTimestamp(),
+        });
+      }
 
       // Update offline IndexedDB
       await offlineReportStorage.updateReportAbnormal(docItem.id, false, null);

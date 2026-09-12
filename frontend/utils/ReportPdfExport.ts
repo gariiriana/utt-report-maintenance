@@ -17,6 +17,7 @@ export interface FindingDataExport {
   quantity: string;
   findingDate: string;
   remark: string;
+  actionRecommendation?: string;
   photos: { base64: string; description?: string }[];
 }
 
@@ -397,7 +398,28 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     doc.rect(margin, findY, contentW, remarkBoxH, 'S');
 
     doc.text(splitRemark, margin + 3, findY + 5);
-    findY += remarkBoxH + 6;
+    findY += remarkBoxH + 4;
+
+    // Recommendation section if available
+    if (abnormalFinding.actionRecommendation && abnormalFinding.actionRecommendation.trim()) {
+      doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor(180, 83, 9);
+      doc.text('REKOMENDASI / TINDAKAN LANJUTAN:', margin, findY);
+      findY += 4;
+
+      doc.setFontSize(8.5).setFont('helvetica', 'normal').setTextColor(69, 26, 3);
+      const splitReco = doc.splitTextToSize(abnormalFinding.actionRecommendation, contentW - 6);
+      const recoBoxH = Math.max(12, splitReco.length * 4.5 + 4);
+
+      doc.setFillColor(254, 243, 199);
+      doc.rect(margin, findY, contentW, recoBoxH, 'F');
+      doc.setDrawColor(252, 211, 77);
+      doc.rect(margin, findY, contentW, recoBoxH, 'S');
+
+      doc.text(splitReco, margin + 3, findY + 5);
+      findY += recoBoxH + 4;
+    } else {
+      findY += 2;
+    }
 
     // Photos Section
     if (abnormalFinding.photos && abnormalFinding.photos.length > 0) {

@@ -25,7 +25,8 @@ import {
   ShieldCheck,
   Loader2,
   PenTool,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 import {
   collection,
@@ -34,6 +35,7 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  deleteDoc,
   deleteField,
   serverTimestamp,
   getDocs
@@ -56,7 +58,7 @@ import { AbnormalReportModal } from './AbnormalReportModal';
 export interface AbnormalItem {
   id: string;
   docId: string;
-  collectionName: 'pdf_documents' | 'excel_documents' | 'hse';
+  collectionName: 'pdf_documents' | 'excel_documents' | 'hse' | 'findings';
   documentType: 'pdf' | 'excel' | 'hse';
   fileName: string;
   maintenanceName: string;
@@ -70,6 +72,11 @@ export interface AbnormalItem {
   abnormalFinding: AbnormalFinding;
   attachedSrFile?: any;
   attachedSrBase64?: string;
+  findingId?: string;
+  partName?: string;
+  partNumber?: string;
+  brandName?: string;
+  quantity?: string | number;
 }
 
 interface AbnormalFindingsCenterProps {
@@ -77,7 +84,12 @@ interface AbnormalFindingsCenterProps {
 }
 
 export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFindingsCenterProps) {
-  const { companyType } = useAuth();
+  const { user, userRole, companyType } = useAuth();
+  const canDelete = Boolean(
+    user?.email?.toLowerCase() === 'qcdme@dme.com' ||
+    userRole === 'qc_dme' ||
+    userRole === 'admin'
+  );
 
   const [items, setItems] = useState<AbnormalItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +106,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   const [confirmNormalItem, setConfirmNormalItem] = useState<AbnormalItem | null>(null);
   const [isProcessingNormal, setIsProcessingNormal] = useState(false);
 
+  // Modal konfirmasi hapus temuan oleh QC DME
+  const [deleteTargetItem, setDeleteTargetItem] = useState<AbnormalItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Modal pop-up lihat detail lengkap temuan abnormal
   const [viewingDetailItem, setViewingDetailItem] = useState<AbnormalItem | null>(null);
 
@@ -108,6 +124,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     maintenanceTime: item.maintenanceTime,
     specificDetail: item.specificDetail,
     documentType: item.documentType,
+    collectionName: item.collectionName,
     hasAbnormal: item.hasAbnormal,
     abnormalFinding: item.abnormalFinding,
     createdBy: item.createdBy,
@@ -118,16 +135,160 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     photosData: []
   });
 
-  // Real-time listener ke seluruh koleksi dokumen yang berstatus hasAbnormal == true
+  // Handler: Hapus temuan abnormal oleh akun QC DME / Admin
+  const handleDeleteAbnormal = async () => {
+    if (!deleteTargetItem) return;
+    setIsDeleting(true);
+    const toastId = toast.loading('Menghapus data temuan abnormal...');
+    try {
+      if (deleteTargetItem.collectionName === 'findings') {
+        await deleteDoc(doc(db, 'findings', deleteTargetItem.docId));
+      } else {
+        await updateDoc(doc(db, deleteTargetItem.collectionName, deleteTargetItem.docId), {
+          hasAbnormal: false,
+          abnormalFinding: deleteField(),
+          updatedAt: serverTimestamp(),
+        });
+        await offlineReportStorage.updateReportAbnormal(deleteTargetItem.docId, false, null);
+        if (deleteTargetItem.findingId) {
+          await deleteDoc(doc(db, 'findings', deleteTargetItem.findingId)).catch(() => {});
+        }
+      }
+
+      toast.success('Data temuan abnormal berhasil dihapus!', { id: toastId });
+      setItems(prev => prev.filter(it => it.id !== deleteTargetItem.id));
+      if (viewingDetailItem?.id === deleteTargetItem.id) {
+        setViewingDetailItem(null);
+      }
+      setDeleteTargetItem(null);
+    } catch (err: any) {
+      console.error('Error deleting abnormal finding:', err);
+      toast.error(`Gagal menghapus temuan: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Real-time listener ke seluruh koleksi dokumen yang berstatus hasAbnormal == true & koleksi findings
   useEffect(() => {
     setLoading(true);
 
     let pdfList: AbnormalItem[] = [];
     let excelList: AbnormalItem[] = [];
     let hseList: AbnormalItem[] = [];
+    let findingsList: any[] = [];
 
     const updateAll = () => {
-      const combined = [...pdfList, ...excelList, ...hseList];
+      const normalize = (s?: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const matchedFindingIds = new Set<string>();
+
+      const enrichItemWithFinding = (it: AbnormalItem): AbnormalItem => {
+        const currentDesc = it.abnormalFinding?.description || '';
+        const isGenericFallback = !currentDesc || 
+          currentDesc === 'Temuan abnormal tercatat pada dokumen ini.' || 
+          currentDesc === 'Temuan abnormal tercatat pada dokumen HSE ini.' ||
+          currentDesc.startsWith('Temuan abnormal pada part:');
+
+        const matched = findingsList.find(f => {
+          if (!f || matchedFindingIds.has(f.id)) return false;
+          if (it.docId && f.docId && it.docId === f.docId) return true;
+          if (it.findingId && f.id && it.findingId === f.id) return true;
+
+          const sSpec = normalize(it.specificDetail);
+          const fSpec = normalize(f.specificDetail);
+          const fPart = normalize(f.partName);
+          const sFile = normalize(it.fileName);
+          const sMaint = normalize(it.maintenanceName);
+          const fMaint = normalize(f.maintenanceName);
+          const sCreated = normalize(it.createdBy);
+          const fCreated = normalize(f.createdByEmail);
+
+          if (sSpec && fSpec && sSpec === fSpec) return true;
+          if (sSpec && fPart && sSpec === fPart) return true;
+          if (fPart && sFile && sFile.includes(fPart)) return true;
+          if (sSpec && fPart && (sSpec.includes(fPart) || fPart.includes(sSpec))) return true;
+          if (sSpec && fSpec && (sSpec.includes(fSpec) || fSpec.includes(sSpec))) return true;
+          if (sMaint && fMaint && sMaint === fMaint) {
+            if (sCreated && fCreated && sCreated === fCreated) return true;
+            if (it.maintenanceTime && f.findingDate && it.maintenanceTime === f.findingDate) return true;
+          }
+          const cleanFile = normalize(it.fileName.replace(/\.[^/.]+$/, ''));
+          if (fPart && cleanFile.includes(fPart)) return true;
+          return false;
+        });
+
+        if (matched) {
+          matchedFindingIds.add(matched.id);
+          const realPhoto = (matched.photos && matched.photos[0]?.base64) || matched.photoBase64 || it.abnormalFinding?.photoBase64 || '';
+          const realDesc = (isGenericFallback ? (matched.remark || matched.description || (matched.partName ? `Temuan abnormal pada: ${matched.partName}` : '')) : currentDesc) 
+            || matched.remark 
+            || matched.description 
+            || currentDesc;
+          const realReco = it.abnormalFinding?.actionRecommendation 
+            || matched.actionRecommendation 
+            || (matched.partName ? `Perlu perbaikan / penggantian ${matched.partName}${matched.brandName ? ` (${matched.brandName})` : ''}` : '');
+
+          return {
+            ...it,
+            findingId: matched.id,
+            partName: matched.partName || it.partName,
+            partNumber: matched.partNumber || it.partNumber,
+            brandName: matched.brandName || it.brandName,
+            quantity: matched.quantity || it.quantity,
+            abnormalFinding: {
+              ...it.abnormalFinding,
+              unitName: it.abnormalFinding?.unitName || matched.specificDetail || matched.partName || it.specificDetail || it.maintenanceName,
+              description: realDesc || 'Temuan abnormal tercatat pada dokumen ini.',
+              actionRecommendation: realReco || undefined,
+              photoBase64: realPhoto || undefined,
+              photos: (matched.photos && matched.photos.length > 0) ? matched.photos : (it.abnormalFinding?.photos || []),
+              reportedBy: it.abnormalFinding?.reportedBy || matched.createdByEmail || it.createdBy,
+              reportedAt: it.abnormalFinding?.reportedAt || matched.findingDate || it.maintenanceTime,
+            }
+          };
+        }
+
+        return it;
+      };
+
+      const enrichedPdf = pdfList.map(enrichItemWithFinding);
+      const enrichedExcel = excelList.map(enrichItemWithFinding);
+      const enrichedHse = hseList.map(enrichItemWithFinding);
+
+      const standaloneFindings: AbnormalItem[] = findingsList
+        .filter(f => !matchedFindingIds.has(f.id))
+        .map(f => {
+          const createdAt = f.createdAt?.toDate ? f.createdAt.toDate() : (f.createdAt ? new Date(f.createdAt) : new Date());
+          const photoB64 = (f.photos && f.photos[0]?.base64) || f.photoBase64 || '';
+          return {
+            id: `finding_${f.id}`,
+            docId: f.id,
+            findingId: f.id,
+            collectionName: 'findings',
+            documentType: 'pdf',
+            fileName: `Temuan_${f.partName || 'Unit'}.pdf`,
+            maintenanceName: f.maintenanceName || f.partName || 'Temuan Lapangan',
+            maintenanceTime: f.findingDate || '',
+            specificDetail: f.specificDetail || f.partName || '',
+            createdBy: (f.createdByEmail || 'engineer').toLowerCase().trim(),
+            createdAt,
+            hasAbnormal: true,
+            partName: f.partName,
+            partNumber: f.partNumber,
+            brandName: f.brandName,
+            quantity: f.quantity,
+            abnormalFinding: {
+              unitName: f.partName || f.specificDetail || 'Unit',
+              description: f.remark || `Temuan abnormal pada: ${f.partName || 'Peralatan'}`,
+              actionRecommendation: f.actionRecommendation || (f.partName ? `Perlu perbaikan / penggantian ${f.partName}${f.brandName ? ` (${f.brandName})` : ''}` : ''),
+              photoBase64: photoB64 || undefined,
+              reportedBy: f.createdByEmail || 'Engineer',
+              reportedAt: f.findingDate || createdAt,
+            }
+          };
+        });
+
+      const combined = [...enrichedPdf, ...enrichedExcel, ...enrichedHse, ...standaloneFindings];
       setItems(combined);
       setLoading(false);
     };
@@ -246,10 +407,27 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       }
     );
 
+    // 4. Listen koleksi findings untuk temuan detail yang diinputkan teknisi
+    const qFindings = query(collection(db, 'findings'));
+    const unsubFindings = onSnapshot(
+      qFindings,
+      (snapshot) => {
+        findingsList = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+        updateAll();
+      },
+      (err) => {
+        console.error('Error listening findings collection:', err);
+      }
+    );
+
     return () => {
       unsubPdf();
       unsubExcel();
       unsubHse();
+      unsubFindings();
     };
   }, []);
 
@@ -406,17 +584,20 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         userEmail: item.createdBy,
         logos: { left: logoLeftB64, right: logoRightB64 },
         abnormalFinding: {
-          partName: item.abnormalFinding.unitName || item.specificDetail || item.maintenanceName,
-          partNumber: '-',
-          brandName: '-',
-          quantity: '1 Unit',
-          findingDate: item.abnormalFinding.reportedAt
+          partName: item.partName || item.abnormalFinding?.partName || item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName,
+          partNumber: item.partNumber || item.abnormalFinding?.partNumber || '-',
+          brandName: item.brandName || item.abnormalFinding?.brandName || '-',
+          quantity: item.quantity ? `${item.quantity}` : (item.abnormalFinding?.quantity ? `${item.abnormalFinding.quantity}` : '1 Unit'),
+          findingDate: item.abnormalFinding?.findingDate || (item.abnormalFinding?.reportedAt
             ? (typeof item.abnormalFinding.reportedAt === 'string'
                 ? item.abnormalFinding.reportedAt.split('T')[0]
                 : new Date(item.abnormalFinding.reportedAt).toLocaleDateString('id-ID'))
-            : item.maintenanceTime,
-          remark: item.abnormalFinding.description + (item.abnormalFinding.actionRecommendation ? `\n\nRekomendasi / Tindakan: ${item.abnormalFinding.actionRecommendation}` : ''),
-          photos: item.abnormalFinding.photoBase64 ? [{ base64: item.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : []
+            : item.maintenanceTime),
+          remark: item.abnormalFinding?.description || 'Temuan abnormal tercatat pada dokumen ini.',
+          actionRecommendation: item.abnormalFinding?.actionRecommendation || undefined,
+          photos: (item.abnormalFinding?.photos && item.abnormalFinding.photos.length > 0)
+            ? item.abnormalFinding.photos
+            : (item.abnormalFinding?.photoBase64 ? [{ base64: item.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : [])
         }
       });
 
@@ -970,16 +1151,31 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     )}
                   </div>
 
-                  {/* Tombol QC DME: Tandai Normal */}
-                  <button
-                    type="button"
-                    onClick={() => setConfirmNormalItem(item)}
-                    className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    title="Tandai unit telah diperbaiki dan kembalikan ke status Normal"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Tandai Normal (QC Selesai)</span>
-                  </button>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Tombol QC DME / Admin: Hapus Temuan */}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTargetItem(item)}
+                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title="Hapus data temuan abnormal ini dari sistem"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Hapus</span>
+                      </button>
+                    )}
+
+                    {/* Tombol QC DME: Tandai Normal */}
+                    <button
+                      type="button"
+                      onClick={() => setConfirmNormalItem(item)}
+                      className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-900 border border-emerald-200 hover:border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Tandai unit telah diperbaiki dan kembalikan ke status Normal"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Tandai Normal (QC Selesai)</span>
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             );
@@ -1323,6 +1519,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTargetItem(viewingDetailItem)}
+                      className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Hapus data temuan abnormal ini dari sistem"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Hapus Temuan</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1330,10 +1538,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                       setViewingDetailItem(null);
                       setConfirmNormalItem(target);
                     }}
-                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-900 border border-emerald-200 hover:border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                     title="Tandai unit telah diperbaiki dan kembalikan ke status Normal"
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-rose-600" />
+                    <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Tandai Normal (QC)</span>
                   </button>
 
@@ -1345,6 +1553,59 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     Tutup
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Konfirmasi Hapus Temuan (Khusus QC DME / Admin) */}
+      <AnimatePresence>
+        {deleteTargetItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-rose-100 text-rose-700 rounded-2xl">
+                  <Trash2 className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Hapus Data Temuan Abnormal?</h3>
+                  <p className="text-xs text-slate-500">Tindakan ini permanen dan akan menghapus status temuan ini.</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-xl text-xs text-slate-700 space-y-1">
+                <p>
+                  Unit: <strong>{deleteTargetItem.abnormalFinding?.unitName || deleteTargetItem.specificDetail || deleteTargetItem.maintenanceName}</strong>
+                </p>
+                <p>
+                  Laporan: <strong>{deleteTargetItem.fileName || deleteTargetItem.maintenanceName}</strong>
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteTargetItem(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteAbnormal}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus Temuan'}</span>
+                </button>
               </div>
             </motion.div>
           </div>

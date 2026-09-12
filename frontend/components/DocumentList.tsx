@@ -55,6 +55,13 @@ export interface AbnormalFinding {
   photoBase64?: string;
   reportedBy?: string;
   reportedAt?: string | Date;
+  partName?: string;
+  partNumber?: string;
+  brandName?: string;
+  quantity?: string;
+  findingDate?: string;
+  remark?: string;
+  photos?: { base64: string; description?: string }[];
 }
 
 export interface ExcelDocument {
@@ -71,6 +78,7 @@ export interface ExcelDocument {
   photosWithImage: number;
   photosData: PhotoData[];
   documentType: 'excel' | 'pdf' | 'hse';
+  collectionName?: 'pdf_documents' | 'excel_documents' | 'hse' | 'findings';
   companyType?: 'neutra' | 'bri' | 'k2';
   hasAbnormal?: boolean;
   abnormalFinding?: AbnormalFinding | null;
@@ -1032,17 +1040,20 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       userEmail: docData.createdBy,
       logos: { left: logoLeftB64, right: logoRightB64 },
       abnormalFinding: docData.hasAbnormal && docData.abnormalFinding ? {
-        partName: docData.abnormalFinding.unitName || docData.specificDetail || docData.maintenanceName,
-        partNumber: '-',
-        brandName: '-',
-        quantity: '1 Unit',
-        findingDate: docData.abnormalFinding.reportedAt
+        partName: (docData.abnormalFinding as any).partName || docData.abnormalFinding.unitName || docData.specificDetail || docData.maintenanceName,
+        partNumber: (docData.abnormalFinding as any).partNumber || '-',
+        brandName: (docData.abnormalFinding as any).brandName || '-',
+        quantity: (docData.abnormalFinding as any).quantity ? `${(docData.abnormalFinding as any).quantity}` : '1 Unit',
+        findingDate: (docData.abnormalFinding as any).findingDate || (docData.abnormalFinding.reportedAt
           ? (typeof docData.abnormalFinding.reportedAt === 'string'
               ? docData.abnormalFinding.reportedAt.split('T')[0]
               : new Date(docData.abnormalFinding.reportedAt).toLocaleDateString('id-ID'))
-          : docData.maintenanceTime,
-        remark: docData.abnormalFinding.description + (docData.abnormalFinding.actionRecommendation ? `\n\nRekomendasi / Tindakan: ${docData.abnormalFinding.actionRecommendation}` : ''),
-        photos: docData.abnormalFinding.photoBase64 ? [{ base64: docData.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : []
+          : docData.maintenanceTime),
+        remark: docData.abnormalFinding.description || 'Temuan abnormal tercatat pada dokumen ini.',
+        actionRecommendation: docData.abnormalFinding.actionRecommendation || undefined,
+        photos: ((docData.abnormalFinding as any).photos && (docData.abnormalFinding as any).photos.length > 0)
+          ? (docData.abnormalFinding as any).photos
+          : (docData.abnormalFinding.photoBase64 ? [{ base64: docData.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : [])
       } : null,
     });
 

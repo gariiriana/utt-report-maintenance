@@ -15,9 +15,12 @@ service cloud.firestore {
 
     function isQcDmeSafe() {
       return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'qc_dme';
+             && (
+               getEmail() == 'qcdme@dme.com' ||
+               (request.auth.uid != null
+                && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'qc_dme')
+             );
     }
 
     function isAdminOrQcDme() {
@@ -56,9 +59,12 @@ service cloud.firestore {
 
     function isPrivilegedRole() {
        return request.auth != null 
-              && request.auth.uid != null
-              && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'qc_dme', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+              && (
+                getEmail() == 'qcdme@dme.com' ||
+                (request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'qc_dme', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'])
+              );
     }
 
     function isDME() {

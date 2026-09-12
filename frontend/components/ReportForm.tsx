@@ -146,7 +146,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     brandName: '',
     quantity: '1',
     findingDate: new Date().toISOString().split('T')[0],
-    remark: ''
+    remark: '',
+    actionRecommendation: '',
   });
   const [findingPhotos, setFindingPhotos] = useState<{ base64: string; description: string }[]>([]);
   const [editingFindingPhotoIdx, setEditingFindingPhotoIdx] = useState<number | null>(null);
@@ -528,6 +529,24 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
       if (editingData.hasAbnormal !== undefined) {
         setAbnormalStatus(editingData.hasAbnormal ? 'abnormal' : 'normal');
+      }
+
+      if (editingData.abnormalFinding) {
+        const af = editingData.abnormalFinding as any;
+        setFindingData({
+          partName: af.partName || af.unitName || '',
+          partNumber: af.partNumber || '',
+          brandName: af.brandName || '',
+          quantity: af.quantity ? `${af.quantity}` : '1',
+          findingDate: af.findingDate || (af.reportedAt ? (typeof af.reportedAt === 'string' ? af.reportedAt.split('T')[0] : '') : '') || new Date().toISOString().split('T')[0],
+          remark: af.remark || af.description || '',
+          actionRecommendation: af.actionRecommendation || '',
+        });
+        if (af.photos && Array.isArray(af.photos) && af.photos.length > 0) {
+          setFindingPhotos(af.photos);
+        } else if (af.photoBase64) {
+          setFindingPhotos([{ base64: af.photoBase64, description: af.description || 'Foto Bukti Temuan' }]);
+        }
       }
 
       let finalSpec = editingData.specificDetail || '';
@@ -913,6 +932,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         quantity: findingData.quantity,
         findingDate: findingData.findingDate,
         remark: findingData.remark,
+        actionRecommendation: findingData.actionRecommendation,
         photos: findingPhotos
       } : null
     });
@@ -999,13 +1019,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         photosWithImage,
         hasAbnormal: abnormalStatus === 'abnormal',
         abnormalFinding: abnormalStatus === 'abnormal' ? {
-          unitName: finalSpecificDetail || maintenanceName || 'Unit',
+          unitName: finalSpecificDetail || findingData.partName || maintenanceName || 'Unit',
           description: (findingData.remark && findingData.remark.trim())
             || (findingData.partName ? `Temuan abnormal pada part: ${findingData.partName}` : 'Temuan abnormal tercatat pada dokumen ini.'),
-          actionRecommendation: findingData.partName
-            ? `Perlu tindak lanjut / perbaikan pada ${findingData.partName}${findingData.brandName ? ` (${findingData.brandName})` : ''}`
-            : '',
+          actionRecommendation: (findingData.actionRecommendation && findingData.actionRecommendation.trim())
+            || (findingData.partName ? `Perlu tindak lanjut / perbaikan pada ${findingData.partName}${findingData.brandName ? ` (${findingData.brandName})` : ''}` : ''),
           photoBase64: findingPhotos[0]?.base64 || (editingData?.abnormalFinding?.photoBase64 || null),
+          photos: findingPhotos,
+          partName: findingData.partName,
+          partNumber: findingData.partNumber,
+          brandName: findingData.brandName,
+          quantity: findingData.quantity,
+          findingDate: findingData.findingDate,
           reportedBy: user?.displayName || user?.email || 'Engineer',
           reportedAt: new Date().toISOString(),
         } : (editingData?.abnormalFinding || null),
@@ -1247,6 +1272,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             findingDate: findingData.findingDate,
             photos: findingPhotos,
             remark: findingData.remark,
+            actionRecommendation: findingData.actionRecommendation,
             maintenanceName: maintenanceName,
             specificDetail: targetUnit.specificDetail,
             createdBy: user.uid,
@@ -1317,6 +1343,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             findingDate: findingData.findingDate,
             photos: findingPhotos,
             remark: findingData.remark,
+            actionRecommendation: findingData.actionRecommendation,
             maintenanceName: maintenanceName,
             specificDetail: targetUnit.specificDetail,
             createdBy: user.uid,
@@ -1878,8 +1905,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         rows={3}
                         value={findingData.remark}
                         onChange={e => setFindingData({ ...findingData, remark: e.target.value })}
-                        placeholder="Jelaskan kondisi kelainan/kerusakan yang ditemukan dan tindakan rekomendasi perbaikan..."
+                        placeholder="Jelaskan kondisi kelainan/kerusakan yang ditemukan..."
                         className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-red-500 outline-none resize-none font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Rekomendasi / Tindakan Lanjutan (Opsional)</label>
+                      <input
+                        type="text"
+                        value={findingData.actionRecommendation}
+                        onChange={e => setFindingData({ ...findingData, actionRecommendation: e.target.value })}
+                        placeholder="Contoh: Perlu penggantian modul / perbaikan segera..."
+                        className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none"
                       />
                     </div>
 
