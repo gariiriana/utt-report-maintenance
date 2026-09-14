@@ -22,7 +22,8 @@ import {
   Plus,
   Loader2,
   Cpu,
-  FileCheck
+  FileCheck,
+  Clock
 } from 'lucide-react';
 import {
   PredictiveReportData,
@@ -510,28 +511,54 @@ export function PredictiveReportModal({
           {/* ─── SECTION 3: Analisis Prediktif AI ───────────────────────── */}
           {(activeTab === 'all' || activeTab === 'ai') && (
             <div className="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-4 sm:p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-indigo-100 pb-2.5 gap-2.5">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
                   <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                     3. Analisis Prediktif AI (Reliability & Risk Insight)
                   </h4>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-indigo-700 font-semibold">Tingkat Urgensi:</span>
-                  <select
-                    value={data.aiAnalysis.urgencyLevel}
-                    onChange={e => setData({
-                      ...data,
-                      aiAnalysis: { ...data.aiAnalysis, urgencyLevel: e.target.value as any }
-                    })}
-                    className="px-2 py-1 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-900"
-                  >
-                    <option value="Emergency">Emergency</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+
+                <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                  {/* Tingkat Urgensi */}
+                  <div className="flex items-center gap-1.5 bg-white border border-indigo-200/90 px-2.5 py-1 rounded-xl shadow-2xs">
+                    <span className="text-xs text-indigo-700 font-semibold whitespace-nowrap">Tingkat Urgensi:</span>
+                    <select
+                      value={data.aiAnalysis.urgencyLevel}
+                      onChange={e => setData({
+                        ...data,
+                        aiAnalysis: { ...data.aiAnalysis, urgencyLevel: e.target.value as any }
+                      })}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-extrabold outline-none cursor-pointer ${
+                        data.aiAnalysis.urgencyLevel === 'Emergency' ? 'bg-red-50 text-red-700 font-black' :
+                        data.aiAnalysis.urgencyLevel === 'High' ? 'bg-amber-50 text-amber-800 font-black' :
+                        data.aiAnalysis.urgencyLevel === 'Medium' ? 'bg-yellow-50 text-yellow-800 font-bold' :
+                        'bg-emerald-50 text-emerald-800 font-bold'
+                      }`}
+                    >
+                      <option value="Emergency">Emergency</option>
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+
+                  {/* Estimasi Sisa Umur Pakai (RUL) */}
+                  <div className="flex items-center gap-1.5 bg-white border border-red-200/90 px-2.5 py-1 rounded-xl shadow-2xs">
+                    <Clock className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                    <span className="text-xs text-slate-700 font-semibold whitespace-nowrap" title="Remaining Useful Life">Sisa Umur (RUL):</span>
+                    <input
+                      type="text"
+                      value={data.aiAnalysis.remainingUsefulLife}
+                      onChange={e => setData({
+                        ...data,
+                        aiAnalysis: { ...data.aiAnalysis, remainingUsefulLife: e.target.value }
+                      })}
+                      className="w-28 sm:w-32 px-2 py-0.5 bg-red-50/70 border border-red-300 text-red-700 font-bold rounded-lg text-xs text-center focus:ring-1 focus:ring-red-400 outline-none"
+                      placeholder="14 – 21 Hari"
+                      title="Estimasi Sisa Umur Pakai (Remaining Useful Life / RUL)"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -565,7 +592,7 @@ export function PredictiveReportModal({
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Pola Laju Degradasi (Degradation Pattern)</label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={data.aiAnalysis.degradationPattern}
                     onChange={e => setData({
                       ...data,
@@ -575,33 +602,17 @@ export function PredictiveReportModal({
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-slate-600 font-semibold mb-1">Estimasi Sisa Umur Pakai (Remaining Useful Life / RUL)</label>
-                    <input
-                      type="text"
-                      value={data.aiAnalysis.remainingUsefulLife}
-                      onChange={e => setData({
-                        ...data,
-                        aiAnalysis: { ...data.aiAnalysis, remainingUsefulLife: e.target.value }
-                      })}
-                      className="w-full px-3 py-1.5 bg-white border border-red-300 text-red-700 font-bold rounded-xl text-xs"
-                      placeholder="e.g. 7 - 14 Hari Kerja"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-600 font-semibold mb-1">Evaluasi Risiko Terhadap SLA NeutraDC (99.982% Uptime)</label>
-                    <textarea
-                      rows={2}
-                      value={data.aiAnalysis.slaRiskAssessment}
-                      onChange={e => setData({
-                        ...data,
-                        aiAnalysis: { ...data.aiAnalysis, slaRiskAssessment: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs leading-relaxed"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Evaluasi Risiko Terhadap SLA NeutraDC (99.982% Uptime)</label>
+                  <textarea
+                    rows={3}
+                    value={data.aiAnalysis.slaRiskAssessment}
+                    onChange={e => setData({
+                      ...data,
+                      aiAnalysis: { ...data.aiAnalysis, slaRiskAssessment: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs leading-relaxed"
+                  />
                 </div>
               </div>
             </div>
