@@ -28,6 +28,7 @@ import {
   Cpu,
   Download,
   Plus,
+  PlusCircle,
   Trash2,
   CheckCircle2,
   RotateCcw,
@@ -384,6 +385,8 @@ export function MonthlyReportGenerator() {
   const [modalYear, setModalYear] = useState<number>(2026);
   const [modalTitle, setModalTitle] = useState<string>('Laporan Bulanan Maintenance Juli 2026');
   const [isModalTitleCustomized, setIsModalTitleCustomized] = useState<boolean>(false);
+  const [setupModalTab, setSetupModalTab] = useState<'archive' | 'new'>('archive');
+  const [setupModalSearch, setSetupModalSearch] = useState<string>('');
 
   // ─── Modal Ubah Nama File di Arsip Dokumen ─────────────────────────
   const [editingArchiveItem, setEditingArchiveItem] = useState<any | null>(null);
@@ -403,6 +406,20 @@ export function MonthlyReportGenerator() {
     return (name || 'Laporan_Bulanan').replace(/[/\\?%*:|"<>]/g, '_').trim();
   }, []);
 
+  // Filtered archives untuk pencarian di dalam Modal Inisialisasi / Setup
+  const filteredSetupArchives = useMemo(() => {
+    if (!setupModalSearch.trim()) return archives;
+    const q = setupModalSearch.toLowerCase().trim();
+    return archives.filter((a: any) =>
+      (a.title || '').toLowerCase().includes(q) ||
+      (a.fileName || '').toLowerCase().includes(q) ||
+      (a.monthName || '').toLowerCase().includes(q) ||
+      String(a.year || '').includes(q) ||
+      (a.quarter || '').toLowerCase().includes(q) ||
+      (a.createdByName || a.createdBy || '').toLowerCase().includes(q)
+    );
+  }, [archives, setupModalSearch]);
+
   // Izin edit nama file: Pembuat laporan atau admin / manajemen DME
   const canEditArchive = useCallback((archive: any) => {
     if (!user) return false;
@@ -415,14 +432,16 @@ export function MonthlyReportGenerator() {
   }, [user, userRole]);
 
   // Modal Setup Actions
-  const openSetupModal = useCallback(() => {
+  const openSetupModal = useCallback((initialTab?: 'archive' | 'new') => {
     setModalMonth(selectedMonth);
     setModalYear(selectedYear);
     const curTitle = reportTitle || getDefaultReportTitle(selectedMonth, selectedYear);
     setModalTitle(curTitle);
     setIsModalTitleCustomized(false);
+    setSetupModalTab(initialTab || (archives.length > 0 ? 'archive' : 'new'));
+    setSetupModalSearch('');
     setIsSetupModalOpen(true);
-  }, [selectedMonth, selectedYear, reportTitle, getDefaultReportTitle]);
+  }, [selectedMonth, selectedYear, reportTitle, getDefaultReportTitle, archives.length]);
 
   const handleModalMonthChange = useCallback((newM: number) => {
     setModalMonth(newM);
@@ -446,9 +465,11 @@ export function MonthlyReportGenerator() {
       setModalYear(selectedYear);
       setModalTitle(getDefaultReportTitle(selectedMonth, selectedYear));
       setIsModalTitleCustomized(false);
+      setSetupModalTab(archives.length > 0 ? 'archive' : 'new');
+      setSetupModalSearch('');
       setIsSetupModalOpen(true);
     }
-  }, [selectedMonth, selectedYear, getDefaultReportTitle]);
+  }, [selectedMonth, selectedYear, getDefaultReportTitle, archives.length]);
 
   // State Laporan & Status
   const [reportData, setReportData] = useState<FullMonthlyReportData | null>(null);
@@ -1198,6 +1219,7 @@ export function MonthlyReportGenerator() {
     if (archive.year) setSelectedYear(archive.year);
     sessionStorage.setItem('dwimitra_monthly_init_done', 'true');
     setActiveMainTab('editor');
+    setIsSetupModalOpen(false);
     toast.success(`Data "${title}" berhasil dimuat kembali ke Editor! Silakan lakukan revisi.`);
   }, [sanitizeFileName]);
 
@@ -7323,18 +7345,18 @@ export function MonthlyReportGenerator() {
           </div>
         </div>
       )}
-      {/* ─── Modal Inisialisasi Laporan Sebelum Input (Setup Modal) ────────────────────── */}
+      {/* ─── Modal Inisialisasi & Pemilihan Laporan (Setup & Arsip Picker) ────────────────────── */}
       <AnimatePresence>
         {isSetupModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs font-sans">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+              className="bg-white rounded-3xl shadow-2xl max-w-2xl sm:max-w-3xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]"
             >
               {/* Modal Header */}
-              <div className="p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white relative">
+              <div className="p-5 sm:p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white relative shrink-0">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-white/15 backdrop-blur-sm rounded-2xl shadow-inner">
@@ -7342,10 +7364,10 @@ export function MonthlyReportGenerator() {
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200 block">
-                        Inisialisasi Laporan
+                        Pilih & Inisialisasi Laporan
                       </span>
-                      <h3 className="text-xl font-black text-white">
-                        Pilih Periode & Nama File
+                      <h3 className="text-xl sm:text-2xl font-black text-white">
+                        Pilih Laporan Monthly Report
                       </h3>
                     </div>
                   </div>
@@ -7360,123 +7382,329 @@ export function MonthlyReportGenerator() {
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-blue-100 mt-2.5 leading-relaxed">
-                  Pilih bulan pelaksanaan dan tentukan nama file laporan sebelum mulai mengisi atau menyunting data. Nama ini akan otomatis tersimpan di arsip dan menjadi nama file Word (.docx).
+                <p className="text-xs text-blue-100 mt-2 leading-relaxed">
+                  Lanjutkan pengeditan laporan dari arsip dokumen yang sudah tersimpan atau mulai susun laporan periode baru.
                 </p>
+
+                {/* Tab Switcher Segmented Control */}
+                <div className="mt-4 flex p-1 bg-black/20 backdrop-blur-sm rounded-2xl border border-white/15 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSetupModalTab('archive')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      setupModalTab === 'archive'
+                        ? 'bg-white text-blue-800 shadow-md'
+                        : 'text-blue-100 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <FolderArchive className="w-4 h-4 text-emerald-500" />
+                    <span>Lanjut Edit dari Arsip</span>
+                    {archives.length > 0 && (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        setupModalTab === 'archive' ? 'bg-emerald-100 text-emerald-800' : 'bg-white/20 text-white'
+                      }`}>
+                        {archives.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSetupModalTab('new')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      setupModalTab === 'new'
+                        ? 'bg-white text-blue-800 shadow-md'
+                        : 'text-blue-100 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4 text-blue-500" />
+                    <span>Buat Laporan Periode Baru</span>
+                  </button>
+                </div>
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 space-y-4">
-                {/* Periode Bulan & Tahun */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Pilih Bulan:</span>
-                    </label>
-                    <select
-                      value={modalMonth}
-                      onChange={(e) => handleModalMonthChange(Number(e.target.value))}
-                      className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer transition-all shadow-xs"
-                    >
-                      {MONTH_OPTIONS.map(m => (
-                        <option key={m.value} value={m.value}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                {setupModalTab === 'archive' ? (
+                  <div className="space-y-3">
+                    {/* Header bar info & Search Input */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-100">
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                          Daftar Laporan di Arsip Dokumen Monthly Report
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Pilih laporan di bawah untuk langsung melanjutkan proses editing di web editor.
+                        </p>
+                      </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Pilih Tahun:</span>
-                    </label>
-                    <select
-                      value={modalYear}
-                      onChange={(e) => handleModalYearChange(Number(e.target.value))}
-                      className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer transition-all shadow-xs"
-                    >
-                      {[2025, 2026, 2027, 2028].map(y => (
-                        <option key={y} value={y}>
-                          {y}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                      {archives.length > 0 && (
+                        <div className="relative w-full sm:w-64 shrink-0">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={setupModalSearch}
+                            onChange={(e) => setSetupModalSearch(e.target.value)}
+                            placeholder="Cari arsip laporan..."
+                            className="w-full pl-8 pr-7 py-1.5 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-blue-500 text-xs text-slate-800 outline-none transition-all"
+                          />
+                          {setupModalSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setSetupModalSearch('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
-                {/* Nama File / Judul Laporan */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Nama File / Judul Laporan Monthly:</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsModalTitleCustomized(false);
-                        setModalTitle(getDefaultReportTitle(modalMonth, modalYear));
-                      }}
-                      className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
-                    >
-                      Reset Nama Default
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={modalTitle}
-                    onChange={(e) => {
-                      setModalTitle(e.target.value);
-                      setIsModalTitleCustomized(true);
-                    }}
-                    placeholder="Contoh: Laporan Bulanan Maintenance Juli 2026"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-xs font-bold text-slate-900 outline-none transition-all"
-                  />
-                </div>
+                    {/* List Arsip Dokumen */}
+                    {loadingArchives ? (
+                      <div className="p-10 text-center space-y-2 bg-slate-50 rounded-2xl border border-slate-200">
+                        <Loader2 className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
+                        <p className="text-xs font-bold text-slate-600">Memuat arsip laporan...</p>
+                      </div>
+                    ) : filteredSetupArchives.length === 0 ? (
+                      <div className="p-8 text-center space-y-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        <FolderArchive className="w-12 h-12 text-slate-300 mx-auto" />
+                        <h5 className="text-sm font-bold text-slate-800">
+                          {setupModalSearch ? 'Tidak ada arsip yang sesuai pencarian' : 'Belum Ada Arsip Dokumen Monthly Report'}
+                        </h5>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                          {setupModalSearch
+                            ? 'Silakan gunakan kata kunci lain atau bersihkan kotak pencarian.'
+                            : 'Belum ada laporan bulanan yang tersimpan di arsip. Anda dapat langsung membuat laporan baru.'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSetupModalTab('new')}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+                        >
+                          Mulai Buat Laporan Baru ➔
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        {filteredSetupArchives.map((archive: any) => (
+                          <div
+                            key={archive.id}
+                            className={`p-4 rounded-2xl border transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                              activeArchiveId === archive.id
+                                ? 'bg-blue-50/70 border-blue-300 ring-2 ring-blue-400/20'
+                                : 'bg-white hover:bg-slate-50/80 border-slate-200 hover:border-blue-200'
+                            }`}
+                          >
+                            <div className="space-y-1.5 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                  {archive.quarter || 'Q3'}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  {archive.monthName} {archive.year}
+                                </span>
+                                {activeArchiveId === archive.id && (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-600 text-white">
+                                    Sedang Aktif di Editor
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  {archive.createdAt?.toDate ? (
+                                    archive.createdAt.toDate().toLocaleDateString('id-ID', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })
+                                  ) : 'Tersimpan'}
+                                </span>
+                              </div>
 
-                {/* Preview File Ekspor DOCX */}
-                <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-200/80 text-xs space-y-1">
-                  <div className="flex items-center gap-2 text-blue-800 font-bold">
-                    <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>File yang akan diarsip & diekspor:</span>
+                              <h4 className="text-sm font-black text-slate-900 truncate">
+                                {archive.title}
+                              </h4>
+
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                                <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                                  <FileText className="w-3 h-3 text-blue-600 shrink-0" />
+                                  <span className="truncate max-w-[240px]">
+                                    {archive.fileName || `${sanitizeFileName(archive.title || 'Laporan')}.docx`}
+                                  </span>
+                                </span>
+                                <span>·</span>
+                                <span>{archive.selectedEquipments?.length || 0} Scope Alat</span>
+                                <span>·</span>
+                                <span className="text-slate-600 font-medium">
+                                  Oleh: {archive.createdByName || archive.createdBy || 'Teknisi'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Tombol Aksi */}
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                              <button
+                                type="button"
+                                onClick={() => handleLoadArchiveToEditor(archive)}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                                title="Muat laporan ini ke editor untuk lanjut mengedit"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Lanjut Edit Laporan</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p className="font-mono font-bold text-slate-900 truncate text-[11px] pl-6">
-                    {sanitizeFileName(modalTitle || getDefaultReportTitle(modalMonth, modalYear))}.docx
-                  </p>
-                </div>
+                ) : (
+                  /* Tab 2: Buat Laporan Periode Baru */
+                  <div className="space-y-4">
+                    <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-200/70 text-xs text-blue-900 leading-relaxed">
+                      💡 <strong>Petunjuk:</strong> Tentukan periode bulan & tahun pelaksanaan dan nama file dokumen untuk menginisialisasi draf laporan baru. Data checklist dan tabel peralatan akan ditarik otomatis dari database.
+                    </div>
+
+                    {/* Periode Bulan & Tahun */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Pilih Bulan:</span>
+                        </label>
+                        <select
+                          value={modalMonth}
+                          onChange={(e) => handleModalMonthChange(Number(e.target.value))}
+                          className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer transition-all shadow-xs"
+                        >
+                          {MONTH_OPTIONS.map(m => (
+                            <option key={m.value} value={m.value}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Pilih Tahun:</span>
+                        </label>
+                        <select
+                          value={modalYear}
+                          onChange={(e) => handleModalYearChange(Number(e.target.value))}
+                          className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer transition-all shadow-xs"
+                        >
+                          {[2025, 2026, 2027, 2028].map(y => (
+                            <option key={y} value={y}>
+                              {y}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Nama File / Judul Laporan */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Nama File / Judul Laporan Monthly:</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsModalTitleCustomized(false);
+                            setModalTitle(getDefaultReportTitle(modalMonth, modalYear));
+                          }}
+                          className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                        >
+                          Reset Nama Default
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={modalTitle}
+                        onChange={(e) => {
+                          setModalTitle(e.target.value);
+                          setIsModalTitleCustomized(true);
+                        }}
+                        placeholder="Contoh: Laporan Bulanan Maintenance Juli 2026"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-xs font-bold text-slate-900 outline-none transition-all"
+                      />
+                    </div>
+
+                    {/* Preview File Ekspor DOCX */}
+                    <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-200/80 text-xs space-y-1">
+                      <div className="flex items-center gap-2 text-blue-800 font-bold">
+                        <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>File yang akan diarsip & diekspor:</span>
+                      </div>
+                      <p className="font-mono font-bold text-slate-900 truncate text-[11px] pl-6">
+                        {sanitizeFileName(modalTitle || getDefaultReportTitle(modalMonth, modalYear))}.docx
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Modal Footer */}
-              <div className="p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
-                {reportData && (
-                  <button
-                    type="button"
-                    onClick={() => setIsSetupModalOpen(false)}
-                    className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleConfirmSetupModal}
-                  disabled={generating || !modalTitle.trim()}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Menyiapkan Laporan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Mulai Buat Laporan</span>
-                      <Check className="w-4 h-4" />
-                    </>
+              <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5 shrink-0">
+                <div>
+                  {setupModalTab === 'new' && archives.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setSetupModalTab('archive')}
+                      className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>← Buka Daftar Arsip ({archives.length})</span>
+                    </button>
+                  ) : setupModalTab === 'archive' ? (
+                    <button
+                      type="button"
+                      onClick={() => setSetupModalTab('new')}
+                      className="px-3.5 py-2 bg-white hover:bg-slate-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Buat Laporan Periode Baru</span>
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  {reportData && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSetupModalOpen(false)}
+                      className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer"
+                    >
+                      Batal
+                    </button>
                   )}
-                </button>
+
+                  {setupModalTab === 'new' && (
+                    <button
+                      type="button"
+                      onClick={handleConfirmSetupModal}
+                      disabled={generating || !modalTitle.trim()}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      {generating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Menyiapkan Laporan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Mulai Buat Laporan</span>
+                          <Check className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
