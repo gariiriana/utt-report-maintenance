@@ -481,7 +481,10 @@ export function MonthlyReportGenerator() {
 
   // Manual save handler untuk tombol floating save & toolbar (Simpan ke IndexedDB dan LANGSUNG ke Arsip Cloud Firestore)
   const handleManualSave = useCallback(async () => {
-    if (!reportData) return;
+    if (!reportData) {
+      toast.warning('Belum ada data laporan yang dimuat untuk disimpan.');
+      return;
+    }
     setIsSavingManual(true);
     try {
       const finalTitle = reportTitle.trim() || reportData.reportTitle || getDefaultReportTitle(selectedMonth, selectedYear);
@@ -498,7 +501,10 @@ export function MonthlyReportGenerator() {
       setReportData(enrichedData);
       setIsSavedLocally(true);
 
-      // 2. Simpan / Perbarui langsung ke Cloud Firestore (monthly_reports)
+      // 2. Sanitasi payload (hilangkan undefined fields agar Firestore SDK tidak melempar exception)
+      const sanitizedReportData = JSON.parse(JSON.stringify(enrichedData));
+
+      // 3. Simpan / Perbarui langsung ke Cloud Firestore (monthly_reports)
       const eqNames = (enrichedData.scheduleTable1 || []).map(s => s.device);
       const totalCI = (enrichedData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
 
@@ -528,10 +534,15 @@ export function MonthlyReportGenerator() {
           selectedEquipments: eqNames,
           totalCINames: totalCI,
           updatedAt: Timestamp.now(),
-          reportData: enrichedData
+          reportData: sanitizedReportData
         });
         setActiveArchiveId(targetId);
-        toast.success(`Perubahan "${finalTitle}" berhasil disimpan ke Arsip Dokumen Monthly Report!`);
+        toast.success(`Perubahan "${finalTitle}" berhasil disimpan ke Arsip!`, {
+          action: {
+            label: 'Buka Arsip',
+            onClick: () => setActiveMainTab('archives')
+          }
+        });
       } else {
         // Simpan sebagai dokumen baru di arsip Firestore
         const newDocRef = await addDoc(collection(db, 'monthly_reports'), {
@@ -548,10 +559,15 @@ export function MonthlyReportGenerator() {
           updatedAt: Timestamp.now(),
           createdBy: user?.email || '',
           createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
-          reportData: enrichedData
+          reportData: sanitizedReportData
         });
         setActiveArchiveId(newDocRef.id);
-        toast.success(`Laporan "${finalTitle}" berhasil disimpan dan masuk ke Arsip Dokumen Monthly Report!`);
+        toast.success(`Laporan "${finalTitle}" berhasil disimpan dan masuk ke Arsip!`, {
+          action: {
+            label: 'Buka Arsip',
+            onClick: () => setActiveMainTab('archives')
+          }
+        });
       }
 
       setJustSaved(true);
@@ -1405,7 +1421,10 @@ export function MonthlyReportGenerator() {
 
   // Export to DOCX Handler + Auto-Save to Cloud Archive (Firestore: monthly_reports)
   const handleExportDocx = async () => {
-    if (!reportData) return;
+    if (!reportData) {
+      toast.warning('Belum ada data laporan yang dimuat untuk diekspor.');
+      return;
+    }
     setExportingDocx(true);
     try {
       const finalTitle = reportTitle.trim() || reportData.reportTitle || getDefaultReportTitle(selectedMonth, selectedYear);
@@ -1422,6 +1441,7 @@ export function MonthlyReportGenerator() {
 
       // Auto-save / update arsip ke Firestore: monthly_reports
       try {
+        const sanitizedReportData = JSON.parse(JSON.stringify(enrichedReportData));
         const eqNames = (enrichedReportData.scheduleTable1 || []).map(s => s.device);
         const totalCI = (enrichedReportData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
 
@@ -1447,7 +1467,7 @@ export function MonthlyReportGenerator() {
             selectedEquipments: eqNames,
             totalCINames: totalCI,
             updatedAt: Timestamp.now(),
-            reportData: enrichedReportData
+            reportData: sanitizedReportData
           });
           setActiveArchiveId(targetId);
         } else {
@@ -1465,11 +1485,16 @@ export function MonthlyReportGenerator() {
             updatedAt: Timestamp.now(),
             createdBy: user?.email || '',
             createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
-            reportData: enrichedReportData
+            reportData: sanitizedReportData
           });
           setActiveArchiveId(newDocRef.id);
         }
-        toast.success(`Dokumen "${finalTitle}" otomatis tersimpan di Arsip Dokumen Monthly Report!`);
+        toast.success(`Dokumen "${finalTitle}" otomatis tersimpan di Arsip Dokumen Monthly Report!`, {
+          action: {
+            label: 'Buka Arsip',
+            onClick: () => setActiveMainTab('archives')
+          }
+        });
       } catch (saveErr: any) {
         console.warn('Gagal menyimpan arsip ke Firestore:', saveErr);
         toast.warning('DOCX terunduh, namun arsip ke cloud gagal: ' + (saveErr?.message || 'Permission issue'));

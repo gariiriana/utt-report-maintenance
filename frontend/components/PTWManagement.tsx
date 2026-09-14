@@ -7,7 +7,7 @@
 //            serta fitur ekspor laporan resmi PTW ke format PDF & Excel.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -89,6 +89,21 @@ interface QueuedPTWItem {
   isExpanded: boolean;
 }
 
+export interface PTWWeeklySegment {
+  weekNum: number;
+  startStr: string;
+  endStr: string;
+  rangeLabel: string;
+  dateRange: string;
+  shortRange: string;
+  records: PTWRecord[];
+  openCount: number;
+  closedCount: number;
+  totalCount: number;
+  pmCount: number;
+  cmCount: number;
+}
+
 interface PTWManagementProps {
   initialSearchQuery?: string;
 }
@@ -101,6 +116,20 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [filterMode, setFilterMode] = useState<'monthly' | 'custom'>('monthly');
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
+  });
+  const [customEndDate, setCustomEndDate] = useState<string>(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+    return `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+  });
   const [records, setRecords] = useState<PTWRecord[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [isDeleteCategoryModalOpen, setIsDeleteCategoryModalOpen] = useState(false);
@@ -1104,7 +1133,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   }, [searchTerm, filteredRecords]);
 
   // Helper to split month dynamically per 1 day (Daily breakdown) based on PTW data
-  const getDataDrivenWeeks = (year: number, month: number, ptwRecords: PTWRecord[]) => {
+  const getDataDrivenWeeks = (year: number, month: number, ptwRecords: PTWRecord[]): PTWWeeklySegment[] => {
     const formatDate = (date: Date) => {
       const y = date.getFullYear();
       const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -1132,20 +1161,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
 
 
     const lastDayOfMonth = new Date(year, month, 0).getDate();
-    const weeks: {
-      weekNum: number;
-      startStr: string;
-      endStr: string;
-      rangeLabel: string;
-      dateRange: string;
-      shortRange: string;
-      records: PTWRecord[];
-      openCount: number;
-      closedCount: number;
-      totalCount: number;
-      pmCount: number;
-      cmCount: number;
-    }[] = [];
+    const weeks: PTWWeeklySegment[] = [];
 
     const weekRanges = [
       { weekNum: 1, startDay: 1, endDay: 7 },
@@ -1206,16 +1222,136 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     return weeks;
   };
 
-  const weeklyData = getDataDrivenWeeks(selectedYear, selectedMonth, records);
+  // Helper to segment any custom date range into regular period chunks (up to 7 days per chunk)
+  const getDataDrivenCustomRange = (startRangeStr: string, endRangeStr: string, ptwRecords: PTWRecord[]): PTWWeeklySegment[] => {
+    const formatDate = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    if (!startRangeStr || !endRangeStr) return [];
+
+    let start = new Date(startRangeStr);
+    let end = new Date(endRangeStr);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+    if (start > end) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Filter records that overlap with the overall custom range
+    const rangeStartStr = formatDate(start);
+    const rangeEndStr = formatDate(end);
+    const inRangeRecords = ptwRecords.filter(r => {
+      if (!r.startDate) return false;
+      const rStart = r.startDate;
+      const rEnd = r.endDate || r.startDate;
+      return rStart <= rangeEndStr && rEnd >= rangeStartStr;
+    });
+
+    const segments: PTWWeeklySegment[] = [];
+
+    // Split into chunks of 7 days
+    let cur = new Date(start);
+    let chunkIndex = 1;
+
+    while (cur <= end) {
+      const chunkStart = new Date(cur);
+      const chunkEnd = new Date(cur);
+      chunkEnd.setDate(chunkEnd.getDate() + 6);
+      if (chunkEnd > end) {
+        chunkEnd.setTime(end.getTime());
+      }
+
+      const chunkStartStr = formatDate(chunkStart);
+      const chunkEndStr = formatDate(chunkEnd);
+
+      const sDay = String(chunkStart.getDate()).padStart(2, '0');
+      const eDay = String(chunkEnd.getDate()).padStart(2, '0');
+      const sMonth = monthShort[chunkStart.getMonth()];
+      const eMonth = monthShort[chunkEnd.getMonth()];
+      const sYear = chunkStart.getFullYear();
+      const eYear = chunkEnd.getFullYear();
+
+      const shortRange = sMonth === eMonth ? `${sDay}-${eDay} ${sMonth}` : `${sDay} ${sMonth} - ${eDay} ${eMonth}`;
+      const rangeLabel = `Periode ${chunkIndex} (${shortRange})`;
+      const dateRange = sYear === eYear
+        ? `Periode ${chunkIndex} (${sDay} ${sMonth} - ${eDay} ${eMonth} ${sYear})`
+        : `Periode ${chunkIndex} (${sDay} ${sMonth} ${sYear} - ${eDay} ${eMonth} ${eYear})`;
+
+      const chunkRecords = inRangeRecords.filter(r => {
+        const rStart = r.startDate;
+        const rEnd = r.endDate || r.startDate;
+        return rStart <= chunkEndStr && rEnd >= chunkStartStr;
+      });
+
+      const openRecords = chunkRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
+      const closedRecords = chunkRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
+      const pmCount = chunkRecords.filter(r => (r.ptwType || 'PM') === 'PM').length;
+      const cmCount = chunkRecords.filter(r => r.ptwType === 'CM').length;
+
+      segments.push({
+        weekNum: chunkIndex,
+        startStr: chunkStartStr,
+        endStr: chunkEndStr,
+        rangeLabel,
+        dateRange,
+        shortRange,
+        records: chunkRecords,
+        openCount: openRecords.length,
+        closedCount: closedRecords.length,
+        totalCount: chunkRecords.length,
+        pmCount,
+        cmCount,
+      });
+
+      // Advance to next 7-day chunk
+      cur.setDate(cur.getDate() + 7);
+      chunkIndex++;
+    }
+
+    return segments;
+  };
+
+  const weeklyData: PTWWeeklySegment[] = useMemo<PTWWeeklySegment[]>(() => {
+    if (filterMode === 'custom') {
+      return getDataDrivenCustomRange(customStartDate, customEndDate, records);
+    }
+    return getDataDrivenWeeks(selectedYear, selectedMonth, records);
+  }, [filterMode, customStartDate, customEndDate, selectedYear, selectedMonth, records]);
 
   useEffect(() => {
     if (selectedWeek > weeklyData.length) {
       setSelectedWeek(1);
     }
-  }, [selectedYear, selectedMonth, selectedWeek, weeklyData.length]);
+  }, [selectedYear, selectedMonth, selectedWeek, weeklyData.length, filterMode]);
+
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  const currentPeriodLabel = useMemo(() => {
+    if (filterMode === 'custom') {
+      if (!customStartDate || !customEndDate) return 'Rentang Kustom';
+      const d1 = new Date(customStartDate);
+      const d2 = new Date(customEndDate);
+      if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return `${customStartDate} s.d. ${customEndDate}`;
+      const formatCustomDate = (d: Date) => `${String(d.getDate()).padStart(2, '0')} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      return `${formatCustomDate(d1)} s.d. ${formatCustomDate(d2)}`;
+    }
+    return `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+  }, [filterMode, customStartDate, customEndDate, selectedMonth, selectedYear]);
 
   const chartData = weeklyData.map(wd => ({
-    name: `Minggu ${wd.weekNum}`,
+    name: filterMode === 'monthly' ? `Minggu ${wd.weekNum}` : `Periode ${wd.weekNum}`,
     'PTW PM': wd.pmCount,
     'PTW CM': wd.cmCount,
     'Open (Aktif)': wd.openCount,
@@ -1223,7 +1359,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     'Total PTW': wd.totalCount,
   }));
 
-  // Monthly grand totals for the summary cards
+  // Monthly / Period grand totals for the summary cards
   const monthlyTotalPTW = weeklyData.reduce((sum, wd) => sum + wd.totalCount, 0);
   const monthlyTotalPM = weeklyData.reduce((sum, wd) => sum + wd.pmCount, 0);
   const monthlyTotalCM = weeklyData.reduce((sum, wd) => sum + wd.cmCount, 0);
@@ -1258,13 +1394,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       }
       toast.dismiss(toastId);
 
-      const monthNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-      const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
-
-      await exportPTWWeeklyReportToPDF(monthLabel, weeklyData, chartBase64);
+      await exportPTWWeeklyReportToPDF(currentPeriodLabel, weeklyData, chartBase64);
     } catch (err) {
       console.error('Pdf export failed:', err);
       toast.error('Gagal mengekspor laporan ke PDF');
@@ -1283,12 +1413,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       }
       toast.dismiss(toastId);
 
-      const monthNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-      const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
-      await exportPTWWeeklyReportToExcel(monthLabel, weeklyData, chartBase64);
+      await exportPTWWeeklyReportToExcel(currentPeriodLabel, weeklyData, chartBase64);
     } catch (err) {
       console.error('Excel export failed:', err);
       toast.error('Gagal mengekspor laporan ke Excel');
@@ -1300,27 +1425,35 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     if (isDownloadingZip) return;
     setIsDownloadingZip(true);
     try {
-      const monthNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-      const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+      let filteredZipRecords: PTWRecord[] = [];
+      let zipFileName: string | undefined = undefined;
 
-      // Filter all records for the selected month and year
-      const monthRecords = records
-        .filter(r => {
-          if (!r.startDate) return false;
-          const parts = r.startDate.split('-');
-          if (parts.length < 2) return false;
-          const y = parseInt(parts[0], 10);
-          const m = parseInt(parts[1], 10);
-          return y === selectedYear && m === selectedMonth;
-        })
-        .sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+      if (filterMode === 'custom') {
+        filteredZipRecords = records
+          .filter(r => {
+            if (!r.startDate) return false;
+            const rStart = r.startDate;
+            const rEnd = r.endDate || r.startDate;
+            return rStart <= customEndDate && rEnd >= customStartDate;
+          })
+          .sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+        zipFileName = `PTW_Files_${customStartDate}_sd_${customEndDate}.zip`;
+      } else {
+        filteredZipRecords = records
+          .filter(r => {
+            if (!r.startDate) return false;
+            const parts = r.startDate.split('-');
+            if (parts.length < 2) return false;
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            return y === selectedYear && m === selectedMonth;
+          })
+          .sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+      }
 
-      await exportPTWFilesToZIP(monthLabel, monthRecords);
+      await exportPTWFilesToZIP(currentPeriodLabel, filteredZipRecords, zipFileName);
     } catch (err: any) {
-      console.error('Monthly PTW ZIP export failed:', err);
+      console.error('PTW ZIP export failed:', err);
       toast.error('Gagal mengekspor file ZIP PTW: ' + (err.message || 'Error'));
     } finally {
       setIsDownloadingZip(false);
@@ -1331,13 +1464,13 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     if (isDownloadingZip) return;
     const week = weeklyData.find(w => w.weekNum === weekNum);
     if (!week || week.records.length === 0) {
-      toast.error(`Tidak ada data PTW pada Minggu ${weekNum}.`);
+      toast.error(`Tidak ada data PTW pada ${filterMode === 'monthly' ? `Minggu ${weekNum}` : `Periode ${weekNum}`}.`);
       return;
     }
     setIsDownloadingZip(true);
     try {
       const weekLabel = `${week.rangeLabel} ${selectedYear}`;
-      const cleanWeekName = `PTW_Files_Minggu_${weekNum}_${selectedYear}.zip`;
+      const cleanWeekName = `PTW_Files_${filterMode === 'monthly' ? 'Minggu' : 'Periode'}_${weekNum}.zip`;
       await exportPTWFilesToZIP(weekLabel, week.records, cleanWeekName);
     } catch (err: any) {
       console.error('Weekly PTW ZIP export failed:', err);
@@ -1787,55 +1920,118 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
 
       {activeSubTab === 'weekly' && (
         <div className="space-y-8 animate-fadeIn">
-          {/* Header Panel with Dropdowns and Export Buttons */}
-          <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 mb-2 border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
-            <div className="flex flex-wrap items-center gap-4">
+          {/* Header Panel with Mode Switcher, Dropdowns/Date Pickers and Export Buttons */}
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 mb-2 border border-slate-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-200">
                 <Calendar className="w-5 h-5 text-indigo-600" />
                 <span className="text-sm font-bold text-slate-900">Filter Periode:</span>
               </div>
-              
-              <div className="flex gap-2">
-                <select
-                  title="Pilih Bulan"
-                  value={selectedMonth}
-                  onChange={(e) => {
-                    setSelectedMonth(parseInt(e.target.value));
-                    setSelectedWeek(1); // Reset to week 1 when month changes
-                  }}
-                  className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
-                >
-                  <option value={1}>Januari</option>
-                  <option value={2}>Februari</option>
-                  <option value={3}>Maret</option>
-                  <option value={4}>April</option>
-                  <option value={5}>Mei</option>
-                  <option value={6}>Juni</option>
-                  <option value={7}>Juli</option>
-                  <option value={8}>Agustus</option>
-                  <option value={9}>September</option>
-                  <option value={10}>Oktober</option>
-                  <option value={11}>November</option>
-                  <option value={12}>Desember</option>
-                </select>
 
-                <select
-                  title="Pilih Tahun"
-                  value={selectedYear}
-                  onChange={(e) => {
-                    setSelectedYear(parseInt(e.target.value));
+              {/* Mode Toggle: Per Bulan vs Rentang Tanggal */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterMode('monthly');
                     setSelectedWeek(1);
                   }}
-                  className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    filterMode === 'monthly'
+                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
                 >
-                  <option value={2025}>2025</option>
-                  <option value={2026}>2026</option>
-                  <option value={2027}>2027</option>
-                </select>
+                  📅 Per Bulan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterMode('custom');
+                    setSelectedWeek(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    filterMode === 'custom'
+                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  📆 Rentang Tanggal
+                </button>
               </div>
+
+              {/* Inputs based on mode */}
+              {filterMode === 'monthly' ? (
+                <div className="flex gap-2">
+                  <select
+                    title="Pilih Bulan"
+                    value={selectedMonth}
+                    onChange={(e) => {
+                      setSelectedMonth(parseInt(e.target.value));
+                      setSelectedWeek(1); // Reset to week 1 when month changes
+                    }}
+                    className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
+                  >
+                    <option value={1}>Januari</option>
+                    <option value={2}>Februari</option>
+                    <option value={3}>Maret</option>
+                    <option value={4}>April</option>
+                    <option value={5}>Mei</option>
+                    <option value={6}>Juni</option>
+                    <option value={7}>Juli</option>
+                    <option value={8}>Agustus</option>
+                    <option value={9}>September</option>
+                    <option value={10}>Oktober</option>
+                    <option value={11}>November</option>
+                    <option value={12}>Desember</option>
+                  </select>
+
+                  <select
+                    title="Pilih Tahun"
+                    value={selectedYear}
+                    onChange={(e) => {
+                      setSelectedYear(parseInt(e.target.value));
+                      setSelectedWeek(1);
+                    }}
+                    className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
+                  >
+                    <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
+                    <option value={2027}>2027</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-3.5 py-2 shadow-sm">
+                    <span className="text-xs font-bold text-slate-500">Dari:</span>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => {
+                        setCustomStartDate(e.target.value);
+                        setSelectedWeek(1);
+                      }}
+                      className="text-xs font-bold text-slate-800 outline-none bg-transparent cursor-pointer"
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-slate-400">s.d.</span>
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-3.5 py-2 shadow-sm">
+                    <span className="text-xs font-bold text-slate-500">Sampai:</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => {
+                        setCustomEndDate(e.target.value);
+                        setSelectedWeek(1);
+                      }}
+                      className="text-xs font-bold text-slate-800 outline-none bg-transparent cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap gap-2 w-full xl:w-auto">
               <button
                 onClick={handleExportExcelReport}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-emerald-600 rounded-2xl border border-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
@@ -1854,7 +2050,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 onClick={handleDownloadMonthlyPtwZip}
                 disabled={isDownloadingZip}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-2xl border border-slate-200 hover:border-blue-200 text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
-                title="Download semua file lampiran PTW bulan ini dalam format .ZIP"
+                title={`Download file lampiran PTW (${currentPeriodLabel}) dalam format .ZIP`}
               >
                 {isDownloadingZip ? (
                   <>
@@ -1871,11 +2067,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             </div>
           </div>
 
-          {/* 4 or 5 Weeks Cards Grid */}
-          <div className={weeklyData.length === 5 
-            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" 
-            : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-          }>
+          {/* Weeks / Periods Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {weeklyData.map((wd) => {
               const isSelected = selectedWeek === wd.weekNum;
               return (
@@ -2072,7 +2265,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 uppercase">Detail Minggu {selectedWeek}</h3>
+                    <h3 className="text-lg font-bold text-slate-900 uppercase">
+                      Detail {filterMode === 'monthly' ? `Minggu ${selectedWeek}` : `Periode ${selectedWeek}`}
+                    </h3>
                     <p className="text-slate-500 text-xs font-semibold">{weeklyData[selectedWeek - 1]?.dateRange}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2084,19 +2279,21 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         onClick={() => handleDownloadWeeklyPtwZip(selectedWeek)}
                         disabled={isDownloadingZip}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-200 text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
-                        title={`Download ZIP file PTW Minggu ${selectedWeek}`}
+                        title={`Download ZIP file PTW ${filterMode === 'monthly' ? `Minggu ${selectedWeek}` : `Periode ${selectedWeek}`}`}
                       >
                         <FolderArchive className="w-3.5 h-3.5" />
-                        <span>ZIP Minggu Ini</span>
+                        <span>{filterMode === 'monthly' ? 'ZIP Minggu Ini' : 'ZIP Periode Ini'}</span>
                       </button>
                     )}
                   </div>
                 </div>
 
-                {weeklyData[selectedWeek - 1].records.length === 0 ? (
+                {!weeklyData[selectedWeek - 1] || weeklyData[selectedWeek - 1].records.length === 0 ? (
                   <div className="py-16 text-center">
                     <AlertCircle className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                    <p className="text-slate-400 text-sm italic">Tidak ada PTW aktif pada minggu ini</p>
+                    <p className="text-slate-400 text-sm italic">
+                      Tidak ada PTW aktif pada {filterMode === 'monthly' ? 'minggu' : 'periode'} ini
+                    </p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white max-h-72 overflow-y-auto shadow-sm">
@@ -2112,7 +2309,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {weeklyData[selectedWeek - 1].records.map((rec, idx) => {
+                        {(weeklyData[selectedWeek - 1]?.records || []).map((rec, idx) => {
                           const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]);
                           return (
                             <tr key={rec.id} className="hover:bg-slate-50 transition">
