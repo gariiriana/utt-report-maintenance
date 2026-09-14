@@ -1090,6 +1090,18 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
   const picDMEVal = (!report.picDME || report.picDME === '-') ? 'On Duty DME' : report.picDME;
   const picTDEVal = (!report.picTDE || report.picTDE === 'FMA - CBRE' || report.picTDE === '-') ? 'FMA - OCS' : report.picTDE;
 
+  const formatSLAOrderDateTime = (dateStr?: string): string => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const DD = String(d.getDate()).padStart(2, '0');
+    const MM = String(d.getMonth() + 1).padStart(2, '0');
+    const YYYY = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${DD}/${MM}/${YYYY} ${hh}:${mm}`;
+  };
+
   // Photos — support multi-photo arrays (PhotoItem[]) formatted in a clean 2-column side-by-side grid with preserved aspect ratio
   interface PhotoItem { photo: string; description: string; }
   const photoSections: { title: string; items: PhotoItem[] }[] = [
@@ -1231,7 +1243,10 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
             ],
           }),
 
-          createBoxSection('TIKET INCIDENT & LOKASI', `Nama Tiket : ${report.ticketName || 'N/A'}\nLokasi     : ${report.location || 'N/A'}\nPriority   : ${report.priority || 'Medium'}\nPIC DME    : ${picDMEVal}\nPIC TDE    : ${picTDEVal}`),
+          createBoxSection(
+            'TIKET INCIDENT & LOKASI',
+            `Nama Tiket : ${report.ticketName || 'N/A'}\nLokasi     : ${report.location || 'N/A'}\nWaktu Order: ${formatSLAOrderDateTime(report.timeOrder || report.startOrder)}\nPriority   : ${report.priority || 'Medium'}\nPIC DME    : ${picDMEVal}\nPIC TDE    : ${picTDEVal}`
+          ),
           new Paragraph({ spacing: { after: 180 } }),
 
           createSectionHeader('MATRIKS PENCAPAIAN SLA / SLG'),
@@ -1546,12 +1561,12 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     if (!dateStr) return '-';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    const MM = d.getMonth() + 1;
-    const DD = d.getDate();
-    const YY = String(d.getFullYear()).slice(-2);
+    const DD = String(d.getDate()).padStart(2, '0');
+    const MM = String(d.getMonth() + 1).padStart(2, '0');
+    const YYYY = d.getFullYear();
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${MM}/${DD}/${YY} ${hh}:${mm}`;
+    return `${DD}/${MM}/${YYYY} ${hh}:${mm}`;
   };
 
   const cellBorderThin = {

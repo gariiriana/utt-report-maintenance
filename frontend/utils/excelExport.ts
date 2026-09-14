@@ -11,21 +11,21 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-// Utility helper untuk memformat tanggal ke tampilan standar Excel (contoh: "3/7/2026 16:12:00")
+// Utility helper untuk memformat tanggal ke tampilan standar Excel (format: DD/MM/YYYY HH:mm:ss -> Tanggal, Bulan, Tahun, Jam)
 const formatExcelDate = (dateStr: string): string => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
 
-  const MM = d.getMonth() + 1;
-  const DD = d.getDate();
+  const DD = String(d.getDate()).padStart(2, '0');
+  const MM = String(d.getMonth() + 1).padStart(2, '0');
   const YYYY = d.getFullYear();
 
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   const ss = String(d.getSeconds()).padStart(2, '0');
 
-  return `${MM}/${DD}/${YYYY} ${hh}:${mm}:${ss}`;
+  return `${DD}/${MM}/${YYYY} ${hh}:${mm}:${ss}`;
 };
 
 // Helper untuk memasang aturan Conditional Formatting Excel agar warna otomatis berubah (M = Hijau, TM = Merah) saat angka diubah di Excel
