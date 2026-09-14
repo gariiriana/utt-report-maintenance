@@ -15,7 +15,8 @@ import {
     ShieldCheck,
     ChevronRight,
     Briefcase,
-    HardHat
+    HardHat,
+    FolderArchive
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
@@ -45,6 +46,7 @@ export function DivisionApp() {
     const isDivisionUser = ['pmo', 'sales', 'presales', 'purchasing'].includes(userRole || '');
     const [activeDivision, setActiveDivision] = useState<string | null>(isDivisionUser ? userRole : null);
     const [showVault, setShowVault] = useState(false);
+    const [currentTab, setCurrentTab] = useState<'iso' | 'management_files'>('iso');
 
     // Pemetaan nama jabatan Direksi dalam Bahasa Indonesia
     const directorTitles: Record<string, string> = {
@@ -111,10 +113,43 @@ export function DivisionApp() {
                 </div>
             </div>
 
+            {/* Sub-Navbar Navigasi — Beralih antara Dokumen ISO Divisi & Management File Terpusat */}
+            <div className="bg-sky-50/70 backdrop-blur-md border-b border-sky-100/80 px-4 sm:px-6 py-2 sticky top-[65px] sm:top-[73px] z-40">
+                <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <button
+                            onClick={() => setCurrentTab('iso')}
+                            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                currentTab === 'iso'
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900 border border-slate-200/80 shadow-2xs'
+                            }`}
+                        >
+                            <Briefcase className="w-4 h-4" />
+                            <span>{isDirector ? 'Registri ISO Divisi' : 'Dokumen Divisi'}</span>
+                        </button>
+                        <button
+                            onClick={() => setCurrentTab('management_files')}
+                            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                currentTab === 'management_files'
+                                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20'
+                                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900 border border-slate-200/80 shadow-2xs'
+                            }`}
+                        >
+                            <FolderArchive className="w-4 h-4 text-amber-500" />
+                            <span>Management File</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {/* Konten Utama Aplikasi Divisi */}
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8">
-                {/* Tampilan 1: Registri Eksekutif Khusus Direksi (Menu Pilihan Departemen) */}
-                {isDirector && !showVault ? (
+                {currentTab === 'management_files' ? (
+                    <div className="space-y-6">
+                        <DocumentList />
+                    </div>
+                ) : isDirector && !showVault ? (
                     <div className="space-y-8">
                         <div>
                         <div>

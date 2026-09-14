@@ -34,8 +34,8 @@ export function HSEApp() {
     const { user, logout } = useAuth();
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
     
-    // State tab aktif ('inspection' untuk buat laporan HSE, 'findings' untuk input temuan K3, 'findings_archive' arsip temuan, 'iso' untuk arsip dokumen)
-    const [activeTab, setActiveTab] = useState<'inspection' | 'findings' | 'findings_archive' | 'iso'>('inspection');
+    // State tab aktif ('inspection' untuk buat laporan HSE, 'findings' untuk input temuan K3, 'findings_archive' arsip temuan, 'iso' untuk arsip dokumen, 'management_files' untuk Management File)
+    const [activeTab, setActiveTab] = useState<'inspection' | 'findings' | 'findings_archive' | 'iso' | 'management_files'>('inspection');
     const [editingData, setEditingData] = useState<any>(null); // Data laporan yang sedang di-edit
     const [sidebarOpen, setSidebarOpen] = useState(false);     // State drawer navigasi HP (Mobile)
 
@@ -82,6 +82,16 @@ export function HSEApp() {
                     color: 'text-teal-600',
                     bg: 'bg-teal-50',
                     border: 'border-teal-200'
+                };
+            case 'management_files':
+                return {
+                    title: 'Management File',
+                    subtitle: 'Penyimpanan & Manajemen Berkas Laporan & Dokumentasi Maintenance Terpusat',
+                    icon: FolderArchive,
+                    badge: 'Management File',
+                    color: 'text-amber-600',
+                    bg: 'bg-amber-50',
+                    border: 'border-amber-200'
                 };
             case 'iso':
                 return {
@@ -134,11 +144,19 @@ export function HSEApp() {
         },
         { 
             id: 'iso', 
-            label: 'Arsip Dokumen', 
+            label: 'Arsip Dokumen HSE', 
             icon: FolderArchive, 
             activeClass: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20 border-transparent',
             mobileColor: 'bg-blue-600',
             mobileShadow: 'shadow-blue-600/20'
+        },
+        { 
+            id: 'management_files', 
+            label: 'Management File', 
+            icon: FolderArchive, 
+            activeClass: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-600/20 border-transparent',
+            mobileColor: 'bg-orange-600',
+            mobileShadow: 'shadow-orange-600/20'
         },
     ];
 
@@ -345,7 +363,11 @@ export function HSEApp() {
 
             {/* Konten Utama HSE Portal: Form Inspeksi HSE, Input Temuan K3, Arsip Temuan, atau Daftar Dokumen HSE */}
             <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 transition-all">
-                {activeTab === 'iso' ? (
+                {activeTab === 'management_files' ? (
+                    <DocumentList 
+                        onEdit={handleEditReport} 
+                    />
+                ) : activeTab === 'iso' ? (
                     <DocumentList 
                         filterOverride="hse_utt" 
                         onEdit={handleEditReport} 

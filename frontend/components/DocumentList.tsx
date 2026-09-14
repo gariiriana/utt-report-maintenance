@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload } from 'lucide-react';
 import { collection, query, getDocs, getDocsFromCache, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -286,8 +286,9 @@ interface DocumentListProps {
 
 export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
+  const userEmailLower = (user?.email || '').toLowerCase();
   const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
-  const isQcDme = userRole === 'qc_dme';
+  const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
   const isAdmin = userRole === 'admin' || isQcDme;
   const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
     userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';
@@ -1611,17 +1612,31 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <Folder className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Arsip Dokumen</h3>
+                <h3 className="text-base font-bold text-slate-900">Management File</h3>
                 <p className="text-xs text-slate-500 font-medium">Pilih folder utama untuk melihat arsip laporan & dokumentasi maintenance</p>
               </div>
             </div>
-            {query && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(isAdmin || isQcDme) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDmeSelectedFolder('Laporan Harian');
+                    setDmeLevel('management_files');
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 cursor-pointer transition-all hover:scale-105"
+                  title="Unggah berkas dokumen ke folder"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Unggah Berkas</span>
+                </button>
+              )}
+              {query && (
                 <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
                   Filter: "{searchQuery}"
                 </span>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {query && (
@@ -1782,7 +1797,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </div>
           )}
           <FileManagement 
-            allowUpload={false} 
+            allowUpload={isAdmin || isQcDme} 
             initialFolder={dmeSelectedFolder} 
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -2507,12 +2522,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   };
 
   const renderContent = () => {
-    if (isDME) {
-      return renderDmeContent();
-    }
-
     if (filterOverride !== 'hse_utt') {
-      return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
+      return renderDmeContent();
     }
 
     if (currentLevel === 'root') {
@@ -3122,12 +3133,12 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       { }
       <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 mb-3.5 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 w-full max-w-full overflow-hidden">
         <div className="mb-3 sm:mb-6">
-          <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Arsip Dokumen & Laporan</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">Semua dokumen Excel, PDF & Service Report maintenance yang telah diekspor</p>
+          <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Management File & Arsip Dokumen</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">Semua berkas operasional, laporan preventive & corrective maintenance terpusat</p>
         </div>
 
 
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : !isDME ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-2 sm:gap-4 items-center w-full min-w-0`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : 'xl:grid-cols-3'} gap-2 sm:gap-4 items-center w-full min-w-0`}>
 
           <div className="relative min-w-0 w-full">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -3135,7 +3146,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isDME ? "Cari dokumen / file..." : "Cari nama maintenance..."}
+              placeholder="Cari dokumen / file..."
               className="w-full pl-9 sm:pl-12 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-xs sm:text-sm font-medium"
             />
             {searchQuery && (

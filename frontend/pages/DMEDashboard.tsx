@@ -40,7 +40,7 @@ const TAB_ITEMS: { id: DMETab; label: string; icon: typeof FileText; color: stri
   { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700' },
   { id: 'workflow', label: 'MOP Workflow', icon: FileText, color: 'from-blue-500 to-sky-500' },
   { id: 'monitoring', label: 'Monitoring', icon: BarChart3, color: 'from-emerald-500 to-teal-500' },
-  { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-amber-500 to-orange-500' },
+  { id: 'documents', label: 'Management File', icon: FolderOpen, color: 'from-amber-500 to-orange-500' },
 ];
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────

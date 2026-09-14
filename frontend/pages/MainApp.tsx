@@ -22,7 +22,6 @@ import { ReportForm } from '@/components/ReportForm';
 import { DocumentList } from '@/components/DocumentList';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { ExcelDocument } from '@/components/DocumentList';
-import { FileManagement } from '@/components/FileManagement';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
 import { PIRManagement } from '@/components/PIRManagement';
 import { FindingManagement } from '../components/FindingManagement';
@@ -144,7 +143,7 @@ export function MainApp() {
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
-    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: userRole !== 'DME' && !isK2Engineer },
+    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: false },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
     { id: 'standby_kpi', label: 'Input KPI Monthly', icon: Award, color: 'from-emerald-600 to-teal-700', show: isStandby && !isAdmin },
     { id: 'spareparts', label: 'Log Sparepart', icon: Package, color: 'from-indigo-600 to-violet-700', show: !isAdmin && (isStandby || userRole === 'DME' || userRole === 'site_manager_dme') },
@@ -152,7 +151,7 @@ export function MainApp() {
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: !isAdmin && userRole !== 'DME' && !isK2Engineer && !isStandby },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: !isAdmin && userRole !== 'DME' && !isK2Engineer },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isAdmin && !isStandby && (userRole !== 'DME' || !!editingData) },
-    { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isStandby },
+    { id: 'documents', label: 'Management File', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: true },
     { id: 'pir', label: 'Report PIR', icon: AlertTriangle, color: 'from-amber-600 to-red-600', show: !isAdmin && isK2Engineer && !isStandby },
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: !isAdmin && userRole === 'DME' && !isK2Engineer },
     { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: FileText, color: 'from-blue-600 to-indigo-700', show: !isAdmin && (userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id') && !isStandby && !isK2Engineer },
@@ -426,7 +425,7 @@ export function MainApp() {
             ) : activeTab === 'ptw' ? (
               <PTWManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'files' ? (
-              <FileManagement initialSearchQuery={navSearchQuery} readOnly={isStandby} />
+              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'report' ? (
               <ReportForm
                 editingData={editingData}

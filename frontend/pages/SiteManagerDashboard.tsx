@@ -21,10 +21,12 @@ import {
   LogOut,
   LogIn,
   ShieldCheck,
-  UserCircle
+  UserCircle,
+  FolderOpen
 } from 'lucide-react';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import { useAuth } from '@/components/AuthContext';
+import { DocumentList } from '@/components/DocumentList';
 import {
   collection,
   query,
@@ -132,7 +134,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
 
 export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'summary' | 'input'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'input' | 'documents'>('summary');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [summary, setSummary] = useState<MaintenanceSummary | null>(null);
@@ -481,7 +483,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
               </div>
 
               {user && (
-                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm ml-auto">
+                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm ml-auto flex-wrap">
                   <button
                     onClick={() => setActiveTab('summary')}
                     className={`px-3 py-1.5 rounded-lg transition-all text-[10px] sm:text-xs font-bold uppercase ${
@@ -498,6 +500,15 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                   >
                     Input Data
                   </button>
+                  <button
+                    onClick={() => setActiveTab('documents')}
+                    className={`px-3 py-1.5 rounded-lg transition-all text-[10px] sm:text-xs font-bold uppercase flex items-center gap-1.5 ${
+                      activeTab === 'documents' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    <span>Management File</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -507,7 +518,17 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 relative z-10">
         <AnimatePresence mode="wait">
-          {activeTab === 'summary' ? (
+          {activeTab === 'documents' ? (
+            <motion.div
+              key="documents"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="w-full"
+            >
+              <DocumentList />
+            </motion.div>
+          ) : activeTab === 'summary' ? (
             <motion.div
               key="summary"
               initial={{ opacity: 0, y: 10 }}
