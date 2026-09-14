@@ -1354,7 +1354,6 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     name: filterMode === 'monthly' ? `Minggu ${wd.weekNum}` : `Periode ${wd.weekNum}`,
     'PTW PM': wd.pmCount,
     'PTW CM': wd.cmCount,
-    'Open (Aktif)': wd.openCount,
     'Closed (Selesai)': wd.closedCount,
     'Total PTW': wd.totalCount,
   }));
@@ -1363,7 +1362,6 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const monthlyTotalPTW = weeklyData.reduce((sum, wd) => sum + wd.totalCount, 0);
   const monthlyTotalPM = weeklyData.reduce((sum, wd) => sum + wd.pmCount, 0);
   const monthlyTotalCM = weeklyData.reduce((sum, wd) => sum + wd.cmCount, 0);
-  const monthlyTotalOpen = weeklyData.reduce((sum, wd) => sum + wd.openCount, 0);
   const monthlyTotalClosed = weeklyData.reduce((sum, wd) => sum + wd.closedCount, 0);
 
   const getChartCanvasOptions = () => ({
@@ -2136,7 +2134,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     Visualisasi Tren Validitas Mingguan
                   </h3>
                   <p className="text-xs text-slate-500 font-medium" style={{ margin: 0, color: '#64748b', lineHeight: '1.4', letterSpacing: '0px', wordSpacing: 'normal' }}>
-                    Tingkat kepatuhan PM, CM, Open &amp; Closed PTW per minggu
+                    Tingkat kepatuhan PM, CM, &amp; Closed PTW per minggu
                   </p>
                 </div>
 
@@ -2144,7 +2142,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 <div 
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
                     gap: '6px',
                     width: '100%',
                     boxSizing: 'border-box'
@@ -2189,18 +2187,6 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                   <div 
                     className="rounded-2xl flex flex-col items-center justify-center text-center"
                     style={{
-                      backgroundColor: '#dbeafe',
-                      border: '1px solid #bfdbfe',
-                      padding: '8px 2px',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <span style={{ fontSize: '17px', fontWeight: 800, color: '#1d4ed8', lineHeight: '1.2', display: 'block' }}>{monthlyTotalOpen}</span>
-                    <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', color: '#2563eb', lineHeight: '1.2', marginTop: '3px', display: 'block' }}>Open</span>
-                  </div>
-                  <div 
-                    className="rounded-2xl flex flex-col items-center justify-center text-center"
-                    style={{
                       backgroundColor: '#ffe4e6',
                       border: '1px solid #fecdd3',
                       padding: '8px 2px',
@@ -2224,10 +2210,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                       labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                     />
                     <Line type="monotone" dataKey="Total PTW" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', r: 5 }} />
-                    <Bar dataKey="PTW PM" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={16} />
-                    <Bar dataKey="PTW CM" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={16} />
-                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={16} />
-                    <Bar dataKey="Closed (Selesai)" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={16} />
+                    <Bar dataKey="PTW PM" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={18} />
+                    <Bar dataKey="PTW CM" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={18} />
+                    <Bar dataKey="Closed (Selesai)" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={18} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -2248,10 +2233,6 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 <div className="flex items-center gap-1.5 font-semibold text-slate-700">
                   <span className="w-2.5 h-2.5 rounded-xs inline-block shrink-0" style={{ backgroundColor: '#f59e0b' }} />
                   <span>PTW CM</span>
-                </div>
-                <div className="flex items-center gap-1.5 font-semibold text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded-xs inline-block shrink-0" style={{ backgroundColor: '#3b82f6' }} />
-                  <span>Open (Aktif)</span>
                 </div>
                 <div className="flex items-center gap-1.5 font-semibold text-slate-700">
                   <span className="w-2.5 h-2.5 rounded-xs inline-block shrink-0" style={{ backgroundColor: '#f43f5e' }} />
