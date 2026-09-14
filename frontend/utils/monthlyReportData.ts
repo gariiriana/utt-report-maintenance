@@ -101,6 +101,14 @@ export interface SlaOrderItem {
   pctComply: string;
 }
 
+export interface PrimaryGoalItem {
+  id?: string;
+  no?: string;
+  equipment: string;
+  goalEn: string;
+  goalId: string;
+}
+
 export interface FullMonthlyReportData {
   monthName: string;
   monthNameEn: string;
@@ -170,6 +178,9 @@ export interface FullMonthlyReportData {
     teamLeader: { name: string; role: string; phone: string };
     teamMembers: string[];
   };
+
+  // Bab 4: Maintenance Objectives
+  primaryGoals?: PrimaryGoalItem[];
 
   // Table 19 KPI Metric - Sub-tables (Sesuai Format Resmi NeutraDC Foto 1 & Foto 2)
   progressPmTable19?: ProgressPmItem[];
@@ -580,6 +591,216 @@ export function getDefaultBoqUnitForDevice(deviceName: string): number {
   if (d.includes('pump')) return 6;
   if (d.includes('cooling automation') || d.includes('physical cooling')) return 1;
   return 10;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PRIMARY GOALS DICTIONARY (SESUAI DOKUMEN RESMI NEUTRADAC BAB 4 - BILINGUAL)
+// ══════════════════════════════════════════════════════════════════════════
+export const DEFAULT_EQUIPMENT_PRIMARY_GOALS: Record<string, { en: string; id: string }> = {
+  'chiller': {
+    en: 'To maintain reliable and efficient cooling performance by ensuring stable temperature, pressure, flow, and overall system operation.',
+    id: 'Menjaga kinerja pendinginan yang andal dan efisien dengan memastikan kestabilan temperatur, tekanan, aliran, dan pengoperasian sistem secara keseluruhan.'
+  },
+  'cooling tower': {
+    en: 'To ensure effective heat rejection and stable cooling water circulation by maintaining mechanical components, water flow, and operational performance.',
+    id: 'Memastikan pelepasan panas dan sirkulasi air pendingin yang efektif dengan menjaga komponen mekanikal, aliran air, dan kinerja operasional.'
+  },
+  'transformer': {
+    en: 'To ensure safe and reliable power transformation by maintaining electrical connections, insulation condition, temperature, and protection systems.',
+    id: 'Memastikan transformasi daya yang aman dan andal dengan menjaga sambungan listrik, kondisi isolasi, temperatur, dan sistem proteksi.'
+  },
+  'generator & fuel system': {
+    en: 'To maintain standby emergency power readiness and engine reliability by ensuring fuel quality, mechanical lubrication, cooling, and electrical startup systems.',
+    id: 'Menjaga kesiapan daya darurat cadangan dan keandalan mesin dengan memastikan kualitas bahan bakar, pelumasan mekanis, pendinginan, dan sistem starter elektrik.'
+  },
+  'generator': {
+    en: 'To maintain standby emergency power readiness and engine reliability by ensuring fuel quality, mechanical lubrication, cooling, and electrical startup systems.',
+    id: 'Menjaga kesiapan daya darurat cadangan dan keandalan mesin dengan memastikan kualitas bahan bakar, pelumasan mekanis, pendinginan, dan sistem starter elektrik.'
+  },
+  'lv panel': {
+    en: 'To ensure stable and safe low-voltage power distribution by verifying busbar connections, circuit breaker operations, thermal conditions, and metering accuracy.',
+    id: 'Memastikan distribusi daya tegangan rendah yang stabil dan aman dengan memeriksa sambungan busbar, operasi pemutus sirkuit, kondisi termal, dan akurasi pengukuran.'
+  },
+  'pdu panel': {
+    en: 'To maintain continuous and balanced power supply to critical IT racks by monitoring branch circuits, isolation transformer integrity, and circuit breaker reliability.',
+    id: 'Menjaga pasokan daya yang berkelanjutan dan seimbang ke rak IT kritis dengan memantau sirkuit cabang, integritas trafo isolasi, dan keandalan pemutus sirkuit.'
+  },
+  'ups': {
+    en: 'To guarantee uninterrupted clean power supply to critical infrastructure by inspecting inverter modules, static bypass systems, and electrical connections.',
+    id: 'Menjamin pasokan daya bersih tanpa gangguan ke infrastruktur kritis dengan memeriksa modul inverter, sistem static bypass, dan koneksi kelistrikan.'
+  },
+  'crac data hall & supporting room': {
+    en: 'To maintain optimal precision temperature and humidity conditions in data halls and supporting rooms by ensuring EC fan, compressor, and motorized valve reliability.',
+    id: 'Menjaga kondisi suhu dan kelembapan presisi optimal di data hall dan ruang pendukung dengan memastikan keandalan kipas EC, kompresor, dan katup bermotor.'
+  },
+  'crac': {
+    en: 'To maintain optimal precision temperature and humidity conditions in data halls and supporting rooms by ensuring EC fan, compressor, and motorized valve reliability.',
+    id: 'Menjaga kondisi suhu dan kelembapan presisi optimal di data hall dan ruang pendukung dengan memastikan keandalan kipas EC, kompresor, dan katup bermotor.'
+  },
+  'cooling pump': {
+    en: 'To maintain stable chilled and condenser water flow across the cooling loop by ensuring pump alignment, bearing lubrication, and seal integrity.',
+    id: 'Menjaga laju aliran air dingin dan kondensor yang stabil di seluruh loop pendingin dengan memastikan kelurusan pompa, pelumasan bantalan, dan integritas seal.'
+  },
+  'ats': {
+    en: 'To ensure seamless automatic transfer between primary and secondary power sources without interruption to critical equipment.',
+    id: 'Memastikan peralihan otomatis yang mulus antara sumber daya utama dan cadangan tanpa gangguan terhadap peralatan kritis.'
+  },
+  'mv and rmu panel': {
+    en: 'To maintain safe medium-voltage power distribution and switching protection by inspecting gas pressure, vacuum circuit breakers, and protection relays.',
+    id: 'Menjaga distribusi daya tegangan menengah dan proteksi switching yang aman dengan memeriksa tekanan gas, pemutus sirkuit vakum, dan relai proteksi.'
+  },
+  'fss': {
+    en: 'To guarantee reliable rapid fire suppression readiness by inspecting clean agent cylinder pressures, discharge nozzles, and releasing control circuits.',
+    id: 'Menjamin kesiapan pemadaman api cepat yang andal dengan memeriksa tekanan silinder clean agent, nozzle pelepasan, dan sirkuit kontrol aktivasi.'
+  },
+  'hydrant system': {
+    en: 'To ensure adequate water pressure and reliable operation of fire hydrant pumps, valves, and piping networks for emergency fire protection.',
+    id: 'Memastikan tekanan air yang memadai dan operasi andal dari pompa hidran, katup, dan jaringan perpipaan untuk proteksi kebakaran darurat.'
+  },
+  'pre-action system': {
+    en: 'To prevent accidental water discharge while ensuring rapid sprinkler actuation in data center areas upon dual-interlock fire detection.',
+    id: 'Mencegah pelepasan air yang tidak disengaja sekaligus memastikan aktivasi sprinkler cepat di area data center saat deteksi kebakaran dual-interlock aktif.'
+  },
+  'lighting point': {
+    en: 'To provide safe and adequate illumination across all technical rooms and campus facilities by inspecting fixtures, emergency lighting, and motion sensors.',
+    id: 'Menyediakan pencahayaan yang aman dan memadai di seluruh ruang teknis dan fasilitas kampus dengan memeriksa lampu, lampu darurat, dan sensor gerak.'
+  },
+  'grounding system': {
+    en: 'To ensure low-impedance electrical grounding paths for personnel safety, fault current dissipation, and sensitive electronic equipment protection.',
+    id: 'Memastikan jalur pembumian berimpedansi rendah untuk keselamatan personel, pembuangan arus gangguan, dan perlindungan peralatan elektronik sensitif.'
+  },
+  'lightning protection system': {
+    en: 'To protect facilities and rooftop installations from direct lightning strikes and structural surge damage by maintaining air terminals and down-conductors.',
+    id: 'Melindungi fasilitas dan instalasi atap dari sambaran petir langsung dan kerusakan lonjakan arus dengan memelihara air terminal dan konduktor pentanahan.'
+  },
+  'water leak': {
+    en: 'To ensure early detection of liquid ingress and prevent moisture damage to critical raised floor systems and equipment racks.',
+    id: 'Memastikan deteksi dini kebocoran cairan dan mencegah kerusakan kelembapan pada sistem raised floor kritis dan rak peralatan.'
+  },
+  'fuel leak': {
+    en: 'To ensure containment integrity and early detection of fuel piping leaks around bulk storage and day tanks to prevent fire hazards.',
+    id: 'Memastikan integritas penampungan dan deteksi dini kebocoran pipa bahan bakar di sekitar tangki penyimpanan utama dan tangki harian untuk mencegah bahaya kebakaran.'
+  },
+  'ahu': {
+    en: 'To maintain proper air circulation, ventilation, and filtration quality across comfort and supporting facility areas.',
+    id: 'Menjaga sirkulasi udara, ventilasi, dan kualitas filtrasi yang baik di seluruh area kenyamanan dan fasilitas pendukung.'
+  },
+  'vrv': {
+    en: 'To deliver efficient zonal climate control across office areas by verifying refrigerant charge, inverter compressors, and indoor unit cleanliness.',
+    id: 'Menghadirkan kontrol iklim per zona yang efisien di area kantor dengan memeriksa muatan refrigeran, kompresor inverter, dan kebersihan unit indoor.'
+  },
+  'ac splits': {
+    en: 'To maintain reliable local temperature regulation in auxiliary rooms by cleaning filters, checking coils, and verifying thermostat accuracy.',
+    id: 'Menjaga pengaturan temperatur lokal yang andal di ruang tambahan dengan membersihkan filter, memeriksa koil, dan memverifikasi akurasi termostat.'
+  },
+  'cooling tower water treatment': {
+    en: 'To prevent scaling, corrosion, biological fouling, and legionella growth in open cooling water loops through continuous chemical dosing and blowdown control.',
+    id: 'Mencegah kerak, korosi, pengotoran biologis, dan pertumbuhan legionella pada loop air pendingin terbuka melalui dosing kimia berkelanjutan dan kontrol blowdown.'
+  },
+  'lift units': {
+    en: 'To ensure safe, smooth, and dependable vertical transportation by inspecting hoist ropes, braking mechanisms, car door interlocks, and emergency communication.',
+    id: 'Memastikan transportasi vertikal yang aman, mulus, dan dapat diandalkan dengan memeriksa kabel penarik, mekanisme pengereman, interlock pintu lift, dan komunikasi darurat.'
+  },
+  'panel ldb & rdb (distribution)': {
+    en: 'To provide balanced and protected power sub-distribution to lighting, utility, and non-critical loads across campus zones.',
+    id: 'Menyediakan sub-distribusi daya yang seimbang dan terlindungi untuk penerangan, utilitas, dan beban non-kritis di seluruh zona kampus.'
+  },
+  'pju': {
+    en: 'To maintain perimeter and campus roadway security illumination through functional testing of streetlights, photocells, and time switches.',
+    id: 'Menjaga penerangan keamanan perimeter dan jalan perimeter melalui uji fungsional lampu jalan, fotosel, dan sakelar waktu.'
+  },
+  'gate': {
+    en: 'To guarantee smooth perimeter access control and vehicle throughput by maintaining motorized sliding gate operators, safety beams, and loop detectors.',
+    id: 'Menjamin kelancaran kontrol akses perimeter dan lalu lintas kendaraan dengan memelihara operator gerbang geser otomatis, safety beam, dan loop detektor.'
+  },
+  'road blocker': {
+    en: 'To maintain hostile vehicle mitigation barriers by testing hydraulic lifting rams, accumulator pressure, and emergency rapid-deploy controls.',
+    id: 'Menjaga barikade mitigasi kendaraan berbahaya dengan menguji ram pengangkat hidraulik, tekanan akumulator, dan kontrol penyebaran cepat darurat.'
+  },
+  'dock leveler': {
+    en: 'To ensure safe and stable loading dock transitions for logistics handling by maintaining hydraulic cylinders, lip hinges, and platform safety interlocks.',
+    id: 'Memastikan transisi loading dock yang aman dan stabil untuk penanganan logistik dengan memelihara silinder hidraulik, engsel lip, dan interlock pengaman platform.'
+  },
+  'x-ray': {
+    en: 'To ensure high-resolution baggage screening accuracy and radiation containment safety at security access control checkpoints.',
+    id: 'Memastikan akurasi pemindaian bagasi resolusi tinggi dan keselamatan proteksi radiasi di pos pemeriksaan kontrol akses keamanan.'
+  },
+  'pressurization & degassing': {
+    en: 'To maintain closed-loop chilled water system pressure stability and eliminate micro-bubbles to prevent cavitation and heat transfer loss.',
+    id: 'Menjaga stabilitas tekanan sistem air dingin sirkuit tertutup dan menghilangkan gelembung mikro untuk mencegah kavitasi dan penurunan transfer panas.'
+  },
+  'pumps': {
+    en: 'To ensure continuous fluid circulation and pressure maintenance across auxiliary water systems through motor and impeller maintenance.',
+    id: 'Memastikan sirkulasi fluida dan pemeliharaan tekanan yang berkelanjutan di seluruh sistem air tambahan melalui pemeliharaan motor dan impeller.'
+  },
+  'stp & plumbing': {
+    en: 'To guarantee compliant sewage treatment discharge quality and maintain uninterrupted clean water supply and drainage plumbing networks.',
+    id: 'Menjamin kualitas pembuangan pengolahan air limbah yang memenuhi standar dan menjaga jaringan pipa air bersih dan drainase tanpa gangguan.'
+  },
+  'door': {
+    en: 'To maintain physical security containment, fire compartmentalization, and acoustic insulation by adjusting door closers, hinges, and magnetic locks.',
+    id: 'Menjaga pembatasan keamanan fisik, kompartementalisasi api, dan isolasi akustik dengan menyetel penutup pintu, engsel, dan kunci magnetik.'
+  },
+  'water softener': {
+    en: 'To eliminate water hardness minerals and prevent scale formation in boiler and cooling makeup water systems through ion exchange regeneration.',
+    id: 'Menghilangkan mineral kesadahan air dan mencegah pembentukan kerak pada sistem air makeup boiler dan pendingin melalui regenerasi pertukaran ion.'
+  },
+  'exhaust fan': {
+    en: 'To maintain adequate air extraction and ventilation in technical rooms, hazardous battery areas, and generator enclosures.',
+    id: 'Menjaga ekstraksi udara dan ventilasi yang memadai di ruang teknis, area baterai berbahaya, dan ruang genset.'
+  },
+  'busduct': {
+    en: 'To ensure low-resistance, high-capacity electrical power trunking by verifying joint torques, insulation resistance, and thermal balance.',
+    id: 'Memastikan saluran daya listrik berkapasitas tinggi dengan resistansi rendah melalui pemeriksaan torsi sambungan, resistansi isolasi, dan keseimbangan termal.'
+  },
+  'capacitor bank': {
+    en: 'To optimize electrical power factor and reduce reactive power penalties by inspecting capacitor steps, discharge resistors, and detuning reactors.',
+    id: 'Mengoptimalkan faktor daya listrik dan mengurangi biaya daya reaktif dengan memeriksa tahapan kapasitor, resistor pelepasan muatan, dan reaktor detuning.'
+  },
+  'physical cooling automation': {
+    en: 'To ensure optimal thermal efficiency and intelligent cooling staging through continuous calibration of temperature sensors, BMS actuators, and logic sequences.',
+    id: 'Memastikan efisiensi termal optimal dan staging pendinginan cerdas melalui kalibrasi berkala sensor suhu, aktuator BMS, dan sekuens logika kontrol.'
+  }
+};
+
+/** Helper to retrieve standard primary goal (EN + ID) for a given equipment */
+export function getEquipmentPrimaryGoal(deviceName: string): { en: string; id: string } {
+  const clean = (deviceName || '').trim().toLowerCase();
+  
+  // 1. Exact match or includes
+  for (const [key, val] of Object.entries(DEFAULT_EQUIPMENT_PRIMARY_GOALS)) {
+    if (clean === key || clean.includes(key) || key.includes(clean)) {
+      return val;
+    }
+  }
+
+  // 2. Fallback bilingual
+  return {
+    en: `To maintain safe, reliable, and efficient operational performance of ${deviceName} by ensuring regular inspection, preventive maintenance, and system stability.`,
+    id: `Menjaga kinerja operasional ${deviceName} yang aman, andal, dan efisien dengan memastikan inspeksi rutin, pemeliharaan preventif, dan kestabilan sistem.`
+  };
+}
+
+/** Helper to build PrimaryGoalItem[] from an array of equipment names */
+export function generatePrimaryGoalsFromEquipments(equipments: string[]): PrimaryGoalItem[] {
+  const uniqueEqs: string[] = [];
+  equipments.forEach(eq => {
+    const trimmed = (eq || '').trim();
+    if (trimmed && !uniqueEqs.some(u => u.toLowerCase() === trimmed.toLowerCase())) {
+      uniqueEqs.push(trimmed);
+    }
+  });
+
+  return uniqueEqs.map((eq, idx) => {
+    const goal = getEquipmentPrimaryGoal(eq);
+    return {
+      id: `goal-${idx + 1}-${eq.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      no: `1.${idx + 1}`,
+      equipment: eq,
+      goalEn: goal.en,
+      goalId: goal.id
+    };
+  });
 }
 
 // // Specific Task PM description mapping from official Service Reports (Activity Section) - Concise Single-Paragraph Bilingual (EN + ID)
@@ -3910,6 +4131,10 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   const avgFinishNum = progressPmTable19.length > 0 ? (totalPctSum / progressPmTable19.length) : 100;
   const progressPmAverage = month === 7 ? '97,44%' : `${avgFinishNum.toFixed(2).replace('.', ',')}%`;
 
+  // 5.B.2 PRIMARY GOALS PER SCHEDULED EQUIPMENT (BAB 4 MAINTENANCE OBJECTIVES)
+  const scheduledEquipments = progressPmTable19.map(p => String(p.activity || '')).filter(Boolean);
+  const primaryGoals = generatePrimaryGoalsFromEquipments(scheduledEquipments);
+
   // ══════════════════════════════════════════════════════════════════════════
   // 5.C SLA ORDER PERFORMANCE TABLE 19 (SESUAI ATURAN LOGIK KUMULATIF & REKAP BULANAN)
   // ══════════════════════════════════════════════════════════════════════════
@@ -4448,6 +4673,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
       teamLeader,
       teamMembers
     },
+    primaryGoals,
     progressPmTable19,
     progressPmAverage,
     slaOrdersTable19,
@@ -4826,6 +5052,16 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
       });
       const avgNum = updated.progressPmTable19.length > 0 ? (totalPctSum / updated.progressPmTable19.length) : 100;
       updated.progressPmAverage = `${avgNum.toFixed(2).replace('.', ',')}%`;
+    }
+  }
+
+  // 9.B Bab 4: Primary Goals (Tujuan Utama Pemeliharaan per Peralatan Sesuai Jadwal)
+  if (!Array.isArray(updated.primaryGoals) || updated.primaryGoals.length === 0) {
+    const scheduledEquipments = (updated.progressPmTable19 || []).map(p => String(p.activity || '')).filter(Boolean);
+    if (scheduledEquipments.length > 0) {
+      updated.primaryGoals = generatePrimaryGoalsFromEquipments(scheduledEquipments);
+    } else if (Array.isArray(updated.scheduleTable1) && updated.scheduleTable1.length > 0) {
+      updated.primaryGoals = generatePrimaryGoalsFromEquipments(updated.scheduleTable1.map(s => String(s.device || '')).filter(Boolean));
     }
   }
 
@@ -5255,7 +5491,8 @@ export function buildCustomScopeTablesFromBOQ(
     lessonsLearnedTable34: dynamicTables.lessonsLearnedTable34,
     recommendationsTable35: dynamicTables.recommendationsTable35,
     listOfTables: dynamicTables.listOfTables,
-    progressPmTable19: dynamicTables.progressPmTable19
+    progressPmTable19: dynamicTables.progressPmTable19,
+    primaryGoals: generatePrimaryGoalsFromEquipments(dynamicTables.progressPmTable19?.map(p => String(p.activity || '')) || [])
   };
 }
 

@@ -72,7 +72,10 @@ import {
   buildDynamicListOfTables,
   findBOQCategoryForScope,
   extractBOQItemDetails,
-  isValidBOQItem
+  isValidBOQItem,
+  PrimaryGoalItem,
+  generatePrimaryGoalsFromEquipments,
+  getEquipmentPrimaryGoal
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
@@ -996,7 +999,8 @@ export function MonthlyReportGenerator() {
         lessonsLearnedTable34: custom.lessonsLearnedTable34,
         recommendationsTable35: custom.recommendationsTable35,
         listOfTables: custom.listOfTables,
-        progressPmTable19: custom.progressPmTable19
+        progressPmTable19: custom.progressPmTable19,
+        primaryGoals: custom.primaryGoals
       };
     });
 
@@ -3696,11 +3700,14 @@ export function MonthlyReportGenerator() {
                         { range: '<80%', credit: 'Contract can be terminated', highlighted: true, isTermination: true }
                       ];
 
+                      // 4. Reset Primary Goals Sesuai Schedule Bulan Ini
+                      updated.primaryGoals = generatePrimaryGoalsFromEquipments(updated.progressPmTable19.map(item => item.activity));
+
                       setReportData(updated);
-                      toast.success('Format Tabel 19 KPI Metric berhasil direset sesuai format Foto 1 & 2!');
+                      toast.success('Format Tabel 19 & Primary Goals berhasil direset sesuai schedule!');
                     }}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors shadow-sm cursor-pointer"
-                    title="Reset tampilan Tabel 19 sesuai format asli NeutraDC pada foto"
+                    title="Reset tampilan Tabel 19 & Primary Goals sesuai format asli NeutraDC pada foto"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Reset Format Foto</span>
@@ -3734,6 +3741,184 @@ export function MonthlyReportGenerator() {
                   </button>
                 </div>
               </div>
+
+              {/* ══════════════════════════════════════════════════════════════
+                  SUB-BAB 1: PRIMARY GOALS (SESUAI SCHEDULE & DOKUMEN RESMI)
+                  ══════════════════════════════════════════════════════════════ */}
+              {(() => {
+                const effectivePrimaryGoals: PrimaryGoalItem[] = (reportData.primaryGoals && reportData.primaryGoals.length > 0)
+                  ? reportData.primaryGoals
+                  : generatePrimaryGoalsFromEquipments(
+                      (reportData.progressPmTable19 || []).map(p => String(p.activity || '')).filter(Boolean).length > 0
+                        ? (reportData.progressPmTable19 || []).map(p => String(p.activity || '')).filter(Boolean)
+                        : (reportData.scheduleTable1 || []).map(s => String(s.device || '')).filter(Boolean)
+                    );
+
+                return (
+                  <div className="my-4 border border-slate-200 bg-white rounded-xl p-4 sm:p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-3">
+                      <div>
+                        <h3 className="text-base font-bold text-blue-900 tracking-tight flex items-center gap-2">
+                          <span>1. Primary Goals</span>
+                          <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full font-sans">
+                            {effectivePrimaryGoals.length} Equipment Sesuai Schedule
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5 font-sans">
+                          Tujuan utama pemeliharaan preventif per peralatan (Bilingual: English + Bahasa Indonesia miring)
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 print:hidden font-sans">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pmEqs = (reportData.progressPmTable19 || []).map(p => String(p.activity || '')).filter(Boolean);
+                            const eqs = pmEqs.length > 0 ? pmEqs : (reportData.scheduleTable1 || []).map(s => String(s.device || '')).filter(Boolean);
+                            if (eqs.length === 0) {
+                              toast.error('Tidak ada data equipment di schedule untuk disinkronkan');
+                              return;
+                            }
+                            const syncedGoals = generatePrimaryGoalsFromEquipments(eqs);
+                            setReportData(prev => prev ? ({ ...prev, primaryGoals: syncedGoals }) : prev);
+                            toast.success(`Berhasil menyinkronkan ${syncedGoals.length} Primary Goals dari schedule!`);
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors shadow-xs cursor-pointer"
+                          title="Sinkronkan ulang daftar equipment dan primary goals dari schedule atau Tabel 19"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Sinkronkan dari Schedule</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = [...effectivePrimaryGoals];
+                            const nextNo = `1.${current.length + 1}`;
+                            const def = getEquipmentPrimaryGoal('General Equipment');
+                            current.push({
+                              id: `goal-${Date.now()}`,
+                              no: nextNo,
+                              equipment: 'Equipment Baru',
+                              goalEn: def.en,
+                              goalId: def.id
+                            });
+                            setReportData(prev => prev ? ({ ...prev, primaryGoals: current }) : prev);
+                            toast.success('Primary Goal berhasil ditambahkan');
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Tambah Goal</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Print / PDF Document Layout Sesuai Screenshot 2 */}
+                    <div className="hidden print:block space-y-4 font-serif">
+                      <p className="font-bold text-[11pt] text-slate-900">1. Primary Goals</p>
+                      {effectivePrimaryGoals.map((g, gIdx) => (
+                        <div key={g.id || gIdx} className="space-y-1 pl-2">
+                          <p className="font-bold text-[10.5pt] text-slate-900">
+                            {g.no || `1.${gIdx + 1}`} Primary Goals {g.equipment}
+                          </p>
+                          <p className="text-[10pt] text-slate-800 leading-relaxed text-justify">
+                            {g.goalEn}
+                          </p>
+                          <p className="text-[10pt] italic text-slate-700 leading-relaxed text-justify">
+                            {g.goalId}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Interactive Web Editor View */}
+                    <div className="print:hidden space-y-3 font-sans">
+                      {effectivePrimaryGoals.map((goal, gIdx) => (
+                        <div
+                          key={goal.id || gIdx}
+                          className="group border border-slate-200 hover:border-blue-300 rounded-lg p-3.5 bg-slate-50/70 hover:bg-white transition-all shadow-xs"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-200/80">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="font-bold text-blue-900 text-xs px-2 py-0.5 bg-blue-100/70 rounded font-mono">
+                                {goal.no || `1.${gIdx + 1}`}
+                              </span>
+                              <span className="text-xs text-slate-500 font-medium">Primary Goals:</span>
+                              <input
+                                type="text"
+                                value={goal.equipment}
+                                onChange={(e) => {
+                                  const current = [...effectivePrimaryGoals];
+                                  current[gIdx] = { ...current[gIdx], equipment: e.target.value };
+                                  setReportData(prev => prev ? ({ ...prev, primaryGoals: current }) : prev);
+                                }}
+                                className="text-xs font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white px-1.5 py-0.5 rounded outline-none flex-1 max-w-sm transition-colors"
+                                placeholder="Nama Equipment..."
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const current = effectivePrimaryGoals.filter((_, i) => i !== gIdx).map((item, newIdx) => ({
+                                  ...item,
+                                  no: `1.${newIdx + 1}`
+                                }));
+                                setReportData(prev => prev ? ({ ...prev, primaryGoals: current }) : prev);
+                                toast.success(`Goal ${goal.equipment} dihapus`);
+                              }}
+                              className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                              title="Hapus Primary Goal ini"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div>
+                              <div className="flex items-center justify-between mb-0.5">
+                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                                  English Goal Description
+                                </label>
+                                <span className="text-[10px] text-slate-400">Regular Text</span>
+                              </div>
+                              <textarea
+                                rows={2}
+                                value={goal.goalEn}
+                                onChange={(e) => {
+                                  const current = [...effectivePrimaryGoals];
+                                  current[gIdx] = { ...current[gIdx], goalEn: e.target.value };
+                                  setReportData(prev => prev ? ({ ...prev, primaryGoals: current }) : prev);
+                                }}
+                                className="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-md p-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none leading-relaxed transition-all resize-y"
+                                placeholder="To maintain reliable and efficient performance..."
+                              />
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between mb-0.5">
+                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                                  Deskripsi Bahasa Indonesia
+                                </label>
+                                <span className="text-[10px] text-slate-400 italic">Huruf Miring (Italic)</span>
+                              </div>
+                              <textarea
+                                rows={2}
+                                value={goal.goalId}
+                                onChange={(e) => {
+                                  const current = [...effectivePrimaryGoals];
+                                  current[gIdx] = { ...current[gIdx], goalId: e.target.value };
+                                  setReportData(prev => prev ? ({ ...prev, primaryGoals: current }) : prev);
+                                }}
+                                className="w-full text-xs text-slate-800 italic bg-white border border-slate-200 rounded-md p-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none leading-relaxed transition-all resize-y"
+                                placeholder="Menjaga kinerja yang andal dan efisien..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               
               <p className="font-bold text-center text-slate-900 text-sm my-2">
                 Table 19. KPI Metric

@@ -33,7 +33,8 @@ import {
   FullMonthlyReportData,
   EquipmentDetailItem,
   buildAllDynamicEquipmentTables,
-  buildDynamicListOfTables
+  buildDynamicListOfTables,
+  generatePrimaryGoalsFromEquipments
 } from './monthlyReportData';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from './engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -1101,18 +1102,79 @@ export async function generateMonthlyReportDOCX(
   bodyChildren.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
-      spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "4. Maintenance Objectives & KPI Metrics", bold: true, size: 22, color: "1E40AF" })]
-    }),
+      spacing: { before: 400, after: 160 },
+      children: [new TextRun({ text: "4. Maintenance Objectives", bold: true, size: 24, color: "1E40AF" })]
+    })
+  );
+
+  // 1. Primary Goals per Equipment (Sesuai Format Resmi NeutraDC Foto 2)
+  const pmItems = data.progressPmTable19 || [];
+  let primaryGoals = data.primaryGoals || [];
+  if (primaryGoals.length === 0 && pmItems.length > 0) {
+    primaryGoals = generatePrimaryGoalsFromEquipments(pmItems.map(p => String(p.activity || '')));
+  } else if (primaryGoals.length === 0 && data.scheduleTable1 && data.scheduleTable1.length > 0) {
+    primaryGoals = generatePrimaryGoalsFromEquipments(data.scheduleTable1.map(s => String(s.device || '')));
+  }
+
+  if (primaryGoals.length > 0) {
+    bodyChildren.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 200, after: 120 },
+        children: [new TextRun({ text: "1. Primary Goals", bold: true, size: 22 })]
+      })
+    );
+
+    primaryGoals.forEach((goal, idx) => {
+      const goalNo = goal.no || `1.${idx + 1}`;
+      bodyChildren.push(
+        // Sub-heading: 1.X Primary Goals [Equipment]
+        new Paragraph({
+          spacing: { before: 180, after: 60 },
+          children: [
+            new TextRun({
+              text: `${goalNo} Primary Goals ${goal.equipment}`,
+              bold: true,
+              size: 21
+            })
+          ]
+        }),
+        // Paragraf Bahasa Inggris (Regular)
+        new Paragraph({
+          spacing: { before: 0, after: 60 },
+          alignment: AlignmentType.JUSTIFIED,
+          children: [
+            new TextRun({
+              text: goal.goalEn,
+              size: 20
+            })
+          ]
+        }),
+        // Paragraf Bahasa Indonesia (Italic / Miring)
+        new Paragraph({
+          spacing: { before: 0, after: 180 },
+          alignment: AlignmentType.JUSTIFIED,
+          children: [
+            new TextRun({
+              text: goal.goalId,
+              italics: true,
+              size: 20
+            })
+          ]
+        })
+      );
+    });
+  }
+
+  bodyChildren.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 200, after: 200 },
+      spacing: { before: 300, after: 180 },
       children: [new TextRun({ text: "Table 19. KPI Metric", bold: true, size: 20 })]
     })
   );
 
   // 1. Table Progress Preventive Maintenance (Foto 1 Atas)
-  const pmItems = data.progressPmTable19 || [];
   const progressPmDocxRows: TableRow[] = [
     // Header Row 1: Title Banner
     new TableRow({
