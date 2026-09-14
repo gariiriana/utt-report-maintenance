@@ -24,6 +24,7 @@ import {
     Sparkles,
     AlertTriangle,
     RotateCcw,
+    RotateCw,
     CheckCircle2,
     Send,
     Check,
@@ -45,6 +46,7 @@ import {
     deleteDoc,
     serverTimestamp,
     getDocs,
+    getDocsFromCache,
     writeBatch,
     deleteField
 } from 'firebase/firestore';
@@ -404,6 +406,74 @@ interface FileManagementProps {
     readOnly?: boolean;
 }
 
+// ============================================================================
+// MODULE-LEVEL SHARED STORE (Mencegah fetch berulang saat navigasi 16 folder)
+// ============================================================================
+interface CachedCollection {
+    files: FileData[];
+    timestamp: number;
+}
+
+const sharedCollectionsCache: { [col: string]: CachedCollection } = {};
+let sharedCorrectiveCache: { files: FileData[]; timestamp: number } | null = null;
+const SHARED_FILES_CACHE_TTL = 10 * 60 * 1000; // 10 menit TTL
+
+export const invalidateFileManagementCache = (colName?: string) => {
+    if (colName) {
+        delete sharedCollectionsCache[colName];
+    } else {
+        Object.keys(sharedCollectionsCache).forEach(k => delete sharedCollectionsCache[k]);
+        sharedCorrectiveCache = null;
+    }
+};
+
+const parseCorrectiveDocs = (docs: any[]): FileData[] => {
+    return docs.map((docSnap: any) => {
+        const report = docSnap.data();
+        const isSLA = report.reportType === 'SLA';
+        const isPIR = report.reportType === 'PIR';
+        const repDate = report.reportedAt?.toDate ? report.reportedAt.toDate() : (report.reportedAt ? new Date(report.reportedAt) : new Date());
+        const qtr = report.quarter || `Q${Math.floor(repDate.getMonth() / 3) + 1}`;
+        const yr = report.year || repDate.getFullYear().toString();
+
+        let catName = 'Report CM';
+        let fileNameStr = report.incidentName || report.issue || 'Report CM PDF';
+        let fType = 'application/pdf';
+
+        if (isSLA) {
+            catName = 'Form SLA/SLG';
+            fileNameStr = report.ticketName || report.issue || 'Form SLA/SLG';
+            fType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        } else if (isPIR) {
+            catName = 'Report PIR';
+            fileNameStr = report.incidentName ? `Report PIR (${report.incidentName})` : 'Report PIR PDF';
+            fType = 'application/pdf';
+        }
+
+        return {
+            id: `cm_${docSnap.id}`,
+            fileName: fileNameStr,
+            fileSize: 1024,
+            fileType: fType,
+            category: catName,
+            quarter: qtr,
+            year: yr,
+            uploadedBy: report.reportedBy || '',
+            uploadedByEmail: report.reportedByEmail || 'Standby Engineer',
+            uploadedAt: report.reportedAt || report.createdAt,
+            totalChunks: 1,
+            isCorrectiveReport: true,
+            reportType: report.reportType || 'CM_PDF',
+            originalReport: { id: docSnap.id, ...report },
+            deleteRequested: report.deleteRequested || false,
+            deleteRequestedBy: report.deleteRequestedBy || '',
+            deleteRequestedTo: report.deleteRequestedTo || '',
+            deleteRequestedAt: report.deleteRequestedAt || null,
+            deleteReason: report.deleteReason || ''
+        } as FileData;
+    });
+};
+
 export function FileManagement({
     collectionName = 'files',
     allowUpload: propAllowUpload,
@@ -549,6 +619,15 @@ export function FileManagement({
     const [showAllInFolder, setShowAllInFolder] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    const handleManualRefresh = () => {
+        delete sharedCollectionsCache[collectionName];
+        sharedCorrectiveCache = null;
+        setLoading(true);
+        setRefreshTrigger(prev => prev + 1);
+        toast.info('Menyegarkan data berkas dari server...');
+    };
 
     useEffect(() => {
         if (!user) {
@@ -557,105 +636,211 @@ export function FileManagement({
             return;
         }
 
-        let isoFiles: FileData[] = [];
-        let correctiveFiles: FileData[] = [];
+        const isCorrectiveTarget = !initialFolder || 
+            initialFolder === 'Report CM' || 
+            initialFolder === 'Form SLA/SLG' || 
+            initialFolder === 'SLA/SLG' || 
+            initialFolder === 'Report PIR' || 
+            initialFolder === 'Report CM, SLA & PIR' || 
+            Boolean(propSearchQuery && propSearchQuery.trim().length > 0);
 
-        const updateAllFiles = () => {
+        const isoCached = sharedCollectionsCache[collectionName];
+        const isIsoFresh = Boolean(isoCached && (Date.now() - isoCached.timestamp < SHARED_FILES_CACHE_TTL));
+        const isCorrectiveFresh = Boolean(sharedCorrectiveCache && (Date.now() - sharedCorrectiveCache.timestamp < SHARED_FILES_CACHE_TTL));
+
+        // 1. Cek in-memory shared cache: Jika data lengkap & segar, gunakan 100% tanpa read Firestore (0 reads!)
+        if (isIsoFresh && (!isCorrectiveTarget || isCorrectiveFresh)) {
+            const combined = [
+                ...(isoCached ? isoCached.files : []),
+                ...(isCorrectiveTarget && sharedCorrectiveCache ? sharedCorrectiveCache.files : [])
+            ];
+            setFiles(combined);
+            setLoading(false);
+            return; // 0 reads! Navigasi antar-16 folder secepat kilat
+        }
+
+        // Stale-while-revalidate: jika ada data di cache walau sudah kadaluwarsa, tampilkan dulu agar tidak blank
+        let isoFiles: FileData[] = isoCached ? [...isoCached.files] : [];
+        let correctiveFiles: FileData[] = (isCorrectiveTarget && sharedCorrectiveCache) ? [...sharedCorrectiveCache.files] : [];
+        if (isoFiles.length > 0 || correctiveFiles.length > 0) {
             setFiles([...isoFiles, ...correctiveFiles]);
             setLoading(false);
-        };
+        }
 
-        const qISO = query(collection(db, collectionName));
-        const unsubscribeISO = onSnapshot(
-            qISO,
-            (snapshot) => {
-                isoFiles = snapshot.docs
-                    .map((doc) => ({
-                        id: doc.id,
-                        ...doc.data(),
-                    }))
-                    .filter((file: any) => file.status !== 'uploading')
-                    .sort((a: any, b: any) => {
-                        const getMillis = (val: any) => {
-                            if (!val) return Date.now();
-                            if (typeof val.toMillis === 'function') return val.toMillis();
-                            if (val.seconds) return val.seconds * 1000;
-                            if (val instanceof Date) return val.getTime();
-                            return Date.now();
-                        };
-                        return getMillis(b.uploadedAt) - getMillis(a.uploadedAt);
-                    }) as FileData[];
-                updateAllFiles();
-            },
-            (error: any) => {
-                console.error('Error loading files:', error);
-                if (error?.code !== 'permission-denied') {
-                    toast.error('Gagal memuat file');
-                }
+        let isoLoaded = isIsoFresh;
+        let correctiveLoaded = !isCorrectiveTarget || isCorrectiveFresh;
+
+        const updateAllFiles = () => {
+            sharedCollectionsCache[collectionName] = {
+                files: isoFiles,
+                timestamp: Date.now()
+            };
+            if (isCorrectiveTarget) {
+                sharedCorrectiveCache = {
+                    files: correctiveFiles,
+                    timestamp: Date.now()
+                };
+            }
+            setFiles([...isoFiles, ...correctiveFiles]);
+            if (isoLoaded && correctiveLoaded) {
                 setLoading(false);
             }
-        );
+        };
 
-        const qCorrective = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'));
-        const unsubscribeCorrective = onSnapshot(
-            qCorrective,
-            (snapshot) => {
-                correctiveFiles = snapshot.docs.map((docSnap) => {
-                    const report = docSnap.data();
-                    const isSLA = report.reportType === 'SLA';
-                    const isPIR = report.reportType === 'PIR';
-                    const repDate = report.reportedAt?.toDate ? report.reportedAt.toDate() : (report.reportedAt ? new Date(report.reportedAt) : new Date());
-                    const qtr = report.quarter || `Q${Math.floor(repDate.getMonth() / 3) + 1}`;
-                    const yr = report.year || repDate.getFullYear().toString();
+        // Safety timeout
+        const safetyTimer = setTimeout(() => {
+            setLoading(false);
+        }, 4000);
 
-                    let catName = 'Report CM';
-                    let fileNameStr = report.incidentName || report.issue || 'Report CM PDF';
-                    let fType = 'application/pdf';
-
-                    if (isSLA) {
-                        catName = 'Form SLA/SLG';
-                        fileNameStr = report.ticketName || report.issue || 'Form SLA/SLG';
-                        fType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-                    } else if (isPIR) {
-                        catName = 'Report PIR';
-                        fileNameStr = report.incidentName ? `Report PIR (${report.incidentName})` : 'Report PIR PDF';
-                        fType = 'application/pdf';
+        // ============ CACHE-FIRST (IndexedDB lokal Firestore) ============
+        (async () => {
+            if (!isIsoFresh && isoFiles.length === 0) {
+                try {
+                    const qISOCache = query(collection(db, collectionName));
+                    const cachedISO = await getDocsFromCache(qISOCache).catch(() => null);
+                    if (cachedISO && cachedISO.size > 0) {
+                        isoFiles = cachedISO.docs
+                            .map((doc) => ({
+                                id: doc.id,
+                                ...doc.data(),
+                            }))
+                            .filter((file: any) => file.status !== 'uploading')
+                            .sort((a: any, b: any) => {
+                                const getMillis = (val: any) => {
+                                    if (!val) return Date.now();
+                                    if (typeof val.toMillis === 'function') return val.toMillis();
+                                    if (val.seconds) return val.seconds * 1000;
+                                    if (val instanceof Date) return val.getTime();
+                                    return Date.now();
+                                };
+                                return getMillis(b.uploadedAt) - getMillis(a.uploadedAt);
+                            }) as FileData[];
+                        isoLoaded = true;
+                        updateAllFiles();
                     }
-
-                    return {
-                        id: `cm_${docSnap.id}`,
-                        fileName: fileNameStr,
-                        fileSize: 1024,
-                        fileType: fType,
-                        category: catName,
-                        quarter: qtr,
-                        year: yr,
-                        uploadedBy: report.reportedBy || '',
-                        uploadedByEmail: report.reportedByEmail || 'Standby Engineer',
-                        uploadedAt: report.reportedAt || report.createdAt,
-                        totalChunks: 1,
-                        isCorrectiveReport: true,
-                        reportType: report.reportType || 'CM_PDF',
-                        originalReport: { id: docSnap.id, ...report },
-                        deleteRequested: report.deleteRequested || false,
-                        deleteRequestedBy: report.deleteRequestedBy || '',
-                        deleteRequestedTo: report.deleteRequestedTo || '',
-                        deleteRequestedAt: report.deleteRequestedAt || null,
-                        deleteReason: report.deleteReason || ''
-                    } as FileData;
-                });
-                updateAllFiles();
-            },
-            (error: any) => {
-                console.error('Error loading corrective reports for file manager:', error);
+                } catch {
+                    // Cache miss
+                }
             }
-        );
+
+            if (isCorrectiveTarget && !isCorrectiveFresh && correctiveFiles.length === 0) {
+                try {
+                    const qCorrectiveCache = query(collection(db, 'corrective_reports'));
+                    const cachedCorrective = await getDocsFromCache(qCorrectiveCache).catch(() => null);
+                    if (cachedCorrective && cachedCorrective.size > 0) {
+                        correctiveFiles = parseCorrectiveDocs(cachedCorrective.docs);
+                        correctiveLoaded = true;
+                        updateAllFiles();
+                    }
+                } catch {
+                    // Cache miss
+                }
+            }
+        })();
+
+        // ============ REAL-TIME LISTENERS (Hanya jika belum segar di memory) ============
+        let unsubscribeISO: (() => void) = () => {};
+        if (!isIsoFresh) {
+            const qISO = query(collection(db, collectionName));
+            unsubscribeISO = onSnapshot(
+                qISO,
+                (snapshot) => {
+                    isoFiles = snapshot.docs
+                        .map((doc) => ({
+                            id: doc.id,
+                            ...doc.data(),
+                        }))
+                        .filter((file: any) => file.status !== 'uploading')
+                        .sort((a: any, b: any) => {
+                            const getMillis = (val: any) => {
+                                if (!val) return Date.now();
+                                if (typeof val.toMillis === 'function') return val.toMillis();
+                                if (val.seconds) return val.seconds * 1000;
+                                if (val instanceof Date) return val.getTime();
+                                return Date.now();
+                            };
+                            return getMillis(b.uploadedAt) - getMillis(a.uploadedAt);
+                        }) as FileData[];
+                    isoLoaded = true;
+                    updateAllFiles();
+                },
+                (error: any) => {
+                    const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase().includes('quota');
+                    if (isQuota) {
+                        console.warn('[FileManagement] Firestore quota reached on files listener, using local cache.');
+                    } else {
+                        console.error('Error loading files:', error);
+                        if (error?.code !== 'permission-denied') {
+                            toast.error('Gagal memuat file');
+                        }
+                    }
+                    isoLoaded = true;
+                    setLoading(false);
+                }
+            );
+        } else {
+            isoLoaded = true;
+        }
+
+        const unsubCorrectiveRef = { current: null as (() => void) | null };
+
+        if (isCorrectiveTarget && !isCorrectiveFresh) {
+            const setupCorrectiveListener = (useOrderBy: boolean) => {
+                const qCorrective = useOrderBy
+                    ? query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'))
+                    : query(collection(db, 'corrective_reports'));
+                return onSnapshot(
+                    qCorrective,
+                    (snapshot) => {
+                        const parsedFiles = parseCorrectiveDocs(snapshot.docs);
+
+                        if (!useOrderBy) {
+                            parsedFiles.sort((a: any, b: any) => {
+                                const getMillis = (val: any) => {
+                                    if (!val) return 0;
+                                    if (typeof val.toMillis === 'function') return val.toMillis();
+                                    if (val.seconds) return val.seconds * 1000;
+                                    if (val instanceof Date) return val.getTime();
+                                    return 0;
+                                };
+                                return getMillis(b.uploadedAt) - getMillis(a.uploadedAt);
+                            });
+                        }
+
+                        correctiveFiles = parsedFiles;
+                        correctiveLoaded = true;
+                        updateAllFiles();
+                    },
+                    (error: any) => {
+                        const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase().includes('quota');
+                        if (isQuota) {
+                            console.warn('[FileManagement] Firestore quota reached on corrective listener.');
+                        } else {
+                            console.error('Error loading corrective reports for file manager:', error);
+                        }
+                        correctiveLoaded = true;
+                        setLoading(false);
+
+                        if (useOrderBy && error?.code === 'failed-precondition' && error?.message?.includes('index')) {
+                            console.warn('[FileManagement] Index missing for corrective_reports orderBy, falling back to client-side sort');
+                            unsubCorrectiveRef.current?.();
+                            unsubCorrectiveRef.current = setupCorrectiveListener(false);
+                        }
+                    }
+                );
+            };
+
+            unsubCorrectiveRef.current = setupCorrectiveListener(true);
+        } else {
+            correctiveLoaded = true;
+        }
 
         return () => {
+            clearTimeout(safetyTimer);
             unsubscribeISO();
-            unsubscribeCorrective();
+            unsubCorrectiveRef.current?.();
         };
-    }, [user, collectionName]);
+    }, [user, collectionName, initialFolder, refreshTrigger]);
 
     const chunkToBase64 = (blob: Blob): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -885,6 +1070,8 @@ export function FileManagement({
 
             // Step 4: Kirim 1 notifikasi rangkuman batch (tidak membanjiri Firestore dengan 150 kali write)
             if (successCount > 0) {
+                delete sharedCollectionsCache[collectionName];
+                setRefreshTrigger(prev => prev + 1);
                 try {
                     await sendFileNotification({
                         title: `${successCount} Berkas Baru: ${finalCategory}`,
@@ -1018,6 +1205,10 @@ export function FileManagement({
                 createdAt: serverTimestamp()
             });
 
+            delete sharedCollectionsCache[collectionName];
+            sharedCorrectiveCache = null;
+            setRefreshTrigger(prev => prev + 1);
+
             toast.success(`Pengajuan hapus ${targetFileIds.length} berkas berhasil dikirim ke QC DME (qcdme@dme.com). Menunggu persetujuan!`, { id: toastId });
             setDeleteModalOpen(false);
             setFileToDelete(null);
@@ -1064,6 +1255,10 @@ export function FileManagement({
                 toast.success(`Pengajuan hapus berhasil dibatalkan. Berkas kembali ke status normal.`, { id: toastId });
             }
 
+            delete sharedCollectionsCache[collectionName];
+            sharedCorrectiveCache = null;
+            setRefreshTrigger(prev => prev + 1);
+
             setDeleteModalOpen(false);
             setFileToDelete(null);
             setSelectedFileIds([]);
@@ -1102,6 +1297,10 @@ export function FileManagement({
                     await batch.commit();
                 }
             }
+
+            delete sharedCollectionsCache[collectionName];
+            sharedCorrectiveCache = null;
+            setRefreshTrigger(prev => prev + 1);
 
             toast.success(`Berhasil menghapus ${targetFileIds.length} berkas secara permanen!`, { id: toastId });
             setSelectedFileIds([]);
@@ -1964,13 +2163,25 @@ export function FileManagement({
                             </nav>
                         </div>
 
-                        {/* Indikator Jumlah Berkas di Sebelah Kanan Baris Navigasi */}
-                        {selectedFolder && (
-                            <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-xl shrink-0">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span>Total: <strong className="text-slate-800">{displayFiles.length}</strong> berkas aktif</span>
-                            </div>
-                        )}
+                        {/* Indikator Jumlah Berkas & Tombol Segarkan di Sebelah Kanan Baris Navigasi */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={handleManualRefresh}
+                                disabled={loading}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-800 bg-slate-100/90 hover:bg-blue-50 active:scale-95 border border-slate-200/90 hover:border-blue-300 rounded-xl transition-all shadow-2xs cursor-pointer"
+                                title="Segarkan data berkas dari server"
+                            >
+                                <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : 'text-slate-600'}`} />
+                                <span className="hidden sm:inline">Segarkan</span>
+                            </button>
+                            {selectedFolder && (
+                                <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-xl">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>Total: <strong className="text-slate-800">{displayFiles.length}</strong> berkas aktif</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Baris 2: Action Toolbar (Hanya Tampil Saat Berada di Dalam Folder) */}

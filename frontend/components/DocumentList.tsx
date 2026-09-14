@@ -9,8 +9,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload } from 'lucide-react';
-import { collection, query, getDocs, getDocsFromCache, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw } from 'lucide-react';
+import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -278,6 +278,18 @@ export const getWeekOfMonth = (date: Date) => {
   return Math.ceil((dayOfMonth + firstDayOfMonth.getDay()) / 7);
 };
 
+// ============================================================================
+// MODULE-LEVEL IN-MEMORY CACHE (Mencegah lonjakan Firestore reads saat ganti tab)
+// ============================================================================
+const memoryCachedDocs: { [key: string]: { docs: ExcelDocument[]; timestamp: number } } = {};
+const MEMORY_CACHE_TTL = 10 * 60 * 1000; // 10 menit TTL
+
+export const invalidateDocumentsCache = () => {
+  for (const key of Object.keys(memoryCachedDocs)) {
+    delete memoryCachedDocs[key];
+  }
+};
+
 interface DocumentListProps {
   onEdit?: (doc: ExcelDocument) => void;
   filterOverride?: 'hse_utt';
@@ -408,82 +420,84 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     scrollToContent(isRoot);
   }, [currentLevel, selectedCategory, selectedMonth, selectedWeek, selectedMaintenance]);
 
-  const fetchDocuments = useCallback(async () => {
-    if (!user) return;
+  // Ref for aborting stale fetchDocuments calls when auth/filter changes
+  const fetchIdRef = useRef(0);
+
+  /**
+   * Parses a Firestore snapshot into ExcelDocument[] using a mapper function.
+   * Pure helper — no side-effects.
+   */
+  const parseSnapshot = (
+    snapshot: any,
+    mapper: (docId: string, data: any) => ExcelDocument
+  ): ExcelDocument[] => {
+    const result: ExcelDocument[] = [];
+    if (!snapshot) return result;
+    snapshot.forEach((docSnap: any) => {
+      const data = docSnap.data({ serverTimestamps: 'estimate' }) || docSnap.data();
+      result.push(mapper(docSnap.id, data));
+    });
+    return result;
+  };
+
+  const fetchDocuments = useCallback(async (isForceRefresh = false) => {
+    // Guard: wait until auth fully resolves role (prevents double-fetch on login)
+    if (!user || userRole === undefined) return;
+
+    const currentFetchId = ++fetchIdRef.current;
 
     try {
-      setLoading(true);
       setFetchError(null);
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT')), 30000)
-      );
+      const cacheKey = `${(user?.email || 'anon').toLowerCase().trim()}_${filterOverride || 'all'}`;
 
-      const safeFetchQuery = async (q: any) => {
-        if (!q) return null;
-        if (!navigator.onLine) {
-          try {
-            return await getDocsFromCache(q);
-          } catch {
-            return null;
-          }
+      // In-Memory Cache Check: Jangan query Firestore server jika baru di-fetch kurang dari 10 menit lalu
+      if (!isForceRefresh && memoryCachedDocs[cacheKey] && (Date.now() - memoryCachedDocs[cacheKey].timestamp < MEMORY_CACHE_TTL)) {
+        if (currentFetchId === fetchIdRef.current) {
+          setDocuments(memoryCachedDocs[cacheKey].docs);
+          setLoading(false);
+          return;
         }
-        try {
-          return await getDocs(q);
-        } catch (err) {
-          console.warn('Network getDocs failed, fallback to getDocsFromCache:', err);
-          try {
-            return await getDocsFromCache(q);
-          } catch {
-            return null;
-          }
+      }
+
+      const userEmailClean = (user?.email || '').toLowerCase().trim();
+      const isAHUUser = userEmailClean === 'ahu@gmail.com' || userEmailClean === 'ahhu@utt.com' || userEmailClean === 'ahu@utt.com' || userEmailClean === 'ahhu@gmail.com';
+      const queryEmails = isAHUUser ? ['ahu@gmail.com', 'ahhu@utt.com', 'ahu@utt.com', 'ahhu@gmail.com'] : [userEmailClean];
+
+      const normalizeCreatedBy = (email?: string | null): string => {
+        if (!email) return 'Unknown';
+        const clean = email.trim().toLowerCase();
+        if (clean === 'ahhu@utt.com' || clean === 'ahhu@gmail.com' || clean === 'ahu@utt.com' || clean === 'ahu@gmail.com') {
+          return 'ahu@gmail.com';
         }
+        return clean;
       };
 
-      const fetchAll = async () => {
-        const fetchPromises: Promise<any>[] = [];
-        const userEmailClean = (user?.email || '').toLowerCase().trim();
-        const isAHUUser = userEmailClean === 'ahu@gmail.com' || userEmailClean === 'ahhu@utt.com' || userEmailClean === 'ahu@utt.com' || userEmailClean === 'ahhu@gmail.com';
-        const queryEmails = isAHUUser ? ['ahu@gmail.com', 'ahhu@utt.com', 'ahu@utt.com', 'ahhu@gmail.com'] : [userEmailClean];
-
-        const normalizeCreatedBy = (email?: string | null): string => {
-          if (!email) return 'Unknown';
-          const clean = email.trim().toLowerCase();
-          if (clean === 'ahhu@utt.com' || clean === 'ahhu@gmail.com' || clean === 'ahu@utt.com' || clean === 'ahu@gmail.com') {
-            return 'ahu@gmail.com';
-          }
-          return clean;
-        };
+      // Build queries once (shared between cache pass and server pass)
+      const buildQueries = () => {
+        let excelQuery: any = null;
+        let pdfQuery: any = null;
+        let hseQuery: any = null;
 
         if (filterOverride !== 'hse_utt') {
           const isPrivilegedOrDME = isPrivileged || isDME;
-
           const shouldFetchExcel = !isDME || isQcDme;
           if (shouldFetchExcel) {
-            const excelQuery = isPrivilegedOrDME
+            excelQuery = isPrivilegedOrDME
               ? query(collection(db, 'excel_documents'))
               : (isAHUUser
                 ? query(collection(db, 'excel_documents'), where('createdBy', 'in', queryEmails))
                 : query(collection(db, 'excel_documents'), where('createdBy', '==', userEmailClean)));
-            fetchPromises.push(safeFetchQuery(excelQuery));
-          } else {
-            fetchPromises.push(Promise.resolve(null));
           }
-
-          const pdfQuery = isPrivilegedOrDME
+          pdfQuery = isPrivilegedOrDME
             ? query(collection(db, 'pdf_documents'))
             : (isAHUUser
               ? query(collection(db, 'pdf_documents'), where('createdBy', 'in', queryEmails))
               : query(collection(db, 'pdf_documents'), where('createdBy', '==', userEmailClean)));
-          fetchPromises.push(safeFetchQuery(pdfQuery));
-        } else {
-          fetchPromises.push(Promise.resolve(null));
-          fetchPromises.push(Promise.resolve(null));
         }
 
         const showHSE = (isAdmin || userRole === 'hse' || filterOverride === 'hse_utt') && !isDME;
         if (showHSE) {
-          let hseQuery;
           if (filterOverride === 'hse_utt') {
             hseQuery = query(collection(db, 'hse'), where('reportType', '==', 'utt'));
           } else if (isAdmin) {
@@ -491,89 +505,113 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           } else {
             hseQuery = query(collection(db, 'hse'), where('authorEmail', 'in', isAHUUser ? queryEmails : [(user.email || '').toLowerCase()]));
           }
-          fetchPromises.push(safeFetchQuery(hseQuery));
-        } else {
-          fetchPromises.push(Promise.resolve(null));
         }
 
-        const [excelSnapshot, pdfSnapshot, hseSnapshot] = await Promise.all(fetchPromises);
+        return { excelQuery, pdfQuery, hseQuery };
+      };
 
-        const excelDocs: ExcelDocument[] = [];
-        const pdfDocs: ExcelDocument[] = [];
-        const hseDocs: ExcelDocument[] = [];
+      const { excelQuery, pdfQuery, hseQuery } = buildQueries();
 
-        if (excelSnapshot) {
-          excelSnapshot.forEach((doc: any) => {
-            const data = doc.data({ serverTimestamps: 'estimate' }) || doc.data();
-            const createdAt = getTimestampDate(data, 'createdAt') || (data.maintenanceTime ? getDocumentDate(data) : new Date());
-            const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
-            excelDocs.push({
-              id: doc.id,
-              fileName: data.fileName,
-              maintenanceName: data.maintenanceName,
-              maintenanceTime: data.maintenanceTime,
-              specificDetail: data.specificDetail,
-              createdAt,
-              updatedAt,
-              createdBy: normalizeCreatedBy(data.createdBy),
-              fileSize: data.fileSize || 0,
-              totalPhotos: data.totalPhotos || 0,
-              photosWithImage: data.photosWithImage || 0,
-              photosData: [], // Optimized: photosData is lazily loaded on edit
-              documentType: 'excel',
-              hasAbnormal: data.hasAbnormal || false,
-              abnormalFinding: data.abnormalFinding || null,
-              atsCustomerInfo: data.atsCustomerInfo,
-              atsReportData: data.atsReportData,
-              atsTimeSpent: data.atsTimeSpent,
-              fcuCustomerInfo: data.fcuCustomerInfo,
-              fcuReportData: data.fcuReportData,
-              fcuTimeSpent: data.fcuTimeSpent,
-              deleteRequested: data.deleteRequested || false,
-              deleteRequestedBy: data.deleteRequestedBy || '',
-              deleteReason: data.deleteReason || '',
-            });
-          });
-        }
+      // Shared doc mappers
+      const mapExcel = (docId: string, data: any): ExcelDocument => {
+        const createdAt = getTimestampDate(data, 'createdAt') || (data.maintenanceTime ? getDocumentDate(data) : new Date());
+        const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
+        return {
+          id: docId,
+          fileName: data.fileName,
+          maintenanceName: data.maintenanceName,
+          maintenanceTime: data.maintenanceTime,
+          specificDetail: data.specificDetail,
+          createdAt,
+          updatedAt,
+          createdBy: normalizeCreatedBy(data.createdBy),
+          fileSize: data.fileSize || 0,
+          totalPhotos: data.totalPhotos || 0,
+          photosWithImage: data.photosWithImage || 0,
+          photosData: [], // Optimized: photosData is lazily loaded on edit
+          documentType: 'excel',
+          hasAbnormal: data.hasAbnormal || false,
+          abnormalFinding: data.abnormalFinding || null,
+          atsCustomerInfo: data.atsCustomerInfo,
+          atsReportData: data.atsReportData,
+          atsTimeSpent: data.atsTimeSpent,
+          fcuCustomerInfo: data.fcuCustomerInfo,
+          fcuReportData: data.fcuReportData,
+          fcuTimeSpent: data.fcuTimeSpent,
+          deleteRequested: data.deleteRequested || false,
+          deleteRequestedBy: data.deleteRequestedBy || '',
+          deleteReason: data.deleteReason || '',
+        };
+      };
 
-        if (pdfSnapshot) {
-          pdfSnapshot.forEach((doc: any) => {
-            const data = doc.data({ serverTimestamps: 'estimate' }) || doc.data();
-            const createdAt = getTimestampDate(data, 'createdAt') || (data.maintenanceTime ? getDocumentDate(data) : new Date());
-            const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
-            pdfDocs.push({
-              id: doc.id,
-              fileName: data.fileName,
-              maintenanceName: data.maintenanceName,
-              maintenanceTime: data.maintenanceTime,
-              specificDetail: data.specificDetail,
-              createdAt,
-              updatedAt,
-              createdBy: normalizeCreatedBy(data.createdBy),
-              fileSize: data.fileSize || 0,
-              totalPhotos: data.totalPhotos || 0,
-              photosWithImage: data.photosWithImage || 0,
-              photosData: [], // Optimized: photosData is lazily loaded on edit
-              documentType: 'pdf',
-              hasAbnormal: data.hasAbnormal || false,
-              abnormalFinding: data.abnormalFinding || null,
-              atsCustomerInfo: data.atsCustomerInfo,
-              atsReportData: data.atsReportData,
-              atsTimeSpent: data.atsTimeSpent,
-              fcuCustomerInfo: data.fcuCustomerInfo,
-              fcuReportData: data.fcuReportData,
-              fcuTimeSpent: data.fcuTimeSpent,
-              serviceReportPayload: data.serviceReportPayload || null,
-              hasServiceReport: Boolean(data.attachedSrFile || data.attachedSrBase64),
-              attachedSrFile: data.attachedSrFile || null,
-              attachedSrBase64: data.attachedSrBase64 || null,
-              deleteRequested: data.deleteRequested || false,
-              deleteRequestedBy: data.deleteRequestedBy || '',
-              deleteReason: data.deleteReason || '',
-            });
-          });
-        }
+      const mapPdf = (docId: string, data: any): ExcelDocument => {
+        const createdAt = getTimestampDate(data, 'createdAt') || (data.maintenanceTime ? getDocumentDate(data) : new Date());
+        const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
+        return {
+          id: docId,
+          fileName: data.fileName,
+          maintenanceName: data.maintenanceName,
+          maintenanceTime: data.maintenanceTime,
+          specificDetail: data.specificDetail,
+          createdAt,
+          updatedAt,
+          createdBy: normalizeCreatedBy(data.createdBy),
+          fileSize: data.fileSize || 0,
+          totalPhotos: data.totalPhotos || 0,
+          photosWithImage: data.photosWithImage || 0,
+          photosData: [], // Optimized: photosData is lazily loaded on edit
+          documentType: 'pdf',
+          hasAbnormal: data.hasAbnormal || false,
+          abnormalFinding: data.abnormalFinding || null,
+          atsCustomerInfo: data.atsCustomerInfo,
+          atsReportData: data.atsReportData,
+          atsTimeSpent: data.atsTimeSpent,
+          fcuCustomerInfo: data.fcuCustomerInfo,
+          fcuReportData: data.fcuReportData,
+          fcuTimeSpent: data.fcuTimeSpent,
+          serviceReportPayload: data.serviceReportPayload || null,
+          hasServiceReport: Boolean(data.attachedSrFile || data.attachedSrBase64),
+          attachedSrFile: data.attachedSrFile || null,
+          attachedSrBase64: data.attachedSrBase64 || null,
+          deleteRequested: data.deleteRequested || false,
+          deleteRequestedBy: data.deleteRequestedBy || '',
+          deleteReason: data.deleteReason || '',
+        };
+      };
 
+      const mapHse = (docId: string, data: any): ExcelDocument => {
+        const createdAt = getTimestampDate(data, 'createdAt') || (data.date ? getDocumentDate({ maintenanceTime: data.date }) : new Date());
+        const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
+        return {
+          id: docId,
+          fileName: `HSE_${data.aktivitas}_${data.date}.pdf`,
+          maintenanceName: data.aktivitas,
+          maintenanceTime: data.date,
+          specificDetail: data.lokasi,
+          createdAt,
+          updatedAt,
+          createdBy: normalizeCreatedBy(data.authorEmail),
+          fileSize: 0,
+          totalPhotos: data.photos?.length || 0,
+          photosWithImage: data.photos?.length || 0,
+          photosData: [],
+          documentType: 'hse',
+          hasAbnormal: data.hasAbnormal || false,
+          abnormalFinding: data.abnormalFinding || null,
+          hseType: data.hseType || 'inspection',
+          maintenanceType: data.maintenanceType || 'OTHER',
+          deleteRequested: data.deleteRequested || false,
+          deleteRequestedBy: data.deleteRequestedBy || '',
+          deleteReason: data.deleteReason || '',
+        };
+      };
+
+      /** Merges parsed docs + offline reports -> sorted ExcelDocument[] */
+      const assembleAllDocs = async (
+        excelDocs: ExcelDocument[],
+        pdfDocs: ExcelDocument[],
+        hseDocs: ExcelDocument[]
+      ): Promise<ExcelDocument[]> => {
         // Gabungkan laporan offline dari IndexedDB lokal jika belum ada di Firestore
         try {
           const offlineReports = await offlineReportStorage.getAllReports(user?.email || undefined);
@@ -612,122 +650,223 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           console.warn('Gagal memuat offline reports di DocumentList:', offErr);
         }
 
-        if (hseSnapshot) {
-          hseSnapshot.forEach((doc: any) => {
-            const data = doc.data({ serverTimestamps: 'estimate' }) || doc.data();
-            const createdAt = getTimestampDate(data, 'createdAt') || (data.date ? getDocumentDate({ maintenanceTime: data.date }) : new Date());
-            const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
-            hseDocs.push({
-              id: doc.id,
-              fileName: `HSE_${data.aktivitas}_${data.date}.pdf`,
-              maintenanceName: data.aktivitas,
-              maintenanceTime: data.date,
-              specificDetail: data.lokasi,
-              createdAt,
-              updatedAt,
-              createdBy: normalizeCreatedBy(data.authorEmail),
-              fileSize: 0,
-              totalPhotos: data.photos?.length || 0,
-              photosWithImage: data.photos?.length || 0,
-              photosData: [],
-              documentType: 'hse',
-              hasAbnormal: data.hasAbnormal || false,
-              abnormalFinding: data.abnormalFinding || null,
-              hseType: data.hseType || 'inspection',
-              maintenanceType: data.maintenanceType || 'OTHER',
-              deleteRequested: data.deleteRequested || false,
-              deleteRequestedBy: data.deleteRequestedBy || '',
-              deleteReason: data.deleteReason || '',
-            });
-          });
-        }
-
         const allDocs = filterOverride === 'hse_utt'
           ? hseDocs
           : [...excelDocs, ...pdfDocs, ...hseDocs];
 
-        const sortedAllDocs = sortDocumentsList(allDocs, sortBy);
-        setDocuments(sortedAllDocs);
+        return sortDocumentsList(allDocs, sortBy);
+      };
 
-        if (isDME) {
-          try {
-            const [filesSnap, correctiveSnap] = await Promise.all([
-              getDocs(query(collection(db, 'files'))),
-              getDocs(query(collection(db, 'corrective_reports')))
-            ]);
-            let fSize = 0;
-            filesSnap.forEach(d => { fSize += (d.data().fileSize || 0); });
-            fSize += correctiveSnap.size * 1024;
-            setManagementFilesCount(filesSnap.size + correctiveSnap.size);
-            setManagementFilesSize(fSize);
-          } catch (err) {
-            console.error('Error fetching management files count:', err);
+      // ============ PASS 1: Cache-First (instant) ============
+      // Show cached data immediately so the user sees content without waiting for the network.
+      let cacheHadData = false;
+      try {
+        const cacheResults = await Promise.allSettled([
+          excelQuery ? getDocsFromCache(excelQuery).catch(() => null) : Promise.resolve(null),
+          pdfQuery ? getDocsFromCache(pdfQuery).catch(() => null) : Promise.resolve(null),
+          hseQuery ? getDocsFromCache(hseQuery).catch(() => null) : Promise.resolve(null),
+        ]);
+
+        const cachedExcel = cacheResults[0].status === 'fulfilled' ? cacheResults[0].value : null;
+        const cachedPdf = cacheResults[1].status === 'fulfilled' ? cacheResults[1].value : null;
+        const cachedHse = cacheResults[2].status === 'fulfilled' ? cacheResults[2].value : null;
+
+        const excelDocs = parseSnapshot(cachedExcel, mapExcel);
+        const pdfDocs = parseSnapshot(cachedPdf, mapPdf);
+        const hseDocs = parseSnapshot(cachedHse, mapHse);
+
+        if (excelDocs.length > 0 || pdfDocs.length > 0 || hseDocs.length > 0) {
+          cacheHadData = true;
+          if (currentFetchId === fetchIdRef.current) {
+            const sortedCached = await assembleAllDocs(excelDocs, pdfDocs, hseDocs);
+            setDocuments(sortedCached);
+            setLoading(false); // Remove spinner immediately — user sees cached data
           }
+        }
+      } catch (cacheErr) {
+        // Cache read failed (e.g. first visit, IndexedDB disabled) — that's fine, we'll fetch from network
+        console.warn('[DocumentList] Cache pass skipped:', cacheErr);
+      }
+
+      // If cache pass yielded nothing, show loader
+      if (!cacheHadData) {
+        setLoading(true);
+      }
+
+      // Abort if a newer fetch was triggered
+      if (currentFetchId !== fetchIdRef.current) return;
+
+      // ============ PASS 2: Server sync (background) ============
+      // Each collection gets its own 12-second timeout for resilience.
+      const withTimeout = <T,>(promise: Promise<T>, ms = 12000, label = ''): Promise<T> => {
+        return Promise.race([
+          promise,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`TIMEOUT:${label}`)), ms)
+          ),
+        ]);
+      };
+
+      const safeFetchFromServer = async (q: any, label: string) => {
+        if (!q) return null;
+        if (!navigator.onLine) {
+          try { return await getDocsFromCache(q); } catch { return null; }
+        }
+        try {
+          return await withTimeout(getDocs(q), 12000, label);
+        } catch (err: any) {
+          const isQuota = err?.code === 'resource-exhausted' || err?.message?.toLowerCase().includes('quota');
+          if (isQuota) {
+            console.warn(`[DocumentList] Firestore quota reached for ${label}, fallback to local cache.`);
+          } else {
+            console.warn(`[DocumentList] Server fetch failed for ${label}, fallback to cache:`, err);
+          }
+          try { return await getDocsFromCache(q); } catch { return null; }
         }
       };
 
-      await Promise.race([fetchAll(), timeoutPromise]);
-    } catch (error: any) {
-      console.error('Error fetching documents:', error);
+      // Use Promise.allSettled so one failing collection won't break others
+      const serverResults = await Promise.allSettled([
+        safeFetchFromServer(excelQuery, 'excel_documents'),
+        safeFetchFromServer(pdfQuery, 'pdf_documents'),
+        safeFetchFromServer(hseQuery, 'hse'),
+      ]);
 
-      // Fallback ke offlineReportStorage lokal jika jaringan/koneksi offline
-      try {
-        const fallbackOffline = await offlineReportStorage.getAllReports(user?.email || undefined);
-        if (fallbackOffline.length > 0) {
-          const localDocs: ExcelDocument[] = fallbackOffline.map(offDoc => {
-            const createdAt = offDoc.createdAt ? new Date(offDoc.createdAt) : new Date();
-            const updatedAt = offDoc.updatedAt ? new Date(offDoc.updatedAt) : createdAt;
-            return {
-              id: offDoc.id,
-              fileName: offDoc.fileName,
-              maintenanceName: offDoc.maintenanceName,
-              maintenanceTime: offDoc.maintenanceTime,
-              specificDetail: offDoc.specificDetail,
-              createdAt,
-              updatedAt,
-              createdBy: offDoc.createdBy || 'Teknisi DME',
-              fileSize: offDoc.fileSize || 0,
-              totalPhotos: offDoc.totalPhotos || 0,
-              photosWithImage: offDoc.photosWithImage || 0,
-              photosData: [],
-              documentType: offDoc.documentType || 'pdf',
-              hasAbnormal: offDoc.hasAbnormal || false,
-              serviceReportPayload: offDoc.serviceReportPayload || null,
-              hasServiceReport: Boolean(offDoc.attachedSrFile || offDoc.attachedSrBase64),
-              attachedSrFile: offDoc.attachedSrFile || null,
-              attachedSrBase64: offDoc.attachedSrBase64 || null,
-              deleteRequested: false,
-              deleteRequestedBy: '',
-              deleteReason: '',
-            };
-          });
-          const sortedLocalDocs = sortDocumentsList(localDocs, sortBy);
-          setDocuments(sortedLocalDocs);
+      // Abort if a newer fetch was triggered
+      if (currentFetchId !== fetchIdRef.current) return;
+
+      const serverExcel = serverResults[0].status === 'fulfilled' ? serverResults[0].value : null;
+      const serverPdf = serverResults[1].status === 'fulfilled' ? serverResults[1].value : null;
+      const serverHse = serverResults[2].status === 'fulfilled' ? serverResults[2].value : null;
+
+      const excelDocs = parseSnapshot(serverExcel, mapExcel);
+      const pdfDocs = parseSnapshot(serverPdf, mapPdf);
+      const hseDocs = parseSnapshot(serverHse, mapHse);
+
+      // Log partial failures but don't show error UI if cache data is on screen
+      const failedCollections: string[] = [];
+      if (serverResults[0].status === 'rejected') failedCollections.push('Excel');
+      if (serverResults[1].status === 'rejected') failedCollections.push('PDF');
+      if (serverResults[2].status === 'rejected') failedCollections.push('HSE');
+      if (failedCollections.length > 0) {
+        console.warn('[DocumentList] Partial fetch failures:', failedCollections);
+      }
+
+      const hasAnyServerData = excelDocs.length > 0 || pdfDocs.length > 0 || hseDocs.length > 0;
+
+      if (hasAnyServerData || failedCollections.length < 3) {
+        // At least some server data retrieved successfully — update UI
+        const sortedServer = await assembleAllDocs(excelDocs, pdfDocs, hseDocs);
+        if (currentFetchId === fetchIdRef.current) {
+          setDocuments(sortedServer);
+          memoryCachedDocs[cacheKey] = {
+            docs: sortedServer,
+            timestamp: Date.now(),
+          };
           setFetchError(null);
-          toast.info('Mode Offline: Memuat dokumen arsip dari memori lokal');
-          return;
+          // Inform user about partial failures without blocking
+          if (failedCollections.length > 0 && !cacheHadData) {
+            toast.warning(`Sebagian data (${failedCollections.join(', ')}) gagal dimuat. Data yang tersedia tetap ditampilkan.`, { duration: 4000 });
+          }
         }
-      } catch {}
+      } else if (!cacheHadData) {
+        // All 3 collections failed AND no cache data — attempt offline fallback
+        try {
+          const fallbackOffline = await offlineReportStorage.getAllReports(user?.email || undefined);
+          if (fallbackOffline.length > 0) {
+            const localDocs: ExcelDocument[] = fallbackOffline.map(offDoc => {
+              const createdAt = offDoc.createdAt ? new Date(offDoc.createdAt) : new Date();
+              const updatedAt = offDoc.updatedAt ? new Date(offDoc.updatedAt) : createdAt;
+              return {
+                id: offDoc.id,
+                fileName: offDoc.fileName,
+                maintenanceName: offDoc.maintenanceName,
+                maintenanceTime: offDoc.maintenanceTime,
+                specificDetail: offDoc.specificDetail,
+                createdAt,
+                updatedAt,
+                createdBy: offDoc.createdBy || 'Teknisi DME',
+                fileSize: offDoc.fileSize || 0,
+                totalPhotos: offDoc.totalPhotos || 0,
+                photosWithImage: offDoc.photosWithImage || 0,
+                photosData: [],
+                documentType: offDoc.documentType || 'pdf',
+                hasAbnormal: offDoc.hasAbnormal || false,
+                serviceReportPayload: offDoc.serviceReportPayload || null,
+                hasServiceReport: Boolean(offDoc.attachedSrFile || offDoc.attachedSrBase64),
+                attachedSrFile: offDoc.attachedSrFile || null,
+                attachedSrBase64: offDoc.attachedSrBase64 || null,
+                deleteRequested: false,
+                deleteRequestedBy: '',
+                deleteReason: '',
+              };
+            });
+            if (currentFetchId === fetchIdRef.current) {
+              setDocuments(sortDocumentsList(localDocs, sortBy));
+              setFetchError(null);
+              toast.info('Mode Offline: Memuat dokumen arsip dari memori lokal');
+            }
+          } else {
+            if (currentFetchId === fetchIdRef.current) {
+              setFetchError('Gagal memuat dokumen. Periksa koneksi internet Anda.');
+              toast.error('Gagal memuat dokumen');
+            }
+          }
+        } catch {
+          if (currentFetchId === fetchIdRef.current) {
+            setFetchError('Gagal memuat dokumen. Periksa koneksi internet Anda.');
+            toast.error('Gagal memuat dokumen');
+          }
+        }
+      }
+      // else: cacheHadData is true and all server fetches failed → user keeps seeing cached data silently
 
-      if (error?.message === 'TIMEOUT') {
-        setFetchError('Koneksi ke server terlalu lama. Pastikan internet stabil dan tidak ada VPN/firewall yang memblokir.');
-        toast.error('Timeout: gagal memuat dokumen', { duration: 5000 });
-      } else if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
-        setFetchError('Database index diperlukan. Klik link di console browser untuk buat index.');
-        toast.error('Database index diperlukan. Klik link di console browser untuk buat index.', {
-          duration: 8000,
-        });
-      } else {
-        setFetchError('Gagal memuat dokumen. Periksa koneksi internet Anda.');
-        toast.error('Gagal memuat dokumen');
+      // ============ DME Badge Count: non-blocking background task ============
+      if (isDME && currentFetchId === fetchIdRef.current) {
+        // Fire-and-forget — never blocks UI
+        (async () => {
+          try {
+            // Gunakan getCountFromServer (1 read per koleksi) bukan getDocs (ratusan reads)
+            if (navigator.onLine) {
+              const [filesCountSnap, correctiveCountSnap] = await Promise.allSettled([
+                getCountFromServer(collection(db, 'files')),
+                getCountFromServer(collection(db, 'corrective_reports')),
+              ]);
+              const fCount = filesCountSnap.status === 'fulfilled' ? filesCountSnap.value.data().count : 0;
+              const cCount = correctiveCountSnap.status === 'fulfilled' ? correctiveCountSnap.value.data().count : 0;
+              if (fCount > 0 || cCount > 0) {
+                setManagementFilesCount(fCount + cCount);
+                setManagementFilesSize((fCount + cCount) * 512 * 1024); // Estimasi rata-rata ukuran aman
+              }
+            }
+          } catch (err) {
+            console.warn('[DocumentList] DME badge count background error:', err);
+          }
+        })();
+      }
+    } catch (error: any) {
+      console.error('Error in fetchDocuments outer:', error);
+      if (currentFetchId === fetchIdRef.current) {
+        if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
+          setFetchError('Database index diperlukan. Klik link di console browser untuk buat index.');
+          toast.error('Database index diperlukan. Klik link di console browser untuk buat index.', { duration: 8000 });
+        } else {
+          setFetchError('Gagal memuat dokumen. Periksa koneksi internet Anda.');
+          toast.error('Gagal memuat dokumen');
+        }
       }
     } finally {
-      setLoading(false);
+      if (currentFetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [user, userRole, filterOverride]);
 
   useEffect(() => {
-    fetchDocuments();
+    // Only trigger fetch when userRole has been fully resolved (not undefined/null on initial auth)
+    if (user && userRole !== undefined) {
+      fetchDocuments();
+    }
   }, [fetchDocuments]);
 
   const openDeleteModal = (document: ExcelDocument) => {
@@ -762,7 +901,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
       setDeleteModalOpen(false);
       setDocumentToDelete(null);
-      fetchDocuments();
+      const cacheKey = `${(user?.email || 'anon').toLowerCase().trim()}_${filterOverride || 'all'}`;
+      delete memoryCachedDocs[cacheKey];
+      fetchDocuments(true);
     } catch (error) {
       console.error('Error deleting document:', error);
       toast.error('Gagal memproses penghapusan');
@@ -789,7 +930,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       toast.success('Pengajuan hapus ditolak', { id: toastId });
       setDeleteModalOpen(false);
       setDocumentToDelete(null);
-      fetchDocuments();
+      const cacheKey = `${(user?.email || 'anon').toLowerCase().trim()}_${filterOverride || 'all'}`;
+      delete memoryCachedDocs[cacheKey];
+      fetchDocuments(true);
     } catch (error) {
       console.error('Error rejecting delete request:', error);
       toast.error('Gagal menolak pengajuan hapus');
@@ -1617,6 +1760,16 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => fetchDocuments(true)}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 shadow-2xs"
+                title="Segarkan data arsip & laporan terbaru dari server"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : 'text-slate-600'}`} />
+                <span>Segarkan</span>
+              </button>
               {(isAdmin || isQcDme) && (
                 <button
                   type="button"
@@ -3132,9 +3285,21 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 relative z-10 pb-32 sm:pb-16 min-w-0 overflow-x-hidden">
       { }
       <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 mb-3.5 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 w-full max-w-full overflow-hidden">
-        <div className="mb-3 sm:mb-6">
-          <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Management File & Arsip Dokumen</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">Semua berkas operasional, laporan preventive & corrective maintenance terpusat</p>
+        <div className="mb-3 sm:mb-6 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Management File & Arsip Dokumen</h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">Semua berkas operasional, laporan preventive & corrective maintenance terpusat</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchDocuments(true)}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 shadow-2xs"
+            title="Segarkan data arsip & laporan terbaru dari server"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : 'text-slate-600'}`} />
+            <span>Segarkan</span>
+          </button>
         </div>
 
 

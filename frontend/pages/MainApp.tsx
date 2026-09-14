@@ -42,7 +42,7 @@ import { NotificationPage } from '@/components/NotificationPage';
 import { FaceRegistrationManagement } from '@/components/FaceRegistrationManagement';
 import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
 import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
@@ -70,64 +70,42 @@ export function MainApp() {
   useEffect(() => {
     if (!isQcDme && !isDwimitra) return;
 
-    let cFiles = 0;
-    let cCM = 0;
+    let isMounted = true;
 
-    const unsubFiles = onSnapshot(
-      query(collection(db, 'files'), where('deleteRequested', '==', true)),
-      (snap) => {
-        cFiles = snap.size;
+    // Gunakan getCountFromServer (1 read per query) bukan onSnapshot yang men-download seluruh isi dokumen
+    const fetchBadgeCounts = async () => {
+      try {
+        const [filesSnap, cmSnap, pdfSnap, excelSnap, hseSnap] = await Promise.allSettled([
+          getCountFromServer(query(collection(db, 'files'), where('deleteRequested', '==', true))),
+          getCountFromServer(query(collection(db, 'corrective_reports'), where('deleteRequested', '==', true))),
+          getCountFromServer(query(collection(db, 'pdf_documents'), where('hasAbnormal', '==', true))),
+          getCountFromServer(query(collection(db, 'excel_documents'), where('hasAbnormal', '==', true))),
+          getCountFromServer(query(collection(db, 'hse'), where('hasAbnormal', '==', true))),
+        ]);
+
+        if (!isMounted) return;
+
+        const cFiles = filesSnap.status === 'fulfilled' ? filesSnap.value.data().count : 0;
+        const cCM = cmSnap.status === 'fulfilled' ? cmSnap.value.data().count : 0;
+        const cPdf = pdfSnap.status === 'fulfilled' ? pdfSnap.value.data().count : 0;
+        const cExcel = excelSnap.status === 'fulfilled' ? excelSnap.value.data().count : 0;
+        const cHse = hseSnap.status === 'fulfilled' ? hseSnap.value.data().count : 0;
+
         setPendingDeleteCount(cFiles + cCM);
-      },
-      () => {}
-    );
-
-    const unsubCM = onSnapshot(
-      query(collection(db, 'corrective_reports'), where('deleteRequested', '==', true)),
-      (snap) => {
-        cCM = snap.size;
-        setPendingDeleteCount(cFiles + cCM);
-      },
-      () => {}
-    );
-
-    let cPdf = 0;
-    let cExcel = 0;
-    let cHse = 0;
-
-    const unsubPdf = onSnapshot(
-      query(collection(db, 'pdf_documents'), where('hasAbnormal', '==', true)),
-      (snap) => {
-        cPdf = snap.size;
         setTotalAbnormalCount(cPdf + cExcel + cHse);
-      },
-      () => {}
-    );
+      } catch (err) {
+        console.warn('[MainApp] Error fetching badge counts (quota/offline):', err);
+      }
+    };
 
-    const unsubExcel = onSnapshot(
-      query(collection(db, 'excel_documents'), where('hasAbnormal', '==', true)),
-      (snap) => {
-        cExcel = snap.size;
-        setTotalAbnormalCount(cPdf + cExcel + cHse);
-      },
-      () => {}
-    );
+    fetchBadgeCounts();
 
-    const unsubHse = onSnapshot(
-      query(collection(db, 'hse'), where('hasAbnormal', '==', true)),
-      (snap) => {
-        cHse = snap.size;
-        setTotalAbnormalCount(cPdf + cExcel + cHse);
-      },
-      () => {}
-    );
+    // Refresh berkala setiap 5 menit (bukan listener realtime yang memboroskan kuota harian)
+    const interval = setInterval(fetchBadgeCounts, 5 * 60 * 1000);
 
     return () => {
-      unsubFiles();
-      unsubCM();
-      unsubPdf();
-      unsubExcel();
-      unsubHse();
+      isMounted = false;
+      clearInterval(interval);
     };
   }, [isQcDme, isDwimitra]);
 
