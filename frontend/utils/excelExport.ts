@@ -721,7 +721,40 @@ export async function exportSLAReportToExcel(report: any) {
  * Ekspor Rekapitulasi Multi-Laporan SLA/SLG Bulanan ke Format Excel Resmi (.xlsx)
  */
 export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitle: string = 'Bulanan'): Promise<void> {
-  const reports = (rawReports || []).filter(r => !r.deleteRequested && !(r.originalReport && r.originalReport.deleteRequested));
+  const parseReportTime = (r: any): number => {
+    const rawCandidates = [
+      r.timeOrder,
+      r.startOrder,
+      r.actualTimeResponse,
+      r.actualTimeOnsite,
+      r.incidentDate,
+      r.reportedAt,
+      r.createdAt,
+    ];
+    for (const raw of rawCandidates) {
+      if (!raw) continue;
+      if (typeof raw === 'number') return raw;
+      if (typeof raw.toDate === 'function') {
+        const t = raw.toDate().getTime();
+        if (!isNaN(t) && t > 0) return t;
+      }
+      if (raw instanceof Date) {
+        const t = raw.getTime();
+        if (!isNaN(t) && t > 0) return t;
+      }
+      if (typeof raw === 'string') {
+        const t = new Date(raw.trim()).getTime();
+        if (!isNaN(t) && t > 0) return t;
+      }
+    }
+    return 0;
+  };
+
+  // Urutkan kronologis ASCENDING (dari awal bulan ke akhir bulan, data pertama diinput ada di paling atas)
+  const reports = (rawReports || [])
+    .filter(r => !r.deleteRequested && !(r.originalReport && r.originalReport.deleteRequested))
+    .sort((a, b) => parseReportTime(a) - parseReportTime(b));
+
   if (reports.length === 0) {
     throw new Error('Tidak ada data laporan SLA yang valid untuk diekspor ke Excel.');
   }

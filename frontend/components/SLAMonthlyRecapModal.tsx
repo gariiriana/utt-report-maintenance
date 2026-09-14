@@ -351,10 +351,12 @@ export function SLAMonthlyRecapModal({
       toast.error(`Tidak ada laporan SLA pada periode ${periodLabel} untuk diekspor.`);
       return;
     }
-    const toastId = toast.loading(`Menyiapkan Rekapitulasi SLA Word (.docx) (${filteredSLAReports.length} Dokumen)...`);
+    // Urutkan kronologis ascending (awal bulan ke akhir bulan) agar baris pertama di dokumen adalah insiden pertama
+    const sortedAscending = [...filteredSLAReports].sort((a, b) => getReportIncidentTime(a) - getReportIncidentTime(b));
+    const toastId = toast.loading(`Menyiapkan Rekapitulasi SLA Word (.docx) (${sortedAscending.length} Dokumen)...`);
     try {
       setExportingDocx(true);
-      await exportSLAMonthlyRecapToDocx(filteredSLAReports, periodLabel);
+      await exportSLAMonthlyRecapToDocx(sortedAscending, periodLabel);
       toast.success(`Berhasil mengekspor Rekap SLA Word (${periodLabel})!`, { id: toastId });
     } catch (err: any) {
       console.error('Error exporting SLA Word recap:', err);
@@ -369,10 +371,12 @@ export function SLAMonthlyRecapModal({
       toast.error(`Tidak ada laporan SLA pada periode ${periodLabel} untuk diekspor.`);
       return;
     }
-    const toastId = toast.loading(`Menyiapkan Rekapitulasi SLA Excel (.xlsx) (${filteredSLAReports.length} Dokumen)...`);
+    // Urutkan kronologis ascending (awal bulan ke akhir bulan) agar baris pertama di Excel adalah insiden pertama
+    const sortedAscending = [...filteredSLAReports].sort((a, b) => getReportIncidentTime(a) - getReportIncidentTime(b));
+    const toastId = toast.loading(`Menyiapkan Rekapitulasi SLA Excel (.xlsx) (${sortedAscending.length} Dokumen)...`);
     try {
       setExportingExcel(true);
-      await exportSLAMonthlyRecapToExcel(filteredSLAReports, periodLabel);
+      await exportSLAMonthlyRecapToExcel(sortedAscending, periodLabel);
       toast.success(`Berhasil mengekspor Rekap SLA Excel (${periodLabel})!`, { id: toastId });
     } catch (err: any) {
       console.error('Error exporting SLA Excel recap:', err);

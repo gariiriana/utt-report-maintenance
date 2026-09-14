@@ -1539,8 +1539,40 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
 // 4. EXPORT SLA / SLG MONTHLY RECAP TO DOCX
 // ==========================================
 export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle: string = 'Bulanan'): Promise<void> {
-  // Exclude any reports that are currently requested for deletion
-  const reports = (rawReports || []).filter(r => !r.deleteRequested && !(r.originalReport && r.originalReport.deleteRequested));
+  const parseReportTime = (r: any): number => {
+    const rawCandidates = [
+      r.timeOrder,
+      r.startOrder,
+      r.actualTimeResponse,
+      r.actualTimeOnsite,
+      r.incidentDate,
+      r.reportedAt,
+      r.createdAt,
+    ];
+    for (const raw of rawCandidates) {
+      if (!raw) continue;
+      if (typeof raw === 'number') return raw;
+      if (typeof raw.toDate === 'function') {
+        const t = raw.toDate().getTime();
+        if (!isNaN(t) && t > 0) return t;
+      }
+      if (raw instanceof Date) {
+        const t = raw.getTime();
+        if (!isNaN(t) && t > 0) return t;
+      }
+      if (typeof raw === 'string') {
+        const t = new Date(raw.trim()).getTime();
+        if (!isNaN(t) && t > 0) return t;
+      }
+    }
+    return 0;
+  };
+
+  // Exclude any reports that are currently requested for deletion, and sort KRONOLOGIS ASCENDING (awal bulan ke akhir bulan)
+  const reports = (rawReports || [])
+    .filter(r => !r.deleteRequested && !(r.originalReport && r.originalReport.deleteRequested))
+    .sort((a, b) => parseReportTime(a) - parseReportTime(b));
+
   if (reports.length === 0) {
     throw new Error('Tidak ada data laporan SLA yang valid (non-pengajuan hapus) untuk diekspor.');
   }
