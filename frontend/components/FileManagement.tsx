@@ -18,6 +18,7 @@ import {
     X,
     Loader2,
     ChevronLeft,
+    ChevronRight,
     FileText,
     FolderDown,
     Sparkles,
@@ -1780,132 +1781,194 @@ export function FileManagement({
                 transition={{ delay: 0.2 }}
                 className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-sky-100/90 shadow-lg text-slate-800 scroll-mt-20"
             >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-slate-100">
-                    <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-800 flex-wrap min-w-0">
-                        <YellowFolderIcon className="w-5 h-5 flex-shrink-0" />
-                        <span
-                            onClick={() => {
-                                setSelectedFolder(null);
-                                setSelectedQuarter(null);
-                                setSelectedMType(null);
-                                setShowAllInFolder(false);
-                                if (onBackToRoot) onBackToRoot();
-                            }}
-                            className={`hover:text-amber-600 transition-colors ${selectedFolder ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
-                        >
-                            Folder Utama
-                        </span>
-                        {selectedFolder && (
-                            <>
-                                <span className="text-slate-300 font-normal">/</span>
-                                <span
-                                    onClick={() => { setSelectedQuarter(null); setSelectedMType(null); }}
-                                    className={`hover:text-amber-600 transition-colors ${selectedQuarter ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
-                                >
-                                    {selectedFolder}
-                                </span>
-                            </>
-                        )}
-                        {selectedQuarter && (
-                            <>
-                                <span className="text-slate-300 font-normal">/</span>
-                                <span
-                                    onClick={() => setSelectedMType(null)}
-                                    className={`hover:text-amber-600 transition-colors ${selectedMType ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
-                                >
-                                    {selectedQuarter}
-                                </span>
-                            </>
-                        )}
-                        {selectedMType && (
-                            <>
-                                <span className="text-slate-300 font-normal">/</span>
-                                <span className="text-amber-700 font-bold">{selectedMType}</span>
-                            </>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {selectedFolder && (
-                            <button
-                                type="button"
-                                onClick={() => setShowAllInFolder(prev => !prev)}
-                                className={`text-xs sm:text-sm font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all shadow-2xs cursor-pointer shrink-0 border ${
-                                    showAllInFolder 
-                                        ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20' 
-                                        : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200'
-                                }`}
-                                title={showAllInFolder ? 'Kembali ke penjelajahan kategori/quarter' : `Tampilkan seluruh berkas di folder ${selectedFolder} secara langsung`}
-                            >
-                                <FileText className="w-4 h-4" />
-                                {showAllInFolder ? 'Mode Kategori / Quarter' : `Lihat Semua Berkas (${filteredFiles.filter(f => matchCategory(f.category, selectedFolder)).length})`}
-                            </button>
-                        )}
-                        {(selectedFolder === 'Form SLA/SLG' || selectedFolder === 'SLA/SLG' || selectedFolder === 'Report CM, SLA & PIR') && (
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    const slaFiles = displayFiles.filter(f => f.isCorrectiveReport && f.reportType === 'SLA').map(f => f.originalReport).filter(Boolean);
-                                    if (slaFiles.length === 0) {
-                                        toast.error('Tidak ada data laporan SLA di folder ini untuk direkap.');
-                                        return;
+                <div className="flex flex-col gap-3.5 mb-6 pb-4 border-b border-slate-100">
+                    {/* Baris 1: Navigasi Breadcrumbs & Tombol Kembali */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                            {(selectedFolder || selectedQuarter || selectedMType || searchQuery) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedMType) {
+                                            setSelectedMType(null);
+                                        } else if (selectedQuarter) {
+                                            setSelectedQuarter(null);
+                                        } else if (selectedFolder) {
+                                            setSelectedFolder(null);
+                                            handleSearchChange('');
+                                            if (onBackToRoot) onBackToRoot();
+                                        } else if (searchQuery) {
+                                            handleSearchChange('');
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-700 hover:text-amber-800 bg-slate-100/90 hover:bg-amber-50 active:scale-95 border border-slate-200/90 hover:border-amber-300 rounded-xl transition-all shadow-2xs cursor-pointer shrink-0"
+                                    title={
+                                        selectedMType
+                                            ? `Kembali ke ${selectedQuarter}`
+                                            : selectedQuarter
+                                            ? `Kembali ke ${selectedFolder}`
+                                            : selectedFolder
+                                            ? 'Kembali ke Folder Utama'
+                                            : 'Reset Pencarian'
                                     }
-                                    const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
-                                    try {
-                                        const folderName = selectedQuarter ? `${selectedFolder} (${selectedQuarter})` : selectedFolder;
-                                        await exportSLAMonthlyRecapToDocx(slaFiles, folderName);
-                                        toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
-                                    } catch (err: any) {
-                                        console.error('Failed to export SLA recap:', err);
-                                        toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
-                                    }
-                                }}
-                                className="text-xs sm:text-sm text-white bg-blue-600 hover:bg-blue-700 font-bold flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer shrink-0"
-                            >
-                                <FileText className="w-4 h-4" />
-                                Export Rekap SLA (DOCX)
-                            </button>
-                        )}
+                                >
+                                    <ChevronLeft className="w-4 h-4 text-slate-600" />
+                                    <span>Kembali</span>
+                                </button>
+                            )}
 
-                        {((selectedFolder || selectedQuarter || selectedMType || initialFolder) && displayFiles.length > 0) && (
-                            <button
-                                type="button"
-                                onClick={handleDownloadFolderZip}
-                                className="text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 font-bold flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer shrink-0"
-                                title="Download Semua File di Folder Ini (.ZIP)"
-                            >
-                                <FolderDown className="w-4 h-4" />
-                                <span>Download Folder (.ZIP)</span>
-                                <span className="px-1.5 py-0.2 bg-white/20 rounded-full text-[10px]">{displayFiles.length}</span>
-                            </button>
-                        )}
-
-                        {(selectedFolder || selectedQuarter || selectedMType || searchQuery) && (
-                            <button
-                                onClick={() => {
-                                    if (selectedMType) {
-                                        setSelectedMType(null);
-                                    } else if (selectedQuarter) {
-                                        setSelectedQuarter(null);
-                                    } else if (selectedFolder) {
+                            {/* Modern Breadcrumbs Container */}
+                            <nav aria-label="Navigasi Folder" className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-700 flex-wrap bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70">
+                                <button
+                                    type="button"
+                                    onClick={() => {
                                         setSelectedFolder(null);
-                                        handleSearchChange('');
+                                        setSelectedQuarter(null);
+                                        setSelectedMType(null);
+                                        setShowAllInFolder(false);
                                         if (onBackToRoot) onBackToRoot();
-                                    } else if (searchQuery) {
-                                        handleSearchChange('');
-                                    }
-                                }}
-                                className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                                {selectedMType
-                                    ? `Kembali ke ${selectedQuarter}`
-                                    : selectedQuarter
-                                    ? `Kembali ke ${selectedFolder}`
-                                    : 'Kembali ke Folder Utama'}
-                            </button>
+                                    }}
+                                    className={`inline-flex items-center gap-1.5 transition-colors ${
+                                        selectedFolder 
+                                            ? 'text-slate-500 hover:text-amber-700 hover:underline cursor-pointer' 
+                                            : 'text-slate-900 font-bold'
+                                    }`}
+                                >
+                                    <YellowFolderIcon className="w-4 h-4 shrink-0" />
+                                    <span>Folder Utama</span>
+                                </button>
+
+                                {selectedFolder && (
+                                    <>
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setSelectedQuarter(null); setSelectedMType(null); }}
+                                            className={`transition-colors truncate max-w-[200px] sm:max-w-xs ${
+                                                selectedQuarter 
+                                                    ? 'text-slate-500 hover:text-amber-700 hover:underline cursor-pointer' 
+                                                    : 'text-slate-900 font-bold'
+                                            }`}
+                                            title={selectedFolder}
+                                        >
+                                            {selectedFolder}
+                                        </button>
+                                    </>
+                                )}
+
+                                {selectedQuarter && (
+                                    <>
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedMType(null)}
+                                            className={`px-2.5 py-0.5 rounded-md text-xs font-bold transition-all ${
+                                                selectedMType 
+                                                    ? 'bg-slate-200/80 text-slate-700 hover:bg-amber-100 hover:text-amber-800 cursor-pointer' 
+                                                    : 'bg-amber-500 text-white shadow-2xs'
+                                            }`}
+                                            title={selectedQuarter}
+                                        >
+                                            {selectedQuarter}
+                                        </button>
+                                    </>
+                                )}
+
+                                {selectedMType && (
+                                    <>
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-600 text-white shadow-2xs">
+                                            {selectedMType}
+                                        </span>
+                                    </>
+                                )}
+                            </nav>
+                        </div>
+
+                        {/* Indikator Jumlah Berkas di Sebelah Kanan Baris Navigasi */}
+                        {selectedFolder && (
+                            <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-xl shrink-0">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>Total: <strong className="text-slate-800">{displayFiles.length}</strong> berkas aktif</span>
+                            </div>
                         )}
                     </div>
+
+                    {/* Baris 2: Action Toolbar (Hanya Tampil Saat Berada di Dalam Folder) */}
+                    {selectedFolder && (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100">
+                            <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                                <span className="text-slate-400">Lokasi:</span>
+                                <span className="font-semibold text-slate-700">
+                                    {selectedMType 
+                                        ? `${selectedFolder} › ${selectedQuarter} › ${selectedMType}` 
+                                        : selectedQuarter 
+                                        ? `${selectedFolder} › ${selectedQuarter}` 
+                                        : selectedFolder}
+                                </span>
+                                {showAllInFolder && (
+                                    <span className="ml-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-[11px] font-semibold">
+                                        (Menampilkan Seluruh Berkas)
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllInFolder(prev => !prev)}
+                                    className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer shrink-0 border ${
+                                        showAllInFolder 
+                                            ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20' 
+                                            : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200'
+                                    }`}
+                                    title={showAllInFolder ? 'Kembali ke penjelajahan kategori/quarter' : `Tampilkan seluruh berkas di folder ${selectedFolder} secara langsung`}
+                                >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    {showAllInFolder ? 'Mode Kategori / Quarter' : `Lihat Semua Berkas (${filteredFiles.filter(f => matchCategory(f.category, selectedFolder)).length})`}
+                                </button>
+
+                                {(selectedFolder === 'Form SLA/SLG' || selectedFolder === 'SLA/SLG' || selectedFolder === 'Report CM, SLA & PIR') && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const slaFiles = displayFiles.filter(f => f.isCorrectiveReport && f.reportType === 'SLA').map(f => f.originalReport).filter(Boolean);
+                                            if (slaFiles.length === 0) {
+                                                toast.error('Tidak ada data laporan SLA di folder ini untuk direkap.');
+                                                return;
+                                            }
+                                            const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
+                                            try {
+                                                const folderName = selectedQuarter ? `${selectedFolder} (${selectedQuarter})` : selectedFolder;
+                                                await exportSLAMonthlyRecapToDocx(slaFiles, folderName);
+                                                toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
+                                            } catch (err: any) {
+                                                console.error('Failed to export SLA recap:', err);
+                                                toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
+                                            }
+                                        }}
+                                        className="text-xs text-white bg-blue-600 hover:bg-blue-700 font-bold flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition-all shadow-sm cursor-pointer shrink-0"
+                                    >
+                                        <FileText className="w-3.5 h-3.5" />
+                                        Export Rekap SLA (DOCX)
+                                    </button>
+                                )}
+
+                                {displayFiles.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleDownloadFolderZip}
+                                        className="text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 font-bold flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
+                                        title="Download Semua File di Folder Ini (.ZIP)"
+                                    >
+                                        <FolderDown className="w-3.5 h-3.5" />
+                                        <span>Download Folder (.ZIP)</span>
+                                        <span className="px-1.5 py-0.5 bg-white/25 rounded-full text-[10px] leading-none font-bold">{displayFiles.length}</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {searchQuery.trim() !== '' && (
