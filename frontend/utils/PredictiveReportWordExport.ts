@@ -28,6 +28,14 @@ import { saveAs } from 'file-saver';
 import { PredictiveReportData } from '@/types/predictiveReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import {
+  ARIF_BUDIMAN_SIGNATURE_BASE64,
+  ASEP_SIGNATURE_BASE64,
+  PREPARED_BY_SIGNATURES,
+  getEngineerSignature,
+  normalizeEngineerName,
+  cleanSignature,
+} from '@/utils/engineerSignatures';
 
 // ─── Color Palette & Table Border Styles ─────────────────────────────────────
 
@@ -38,6 +46,7 @@ const COLOR_MUTED = '64748B'; // Slate 500
 const COLOR_LIGHT_BG = 'F8FAFC'; // Slate 50
 const COLOR_BORDER = 'CBD5E1'; // Slate 300
 const COLOR_WHITE = 'FFFFFF';
+const HEADER_FILL = 'DCE6F1'; // Light blue cell header (NeutraDC Official Standard)
 
 const borderThin = {
   top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
@@ -122,8 +131,67 @@ function createSectionHeading(title: string, stepNumber: string): Paragraph {
 // ─── Export Main Function ───────────────────────────────────────────────────
 
 export async function exportPredictiveReportToDocx(data: PredictiveReportData): Promise<void> {
-  const logoDmeBytes = await loadAssetImage(logoDwimitra);
-  const logoNdcBytes = await loadAssetImage(logoNeutraDC);
+  const authorName =
+    data.signatures?.authorName ||
+    (data as any).authorName ||
+    'Rizki Novri Yanda – Data Center Operation';
+
+  const normalizedPrepName =
+    normalizeEngineerName(data.signatures?.preparedBy?.name) || 'Asep Mohammad Fauzi';
+  const prepTitle = data.signatures?.preparedBy?.title || '(Electrical Engineer)';
+
+  const revName =
+    data.signatures?.reviewedBy?.name ||
+    data.signatures?.verifiedBy?.name ||
+    'Arif Budiman';
+  const revTitle = data.signatures?.reviewedBy?.title || '(Technical Manager)';
+
+  const ack1Name = data.signatures?.acknowledgedBy1?.name || 'Habib Mulyana';
+  const ack1Title = data.signatures?.acknowledgedBy1?.title || '(Chief Engineer)';
+
+  const ack2Name = data.signatures?.acknowledgedBy2?.name || 'Supriyatno';
+  const ack2Title = data.signatures?.acknowledgedBy2?.title || '(Facility manager)';
+
+  const appName = data.signatures?.approvedBy?.name || 'Budi Susanto';
+  const appTitle =
+    data.signatures?.approvedBy?.title ||
+    '(Assistant manager HDC Facility Management)';
+
+  // Resolve base64 signatures
+  const resolvedPrepSign =
+    cleanSignature(data.signatures?.preparedBy?.signatureBase64) ||
+    getEngineerSignature(normalizedPrepName) ||
+    cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) ||
+    ASEP_SIGNATURE_BASE64;
+
+  const resolvedRevSign =
+    cleanSignature(data.signatures?.reviewedBy?.signatureBase64) ||
+    cleanSignature(data.signatures?.verifiedBy?.signatureBase64) ||
+    ((revName.toLowerCase().includes('arif') || revName.toLowerCase().includes('budiman'))
+      ? ARIF_BUDIMAN_SIGNATURE_BASE64
+      : ARIF_BUDIMAN_SIGNATURE_BASE64);
+
+  const resolvedAck1Sign = cleanSignature(data.signatures?.acknowledgedBy1?.signatureBase64) || '';
+  const resolvedAck2Sign = cleanSignature(data.signatures?.acknowledgedBy2?.signatureBase64) || '';
+  const resolvedAppSign = cleanSignature(data.signatures?.approvedBy?.signatureBase64) || '';
+
+  const [
+    logoDmeBytes,
+    logoNdcBytes,
+    prepSignBytes,
+    revSignBytes,
+    ack1SignBytes,
+    ack2SignBytes,
+    appSignBytes,
+  ] = await Promise.all([
+    loadAssetImage(logoDwimitra),
+    loadAssetImage(logoNeutraDC),
+    loadAssetImage(resolvedPrepSign),
+    loadAssetImage(resolvedRevSign),
+    loadAssetImage(resolvedAck1Sign),
+    loadAssetImage(resolvedAck2Sign),
+    loadAssetImage(resolvedAppSign),
+  ]);
 
   // Kop Surat Resmi (Tabel 1 baris 3 kolom)
   const headerTable = new Table({
@@ -482,6 +550,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
     borders: borderThin,
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -497,6 +566,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         ],
       }),
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -512,6 +582,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         ],
       }),
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -527,6 +598,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         ],
       }),
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -542,6 +614,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         ],
       }),
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -572,6 +645,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
     borders: borderThin,
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -587,6 +661,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         ],
       }),
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -602,6 +677,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         ],
       }),
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -709,103 +785,155 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
   });
 
   // ─── Bagian 5: Lembar Pengesahan Resmi (Approval Sheet) ──────────────────
+  const sigCellWidth = { size: 50, type: WidthType.PERCENTAGE };
+
+  const buildSigCell = (signBytes: Uint8Array, nameText: string, titleText: string) => {
+    const children: Paragraph[] = [];
+
+    if (signBytes && signBytes.length > 0) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 60, after: 60 },
+          children: [new ImageRun({ data: signBytes, transformation: { width: 125, height: 52 }, type: 'png' })],
+        })
+      );
+    } else {
+      children.push(new Paragraph({ spacing: { before: 300 } }));
+    }
+
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 40 },
+        children: [new TextRun({ text: nameText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: titleText, size: 20, color: '475569', font: 'Century Gothic' })],
+      })
+    );
+
+    return children;
+  };
+
   const signatureTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: borderThin,
     rows: [
+      // Row 1: PREPARED BY & REVIEWED BY
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            width: { size: 33.3, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, fill: COLOR_LIGHT_BG },
+            width: sigCellWidth,
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
             borders: borderThin,
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'PREPARED BY', bold: true, size: 18, color: COLOR_DARK, font: 'Calibri' })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'Duty Maintenance Engineer', italics: true, size: 16, color: COLOR_MUTED, font: 'Calibri' })],
+                children: [new TextRun({ text: 'PREPARED BY,', bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
               }),
             ],
           }),
           new TableCell({
-            width: { size: 33.3, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, fill: COLOR_LIGHT_BG },
+            width: sigCellWidth,
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
             borders: borderThin,
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'VERIFIED BY', bold: true, size: 18, color: COLOR_DARK, font: 'Calibri' })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'QC DME Engineer', italics: true, size: 16, color: COLOR_MUTED, font: 'Calibri' })],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 33.4, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, fill: COLOR_LIGHT_BG },
-            borders: borderThin,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'APPROVED BY', bold: true, size: 18, color: COLOR_DARK, font: 'Calibri' })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'NeutraDC Facility Ops Head', italics: true, size: 16, color: COLOR_MUTED, font: 'Calibri' })],
+                children: [new TextRun({ text: 'REVIEWED BY,', bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
               }),
             ],
           }),
         ],
       }),
-      // Kolom Tanda Tangan / Ruang Kosong
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
+            width: sigCellWidth,
             borders: borderThin,
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell(prepSignBytes, normalizedPrepName, prepTitle),
+          }),
+          new TableCell({
+            width: sigCellWidth,
+            borders: borderThin,
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell(revSignBytes, revName, revTitle),
+          }),
+        ],
+      }),
+
+      // Row 2: ACKNOWLEDGED BY
+      new TableRow({
+        cantSplit: true,
+        children: [
+          new TableCell({
+            columnSpan: 2,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            borders: borderThin,
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
-              new Paragraph({ spacing: { before: 400, after: 400 }, alignment: AlignmentType.CENTER, children: [] }),
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: `(${data.signatures.preparedBy.name})`, bold: true, size: 18, font: 'Calibri' })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: data.signatures.preparedBy.title, size: 16, color: COLOR_MUTED, font: 'Calibri' })],
+                children: [new TextRun({ text: 'ACKNOWLEDGED BY,', bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
               }),
             ],
           }),
+        ],
+      }),
+      new TableRow({
+        cantSplit: true,
+        children: [
           new TableCell({
+            width: sigCellWidth,
             borders: borderThin,
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell(ack1SignBytes, ack1Name, ack1Title),
+          }),
+          new TableCell({
+            width: sigCellWidth,
+            borders: borderThin,
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell(ack2SignBytes, ack2Name, ack2Title),
+          }),
+        ],
+      }),
+
+      // Row 3: APPROVED BY
+      new TableRow({
+        cantSplit: true,
+        children: [
+          new TableCell({
+            columnSpan: 2,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            borders: borderThin,
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
-              new Paragraph({ spacing: { before: 400, after: 400 }, alignment: AlignmentType.CENTER, children: [] }),
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: `(${data.signatures.verifiedBy.name})`, bold: true, size: 18, font: 'Calibri' })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: data.signatures.verifiedBy.title, size: 16, color: COLOR_MUTED, font: 'Calibri' })],
+                children: [new TextRun({ text: 'APPROVED BY,', bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
               }),
             ],
           }),
+        ],
+      }),
+      new TableRow({
+        cantSplit: true,
+        children: [
           new TableCell({
+            columnSpan: 2,
+            width: { size: 100, type: WidthType.PERCENTAGE },
             borders: borderThin,
-            children: [
-              new Paragraph({ spacing: { before: 400, after: 400 }, alignment: AlignmentType.CENTER, children: [] }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: `(${data.signatures.approvedBy.name})`, bold: true, size: 18, font: 'Calibri' })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: data.signatures.approvedBy.title, size: 16, color: COLOR_MUTED, font: 'Calibri' })],
-              }),
-            ],
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell(appSignBytes, appName, appTitle),
           }),
         ],
       }),
@@ -879,6 +1007,19 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
           sparepartTable,
 
           createSectionHeading('Lembar Pengesahan Resmi', '5'),
+          new Paragraph({
+            keepWithNext: true,
+            spacing: { before: 80, after: 60 },
+            children: [
+              new TextRun({
+                text: `AUTHOR BY, ${authorName}`,
+                bold: true,
+                size: 20,
+                color: '000000',
+                font: 'Century Gothic',
+              }),
+            ],
+          }),
           signatureTable,
         ],
       },

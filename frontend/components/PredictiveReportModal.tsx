@@ -45,6 +45,52 @@ interface PredictiveReportModalProps {
   isLoadingAI?: boolean;
 }
 
+function normalizePredictiveData(input: PredictiveReportData): PredictiveReportData {
+  const sig = input.signatures || ({} as any);
+  return {
+    ...input,
+    signatures: {
+      authorName: sig.authorName || 'Rizki Novri Yanda – Data Center Operation',
+      preparedBy: {
+        name: sig.preparedBy?.name || 'Asep Mohammad Fauzi',
+        title: sig.preparedBy?.title || '(Electrical Engineer)',
+        signatureBase64: sig.preparedBy?.signatureBase64,
+        date: sig.preparedBy?.date || '',
+      },
+      reviewedBy: {
+        name: sig.reviewedBy?.name || sig.verifiedBy?.name || 'Arif Budiman',
+        title: sig.reviewedBy?.title || '(Technical Manager)',
+        signatureBase64: sig.reviewedBy?.signatureBase64 || sig.verifiedBy?.signatureBase64,
+        date: sig.reviewedBy?.date || '',
+      },
+      verifiedBy: {
+        name: sig.verifiedBy?.name || sig.reviewedBy?.name || 'Arif Budiman',
+        title: sig.verifiedBy?.title || '(Technical Manager)',
+        signatureBase64: sig.verifiedBy?.signatureBase64 || sig.reviewedBy?.signatureBase64,
+        date: sig.verifiedBy?.date || '',
+      },
+      acknowledgedBy1: {
+        name: sig.acknowledgedBy1?.name || 'Habib Mulyana',
+        title: sig.acknowledgedBy1?.title || '(Chief Engineer)',
+        signatureBase64: sig.acknowledgedBy1?.signatureBase64,
+        date: sig.acknowledgedBy1?.date || '',
+      },
+      acknowledgedBy2: {
+        name: sig.acknowledgedBy2?.name || 'Supriyatno',
+        title: sig.acknowledgedBy2?.title || '(Facility manager)',
+        signatureBase64: sig.acknowledgedBy2?.signatureBase64,
+        date: sig.acknowledgedBy2?.date || '',
+      },
+      approvedBy: {
+        name: sig.approvedBy?.name || 'Budi Susanto',
+        title: sig.approvedBy?.title || '(Assistant manager HDC Facility Management)',
+        signatureBase64: sig.approvedBy?.signatureBase64,
+        date: sig.approvedBy?.date || '',
+      },
+    },
+  };
+}
+
 export function PredictiveReportModal({
   isOpen,
   onClose,
@@ -53,14 +99,14 @@ export function PredictiveReportModal({
   onRegenerateAI,
   isLoadingAI = false
 }: PredictiveReportModalProps) {
-  const [data, setData] = useState<PredictiveReportData>(initialData);
+  const [data, setData] = useState<PredictiveReportData>(() => normalizePredictiveData(initialData));
   const [activeTab, setActiveTab] = useState<'all' | 'asset' | 'anomaly' | 'ai' | 'action' | 'approval'>('all');
   const [isSaving, setIsSaving] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   useEffect(() => {
-    setData(initialData);
+    setData(normalizePredictiveData(initialData));
   }, [initialData]);
 
   if (!isOpen) return null;
@@ -742,16 +788,41 @@ export function PredictiveReportModal({
           {/* ─── SECTION 5: Lembar Pengesahan ──────────────────────────── */}
           {(activeTab === 'all' || activeTab === 'approval') && (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-                <FileCheck className="w-4 h-4 text-slate-700" />
-                <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                  5. Lembar Pengesahan (Approval Sheet)
-                </h4>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-slate-700" />
+                  <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                    5. Lembar Pengesahan Resmi (Approval Sheet)
+                  </h4>
+                </div>
+                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                  Format Standar NeutraDC
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              {/* Author Info */}
+              <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                  Author Dokumen (Dibuat Oleh)
+                </label>
+                <input
+                  type="text"
+                  value={data.signatures.authorName || 'Rizki Novri Yanda – Data Center Operation'}
+                  onChange={e => setData({
+                    ...data,
+                    signatures: { ...data.signatures, authorName: e.target.value }
+                  })}
+                  placeholder="AUTHOR BY, Rizki Novri Yanda – Data Center Operation"
+                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800"
+                />
+              </div>
+
+              {/* Row 1: PREPARED BY & REVIEWED BY */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2">
-                  <span className="font-bold text-slate-700 block">PREPARED BY</span>
+                  <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
+                    PREPARED BY (Insinyur Pelaksana)
+                  </span>
                   <input
                     type="text"
                     value={data.signatures.preparedBy.name}
@@ -762,8 +833,8 @@ export function PredictiveReportModal({
                         preparedBy: { ...data.signatures.preparedBy, name: e.target.value }
                       }
                     })}
-                    placeholder="Nama Standby Engineer"
-                    className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs font-semibold"
+                    placeholder="Asep Mohammad Fauzi"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
                   />
                   <input
                     type="text"
@@ -775,46 +846,140 @@ export function PredictiveReportModal({
                         preparedBy: { ...data.signatures.preparedBy, title: e.target.value }
                       }
                     })}
-                    placeholder="Jabatan"
-                    className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs text-slate-500"
+                    placeholder="(Electrical Engineer)"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500"
                   />
                 </div>
 
                 <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2">
-                  <span className="font-bold text-slate-700 block">VERIFIED BY</span>
+                  <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
+                    REVIEWED BY (Technical Manager)
+                  </span>
                   <input
                     type="text"
-                    value={data.signatures.verifiedBy.name}
-                    onChange={e => setData({
-                      ...data,
-                      signatures: {
-                        ...data.signatures,
-                        verifiedBy: { ...data.signatures.verifiedBy, name: e.target.value }
-                      }
-                    })}
-                    placeholder="Nama QC DME"
-                    className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs font-semibold"
+                    value={data.signatures.reviewedBy?.name || data.signatures.verifiedBy?.name || 'Arif Budiman'}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setData({
+                        ...data,
+                        signatures: {
+                          ...data.signatures,
+                          reviewedBy: { ...(data.signatures.reviewedBy || data.signatures.verifiedBy || { name: '', title: '' }), name: val },
+                          verifiedBy: { ...(data.signatures.verifiedBy || { name: '', title: '' }), name: val }
+                        }
+                      });
+                    }}
+                    placeholder="Arif Budiman"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
                   />
                   <input
                     type="text"
-                    value={data.signatures.verifiedBy.title}
+                    value={data.signatures.reviewedBy?.title || data.signatures.verifiedBy?.title || '(Technical Manager)'}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setData({
+                        ...data,
+                        signatures: {
+                          ...data.signatures,
+                          reviewedBy: { ...(data.signatures.reviewedBy || data.signatures.verifiedBy || { name: '', title: '' }), title: val },
+                          verifiedBy: { ...(data.signatures.verifiedBy || { name: '', title: '' }), title: val }
+                        }
+                      });
+                    }}
+                    placeholder="(Technical Manager)"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: ACKNOWLEDGED BY (Habib Mulyana & Supriyatno) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2">
+                  <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
+                    ACKNOWLEDGED BY 1 (Chief Engineer)
+                  </span>
+                  <input
+                    type="text"
+                    value={data.signatures.acknowledgedBy1?.name || 'Habib Mulyana'}
                     onChange={e => setData({
                       ...data,
                       signatures: {
                         ...data.signatures,
-                        verifiedBy: { ...data.signatures.verifiedBy, title: e.target.value }
+                        acknowledgedBy1: {
+                          ...(data.signatures.acknowledgedBy1 || { name: '', title: '(Chief Engineer)' }),
+                          name: e.target.value
+                        }
                       }
                     })}
-                    placeholder="Jabatan"
-                    className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs text-slate-500"
+                    placeholder="Habib Mulyana"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
+                  />
+                  <input
+                    type="text"
+                    value={data.signatures.acknowledgedBy1?.title || '(Chief Engineer)'}
+                    onChange={e => setData({
+                      ...data,
+                      signatures: {
+                        ...data.signatures,
+                        acknowledgedBy1: {
+                          ...(data.signatures.acknowledgedBy1 || { name: 'Habib Mulyana', title: '' }),
+                          title: e.target.value
+                        }
+                      }
+                    })}
+                    placeholder="(Chief Engineer)"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500"
                   />
                 </div>
 
                 <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2">
-                  <span className="font-bold text-slate-700 block">APPROVED BY</span>
+                  <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
+                    ACKNOWLEDGED BY 2 (Facility Manager)
+                  </span>
                   <input
                     type="text"
-                    value={data.signatures.approvedBy.name}
+                    value={data.signatures.acknowledgedBy2?.name || 'Supriyatno'}
+                    onChange={e => setData({
+                      ...data,
+                      signatures: {
+                        ...data.signatures,
+                        acknowledgedBy2: {
+                          ...(data.signatures.acknowledgedBy2 || { name: '', title: '(Facility manager)' }),
+                          name: e.target.value
+                        }
+                      }
+                    })}
+                    placeholder="Supriyatno"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
+                  />
+                  <input
+                    type="text"
+                    value={data.signatures.acknowledgedBy2?.title || '(Facility manager)'}
+                    onChange={e => setData({
+                      ...data,
+                      signatures: {
+                        ...data.signatures,
+                        acknowledgedBy2: {
+                          ...(data.signatures.acknowledgedBy2 || { name: 'Supriyatno', title: '' }),
+                          title: e.target.value
+                        }
+                      }
+                    })}
+                    placeholder="(Facility manager)"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500"
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: APPROVED BY (Budi Susanto) */}
+              <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2 text-xs">
+                <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
+                  APPROVED BY (Facility Management)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    value={data.signatures.approvedBy?.name || 'Budi Susanto'}
                     onChange={e => setData({
                       ...data,
                       signatures: {
@@ -822,12 +987,12 @@ export function PredictiveReportModal({
                         approvedBy: { ...data.signatures.approvedBy, name: e.target.value }
                       }
                     })}
-                    placeholder="Nama Site Manager NeutraDC"
-                    className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs font-semibold"
+                    placeholder="Budi Susanto"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
                   />
                   <input
                     type="text"
-                    value={data.signatures.approvedBy.title}
+                    value={data.signatures.approvedBy?.title || '(Assistant manager HDC Facility Management)'}
                     onChange={e => setData({
                       ...data,
                       signatures: {
@@ -835,8 +1000,8 @@ export function PredictiveReportModal({
                         approvedBy: { ...data.signatures.approvedBy, title: e.target.value }
                       }
                     })}
-                    placeholder="Jabatan"
-                    className="w-full px-2.5 py-1 border border-slate-200 rounded-lg text-xs text-slate-500"
+                    placeholder="(Assistant manager HDC Facility Management)"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500"
                   />
                 </div>
               </div>

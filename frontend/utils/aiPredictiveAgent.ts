@@ -239,21 +239,37 @@ function generateDeterministicFallback(input: GeneratePredictiveInput): Predicti
     },
 
     signatures: {
+      authorName: 'Rizki Novri Yanda – Data Center Operation',
       preparedBy: {
-        name: input.userName || 'Standby Engineer DME',
-        title: 'Duty Maintenance Engineer',
-        date: dateStr
+        name: input.userName || 'Asep Mohammad Fauzi',
+        title: '(Electrical Engineer)',
+        date: dateStr,
+      },
+      reviewedBy: {
+        name: 'Arif Budiman',
+        title: '(Technical Manager)',
+        date: dateStr,
       },
       verifiedBy: {
-        name: 'QC DME Engineer',
-        title: 'Quality Control & Reliability Engineer',
-        date: dateStr
+        name: 'Arif Budiman',
+        title: '(Technical Manager)',
+        date: dateStr,
+      },
+      acknowledgedBy1: {
+        name: 'Habib Mulyana',
+        title: '(Chief Engineer)',
+        date: dateStr,
+      },
+      acknowledgedBy2: {
+        name: 'Supriyatno',
+        title: '(Facility manager)',
+        date: dateStr,
       },
       approvedBy: {
-        name: 'NeutraDC Facility Ops Head',
-        title: 'Site Manager NeutraDC Cikarang',
-        date: dateStr
-      }
+        name: 'Budi Susanto',
+        title: '(Assistant manager HDC Facility Management)',
+        date: dateStr,
+      },
     }
   };
 }
@@ -386,21 +402,37 @@ Hasilkan analisis predictive maintenance RCM yang mendalam dan solutif.`;
       },
 
       signatures: {
+        authorName: 'Rizki Novri Yanda – Data Center Operation',
         preparedBy: {
-          name: input.userName || 'Standby Engineer DME',
-          title: 'Duty Maintenance Engineer',
-          date: dateStr
+          name: input.userName || 'Asep Mohammad Fauzi',
+          title: '(Electrical Engineer)',
+          date: dateStr,
+        },
+        reviewedBy: {
+          name: 'Arif Budiman',
+          title: '(Technical Manager)',
+          date: dateStr,
         },
         verifiedBy: {
-          name: 'QC DME Engineer',
-          title: 'Quality Control & Reliability Engineer',
-          date: dateStr
+          name: 'Arif Budiman',
+          title: '(Technical Manager)',
+          date: dateStr,
+        },
+        acknowledgedBy1: {
+          name: 'Habib Mulyana',
+          title: '(Chief Engineer)',
+          date: dateStr,
+        },
+        acknowledgedBy2: {
+          name: 'Supriyatno',
+          title: '(Facility manager)',
+          date: dateStr,
         },
         approvedBy: {
-          name: 'NeutraDC Facility Ops Head',
-          title: 'Site Manager NeutraDC Cikarang',
-          date: dateStr
-        }
+          name: 'Budi Susanto',
+          title: '(Assistant manager HDC Facility Management)',
+          date: dateStr,
+        },
       }
     };
 

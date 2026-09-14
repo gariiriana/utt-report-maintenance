@@ -72,23 +72,42 @@ export interface PredictiveReportData {
 
   // ─── Bagian 5: Lembar Pengesahan (Approval Sheet) ────────────────────────
   signatures: {
+    authorName?: string;
     preparedBy: {
       name: string;
       title: string;
       signatureBase64?: string;
-      date: string;
+      date?: string;
     };
-    verifiedBy: {
+    reviewedBy?: {
       name: string;
       title: string;
       signatureBase64?: string;
-      date: string;
+      date?: string;
+    };
+    verifiedBy?: { // backward compatibility alias
+      name: string;
+      title: string;
+      signatureBase64?: string;
+      date?: string;
+    };
+    acknowledgedBy1?: {
+      name: string;
+      title: string;
+      signatureBase64?: string;
+      date?: string;
+    };
+    acknowledgedBy2?: {
+      name: string;
+      title: string;
+      signatureBase64?: string;
+      date?: string;
     };
     approvedBy: {
       name: string;
       title: string;
       signatureBase64?: string;
-      date: string;
+      date?: string;
     };
   };
 }

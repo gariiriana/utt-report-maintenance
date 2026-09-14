@@ -303,27 +303,70 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     }
 
     // ─── 5. LEMBAR PENGESAHAN (APPROVAL SHEET) ──────────────────────────────
-    if (currentY > pageH - 45) {
+    if (currentY > pageH - 55) {
       doc.addPage();
       currentY = 15;
     }
 
     printSectionTitle('Lembar Pengesahan Resmi', '5');
 
+    const authorName =
+      data.signatures?.authorName ||
+      (data as any).authorName ||
+      'Rizki Novri Yanda – Data Center Operation';
+
+    const prepName = data.signatures?.preparedBy?.name || 'Asep Mohammad Fauzi';
+    const prepTitle = data.signatures?.preparedBy?.title || '(Electrical Engineer)';
+
+    const revName =
+      data.signatures?.reviewedBy?.name ||
+      data.signatures?.verifiedBy?.name ||
+      'Arif Budiman';
+    const revTitle = data.signatures?.reviewedBy?.title || '(Technical Manager)';
+
+    const ack1Name = data.signatures?.acknowledgedBy1?.name || 'Habib Mulyana';
+    const ack1Title = data.signatures?.acknowledgedBy1?.title || '(Chief Engineer)';
+
+    const ack2Name = data.signatures?.acknowledgedBy2?.name || 'Supriyatno';
+    const ack2Title = data.signatures?.acknowledgedBy2?.title || '(Facility manager)';
+
+    const appName = data.signatures?.approvedBy?.name || 'Budi Susanto';
+    const appTitle =
+      data.signatures?.approvedBy?.title ||
+      '(Assistant manager HDC Facility Management)';
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(`AUTHOR BY, ${sanitizeText(authorName)}`, margin, currentY + 1);
+    currentY += 4;
+
     autoTable(doc, {
       startY: currentY,
       margin: { left: margin, right: margin },
       theme: 'grid',
       styles: { fontSize: 7.5, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica', halign: 'center' },
-      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
-      head: [
-        ['PREPARED BY\n(Duty Maintenance Engineer)', 'VERIFIED BY\n(QC DME Engineer)', 'APPROVED BY\n(NeutraDC Facility Ops Head)'],
-      ],
       body: [
         [
-          { content: '\n\n\n\n' + `(${data.signatures.preparedBy.name})\n${data.signatures.preparedBy.title}` },
-          { content: '\n\n\n\n' + `(${data.signatures.verifiedBy.name})\n${data.signatures.verifiedBy.title}` },
-          { content: '\n\n\n\n' + `(${data.signatures.approvedBy.name})\n${data.signatures.approvedBy.title}` },
+          { content: 'PREPARED BY,', styles: { fontStyle: 'bold', fillColor: [220, 230, 241], textColor: [0, 0, 0] } },
+          { content: 'REVIEWED BY,', styles: { fontStyle: 'bold', fillColor: [220, 230, 241], textColor: [0, 0, 0] } },
+        ],
+        [
+          { content: `\n\n\n${prepName}\n${prepTitle}` },
+          { content: `\n\n\n${revName}\n${revTitle}` },
+        ],
+        [
+          { content: 'ACKNOWLEDGED BY,', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [220, 230, 241], textColor: [0, 0, 0] } },
+        ],
+        [
+          { content: `\n\n\n${ack1Name}\n${ack1Title}` },
+          { content: `\n\n\n${ack2Name}\n${ack2Title}` },
+        ],
+        [
+          { content: 'APPROVED BY,', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [220, 230, 241], textColor: [0, 0, 0] } },
+        ],
+        [
+          { content: `\n\n\n${appName}\n${appTitle}`, colSpan: 2 },
         ],
       ],
     });
