@@ -1210,6 +1210,92 @@ export function FileManagement({
         }
     };
 
+    const isTypeMatch = (fMType?: string, targetType?: string | null) => {
+        if (!targetType) return true;
+        if (!fMType) return false;
+        const normF = fMType.trim().toLowerCase();
+        const normT = targetType.trim().toLowerCase();
+        if (normF === normT) return true;
+        if ((normT.includes('transformer') || normT.includes('trafo')) && (normF.includes('transformer') || normF.includes('trafo'))) return true;
+        if (normT.includes('generator') && (normF.includes('generator') || normF.includes('genset'))) return true;
+        if (normT.includes('water leak') && normF.includes('water leak')) return true;
+        if (normT.includes('fuel leak') && normF.includes('fuel leak')) return true;
+        if (normT.includes('fuel system') && normF.includes('fuel system')) return true;
+        if (normT.includes('fuel tank') && normF.includes('fuel tank')) return true;
+        if (normT.includes('mv')) {
+            if (normF.includes('mv')) return true;
+        }
+        if (normT.includes('rmu')) {
+            if (normF.includes('rmu') && !normF.includes('mv')) return true;
+        }
+        return false;
+    };
+
+    const sanitizeZipFolderName = (name: string): string => {
+        return name
+            .replace(/[/\\?%*:|"<>]/g, '-')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
+    const getZipFolderPath = (file: FileData): string => {
+        const hasMTypeCategories = ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'];
+        const cat = file.category || selectedFolder || 'Uncategorized';
+        const usesMType = hasMTypeCategories.some(c => matchCategory(cat, c));
+
+        let matchedMType = '';
+        if (usesMType) {
+            const foundType = MAINTENANCE_TYPES.find(t => isTypeMatch(file.maintenanceType, t));
+            matchedMType = foundType || (file.maintenanceType && file.maintenanceType.trim() ? file.maintenanceType.trim() : 'Lainnya');
+        }
+
+        const fileQuarter = file.quarter && QUARTERS.includes(file.quarter)
+            ? file.quarter
+            : (usesMType ? 'Tanpa Quarter' : '');
+
+        // 1. Jika user sedang membuka subfolder spesifik maintenance type (e.g. Q2 -> ATS)
+        if (selectedMType) {
+            return '';
+        }
+
+        // 2. Jika user sedang membuka Quarter (e.g. Service Report Approved -> Q2)
+        // Maka file dikelompokkan ke dalam subfolder Maintenance Type (ATS, Generator, Transformer, dsb)
+        if (selectedQuarter) {
+            if (usesMType && matchedMType) {
+                return sanitizeZipFolderName(matchedMType);
+            }
+            return '';
+        }
+
+        // 3. Jika user sedang membuka Folder Utama (e.g. Service Report Approved)
+        if (selectedFolder) {
+            if (selectedFolder === 'SLD' || selectedFolder === 'Layout') {
+                return '';
+            }
+            if (usesMType) {
+                const qPart = sanitizeZipFolderName(fileQuarter || 'Tanpa Quarter');
+                const mPart = sanitizeZipFolderName(matchedMType || 'Lainnya');
+                return `${qPart}/${mPart}`;
+            }
+            if (fileQuarter) {
+                return sanitizeZipFolderName(fileQuarter);
+            }
+            return '';
+        }
+
+        // 4. Jika user mengunduh di root keseluruhan
+        const catPart = sanitizeZipFolderName(cat);
+        if (usesMType) {
+            const qPart = sanitizeZipFolderName(fileQuarter || 'Tanpa Quarter');
+            const mPart = sanitizeZipFolderName(matchedMType || 'Lainnya');
+            return `${catPart}/${qPart}/${mPart}`;
+        }
+        if (fileQuarter) {
+            return `${catPart}/${sanitizeZipFolderName(fileQuarter)}`;
+        }
+        return catPart;
+    };
+
     const handleDownloadFolderZip = async () => {
         if (displayFiles.length === 0) {
             toast.error('Tidak ada file di folder ini untuk diunduh');
@@ -1220,11 +1306,13 @@ export function FileManagement({
         const toastId = toast.loading(`Menyiapkan ${displayFiles.length} file untuk di-download (${currentFolderName})...`);
         try {
             const zip = new JSZip();
-            const usedNames = new Set<string>();
+            const usedPaths = new Set<string>();
 
             for (let i = 0; i < displayFiles.length; i++) {
                 const file = displayFiles[i];
-                toast.loading(`[${i + 1}/${displayFiles.length}] Mengambil file: ${file.fileName}...`, { id: toastId });
+                if (i % 15 === 0 || i === displayFiles.length - 1) {
+                    toast.loading(`[${i + 1}/${displayFiles.length}] Mengambil file: ${file.fileName}...`, { id: toastId });
+                }
 
                 try {
                     if (file.isCorrectiveReport) {
@@ -1261,9 +1349,12 @@ export function FileManagement({
                         });
 
                         const blob = new Blob(byteArrays as any[], { type: mimeString });
+                        const folderPath = getZipFolderPath(file);
                         let uniqueName = file.fileName;
+                        let fullZipPath = folderPath ? `${folderPath}/${uniqueName}` : uniqueName;
                         let counter = 1;
-                        while (usedNames.has(uniqueName)) {
+
+                        while (usedPaths.has(fullZipPath)) {
                             const dotIdx = file.fileName.lastIndexOf('.');
                             if (dotIdx !== -1) {
                                 const base = file.fileName.substring(0, dotIdx);
@@ -1272,55 +1363,43 @@ export function FileManagement({
                             } else {
                                 uniqueName = `${file.fileName} (${counter})`;
                             }
+                            fullZipPath = folderPath ? `${folderPath}/${uniqueName}` : uniqueName;
                             counter++;
                         }
-                        usedNames.add(uniqueName);
-                        zip.file(uniqueName, blob);
+                        usedPaths.add(fullZipPath);
+                        zip.file(fullZipPath, blob);
                     }
                 } catch (fileErr) {
                     console.error(`Gagal memproses berkas ${file.fileName} untuk zip:`, fileErr);
                 }
             }
 
-            if (usedNames.size === 0) {
+            if (usedPaths.size === 0) {
                 toast.error('Tidak ada berkas yang dapat dikompres.', { id: toastId });
                 return;
             }
 
-            toast.loading(`Mengompres ${usedNames.size} file menjadi .ZIP...`, { id: toastId });
+            toast.loading(`Mengompres ${usedPaths.size} file ke dalam struktur folder .ZIP...`, { id: toastId });
             const content = await zip.generateAsync({
                 type: 'blob',
                 compression: 'DEFLATE',
                 compressionOptions: { level: 6 }
             });
-            const zipName = `Berkas_${currentFolderName.replace(/[^a-zA-Z0-9]/g, '_')}.zip`;
+
+            // Nama file zip yang deskriptif dan mencerminkan lokasi folder
+            let zipNameBase = 'Berkas';
+            if (selectedFolder) zipNameBase += `_${selectedFolder}`;
+            if (selectedQuarter) zipNameBase += `_${selectedQuarter}`;
+            if (selectedMType) zipNameBase += `_${selectedMType}`;
+            if (!selectedFolder && !selectedQuarter && !selectedMType) zipNameBase += `_${currentFolderName}`;
+            const zipName = `${zipNameBase.replace(/[^a-zA-Z0-9]/g, '_')}.zip`;
+
             saveAs(content, zipName);
-            toast.success(`Berhasil mengunduh folder ${currentFolderName} (${usedNames.size} file)!`, { id: toastId });
+            toast.success(`Berhasil mengunduh folder ${currentFolderName} (${usedPaths.size} file terorganisir per folder)!`, { id: toastId });
         } catch (err: any) {
             console.error('Failed to create ZIP:', err);
             toast.error('Gagal membuat file ZIP folder', { id: toastId });
         }
-    };
-
-    const isTypeMatch = (fMType?: string, targetType?: string | null) => {
-        if (!targetType) return true;
-        if (!fMType) return false;
-        const normF = fMType.trim().toLowerCase();
-        const normT = targetType.trim().toLowerCase();
-        if (normF === normT) return true;
-        if ((normT.includes('transformer') || normT.includes('trafo')) && (normF.includes('transformer') || normF.includes('trafo'))) return true;
-        if (normT.includes('generator') && (normF.includes('generator') || normF.includes('genset'))) return true;
-        if (normT.includes('water leak') && normF.includes('water leak')) return true;
-        if (normT.includes('fuel leak') && normF.includes('fuel leak')) return true;
-        if (normT.includes('fuel system') && normF.includes('fuel system')) return true;
-        if (normT.includes('fuel tank') && normF.includes('fuel tank')) return true;
-        if (normT.includes('mv')) {
-            if (normF.includes('mv')) return true;
-        }
-        if (normT.includes('rmu')) {
-            if (normF.includes('rmu') && !normF.includes('mv')) return true;
-        }
-        return false;
     };
 
     const filteredFiles = files.filter((file) => {
