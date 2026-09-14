@@ -294,9 +294,10 @@ interface DocumentListProps {
   onEdit?: (doc: ExcelDocument) => void;
   filterOverride?: 'hse_utt';
   initialSearchQuery?: string;
+  initialFolder?: string | null;
 }
 
-export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: DocumentListProps) {
+export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initialFolder }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const userEmailLower = (user?.email || '').toLowerCase();
   const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
@@ -357,8 +358,25 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   const [managementFilesCount, setManagementFilesCount] = useState(0);
   const [managementFilesSize, setManagementFilesSize] = useState(0);
   const [dmeSearchMode, setDmeSearchMode] = useState<'folder' | 'files'>(() => {
-    return initialSearchQuery ? 'files' : 'folder';
+    return (initialSearchQuery && !initialFolder) ? 'files' : 'folder';
   });
+
+  const prevInitialFolderRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (initialFolder !== undefined && initialFolder !== prevInitialFolderRef.current) {
+      prevInitialFolderRef.current = initialFolder;
+      if (initialFolder) {
+        if (initialFolder === 'PM' || initialFolder === 'Folder PM') {
+          setDmeLevel('account');
+          setDmeSelectedFolder(null);
+        } else {
+          setDmeSelectedFolder(initialFolder);
+          setDmeLevel('management_files');
+          setDmeSearchMode('folder');
+        }
+      }
+    }
+  }, [initialFolder]);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -1680,6 +1698,72 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   }, [documents, filteredDocuments]);
 
   const renderDmeContent = () => {
+    // 1. Jika sedang berada di folder Manajemen File (JSEA, MOP, Layout, dll), prioritaskan tampilkan FileManagement
+    if (dmeLevel === 'management_files') {
+      if (dmeSelectedFolder === 'Laporan Temuan') {
+        return (
+          <div className="space-y-4 w-full max-w-6xl">
+            <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between">
+              <button
+                onClick={() => { setDmeSelectedFolder(null); setDmeLevel('root'); prevInitialFolderRef.current = null; }}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 rounded-xl transition-all text-xs font-bold cursor-pointer border border-slate-200"
+              >
+                <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
+              </button>
+              <div className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                Folder: Laporan Temuan Maintenance
+              </div>
+            </div>
+            <FindingArchive />
+          </div>
+        );
+      }
+      return (
+        <div className="space-y-4 w-full max-w-6xl">
+          {searchQuery.trim() !== '' && filteredDocuments.length > 0 && (
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 border border-blue-200/90 rounded-2xl p-3 sm:p-4 shadow-xs flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-2xs shrink-0">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">
+                    Ditemukan {filteredDocuments.length} Laporan PM untuk "{searchQuery}"
+                  </h4>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Laporan maintenance hasil ekspor engineer juga ditemukan untuk kata kunci ini
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDmeLevel('root');
+                  setDmeSelectedFolder(null);
+                  setDmeSearchMode('files');
+                }}
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
+              >
+                <span>Lihat {filteredDocuments.length} Laporan PM</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          <FileManagement 
+            allowUpload={isAdmin || isQcDme} 
+            initialFolder={dmeSelectedFolder} 
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onBackToRoot={() => { 
+              setDmeSelectedFolder(null); 
+              setDmeLevel('root'); 
+              prevInitialFolderRef.current = null;
+            }} 
+          />
+        </div>
+      );
+    }
+
     // Mode tampilan file langsung hanya saat user memilih melihat file secara eksplisit
     if (dmeSearchMode === 'files' && searchQuery.trim() !== '') {
       return (
@@ -1899,63 +1983,6 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               </div>
             )}
           </div>
-        </div>
-      );
-    }
-
-    if (dmeLevel === 'management_files') {
-      if (dmeSelectedFolder === 'Laporan Temuan') {
-        return (
-          <div className="space-y-4 w-full max-w-6xl">
-            <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between">
-              <button
-                onClick={() => { setDmeSelectedFolder(null); setDmeLevel('root'); }}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 rounded-xl transition-all text-xs font-bold cursor-pointer border border-slate-200"
-              >
-                <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
-              </button>
-              <div className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
-                Folder: Laporan Temuan Maintenance
-              </div>
-            </div>
-            <FindingArchive />
-          </div>
-        );
-      }
-      return (
-        <div className="space-y-4 w-full max-w-6xl">
-          {searchQuery.trim() !== '' && filteredDocuments.length > 0 && (
-            <div className="flex items-center justify-between bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 border border-blue-200/90 rounded-2xl p-3 sm:p-4 shadow-xs flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-2xs shrink-0">
-                  <FileSpreadsheet className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">
-                    Ditemukan {filteredDocuments.length} Laporan PM untuk "{searchQuery}"
-                  </h4>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Laporan maintenance hasil ekspor engineer juga ditemukan untuk kata kunci ini
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDmeSearchMode('files')}
-                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
-              >
-                <span>Lihat {filteredDocuments.length} Laporan PM</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-          <FileManagement 
-            allowUpload={isAdmin || isQcDme} 
-            initialFolder={dmeSelectedFolder} 
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onBackToRoot={() => { setDmeSelectedFolder(null); setDmeLevel('root'); }} 
-          />
         </div>
       );
     }
@@ -3617,7 +3644,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             Coba Lagi
           </button>
         </div>
-      ) : filteredDocuments.length === 0 ? (
+      ) : (filterOverride === 'hse_utt' && filteredDocuments.length === 0) ? (
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 sm:p-12 border border-sky-100/90 shadow-md text-center">
           <FileSpreadsheet className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">

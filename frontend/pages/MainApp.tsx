@@ -149,21 +149,51 @@ export function MainApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [navSearchQuery, setNavSearchQuery] = useState('');
+  const [navTargetFolder, setNavTargetFolder] = useState<string | null>(null);
 
   // Handler saat notifikasi diklik: Otomatis berpindah tab dan memicu pencarian dokumen
   const handleSelectNotification = (item: AppNotificationItem) => {
-    if (item.targetTab) {
-      setActiveTab(item.targetTab as Tab);
-    }
-    const rawQuery = item.fileName || item.searchQuery || item.title || '';
-    const queryToUse = rawQuery
-      .replace(/\.pdf$/i, '')
-      .replace(/\.xlsx$/i, '')
-      .replace(/^dokumentasi maintenance\s*/i, '')
-      .replace(/^laporan service:\s*/i, '')
-      .trim();
+    const isBatch = /\d+\s+berkas\s+baru/i.test(item.fileName || '') ||
+                    (item.fileName || '').toLowerCase().includes('berkas baru');
+    const managementFoldersList = [
+      'D-DAY', 'Laporan Harian', 'Layout', 'MOP', 'Monthly', 'Predictive Report',
+      'Risk Register', 'JSEA', 'Report CM', 'Form SLA/SLG', 'Report PIR',
+      'Laporan Temuan', 'SLD', 'Service Report', 'Service Report Approved'
+    ];
 
-    setNavSearchQuery(queryToUse);
+    const isManagementFolder = Boolean(item.category && managementFoldersList.includes(item.category));
+
+    if (item.targetTab === 'files' || isManagementFolder) {
+      setActiveTab('documents');
+      if (isManagementFolder) {
+        setNavTargetFolder(item.category);
+      } else {
+        setNavTargetFolder(null);
+      }
+    } else if (item.targetTab) {
+      setActiveTab(item.targetTab as Tab);
+      setNavTargetFolder(null);
+    }
+
+    if (isBatch) {
+      // Untuk unggah massal, jangan jadikan nama ringkasan "22 berkas baru (JSEA)" sebagai query pencarian file
+      setNavSearchQuery('');
+    } else {
+      const rawQuery = item.searchQuery || item.fileName || item.title || '';
+      const queryToUse = rawQuery
+        .replace(/\.pdf$/i, '')
+        .replace(/\.xlsx$/i, '')
+        .replace(/^dokumentasi maintenance\s*/i, '')
+        .replace(/^laporan service:\s*/i, '')
+        .trim();
+
+      if (isManagementFolder && queryToUse.toLowerCase() === item.category.toLowerCase()) {
+        setNavSearchQuery('');
+      } else {
+        setNavSearchQuery(queryToUse);
+      }
+    }
+
     toast.info(`Membuka: ${item.fileName || item.title}`);
   };
 
@@ -403,7 +433,7 @@ export function MainApp() {
             ) : activeTab === 'ptw' ? (
               <PTWManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'files' ? (
-              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
+              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
             ) : activeTab === 'report' ? (
               <ReportForm
                 editingData={editingData}
@@ -434,7 +464,7 @@ export function MainApp() {
             ) : activeTab === 'face_registration' ? (
               <FaceRegistrationManagement />
             ) : (
-              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
+              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
             )}
           </motion.div>
         </AnimatePresence>

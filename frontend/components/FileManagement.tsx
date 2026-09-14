@@ -553,6 +553,9 @@ export function FileManagement({
         setSelectedFolder(initialFolder || null);
         setSelectedQuarter(null);
         setSelectedMType(null);
+        if (initialFolder) {
+            setShowAllInFolder(true);
+        }
     }, [initialFolder]);
 
     // Sinkronisasi pilihan form upload saat membuka folder tertentu
@@ -571,11 +574,13 @@ export function FileManagement({
     useEffect(() => {
         if (initialSearchQuery) {
             handleSearchChange(initialSearchQuery);
-            setSelectedFolder(null);
-            setSelectedQuarter(null);
-            setSelectedMType(null);
+            if (!initialFolder) {
+                setSelectedFolder(null);
+                setSelectedQuarter(null);
+                setSelectedMType(null);
+            }
         }
-    }, [initialSearchQuery]);
+    }, [initialSearchQuery, initialFolder]);
 
     const folderCardRef = useRef<HTMLDivElement>(null);
 
@@ -616,7 +621,7 @@ export function FileManagement({
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [deleteReason, setDeleteReason] = useState('');
     const [deleteModalMode, setDeleteModalMode] = useState<'request_delete' | 'review_request' | 'direct_delete' | 'cancel_request'>('request_delete');
-    const [showAllInFolder, setShowAllInFolder] = useState(false);
+    const [showAllInFolder, setShowAllInFolder] = useState(() => Boolean(initialFolder));
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
