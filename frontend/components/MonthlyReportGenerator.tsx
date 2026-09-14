@@ -28,7 +28,6 @@ import {
   Cpu,
   Download,
   Plus,
-  PlusCircle,
   Trash2,
   CheckCircle2,
   RotateCcw,
@@ -1679,7 +1678,7 @@ export function MonthlyReportGenerator() {
 
             {/* Tombol Buat Laporan Baru / Pilih Periode */}
             <button
-              onClick={openSetupModal}
+              onClick={() => openSetupModal('new')}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
               title="Pilih Bulan & Tentukan Nama File Laporan Baru"
             >
@@ -1725,7 +1724,7 @@ export function MonthlyReportGenerator() {
               File Ekspor: <strong className="text-blue-700">{sanitizeFileName(reportTitle)}.docx</strong>
             </span>
             <button
-              onClick={openSetupModal}
+              onClick={() => openSetupModal()}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all cursor-pointer shadow-xs"
               title="Ganti Bulan / Tahun / Judul Laporan melalui dialog"
             >
