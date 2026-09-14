@@ -41,6 +41,30 @@ interface PeriodicPredictiveModalProps {
   onSaved?: (saved: PeriodicPredictiveReportData) => void;
 }
 
+function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === undefined) {
+    return null as any;
+  }
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  if (obj instanceof Date || (obj.constructor && obj.constructor.name !== 'Object' && !Array.isArray(obj))) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj
+      .filter(item => item !== undefined)
+      .map(item => sanitizeForFirestore(item)) as any;
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = sanitizeForFirestore(value);
+    }
+  }
+  return clean as any;
+}
+
 const MONTH_OPTIONS = [
   { value: 1, label: 'Januari' },
   { value: 2, label: 'Februari' },
@@ -156,12 +180,14 @@ export const PeriodicPredictiveModal: React.FC<PeriodicPredictiveModalProps> = (
       const docId = reportData.id || `PPR_${reportData.year}_${reportData.month || 'ANNUAL'}_${Date.now()}`;
       const docRef = doc(db, 'periodic_predictive_reports', docId);
 
-      const payload = {
+      const rawPayload = {
         ...reportData,
         id: docId,
         updatedAt: serverTimestamp(),
         createdAt: reportData.createdAt || serverTimestamp(),
       };
+
+      const payload = sanitizeForFirestore(rawPayload);
 
       await setDoc(docRef, payload, { merge: true });
       toast.success('Laporan Predictive Periodik berhasil disimpan!', { id: toastId });

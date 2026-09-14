@@ -11,6 +11,13 @@ import {
   PredictiveParameterDrift,
   PredictiveSparepart
 } from '@/types/predictiveReportTypes';
+import {
+  PREPARED_BY_SIGNATURES,
+  getEngineerSignature,
+  cleanSignature,
+  ARIF_BUDIMAN_SIGNATURE_BASE64,
+  ASEP_SIGNATURE_BASE64,
+} from '@/utils/engineerSignatures';
 
 // ─── Environment & API Key Management ────────────────────────────────────────
 
@@ -243,31 +250,40 @@ function generateDeterministicFallback(input: GeneratePredictiveInput): Predicti
       preparedBy: {
         name: input.userName || 'Asep Mohammad Fauzi',
         title: '(Electrical Engineer)',
+        signatureBase64:
+          cleanSignature(PREPARED_BY_SIGNATURES[input.userName || 'Asep Mohammad Fauzi']) ||
+          getEngineerSignature(input.userName || 'Asep Mohammad Fauzi') ||
+          ASEP_SIGNATURE_BASE64,
         date: dateStr,
       },
       reviewedBy: {
         name: 'Arif Budiman',
         title: '(Technical Manager)',
+        signatureBase64: ARIF_BUDIMAN_SIGNATURE_BASE64,
         date: dateStr,
       },
       verifiedBy: {
         name: 'Arif Budiman',
         title: '(Technical Manager)',
+        signatureBase64: ARIF_BUDIMAN_SIGNATURE_BASE64,
         date: dateStr,
       },
       acknowledgedBy1: {
         name: 'Habib Mulyana',
         title: '(Chief Engineer)',
+        signatureBase64: '',
         date: dateStr,
       },
       acknowledgedBy2: {
         name: 'Supriyatno',
         title: '(Facility manager)',
+        signatureBase64: '',
         date: dateStr,
       },
       approvedBy: {
         name: 'Budi Susanto',
         title: '(Assistant manager HDC Facility Management)',
+        signatureBase64: '',
         date: dateStr,
       },
     }
@@ -406,31 +422,40 @@ Hasilkan analisis predictive maintenance RCM yang mendalam dan solutif.`;
         preparedBy: {
           name: input.userName || 'Asep Mohammad Fauzi',
           title: '(Electrical Engineer)',
+          signatureBase64:
+            cleanSignature(PREPARED_BY_SIGNATURES[input.userName || 'Asep Mohammad Fauzi']) ||
+            getEngineerSignature(input.userName || 'Asep Mohammad Fauzi') ||
+            ASEP_SIGNATURE_BASE64,
           date: dateStr,
         },
         reviewedBy: {
           name: 'Arif Budiman',
           title: '(Technical Manager)',
+          signatureBase64: ARIF_BUDIMAN_SIGNATURE_BASE64,
           date: dateStr,
         },
         verifiedBy: {
           name: 'Arif Budiman',
           title: '(Technical Manager)',
+          signatureBase64: ARIF_BUDIMAN_SIGNATURE_BASE64,
           date: dateStr,
         },
         acknowledgedBy1: {
           name: 'Habib Mulyana',
           title: '(Chief Engineer)',
+          signatureBase64: '',
           date: dateStr,
         },
         acknowledgedBy2: {
           name: 'Supriyatno',
           title: '(Facility manager)',
+          signatureBase64: '',
           date: dateStr,
         },
         approvedBy: {
           name: 'Budi Susanto',
           title: '(Assistant manager HDC Facility Management)',
+          signatureBase64: '',
           date: dateStr,
         },
       }

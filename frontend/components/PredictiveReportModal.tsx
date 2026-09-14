@@ -52,6 +52,35 @@ interface PredictiveReportModalProps {
   isLoadingAI?: boolean;
 }
 
+/**
+ * Helper: Hapus seluruh key bernilai undefined secara rekursif sebelum dikirim ke Firestore
+ * agar tidak melempar error 'Function setDoc() called with invalid data. Unsupported field value: undefined'
+ */
+function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === undefined) {
+    return null as any;
+  }
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  // Biarkan Date dan Firestore FieldValue / Timestamp apa adanya
+  if (obj instanceof Date || (obj.constructor && obj.constructor.name !== 'Object' && !Array.isArray(obj))) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj
+      .filter(item => item !== undefined)
+      .map(item => sanitizeForFirestore(item)) as any;
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = sanitizeForFirestore(value);
+    }
+  }
+  return clean as any;
+}
+
 function normalizePredictiveData(input: PredictiveReportData): PredictiveReportData {
   const sig = input.signatures || ({} as any);
   const prepName = sig.preparedBy?.name || 'Asep Mohammad Fauzi';
@@ -84,19 +113,19 @@ function normalizePredictiveData(input: PredictiveReportData): PredictiveReportD
       acknowledgedBy1: {
         name: sig.acknowledgedBy1?.name || 'Habib Mulyana',
         title: sig.acknowledgedBy1?.title || '(Chief Engineer)',
-        signatureBase64: sig.acknowledgedBy1?.signatureBase64,
+        signatureBase64: cleanSignature(sig.acknowledgedBy1?.signatureBase64) || '',
         date: sig.acknowledgedBy1?.date || '',
       },
       acknowledgedBy2: {
         name: sig.acknowledgedBy2?.name || 'Supriyatno',
         title: sig.acknowledgedBy2?.title || '(Facility manager)',
-        signatureBase64: sig.acknowledgedBy2?.signatureBase64,
+        signatureBase64: cleanSignature(sig.acknowledgedBy2?.signatureBase64) || '',
         date: sig.acknowledgedBy2?.date || '',
       },
       approvedBy: {
         name: sig.approvedBy?.name || 'Budi Susanto',
         title: sig.approvedBy?.title || '(Assistant manager HDC Facility Management)',
-        signatureBase64: sig.approvedBy?.signatureBase64,
+        signatureBase64: cleanSignature(sig.approvedBy?.signatureBase64) || '',
         date: sig.approvedBy?.date || '',
       },
     },
@@ -200,12 +229,14 @@ export function PredictiveReportModal({
       const docId = data.id || `PDM_${Date.now()}`;
       const docRef = doc(db, 'predictive_reports', docId);
 
-      const payload = {
+      const rawPayload = {
         ...data,
         id: docId,
         updatedAt: serverTimestamp(),
         createdAt: data.createdAt || serverTimestamp(),
       };
+
+      const payload = sanitizeForFirestore(rawPayload);
 
       await setDoc(docRef, payload, { merge: true });
 
@@ -213,14 +244,14 @@ export function PredictiveReportModal({
       if (data.sourceDocId && data.sourceCollection) {
         try {
           const parentDocRef = doc(db, data.sourceCollection, data.sourceDocId);
-          await updateDoc(parentDocRef, {
+          await updateDoc(parentDocRef, sanitizeForFirestore({
             predictiveReportId: docId,
             predictiveReportNumber: data.reportNumber,
             hasPredictiveReport: true,
             predictiveHealthStatus: data.healthStatus,
-            predictiveRemainingLife: data.aiAnalysis.remainingUsefulLife,
+            predictiveRemainingLife: data.aiAnalysis?.remainingUsefulLife || '',
             predictiveUpdatedAt: serverTimestamp(),
-          });
+          }));
         } catch (parentErr) {
           console.warn('Parent document update skipped or failed:', parentErr);
         }
