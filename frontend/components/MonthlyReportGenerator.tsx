@@ -848,6 +848,28 @@ export function MonthlyReportGenerator() {
     handleGenerateReport(false, modalMonth, modalYear, finalTitle);
   };
 
+  // Tutup Modal Setup (Batal / Close / X)
+  const handleCloseSetupModal = useCallback(() => {
+    sessionStorage.setItem('dwimitra_monthly_init_done', 'true');
+    setIsSetupModalOpen(false);
+    if (!reportData) {
+      const finalTitle = modalTitle.trim() || getDefaultReportTitle(modalMonth, modalYear);
+      handleGenerateReport(false, modalMonth, modalYear, finalTitle);
+    }
+  }, [reportData, modalTitle, modalMonth, modalYear, getDefaultReportTitle, handleGenerateReport]);
+
+  // Support tombol keyboard Escape untuk menutup modal setup
+  useEffect(() => {
+    if (!isSetupModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseSetupModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSetupModalOpen, handleCloseSetupModal]);
+
   // Generate on initial mount or when month/year changes
   useEffect(() => {
     const initDone = sessionStorage.getItem('dwimitra_monthly_init_done');
@@ -7557,7 +7579,12 @@ export function MonthlyReportGenerator() {
       {/* ─── Modal Inisialisasi & Pemilihan Laporan (Setup & Arsip Picker) ────────────────────── */}
       <AnimatePresence>
         {isSetupModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs font-sans">
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleCloseSetupModal();
+            }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs font-sans"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -7580,16 +7607,14 @@ export function MonthlyReportGenerator() {
                       </h3>
                     </div>
                   </div>
-                  {reportData && (
-                    <button
-                      type="button"
-                      onClick={() => setIsSetupModalOpen(false)}
-                      className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-                      title="Tutup"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleCloseSetupModal}
+                    className="p-2 text-white/80 hover:text-white hover:bg-white/10 active:scale-95 rounded-xl transition-all cursor-pointer"
+                    title="Tutup (Esc)"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
                 <p className="text-xs text-blue-100 mt-2 leading-relaxed">
                   Lanjutkan pengeditan laporan dari arsip dokumen yang sudah tersimpan atau mulai susun laporan periode baru.
@@ -7883,15 +7908,13 @@ export function MonthlyReportGenerator() {
                 </div>
 
                 <div className="flex items-center gap-2.5">
-                  {reportData && (
-                    <button
-                      type="button"
-                      onClick={() => setIsSetupModalOpen(false)}
-                      className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer"
-                    >
-                      Batal
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleCloseSetupModal}
+                    className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer active:scale-95"
+                  >
+                    Batal
+                  </button>
 
                   {setupModalTab === 'new' && (
                     <button
