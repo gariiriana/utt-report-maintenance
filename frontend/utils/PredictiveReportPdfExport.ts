@@ -219,8 +219,8 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
       }
     }
 
-    // ─── 3. ANALISIS PREDIKTIF AI ───────────────────────────────────────────
-    printSectionTitle('Analisis Prediktif AI (Reliability & Risk Insight)', '3');
+    // ─── 3. ANALISIS PREDIKTIF ──────────────────────────────────────────────
+    printSectionTitle('Analisis Prediktif (Reliability & Risk Insight)', '3');
 
     autoTable(doc, {
       startY: currentY,
@@ -255,6 +255,10 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     currentY = (doc as any).lastAutoTable.finalY + 5;
 
     // ─── 4. RENCANA TINDAKAN PREDIKTIF ──────────────────────────────────────
+    // Pindah ke Halaman 2 untuk Bagian 4 (Action Plan) & Bagian 5 (Approval Sheet)
+    doc.addPage();
+    currentY = 15;
+
     printSectionTitle('Rencana Tindakan Prediktif (Action Plan)', '4');
 
     autoTable(doc, {
@@ -318,11 +322,8 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     const prepName = data.signatures?.preparedBy?.name || 'Asep Mohammad Fauzi';
     const prepTitle = data.signatures?.preparedBy?.title || '(Electrical Engineer)';
 
-    const revName =
-      data.signatures?.reviewedBy?.name ||
-      data.signatures?.verifiedBy?.name ||
-      'Arif Budiman';
-    const revTitle = data.signatures?.reviewedBy?.title || '(Technical Manager)';
+    const revName = 'Arif Budiman';
+    const revTitle = '(Technical Manager)';
 
     const ack1Name = data.signatures?.acknowledgedBy1?.name || 'Habib Mulyana';
     const ack1Title = data.signatures?.acknowledgedBy1?.title || '(Chief Engineer)';

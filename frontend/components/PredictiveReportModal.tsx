@@ -32,6 +32,13 @@ import {
 } from '@/types/predictiveReportTypes';
 import { exportPredictiveReportToDocx } from '@/utils/PredictiveReportWordExport';
 import { exportPredictiveReportToPdf } from '@/utils/PredictiveReportPdfExport';
+import {
+  PREPARED_BY_SIGNATURES,
+  getEngineerSignature,
+  cleanSignature,
+  ARIF_BUDIMAN_SIGNATURE_BASE64,
+  ASEP_SIGNATURE_BASE64,
+} from '@/utils/engineerSignatures';
 import { db } from '@/api/firebase';
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -47,26 +54,31 @@ interface PredictiveReportModalProps {
 
 function normalizePredictiveData(input: PredictiveReportData): PredictiveReportData {
   const sig = input.signatures || ({} as any);
+  const prepName = sig.preparedBy?.name || 'Asep Mohammad Fauzi';
   return {
     ...input,
     signatures: {
       authorName: sig.authorName || 'Rizki Novri Yanda – Data Center Operation',
       preparedBy: {
-        name: sig.preparedBy?.name || 'Asep Mohammad Fauzi',
+        name: prepName,
         title: sig.preparedBy?.title || '(Electrical Engineer)',
-        signatureBase64: sig.preparedBy?.signatureBase64,
+        signatureBase64:
+          cleanSignature(sig.preparedBy?.signatureBase64) ||
+          cleanSignature(PREPARED_BY_SIGNATURES[prepName]) ||
+          getEngineerSignature(prepName) ||
+          ASEP_SIGNATURE_BASE64,
         date: sig.preparedBy?.date || '',
       },
       reviewedBy: {
-        name: sig.reviewedBy?.name || sig.verifiedBy?.name || 'Arif Budiman',
-        title: sig.reviewedBy?.title || '(Technical Manager)',
-        signatureBase64: sig.reviewedBy?.signatureBase64 || sig.verifiedBy?.signatureBase64,
+        name: 'Arif Budiman',
+        title: '(Technical Manager)',
+        signatureBase64: ARIF_BUDIMAN_SIGNATURE_BASE64,
         date: sig.reviewedBy?.date || '',
       },
       verifiedBy: {
-        name: sig.verifiedBy?.name || sig.reviewedBy?.name || 'Arif Budiman',
-        title: sig.verifiedBy?.title || '(Technical Manager)',
-        signatureBase64: sig.verifiedBy?.signatureBase64 || sig.reviewedBy?.signatureBase64,
+        name: 'Arif Budiman',
+        title: '(Technical Manager)',
+        signatureBase64: ARIF_BUDIMAN_SIGNATURE_BASE64,
         date: sig.verifiedBy?.date || '',
       },
       acknowledgedBy1: {
@@ -306,7 +318,7 @@ export function PredictiveReportModal({
             { id: 'all', label: 'Semua Section' },
             { id: 'asset', label: '1. Identitas Peralatan' },
             { id: 'anomaly', label: '2. Gejala & Parameter' },
-            { id: 'ai', label: '3. Analisis Prediktif AI' },
+            { id: 'ai', label: '3. Analisis Prediktif' },
             { id: 'action', label: '4. Rencana Tindakan' },
             { id: 'approval', label: '5. Pengesahan' },
           ].map((tab) => (
@@ -554,14 +566,14 @@ export function PredictiveReportModal({
             </div>
           )}
 
-          {/* ─── SECTION 3: Analisis Prediktif AI ───────────────────────── */}
+          {/* ─── SECTION 3: Analisis Prediktif ───────────────────────── */}
           {(activeTab === 'all' || activeTab === 'ai') && (
             <div className="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-4 sm:p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-indigo-100 pb-2.5 gap-2.5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
                   <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                    3. Analisis Prediktif AI (Reliability & Risk Insight)
+                    3. Analisis Prediktif (Reliability & Risk Insight)
                   </h4>
                 </div>
 
@@ -819,23 +831,45 @@ export function PredictiveReportModal({
 
               {/* Row 1: PREPARED BY & REVIEWED BY */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* PREPARED BY */}
                 <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2">
-                  <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
-                    PREPARED BY (Insinyur Pelaksana)
-                  </span>
-                  <input
-                    type="text"
-                    value={data.signatures.preparedBy.name}
-                    onChange={e => setData({
-                      ...data,
-                      signatures: {
-                        ...data.signatures,
-                        preparedBy: { ...data.signatures.preparedBy, name: e.target.value }
-                      }
-                    })}
-                    placeholder="Asep Mohammad Fauzi"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
-                  />
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
+                      1. PREPARED BY (Insinyur Pelaksana)
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      TTD Otomatis
+                    </span>
+                  </div>
+                  <select
+                    value={data.signatures.preparedBy.name || 'Asep Mohammad Fauzi'}
+                    onChange={e => {
+                      const selectedName = e.target.value;
+                      const sig =
+                        cleanSignature(PREPARED_BY_SIGNATURES[selectedName]) ||
+                        getEngineerSignature(selectedName) ||
+                        '';
+                      setData(prev => ({
+                        ...prev,
+                        signatures: {
+                          ...prev.signatures,
+                          preparedBy: {
+                            ...prev.signatures.preparedBy,
+                            name: selectedName,
+                            signatureBase64: sig,
+                          },
+                        },
+                      }));
+                    }}
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="Agil Zakia Rahman">Agil Zakia Rahman</option>
+                    <option value="Asep Mohammad Fauzi">Asep Mohammad Fauzi</option>
+                    <option value="Nugroho Gilang Ramadhan">Nugroho Gilang Ramadhan</option>
+                    <option value="Dison Mintuno Andarbeni">Dison Mintuno Andarbeni</option>
+                    <option value="Riyan Bayu Nugroho">Riyan Bayu Nugroho</option>
+                  </select>
                   <input
                     type="text"
                     value={data.signatures.preparedBy.title}
@@ -846,49 +880,59 @@ export function PredictiveReportModal({
                         preparedBy: { ...data.signatures.preparedBy, title: e.target.value }
                       }
                     })}
-                    placeholder="(Electrical Engineer)"
+                    placeholder="Jabatan (e.g. (Electrical Engineer))"
                     className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500"
                   />
+                  {data.signatures.preparedBy.signatureBase64 && (
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                      <img
+                        src={data.signatures.preparedBy.signatureBase64}
+                        alt="TTD Prepared By"
+                        className="h-8 max-w-[120px] object-contain bg-slate-50 border border-slate-200 rounded px-1"
+                      />
+                      <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        TTD Digital Terhubung
+                      </span>
+                    </div>
+                  )}
                 </div>
 
+                {/* REVIEWED BY */}
                 <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2">
-                  <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
-                    REVIEWED BY (Technical Manager)
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 block uppercase tracking-wider text-[11px]">
+                      2. REVIEWED BY (Technical Manager)
+                    </span>
+                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-blue-600" />
+                      Wajib / Tetap
+                    </span>
+                  </div>
                   <input
                     type="text"
-                    value={data.signatures.reviewedBy?.name || data.signatures.verifiedBy?.name || 'Arif Budiman'}
-                    onChange={e => {
-                      const val = e.target.value;
-                      setData({
-                        ...data,
-                        signatures: {
-                          ...data.signatures,
-                          reviewedBy: { ...(data.signatures.reviewedBy || data.signatures.verifiedBy || { name: '', title: '' }), name: val },
-                          verifiedBy: { ...(data.signatures.verifiedBy || { name: '', title: '' }), name: val }
-                        }
-                      });
-                    }}
-                    placeholder="Arif Budiman"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
+                    value="Arif Budiman"
+                    readOnly
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold bg-slate-50 text-slate-800 cursor-not-allowed"
+                    title="Reviewer resmi diwajibkan Arif Budiman sebagai Technical Manager"
                   />
                   <input
                     type="text"
-                    value={data.signatures.reviewedBy?.title || data.signatures.verifiedBy?.title || '(Technical Manager)'}
-                    onChange={e => {
-                      const val = e.target.value;
-                      setData({
-                        ...data,
-                        signatures: {
-                          ...data.signatures,
-                          reviewedBy: { ...(data.signatures.reviewedBy || data.signatures.verifiedBy || { name: '', title: '' }), title: val },
-                          verifiedBy: { ...(data.signatures.verifiedBy || { name: '', title: '' }), title: val }
-                        }
-                      });
-                    }}
-                    placeholder="(Technical Manager)"
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500"
+                    value="(Technical Manager)"
+                    readOnly
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500 bg-slate-50 cursor-not-allowed"
                   />
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <img
+                      src={ARIF_BUDIMAN_SIGNATURE_BASE64}
+                      alt="TTD Arif Budiman"
+                      className="h-8 max-w-[120px] object-contain bg-slate-50 border border-slate-200 rounded px-1"
+                    />
+                    <span className="text-[11px] text-blue-700 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                      TTD Technical Manager
+                    </span>
+                  </div>
                 </div>
               </div>
 

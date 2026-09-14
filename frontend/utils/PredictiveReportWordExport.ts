@@ -140,11 +140,8 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
     normalizeEngineerName(data.signatures?.preparedBy?.name) || 'Asep Mohammad Fauzi';
   const prepTitle = data.signatures?.preparedBy?.title || '(Electrical Engineer)';
 
-  const revName =
-    data.signatures?.reviewedBy?.name ||
-    data.signatures?.verifiedBy?.name ||
-    'Arif Budiman';
-  const revTitle = data.signatures?.reviewedBy?.title || '(Technical Manager)';
+  const revName = 'Arif Budiman';
+  const revTitle = '(Technical Manager)';
 
   const ack1Name = data.signatures?.acknowledgedBy1?.name || 'Habib Mulyana';
   const ack1Title = data.signatures?.acknowledgedBy1?.title || '(Chief Engineer)';
@@ -167,9 +164,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
   const resolvedRevSign =
     cleanSignature(data.signatures?.reviewedBy?.signatureBase64) ||
     cleanSignature(data.signatures?.verifiedBy?.signatureBase64) ||
-    ((revName.toLowerCase().includes('arif') || revName.toLowerCase().includes('budiman'))
-      ? ARIF_BUDIMAN_SIGNATURE_BASE64
-      : ARIF_BUDIMAN_SIGNATURE_BASE64);
+    ARIF_BUDIMAN_SIGNATURE_BASE64;
 
   const resolvedAck1Sign = cleanSignature(data.signatures?.acknowledgedBy1?.signatureBase64) || '';
   const resolvedAck2Sign = cleanSignature(data.signatures?.acknowledgedBy2?.signatureBase64) || '';
@@ -998,8 +993,14 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
           driftTable,
           ...photoParagraphs,
 
-          createSectionHeading('Analisis Prediktif AI (Reliability & Risk Insight)', '3'),
+          createSectionHeading('Analisis Prediktif (Reliability & Risk Insight)', '3'),
           aiInsightTable,
+
+          // Pindah ke Halaman 2 untuk Bagian 4 (Action Plan) & Bagian 5 (Approval Sheet)
+          new Paragraph({
+            pageBreakBefore: true,
+            children: [],
+          }),
 
           createSectionHeading('Rencana Tindakan Prediktif (Action Plan)', '4'),
           actionPlanTable,
