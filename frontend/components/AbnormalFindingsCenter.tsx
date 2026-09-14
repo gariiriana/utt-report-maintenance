@@ -29,7 +29,8 @@ import {
   Eye,
   Trash2,
   Scissors,
-  Crop
+  Crop,
+  Brain
 } from 'lucide-react';
 import {
   collection,
@@ -37,6 +38,7 @@ import {
   where,
   onSnapshot,
   doc,
+  getDoc,
   updateDoc,
   deleteDoc,
   deleteField,
@@ -60,6 +62,9 @@ import { AbnormalFinding, ExcelDocument } from './DocumentList';
 import { AbnormalReportModal } from './AbnormalReportModal';
 import { ImageEditor } from './ImageEditor';
 import { autoCropTextFromImage } from '@/utils/cropUtils';
+import { PredictiveReportModal } from './PredictiveReportModal';
+import { generatePredictiveReportAI } from '@/utils/aiPredictiveAgent';
+import { PredictiveReportData } from '@/types/predictiveReportTypes';
 
 export interface AbnormalItem {
   id: string;
@@ -83,6 +88,12 @@ export interface AbnormalItem {
   partNumber?: string;
   brandName?: string;
   quantity?: string | number;
+  hasPredictiveReport?: boolean;
+  predictiveReportId?: string;
+  predictiveReportNumber?: string;
+  predictiveHealthStatus?: 'Critical' | 'Warning' | 'Caution';
+  predictiveRemainingLife?: string;
+  predictiveReportData?: PredictiveReportData;
 }
 
 interface AbnormalFindingsCenterProps {
@@ -167,6 +178,12 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
   // Modal crop foto temuan abnormal (ImageEditor)
   const [editingCropItem, setEditingCropItem] = useState<AbnormalItem | null>(null);
+
+  // Modal Predictive Maintenance Report (AI Agent)
+  const [predictiveModalOpen, setPredictiveModalOpen] = useState(false);
+  const [activePredictiveItem, setActivePredictiveItem] = useState<AbnormalItem | null>(null);
+  const [activePredictiveData, setActivePredictiveData] = useState<PredictiveReportData | null>(null);
+  const [isLoadingPredictive, setIsLoadingPredictive] = useState(false);
 
   // Helper konversi AbnormalItem ke ExcelDocument untuk AbnormalReportModal
   const itemToExcelDoc = (item: AbnormalItem): ExcelDocument => ({
@@ -457,6 +474,67 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     }
   };
 
+  // Handler: Buka / Generate Laporan Predictive Maintenance AI dari temuan abnormal
+  const handleOpenPredictiveModal = async (item: AbnormalItem) => {
+    setActivePredictiveItem(item);
+    setIsLoadingPredictive(true);
+    const toastId = toast.loading('Mempersiapkan Laporan Predictive Maintenance...');
+
+    try {
+      // 1. Cek jika sudah memiliki laporan prediktif yang tersimpan di memory / item
+      if (item.predictiveReportData) {
+        setActivePredictiveData(item.predictiveReportData);
+        setPredictiveModalOpen(true);
+        toast.dismiss(toastId);
+        return;
+      }
+
+      // 2. Cek jika sudah memiliki reportId yang tersimpan di Firestore
+      if (item.predictiveReportId) {
+        const pSnap = await getDoc(doc(db, 'predictive_reports', item.predictiveReportId));
+        if (pSnap.exists()) {
+          const pData = pSnap.data() as PredictiveReportData;
+          setActivePredictiveData(pData);
+          setPredictiveModalOpen(true);
+          toast.dismiss(toastId);
+          return;
+        }
+      }
+
+      // 3. Jika belum ada laporan prediktif, generate via AI Reliability Agent
+      toast.loading('AI Agent sedang menganalisis temuan abnormal untuk PdM...', { id: toastId });
+      const photoB64 = item.abnormalFinding?.photoBase64 || (item.abnormalFinding?.photos && item.abnormalFinding.photos[0]?.base64) || undefined;
+      const equipName = item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName || 'Critical Equipment';
+      const desc = item.abnormalFinding?.description || 'Terdeteksi kondisi abnormal pada peralatan fasilitas.';
+
+      const generated = await generatePredictiveReportAI({
+        sourceDocId: item.docId,
+        sourceCollection: item.collectionName as any,
+        sourceTicketNumber: item.fileName || undefined,
+        sourceMaintenanceName: item.maintenanceName,
+        sourceMaintenanceDate: item.maintenanceTime || new Date().toISOString().split('T')[0],
+        equipmentName: equipName,
+        locationRoom: 'Data Center NeutraDC Cikarang',
+        descriptionOrSymptoms: desc,
+        recommendation: item.abnormalFinding?.actionRecommendation || undefined,
+        photoEvidenceBase64: photoB64,
+        userEmail: user?.email || undefined,
+        userName: user?.displayName || undefined,
+      }, (msg) => {
+        toast.loading(msg, { id: toastId });
+      });
+
+      setActivePredictiveData(generated);
+      setPredictiveModalOpen(true);
+      toast.success('Laporan Prediktif AI siap ditinjau!', { id: toastId });
+    } catch (err: any) {
+      console.error('Error opening predictive report modal:', err);
+      toast.error(`Gagal memuat laporan prediktif: ${err?.message || 'Terjadi kesalahan sistem'}`, { id: toastId });
+    } finally {
+      setIsLoadingPredictive(false);
+    }
+  };
+
   // Real-time listener ke seluruh koleksi dokumen yang berstatus hasAbnormal == true & koleksi findings
   useEffect(() => {
     setLoading(true);
@@ -707,6 +785,11 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             },
             attachedSrFile: data.attachedSrFile,
             attachedSrBase64: data.attachedSrBase64,
+            hasPredictiveReport: Boolean(data.hasPredictiveReport),
+            predictiveReportId: data.predictiveReportId,
+            predictiveReportNumber: data.predictiveReportNumber,
+            predictiveHealthStatus: data.predictiveHealthStatus,
+            predictiveRemainingLife: data.predictiveRemainingLife,
           };
         });
         updateAll();
@@ -746,6 +829,11 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             },
             attachedSrFile: data.attachedSrFile,
             attachedSrBase64: data.attachedSrBase64,
+            hasPredictiveReport: Boolean(data.hasPredictiveReport),
+            predictiveReportId: data.predictiveReportId,
+            predictiveReportNumber: data.predictiveReportNumber,
+            predictiveHealthStatus: data.predictiveHealthStatus,
+            predictiveRemainingLife: data.predictiveRemainingLife,
           };
         });
         updateAll();
@@ -1309,6 +1397,19 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               <option value="without_photo">Tanpa Foto</option>
             </select>
           </div>
+
+          {/* Pengurutan (Sort By) */}
+          <div className="relative lg:col-span-1">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-medium text-slate-800 transition cursor-pointer appearance-none"
+            >
+              <option value="newest">Waktu Terkini (Default)</option>
+              <option value="oldest">Waktu Terlama</option>
+              <option value="unit_asc">Nama Unit (A - Z)</option>
+            </select>
+          </div>
         </div>
 
         {/* Quick Filter Pill Buttons (Bulan Rekap Cepat) */}
@@ -1623,6 +1724,26 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     >
                       <Eye className="w-3.5 h-3.5 text-sky-600" />
                       <span>Lihat Temuan</span>
+                    </button>
+
+                    {/* Tombol Predictive AI */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPredictiveModal(item)}
+                      disabled={isLoadingPredictive && activePredictiveItem?.id === item.id}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                        item.hasPredictiveReport || item.predictiveReportId
+                          ? 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300'
+                          : 'bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-indigo-700 border border-indigo-200'
+                      }`}
+                      title="Analisis Predictive Maintenance (PdM) berbasis AI"
+                    >
+                      {isLoadingPredictive && activePredictiveItem?.id === item.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                      ) : (
+                        <Brain className="w-3.5 h-3.5 text-indigo-600" />
+                      )}
+                      <span>{item.hasPredictiveReport || item.predictiveReportId ? '✓ Lihat PdM' : 'Predictive AI'}</span>
                     </button>
 
                     <button
@@ -2053,6 +2174,23 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     type="button"
                     onClick={() => {
                       const target = viewingDetailItem;
+                      handleOpenPredictiveModal(target);
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                      viewingDetailItem.hasPredictiveReport || viewingDetailItem.predictiveReportId
+                        ? 'bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300'
+                        : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-300'
+                    }`}
+                    title="Analisis Predictive Maintenance (PdM) berbasis AI"
+                  >
+                    <Brain className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>{viewingDetailItem.hasPredictiveReport || viewingDetailItem.predictiveReportId ? '✓ Lihat Laporan PdM' : 'Predictive AI'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = viewingDetailItem;
                       setViewingDetailItem(null);
                       setEditingModalDoc(itemToExcelDoc(target));
                     }}
@@ -2216,6 +2354,34 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           />
         )}
       </AnimatePresence>
+
+      {/* Modal Predictive Maintenance Report (AI Agent) */}
+      {predictiveModalOpen && activePredictiveData && (
+        <PredictiveReportModal
+          isOpen={predictiveModalOpen}
+          onClose={() => setPredictiveModalOpen(false)}
+          initialData={activePredictiveData}
+          isLoadingAI={isLoadingPredictive}
+          onRegenerateAI={() => activePredictiveItem ? handleOpenPredictiveModal(activePredictiveItem) : Promise.resolve()}
+          onSaved={(saved) => {
+            setActivePredictiveData(saved);
+            setItems(prev => prev.map(it => {
+              if (activePredictiveItem && it.id === activePredictiveItem.id) {
+                return {
+                  ...it,
+                  hasPredictiveReport: true,
+                  predictiveReportId: saved.id,
+                  predictiveReportNumber: saved.reportNumber,
+                  predictiveHealthStatus: saved.healthStatus,
+                  predictiveRemainingLife: saved.aiAnalysis.remainingUsefulLife,
+                  predictiveReportData: saved,
+                };
+              }
+              return it;
+            }));
+          }}
+        />
+      )}
     </div>
   );
 }

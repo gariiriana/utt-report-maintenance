@@ -171,7 +171,7 @@ export async function exportMonthlyPDF(
         if (prio === 'Low') return 2880;
         return 360;
       };
-      const targetRST = r.targetRestoreMin || getTargetByPriority(r.priority);
+      const targetRST = 180; // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
       const targetRSP = r.targetResolutionMin || getTargetByPriority(r.priority);
 
       const isRestoreComply = (r.actualRestoreTimeMin !== undefined && r.actualRestoreTimeMin > 0)
@@ -340,7 +340,7 @@ export async function exportMonthlyPDF(
       if (prio === 'Low') return 2880;
       return 360;
     };
-    const targetRST = report.targetRestoreMin || getTargetByPriority(report.priority);
+    const targetRST = 180; // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
     const targetRSP = report.targetResolutionMin || getTargetByPriority(report.priority);
     const isRestoreComply = (report.actualRestoreTimeMin !== undefined && report.actualRestoreTimeMin > 0)
       ? report.actualRestoreTimeMin <= targetRST

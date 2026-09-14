@@ -979,7 +979,7 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
 
   const targetResp = report.targetResponseMin || 5;
   const targetOnsite = report.targetOnsiteMin || 120;
-  const targetRestore = report.targetRestoreMin || getTargetByPriority(report.priority);
+  const targetRestore = 180; // SLA Target Komitmen Restore Time selalu 3 Jam (180 Menit)
   const targetResolution = report.targetResolutionMin || getTargetByPriority(report.priority);
 
   const actualResp = report.actualResponseTimeMin ?? (report.timeOrder ? 5 : 0);
@@ -1982,7 +1982,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
   const restoreWidths = [4, 20, 12, 13, 13, 9, 7, 7, 15];
 
   const restoreRows = reports.map((r, idx) => {
-    const targetRestore = r.targetRestoreMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360);
+    const targetRestore = 180; // SLA Target Komitmen Restore Time selalu 3 Jam (180 Menit)
     const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= targetRestore : true);
     return new TableRow({
       children: [
@@ -2016,7 +2016,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   });
 
-  const totalRestoreTargetMin = reports.reduce((sum, r) => sum + (r.targetRestoreMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360)), 0);
+  const totalRestoreTargetMin = reports.reduce((sum) => sum + 180, 0);
   const totalRestoreActualMin = reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin || 0), 0);
   const isRestoreTotalComply = totalRestoreActualMin <= totalRestoreTargetMin;
 

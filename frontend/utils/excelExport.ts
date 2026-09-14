@@ -28,6 +28,71 @@ const formatExcelDate = (dateStr: string): string => {
   return `${MM}/${DD}/${YYYY} ${hh}:${mm}:${ss}`;
 };
 
+// Helper untuk memasang aturan Conditional Formatting Excel agar warna otomatis berubah (M = Hijau, TM = Merah) saat angka diubah di Excel
+const addComplyConditionalFormatting = (
+  ws: ExcelJS.Worksheet,
+  complyRef: string,
+  ketRef?: string
+) => {
+  try {
+    ws.addConditionalFormatting({
+      ref: complyRef,
+      rules: [
+        {
+          priority: 1,
+          type: 'cellIs',
+          operator: 'equal',
+          formulae: ['"M"'],
+          style: {
+            font: { color: { argb: 'FF166534' }, bold: true },
+            fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFDCFCE7' } }
+          }
+        },
+        {
+          priority: 2,
+          type: 'cellIs',
+          operator: 'equal',
+          formulae: ['"TM"'],
+          style: {
+            font: { color: { argb: 'FF991B1B' }, bold: true },
+            fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } }
+          }
+        }
+      ]
+    });
+
+    if (ketRef) {
+      ws.addConditionalFormatting({
+        ref: ketRef,
+        rules: [
+          {
+            priority: 3,
+            type: 'cellIs',
+            operator: 'equal',
+            formulae: ['"Memenuhi"'],
+            style: {
+              font: { color: { argb: 'FF166534' }, bold: true },
+              fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFDCFCE7' } }
+            }
+          },
+          {
+            priority: 4,
+            type: 'cellIs',
+            operator: 'equal',
+            formulae: ['"Tidak Memenuhi"'],
+            style: {
+              font: { color: { argb: 'FF991B1B' }, bold: true },
+              fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } }
+            }
+          }
+        ]
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to add conditional formatting:', err);
+  }
+};
+
 /**
  * Memunculkan unduhan file Excel (.xlsx) dari objek Laporan SLA/SLG
  */
@@ -95,7 +160,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('G6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
   wsResponse.mergeCells('H6:H7');
-  wsResponse.getCell('H6').value = 'WAKTU RESPON AKTUAL\n(TARGET: 10 MENIT)\nTANGGAL : JAM';
+  wsResponse.getCell('H6').value = 'WAKTU RESPON AKTUAL\n(TARGET: 5 MENIT)\nTANGGAL : JAM';
   wsResponse.getCell('H6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
   wsResponse.mergeCells('I6:I7');
@@ -129,6 +194,10 @@ export async function exportSLAReportToExcel(report: any) {
     c7.border = thinBorder;
   });
 
+  const actualResp = report.actualResponseTimeMin ?? 0;
+  const targetResp = report.targetResponseMin || 5;
+  const isRespComply = (report.responseComply !== false) && (report.actualResponseTimeMin !== undefined ? report.actualResponseTimeMin <= targetResp : true);
+
   // Table Data (1 Row)
   const r8 = wsResponse.getRow(8);
   r8.height = 25;
@@ -140,9 +209,9 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('F8').value = report.picTDE;
   wsResponse.getCell('G8').value = formatExcelDate(report.timeOrder);
   wsResponse.getCell('H8').value = formatExcelDate(report.actualTimeResponse);
-  wsResponse.getCell('I8').value = report.actualResponseTimeMin;
-  wsResponse.getCell('J8').value = report.targetResponseMin;
-  wsResponse.getCell('K8').value = report.responseComply ? 'M' : 'TM';
+  wsResponse.getCell('I8').value = actualResp;
+  wsResponse.getCell('J8').value = targetResp;
+  wsResponse.getCell('K8').value = { formula: 'IF(I8<=J8,"M","TM")', result: isRespComply ? 'M' : 'TM' };
   wsResponse.getCell('L8').value = 'Via WhatsApp / Tiket';
 
   headerCols.forEach(col => {
@@ -163,17 +232,17 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsResponse.getCell('A9').border = thinBorder;
 
-  wsResponse.getCell('I9').value = `${report.actualResponseTimeMin} menit`;
+  wsResponse.getCell('I9').value = { formula: 'I8', result: actualResp };
   wsResponse.getCell('I9').font = headerFont;
   wsResponse.getCell('I9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsResponse.getCell('I9').border = thinBorder;
 
-  wsResponse.getCell('J9').value = `${report.targetResponseMin} menit`;
+  wsResponse.getCell('J9').value = { formula: 'J8', result: targetResp };
   wsResponse.getCell('J9').font = headerFont;
   wsResponse.getCell('J9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsResponse.getCell('J9').border = thinBorder;
 
-  wsResponse.getCell('K9').value = report.responseComply ? 1 : 0;
+  wsResponse.getCell('K9').value = { formula: 'IF(K8="M",1,0)', result: isRespComply ? 1 : 0 };
   wsResponse.getCell('K9').font = headerFont;
   wsResponse.getCell('K9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsResponse.getCell('K9').border = thinBorder;
@@ -193,6 +262,8 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getColumn('J').width = 14;
   wsResponse.getColumn('K').width = 12;
   wsResponse.getColumn('L').width = 25;
+
+  addComplyConditionalFormatting(wsResponse, 'K8:K9');
 
 
   // ==========================================
@@ -249,6 +320,10 @@ export async function exportSLAReportToExcel(report: any) {
     c7.border = thinBorder;
   });
 
+  const actualOn = report.actualOnsiteTimeMin ?? 0;
+  const targetOn = report.targetOnsiteMin || 120;
+  const isOnComply = (report.onsiteComply !== false) && (report.actualOnsiteTimeMin !== undefined ? report.actualOnsiteTimeMin <= targetOn : true);
+
   // Table Data (1 Row)
   const r8On = wsOnsite.getRow(8);
   r8On.height = 25;
@@ -260,9 +335,9 @@ export async function exportSLAReportToExcel(report: any) {
   wsOnsite.getCell('F8').value = report.picTDE;
   wsOnsite.getCell('G8').value = formatExcelDate(report.timeOrder);
   wsOnsite.getCell('H8').value = formatExcelDate(report.actualTimeOnsite);
-  wsOnsite.getCell('I8').value = report.actualOnsiteTimeMin;
-  wsOnsite.getCell('J8').value = report.targetOnsiteMin;
-  wsOnsite.getCell('K8').value = report.onsiteComply ? 'M' : 'TM';
+  wsOnsite.getCell('I8').value = actualOn;
+  wsOnsite.getCell('J8').value = targetOn;
+  wsOnsite.getCell('K8').value = { formula: 'IF(I8<=J8,"M","TM")', result: isOnComply ? 'M' : 'TM' };
   wsOnsite.getCell('L8').value = 'Via WhatsApp / Tiket';
 
   headerCols.forEach(col => {
@@ -283,17 +358,17 @@ export async function exportSLAReportToExcel(report: any) {
   wsOnsite.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsOnsite.getCell('A9').border = thinBorder;
 
-  wsOnsite.getCell('I9').value = `${report.actualOnsiteTimeMin} menit`;
+  wsOnsite.getCell('I9').value = { formula: 'I8', result: actualOn };
   wsOnsite.getCell('I9').font = headerFont;
   wsOnsite.getCell('I9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell('I9').border = thinBorder;
 
-  wsOnsite.getCell('J9').value = `${report.targetOnsiteMin} menit`;
+  wsOnsite.getCell('J9').value = { formula: 'J8', result: targetOn };
   wsOnsite.getCell('J9').font = headerFont;
   wsOnsite.getCell('J9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell('J9').border = thinBorder;
 
-  wsOnsite.getCell('K9').value = report.onsiteComply ? 1 : 0;
+  wsOnsite.getCell('K9').value = { formula: 'IF(K8="M",1,0)', result: isOnComply ? 1 : 0 };
   wsOnsite.getCell('K9').font = headerFont;
   wsOnsite.getCell('K9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell('K9').border = thinBorder;
@@ -312,6 +387,8 @@ export async function exportSLAReportToExcel(report: any) {
   wsOnsite.getColumn('J').width = 14;
   wsOnsite.getColumn('K').width = 12;
   wsOnsite.getColumn('L').width = 25;
+
+  addComplyConditionalFormatting(wsOnsite, 'K8:K9');
 
 
   // ==========================================
@@ -371,7 +448,9 @@ export async function exportSLAReportToExcel(report: any) {
     if (prio === 'Low') return 2880;
     return 360;
   };
-  const targetRST = report.targetRestoreMin || getTargetByPriority(report.priority);
+  const targetRST = 180; // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
+  const actualRestore = report.actualRestoreTimeMin ?? 0;
+  const isRestoreComply = (report.restoreComply !== false) && (report.actualRestoreTimeMin !== undefined ? report.actualRestoreTimeMin <= targetRST : true);
 
   // Table Data (1 Row)
   const r8R = wsRestore.getRow(8);
@@ -382,9 +461,9 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.getCell('D8').value = report.location;
   wsRestore.getCell('E8').value = formatExcelDate(report.startOrder || report.timeOrder);
   wsRestore.getCell('F8').value = formatExcelDate(report.finishOrder);
-  wsRestore.getCell('G8').value = report.actualRestoreTimeMin;
+  wsRestore.getCell('G8').value = actualRestore;
   wsRestore.getCell('H8').value = targetRST;
-  wsRestore.getCell('I8').value = report.restoreComply ? 'M' : 'TM';
+  wsRestore.getCell('I8').value = { formula: 'IF(G8<=H8,"M","TM")', result: isRestoreComply ? 'M' : 'TM' };
   wsRestore.getCell('J8').value = report.remark || 'Team melaksanakan perbaikan corrective.';
 
   restoreCols.forEach(col => {
@@ -405,17 +484,17 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsRestore.getCell('A9').border = thinBorder;
 
-  wsRestore.getCell('G9').value = `${report.actualRestoreTimeMin} menit`;
+  wsRestore.getCell('G9').value = { formula: 'G8', result: actualRestore };
   wsRestore.getCell('G9').font = headerFont;
   wsRestore.getCell('G9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell('G9').border = thinBorder;
 
-  wsRestore.getCell('H9').value = `${targetRST} menit`;
+  wsRestore.getCell('H9').value = { formula: 'H8', result: targetRST };
   wsRestore.getCell('H9').font = headerFont;
   wsRestore.getCell('H9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell('H9').border = thinBorder;
 
-  wsRestore.getCell('I9').value = report.restoreComply ? 1 : 0;
+  wsRestore.getCell('I9').value = { formula: 'IF(I8="M",1,0)', result: isRestoreComply ? 1 : 0 };
   wsRestore.getCell('I9').font = headerFont;
   wsRestore.getCell('I9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell('I9').border = thinBorder;
@@ -432,6 +511,8 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.getColumn('H').width = 18;
   wsRestore.getColumn('I').width = 12;
   wsRestore.getColumn('J').width = 35;
+
+  addComplyConditionalFormatting(wsRestore, 'I8:I9');
 
 
   // ==========================================
@@ -488,6 +569,8 @@ export async function exportSLAReportToExcel(report: any) {
   });
 
   const targetRSP = report.targetResolutionMin || getTargetByPriority(report.priority);
+  const actualReso = report.actualResolutionTimeMin ?? 0;
+  const isResoComply = (report.resolutionComply !== false) && (report.actualResolutionTimeMin !== undefined ? report.actualResolutionTimeMin <= targetRSP : true);
 
   // Table Data (1 Row)
   const r8Res = wsRes.getRow(8);
@@ -499,9 +582,9 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.getCell('E8').value = report.location;
   wsRes.getCell('F8').value = formatExcelDate(report.startOrder || report.timeOrder);
   wsRes.getCell('G8').value = formatExcelDate(report.finishOrder);
-  wsRes.getCell('H8').value = report.actualResolutionTimeMin;
+  wsRes.getCell('H8').value = actualReso;
   wsRes.getCell('I8').value = targetRSP;
-  wsRes.getCell('J8').value = report.resolutionComply ? 'M' : 'TM';
+  wsRes.getCell('J8').value = { formula: 'IF(H8<=I8,"M","TM")', result: isResoComply ? 'M' : 'TM' };
   wsRes.getCell('K8').value = report.remark || 'Team melaksanakan perbaikan corrective.';
 
   resCols.forEach(col => {
@@ -522,17 +605,17 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsRes.getCell('A9').border = thinBorder;
 
-  wsRes.getCell('H9').value = `${report.actualResolutionTimeMin} menit`;
+  wsRes.getCell('H9').value = { formula: 'H8', result: actualReso };
   wsRes.getCell('H9').font = headerFont;
   wsRes.getCell('H9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRes.getCell('H9').border = thinBorder;
 
-  wsRes.getCell('I9').value = `${report.targetResolutionMin} menit`;
+  wsRes.getCell('I9').value = { formula: 'I8', result: targetRSP };
   wsRes.getCell('I9').font = headerFont;
   wsRes.getCell('I9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRes.getCell('I9').border = thinBorder;
 
-  wsRes.getCell('J9').value = report.resolutionComply ? 1 : 0;
+  wsRes.getCell('J9').value = { formula: 'IF(J8="M",1,0)', result: isResoComply ? 1 : 0 };
   wsRes.getCell('J9').font = headerFont;
   wsRes.getCell('J9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRes.getCell('J9').border = thinBorder;
@@ -550,6 +633,8 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.getColumn('I').width = 18;
   wsRes.getColumn('J').width = 12;
   wsRes.getColumn('K').width = 35;
+
+  addComplyConditionalFormatting(wsRes, 'J8:J9');
 
 
   // ==========================================
@@ -701,7 +786,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   const respMCount = reports.filter(r => r.responseComply !== false && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true)).length;
   const onsiteMCount = reports.filter(r => r.onsiteComply !== false && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true)).length;
   const restoreMCount = reports.filter(r => {
-    const t = r.targetRestoreMin || getTargetByPriority(r.priority);
+    const t = 180; // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
     return r.restoreComply !== false && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= t : true);
   }).length;
   const resolutionMCount = reports.filter(r => {
@@ -747,11 +832,13 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     cell.border = thinBorder;
   });
 
+  const lastDataRow = 6 + reports.length;
+
   const summaryRowsData = [
-    { no: 1, title: 'Response Time', unit: 'Order', count: totalCount, comply: respMCount, pct: `${respPct.toFixed(0)}%`, bobot: '5%', score: `${respScore.toFixed(2)}%` },
-    { no: 2, title: 'Onsite Time (Principle Onsite)', unit: 'Order', count: totalCount, comply: onsiteMCount, pct: `${onsitePct.toFixed(0)}%`, bobot: '5%', score: `${onsiteScore.toFixed(2)}%` },
-    { no: 3, title: 'Restore Time (Service Restore)', unit: 'Order', count: totalCount, comply: restoreMCount, pct: `${restorePct.toFixed(0)}%`, bobot: '15%', score: `${restoreScore.toFixed(2)}%` },
-    { no: 4, title: 'Resolution Time (Problem Resolution)', unit: 'Order', count: totalCount, comply: resolutionMCount, pct: `${resolutionPct.toFixed(0)}%`, bobot: '15%', score: `${resolutionScore.toFixed(2)}%` },
+    { no: 1, title: 'Response Time', unit: 'Order', sheet: '1. Response Time', complyCol: 'J', bobot: 0.05, count: totalCount, comply: respMCount, pct: respPct / 100, score: respScore / 100 },
+    { no: 2, title: 'Onsite Time (Principle Onsite)', unit: 'Order', sheet: '2. Onsite Support', complyCol: 'J', bobot: 0.05, count: totalCount, comply: onsiteMCount, pct: onsitePct / 100, score: onsiteScore / 100 },
+    { no: 3, title: 'Restore Time (Service Restore)', unit: 'Order', sheet: '3. Restore Time', complyCol: 'H', bobot: 0.15, count: totalCount, comply: restoreMCount, pct: restorePct / 100, score: restoreScore / 100 },
+    { no: 4, title: 'Resolution Time (Problem Resolution)', unit: 'Order', sheet: '4. Resolution Time', complyCol: 'I', bobot: 0.15, count: totalCount, comply: resolutionMCount, pct: resolutionPct / 100, score: resolutionScore / 100 },
   ];
 
   summaryRowsData.forEach((row, idx) => {
@@ -762,11 +849,14 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     wsSummary.getCell(`A${rowNum}`).value = row.no;
     wsSummary.getCell(`B${rowNum}`).value = row.title;
     wsSummary.getCell(`C${rowNum}`).value = row.unit;
-    wsSummary.getCell(`D${rowNum}`).value = row.count;
-    wsSummary.getCell(`E${rowNum}`).value = row.comply;
-    wsSummary.getCell(`F${rowNum}`).value = row.pct;
+    wsSummary.getCell(`D${rowNum}`).value = { formula: `COUNTA('${row.sheet}'!B7:B${lastDataRow})`, result: row.count };
+    wsSummary.getCell(`E${rowNum}`).value = { formula: `COUNTIF('${row.sheet}'!${row.complyCol}7:${row.complyCol}${lastDataRow},"M")`, result: row.comply };
+    wsSummary.getCell(`F${rowNum}`).value = { formula: `IF(D${rowNum}>0,E${rowNum}/D${rowNum},1)`, result: row.pct };
+    wsSummary.getCell(`F${rowNum}`).numFmt = '0.00%';
     wsSummary.getCell(`G${rowNum}`).value = row.bobot;
-    wsSummary.getCell(`H${rowNum}`).value = row.score;
+    wsSummary.getCell(`G${rowNum}`).numFmt = '0%';
+    wsSummary.getCell(`H${rowNum}`).value = { formula: `F${rowNum}*G${rowNum}`, result: row.score };
+    wsSummary.getCell(`H${rowNum}`).numFmt = '0.00%';
 
     sumCols.forEach(col => {
       const cell = wsSummary.getCell(`${col}${rowNum}`);
@@ -793,7 +883,8 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
 
   wsSummary.mergeCells(`G${totalRowNum}:H${totalRowNum}`);
   const totalVal = wsSummary.getCell(`G${totalRowNum}`);
-  totalVal.value = `${totalSlgScore.toFixed(2)}% / 40.00%`;
+  totalVal.value = { formula: `SUM(H7:H10)`, result: totalSlgScore / 100 };
+  totalVal.numFmt = '0.00%';
   totalVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '854D0E' } };
   totalVal.alignment = { horizontal: 'center', vertical: 'middle' };
   totalVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF08A' } };
@@ -840,7 +931,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     const row = wsResp.getRow(rowNum);
     row.height = 20;
 
-    const comply = r.responseComply !== undefined ? r.responseComply : (r.actualResponseTimeMin ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+    const comply = (r.responseComply !== false) && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
 
     wsResp.getCell(`A${rowNum}`).value = idx + 1;
     wsResp.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
@@ -851,7 +942,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     wsResp.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeResponse);
     wsResp.getCell(`H${rowNum}`).value = r.actualResponseTimeMin ?? 0;
     wsResp.getCell(`I${rowNum}`).value = r.targetResponseMin || 5;
-    wsResp.getCell(`J${rowNum}`).value = comply ? 'M' : 'TM';
+    wsResp.getCell(`J${rowNum}`).value = { formula: `IF(H${rowNum}<=I${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
     wsResp.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp';
 
     respCols.forEach(col => {
@@ -882,22 +973,22 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   lblResp.alignment = { horizontal: 'right', vertical: 'middle' };
   lblResp.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
 
-  wsResp.getCell(`H${totalRespRowNum}`).value = totalRespActualMin;
+  wsResp.getCell(`H${totalRespRowNum}`).value = { formula: `SUM(H7:H${lastDataRow})`, result: totalRespActualMin };
   wsResp.getCell(`H${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsResp.getCell(`H${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsResp.getCell(`H${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsResp.getCell(`I${totalRespRowNum}`).value = totalRespTargetMin;
+  wsResp.getCell(`I${totalRespRowNum}`).value = { formula: `SUM(I7:I${lastDataRow})`, result: totalRespTargetMin };
   wsResp.getCell(`I${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsResp.getCell(`I${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsResp.getCell(`I${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsResp.getCell(`J${totalRespRowNum}`).value = isRespTotalComply ? 'M' : 'TM';
+  wsResp.getCell(`J${totalRespRowNum}`).value = { formula: `IF(H${totalRespRowNum}<=I${totalRespRowNum},"M","TM")`, result: isRespTotalComply ? 'M' : 'TM' };
   wsResp.getCell(`J${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRespTotalComply ? '166534' : '991B1B' } };
   wsResp.getCell(`J${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsResp.getCell(`J${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRespTotalComply ? 'DCFCE7' : 'FEE2E2' } };
 
-  wsResp.getCell(`K${totalRespRowNum}`).value = isRespTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsResp.getCell(`K${totalRespRowNum}`).value = { formula: `IF(J${totalRespRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: isRespTotalComply ? 'Memenuhi' : 'Tidak Memenuhi' };
   wsResp.getCell(`K${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRespTotalComply ? '166534' : '991B1B' } };
   wsResp.getCell(`K${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsResp.getCell(`K${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRespTotalComply ? 'DCFCE7' : 'FEE2E2' } };
@@ -917,6 +1008,8 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   wsResp.getColumn('I').width = 14;
   wsResp.getColumn('J').width = 10;
   wsResp.getColumn('K').width = 20;
+
+  addComplyConditionalFormatting(wsResp, `J7:J${totalRespRowNum}`, `K${totalRespRowNum}:K${totalRespRowNum}`);
 
   // =========================================================================
   // SHEET 3: 2. ONSITE SUPPORT
@@ -950,7 +1043,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     const row = wsOnsite.getRow(rowNum);
     row.height = 20;
 
-    const comply = r.onsiteComply !== undefined ? r.onsiteComply : (r.actualOnsiteTimeMin ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+    const comply = (r.onsiteComply !== false) && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
 
     wsOnsite.getCell(`A${rowNum}`).value = idx + 1;
     wsOnsite.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
@@ -961,7 +1054,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     wsOnsite.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeOnsite);
     wsOnsite.getCell(`H${rowNum}`).value = r.actualOnsiteTimeMin ?? 0;
     wsOnsite.getCell(`I${rowNum}`).value = r.targetOnsiteMin || 120;
-    wsOnsite.getCell(`J${rowNum}`).value = comply ? 'M' : 'TM';
+    wsOnsite.getCell(`J${rowNum}`).value = { formula: `IF(H${rowNum}<=I${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
     wsOnsite.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp / Tiket';
 
     onsiteCols.forEach(col => {
@@ -992,22 +1085,22 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   lblOnsite.alignment = { horizontal: 'right', vertical: 'middle' };
   lblOnsite.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
 
-  wsOnsite.getCell(`H${totalOnsiteRowNum}`).value = totalOnsiteActualMin;
+  wsOnsite.getCell(`H${totalOnsiteRowNum}`).value = { formula: `SUM(H7:H${lastDataRow})`, result: totalOnsiteActualMin };
   wsOnsite.getCell(`H${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsOnsite.getCell(`H${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell(`H${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsOnsite.getCell(`I${totalOnsiteRowNum}`).value = totalOnsiteTargetMin;
+  wsOnsite.getCell(`I${totalOnsiteRowNum}`).value = { formula: `SUM(I7:I${lastDataRow})`, result: totalOnsiteTargetMin };
   wsOnsite.getCell(`I${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsOnsite.getCell(`I${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell(`I${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsOnsite.getCell(`J${totalOnsiteRowNum}`).value = isOnsiteTotalComply ? 'M' : 'TM';
+  wsOnsite.getCell(`J${totalOnsiteRowNum}`).value = { formula: `IF(H${totalOnsiteRowNum}<=I${totalOnsiteRowNum},"M","TM")`, result: isOnsiteTotalComply ? 'M' : 'TM' };
   wsOnsite.getCell(`J${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isOnsiteTotalComply ? '166534' : '991B1B' } };
   wsOnsite.getCell(`J${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell(`J${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isOnsiteTotalComply ? 'DCFCE7' : 'FEE2E2' } };
 
-  wsOnsite.getCell(`K${totalOnsiteRowNum}`).value = isOnsiteTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsOnsite.getCell(`K${totalOnsiteRowNum}`).value = { formula: `IF(J${totalOnsiteRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: isOnsiteTotalComply ? 'Memenuhi' : 'Tidak Memenuhi' };
   wsOnsite.getCell(`K${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isOnsiteTotalComply ? '166534' : '991B1B' } };
   wsOnsite.getCell(`K${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell(`K${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isOnsiteTotalComply ? 'DCFCE7' : 'FEE2E2' } };
@@ -1027,6 +1120,8 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   wsOnsite.getColumn('I').width = 14;
   wsOnsite.getColumn('J').width = 10;
   wsOnsite.getColumn('K').width = 20;
+
+  addComplyConditionalFormatting(wsOnsite, `J7:J${totalOnsiteRowNum}`, `K${totalOnsiteRowNum}:K${totalOnsiteRowNum}`);
 
   // =========================================================================
   // SHEET 4: 3. RESTORE TIME
@@ -1060,8 +1155,8 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     const row = wsRestore.getRow(rowNum);
     row.height = 20;
 
-    const targetRST = r.targetRestoreMin || getTargetByPriority(r.priority);
-    const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= targetRST : true);
+    const targetRST = 180; // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
+    const comply = (r.restoreComply !== false) && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= targetRST : true);
 
     wsRestore.getCell(`A${rowNum}`).value = idx + 1;
     wsRestore.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
@@ -1070,7 +1165,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     wsRestore.getCell(`E${rowNum}`).value = formatExcelDate(r.finishOrder);
     wsRestore.getCell(`F${rowNum}`).value = r.actualRestoreTimeMin ?? 0;
     wsRestore.getCell(`G${rowNum}`).value = targetRST;
-    wsRestore.getCell(`H${rowNum}`).value = comply ? 'M' : 'TM';
+    wsRestore.getCell(`H${rowNum}`).value = { formula: `IF(F${rowNum}<=G${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
     wsRestore.getCell(`I${rowNum}`).value = r.remark || 'Perbaikan corrective restore service';
 
     restCols.forEach(col => {
@@ -1091,7 +1186,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   rTotalRestore.height = 22;
 
   const totalRestoreActualMin = reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin ?? 0), 0);
-  const totalRestoreTargetMin = reports.reduce((sum, r) => sum + (r.targetRestoreMin || getTargetByPriority(r.priority)), 0);
+  const totalRestoreTargetMin = reports.reduce((sum) => sum + 180, 0);
   const isRestoreTotalComply = totalRestoreActualMin <= totalRestoreTargetMin;
 
   wsRestore.mergeCells(`A${totalRestoreRowNum}:E${totalRestoreRowNum}`);
@@ -1101,22 +1196,22 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   lblRestore.alignment = { horizontal: 'right', vertical: 'middle' };
   lblRestore.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
 
-  wsRestore.getCell(`F${totalRestoreRowNum}`).value = totalRestoreActualMin;
+  wsRestore.getCell(`F${totalRestoreRowNum}`).value = { formula: `SUM(F7:F${lastDataRow})`, result: totalRestoreActualMin };
   wsRestore.getCell(`F${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsRestore.getCell(`F${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell(`F${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsRestore.getCell(`G${totalRestoreRowNum}`).value = totalRestoreTargetMin;
+  wsRestore.getCell(`G${totalRestoreRowNum}`).value = { formula: `SUM(G7:G${lastDataRow})`, result: totalRestoreTargetMin };
   wsRestore.getCell(`G${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsRestore.getCell(`G${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell(`G${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsRestore.getCell(`H${totalRestoreRowNum}`).value = isRestoreTotalComply ? 'M' : 'TM';
+  wsRestore.getCell(`H${totalRestoreRowNum}`).value = { formula: `IF(F${totalRestoreRowNum}<=G${totalRestoreRowNum},"M","TM")`, result: isRestoreTotalComply ? 'M' : 'TM' };
   wsRestore.getCell(`H${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRestoreTotalComply ? '166534' : '991B1B' } };
   wsRestore.getCell(`H${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell(`H${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRestoreTotalComply ? 'DCFCE7' : 'FEE2E2' } };
 
-  wsRestore.getCell(`I${totalRestoreRowNum}`).value = isRestoreTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsRestore.getCell(`I${totalRestoreRowNum}`).value = { formula: `IF(H${totalRestoreRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: isRestoreTotalComply ? 'Memenuhi' : 'Tidak Memenuhi' };
   wsRestore.getCell(`I${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRestoreTotalComply ? '166534' : '991B1B' } };
   wsRestore.getCell(`I${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell(`I${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRestoreTotalComply ? 'DCFCE7' : 'FEE2E2' } };
@@ -1134,6 +1229,8 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   wsRestore.getColumn('G').width = 14;
   wsRestore.getColumn('H').width = 10;
   wsRestore.getColumn('I').width = 28;
+
+  addComplyConditionalFormatting(wsRestore, `H7:H${totalRestoreRowNum}`, `I${totalRestoreRowNum}:I${totalRestoreRowNum}`);
 
   // =========================================================================
   // SHEET 5: 4. RESOLUTION TIME
@@ -1168,7 +1265,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     row.height = 20;
 
     const targetRSP = r.targetResolutionMin || getTargetByPriority(r.priority);
-    const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= targetRSP : true);
+    const comply = (r.resolutionComply !== false) && (r.actualResolutionTimeMin !== undefined ? r.actualResolutionTimeMin <= targetRSP : true);
 
     wsReso.getCell(`A${rowNum}`).value = idx + 1;
     wsReso.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
@@ -1178,7 +1275,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     wsReso.getCell(`F${rowNum}`).value = formatExcelDate(r.finishOrder);
     wsReso.getCell(`G${rowNum}`).value = r.actualResolutionTimeMin ?? 0;
     wsReso.getCell(`H${rowNum}`).value = targetRSP;
-    wsReso.getCell(`I${rowNum}`).value = comply ? 'M' : 'TM';
+    wsReso.getCell(`I${rowNum}`).value = { formula: `IF(G${rowNum}<=H${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
     wsReso.getCell(`J${rowNum}`).value = r.resolutionRemark || r.remark || 'Troubleshooting terselesaikan penuh';
 
     resoCols.forEach(col => {
@@ -1209,22 +1306,22 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   lblReso.alignment = { horizontal: 'right', vertical: 'middle' };
   lblReso.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
 
-  wsReso.getCell(`G${totalResoRowNum}`).value = totalResoActualMin;
+  wsReso.getCell(`G${totalResoRowNum}`).value = { formula: `SUM(G7:G${lastDataRow})`, result: totalResoActualMin };
   wsReso.getCell(`G${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsReso.getCell(`G${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsReso.getCell(`G${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsReso.getCell(`H${totalResoRowNum}`).value = totalResoTargetMin;
+  wsReso.getCell(`H${totalResoRowNum}`).value = { formula: `SUM(H7:H${lastDataRow})`, result: totalResoTargetMin };
   wsReso.getCell(`H${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsReso.getCell(`H${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsReso.getCell(`H${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsReso.getCell(`I${totalResoRowNum}`).value = isResoTotalComply ? 'M' : 'TM';
+  wsReso.getCell(`I${totalResoRowNum}`).value = { formula: `IF(G${totalResoRowNum}<=H${totalResoRowNum},"M","TM")`, result: isResoTotalComply ? 'M' : 'TM' };
   wsReso.getCell(`I${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isResoTotalComply ? '166534' : '991B1B' } };
   wsReso.getCell(`I${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsReso.getCell(`I${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isResoTotalComply ? 'DCFCE7' : 'FEE2E2' } };
 
-  wsReso.getCell(`J${totalResoRowNum}`).value = isResoTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsReso.getCell(`J${totalResoRowNum}`).value = { formula: `IF(I${totalResoRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: isResoTotalComply ? 'Memenuhi' : 'Tidak Memenuhi' };
   wsReso.getCell(`J${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isResoTotalComply ? '166534' : '991B1B' } };
   wsReso.getCell(`J${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsReso.getCell(`J${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isResoTotalComply ? 'DCFCE7' : 'FEE2E2' } };
@@ -1243,6 +1340,8 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   wsReso.getColumn('H').width = 14;
   wsReso.getColumn('I').width = 10;
   wsReso.getColumn('J').width = 28;
+
+  addComplyConditionalFormatting(wsReso, `I7:I${totalResoRowNum}`, `J${totalResoRowNum}:J${totalResoRowNum}`);
 
   // =========================================================================
   // SHEET 6: 5. EVIDENCE BUKTI FOTO

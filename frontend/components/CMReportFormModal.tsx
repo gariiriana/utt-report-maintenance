@@ -31,7 +31,8 @@ import {
   Zap,
   ClipboardList,
   Lightbulb,
-  Package
+  Package,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -41,6 +42,9 @@ import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveRe
 import { exportCMReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
+import { generatePredictiveReportAI } from '@/utils/aiPredictiveAgent';
+import { PredictiveReportData } from '@/types/predictiveReportTypes';
+import { PredictiveReportModal } from './PredictiveReportModal';
 
 import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64, normalizeEngineerName, getEngineerSignature, cleanSignature } from '@/utils/engineerSignatures';
 
@@ -126,6 +130,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   const [submitting, setSubmitting] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const [predictiveModalOpen, setPredictiveModalOpen] = useState(false);
+  const [predictiveReportData, setPredictiveReportData] = useState<PredictiveReportData | null>(null);
+  const [isGeneratingPredictive, setIsGeneratingPredictive] = useState(false);
 
   // Form State initialized with empty guide fields
   const [formData, setFormData] = useState<CMReportData>({
@@ -647,6 +654,50 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     } catch (err: any) {
       console.error('Error exporting DOCX:', err);
       toast.error('Gagal mengekspor Laporan CM Word');
+    }
+  };
+
+  // Trigger Predictive Maintenance AI Report
+  const handleTriggerPredictiveReport = async () => {
+    if (!formData.equipmentName && !formData.incidentName) {
+      toast.error('Mohon lengkapi Nama Peralatan atau Nama Insiden terlebih dahulu!');
+      return;
+    }
+
+    setIsGeneratingPredictive(true);
+    const toastId = toast.loading('AI Agent sedang menganalisis data CM untuk laporan prediktif...');
+
+    try {
+      const firstPhoto = formData.photos?.[0]?.photoBase64 || undefined;
+      const equipName = formData.equipmentName || formData.incidentName || 'Critical Equipment';
+      const symptoms = formData.summaryProblemAnalysis || formData.incidentName || formData.visualInspectionChecking || 'Indikasi degradasi operasional.';
+
+      const generated = await generatePredictiveReportAI({
+        sourceDocId: editId || `CM_DOC_${Date.now()}`,
+        sourceCollection: 'cm_reports',
+        sourceTicketNumber: formData.incidentId || 'TICKET-CM-' + Date.now().toString().slice(-4),
+        sourceMaintenanceName: formData.incidentName || `Laporan CM ${equipName}`,
+        sourceMaintenanceDate: formData.incidentDate || new Date().toISOString().split('T')[0],
+        equipmentName: equipName,
+        locationRoom: formData.location || 'Data Center NeutraDC Cikarang',
+        descriptionOrSymptoms: symptoms,
+        correctiveActionDone: formData.correctiveAction || '-',
+        recommendation: formData.recommendation || '-',
+        photoEvidenceBase64: firstPhoto,
+        userEmail: user?.email || undefined,
+        userName: user?.displayName || formData.preparedByName || undefined,
+      }, (msg) => {
+        toast.loading(msg, { id: toastId });
+      });
+
+      setPredictiveReportData(generated);
+      setPredictiveModalOpen(true);
+      toast.success('Analisis Predictive Maintenance AI selesai!', { id: toastId });
+    } catch (err: any) {
+      console.error('Error generating predictive report:', err);
+      toast.error(`Gagal membuat laporan prediktif: ${err?.message || 'Error'}`, { id: toastId });
+    } finally {
+      setIsGeneratingPredictive(false);
     }
   };
 
@@ -1780,15 +1831,29 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
           <div className="flex items-center gap-3">
             {currentStep === 4 && (
-              <button
-                key="btn-export-docx"
-                type="button"
-                onClick={handleExportDocx}
-                className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
-              >
-                <Download className="w-4 h-4 text-blue-600" />
-                Export DOCX
-              </button>
+              <>
+                <button
+                  key="btn-generate-predictive"
+                  type="button"
+                  onClick={handleTriggerPredictiveReport}
+                  disabled={isGeneratingPredictive}
+                  className="px-4 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Generate Laporan Predictive Maintenance (PdM) berbasis AI dari temuan CM ini"
+                >
+                  {isGeneratingPredictive ? <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> : <Sparkles className="w-4 h-4 text-indigo-600" />}
+                  <span>Predictive Report (AI)</span>
+                </button>
+
+                <button
+                  key="btn-export-docx"
+                  type="button"
+                  onClick={handleExportDocx}
+                  className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+                >
+                  <Download className="w-4 h-4 text-blue-600" />
+                  Export DOCX
+                </button>
+              </>
             )}
 
             {currentStep < 4 ? (
@@ -1839,6 +1904,20 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             <img src={previewPhotoUrl} alt="Preview Foto Fullscreen" className="max-w-full max-h-[82vh] object-contain rounded-xl mx-auto" />
           </div>
         </div>
+      )}
+
+      {/* Predictive Maintenance Report Modal */}
+      {predictiveModalOpen && predictiveReportData && (
+        <PredictiveReportModal
+          isOpen={predictiveModalOpen}
+          onClose={() => setPredictiveModalOpen(false)}
+          initialData={predictiveReportData}
+          onRegenerateAI={handleTriggerPredictiveReport}
+          isLoadingAI={isGeneratingPredictive}
+          onSaved={(saved) => {
+            setPredictiveReportData(saved);
+          }}
+        />
       )}
     </div>
   );

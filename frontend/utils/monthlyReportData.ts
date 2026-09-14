@@ -3953,7 +3953,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
       if (r.onsiteComply !== false && oActual <= oTarget) onsiteComplyCount++;
 
       // Restore Time
-      const restTarget = r.targetRestoreMin || getPrioTargetMin(r.priority);
+      const restTarget = 180; // SLA Target Komitmen Restore Time selalu 3 Jam (180 Menit)
       const restActual = r.actualRestoreTimeMin ?? 0;
       restoreTargetSum += restTarget;
       restoreActualSum += restActual;

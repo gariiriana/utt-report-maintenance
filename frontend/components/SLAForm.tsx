@@ -174,10 +174,10 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     targetOnsiteMin: 120,
     photosOnsite: [] as PhotoItem[],
 
-    // Restore Service Time (Step 3) - Target Dynamic based on Priority (Critical 2h, High 4h, Medium 6h, Low 48h)
+    // Restore Service Time (Step 3) - Target Komitmen 3 Jam (180 Menit) untuk semua level gangguan
     startOrder: '',
     finishOrder: '',
-    targetRestoreMin: 360,
+    targetRestoreMin: 180,
     photosRestore: [] as PhotoItem[],
 
     // Resolution Time (Step 4) - Target Dynamic based on Priority (Critical 2h, High 4h, Medium 6h, Low 48h)
@@ -248,7 +248,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
               photosOnsite: onsitePhotos,
               startOrder: data.startOrder || '',
               finishOrder: data.finishOrder || '',
-              targetRestoreMin: data.targetRestoreMin || expectedTarget,
+              targetRestoreMin: 180,
               photosRestore: migratePhotos(data, 'photosRestore', 'photoRestore'),
               targetResolutionMin: data.targetResolutionMin || expectedTarget,
               photosResolution: migratePhotos(data, 'photosResolution', 'photoResolution'),
@@ -314,18 +314,18 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     }
   }, [editId, prefillData]);
 
-  // Update targetRestoreMin & targetResolutionMin dynamically based on priority category
+  // Update targetRestoreMin (selalu 3 jam / 180 menit) & targetResolutionMin dynamically based on priority category
   useEffect(() => {
-    let target = 360;
-    if (formData.priority === 'Critical') target = 120;       // 2 Jam
-    else if (formData.priority === 'High') target = 240;      // 4 Jam
-    else if (formData.priority === 'Medium') target = 360;    // 6 Jam
-    else if (formData.priority === 'Low') target = 2880;      // 48 Jam
+    let resTarget = 360;
+    if (formData.priority === 'Critical') resTarget = 120;       // 2 Jam
+    else if (formData.priority === 'High') resTarget = 240;      // 4 Jam
+    else if (formData.priority === 'Medium') resTarget = 360;    // 6 Jam
+    else if (formData.priority === 'Low') resTarget = 2880;      // 48 Jam
 
     setFormData(prev => ({
       ...prev,
-      targetRestoreMin: target,
-      targetResolutionMin: target
+      targetRestoreMin: 180, // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
+      targetResolutionMin: resTarget
     }));
   }, [formData.priority]);
 
@@ -468,7 +468,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     const defaultTargetByPrio = formData.priority === 'Critical' ? 120 : formData.priority === 'High' ? 240 : formData.priority === 'Low' ? 2880 : 360;
     const targetRT = Number(formData.targetResponseMin) || 5;
     const targetOTP = Number(formData.targetOnsiteMin) || 120;
-    const targetRST = Number(formData.targetRestoreMin) || defaultTargetByPrio;
+    const targetRST = 180; // SLA Target Komitmen Restore Time selalu 3 Jam (180 Menit)
     const targetRSP = Number(formData.targetResolutionMin) || defaultTargetByPrio;
 
     // SLG Formula: (Target / Actual) * 100 * Bobot%, capped at 100% * Bobot%
@@ -744,7 +744,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
         startOrder: formData.startOrder || '',
         finishOrder: formData.finishOrder || '',
         actualRestoreTimeMin: Number(calcs.restoreTimeMin) || 0,
-        targetRestoreMin: Number(formData.targetRestoreMin) || (formData.priority === 'Critical' ? 120 : formData.priority === 'High' ? 240 : formData.priority === 'Low' ? 2880 : 360),
+        targetRestoreMin: 180, // Target Komitmen Restore Time: 3 Jam (180 Menit)
         restoreComply: Boolean(calcs.restoreComply),
         photosRestore: photosRest,
         photoRestore: photosRest[0]?.photo || '',
@@ -1656,17 +1656,17 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Komitmen (Menit - Otomatis Prioritas {formData.priority})</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Komitmen (Menit - Standar 3 Jam)</label>
                   <input
                     disabled
                     type="number"
                     value={formData.targetRestoreMin}
-                    title={`Target Restore Time (Standar Kontrak Prioritas ${formData.priority}: ${formData.targetRestoreMin} Menit)`}
-                    placeholder={String(formData.targetRestoreMin)}
+                    title="Target Restore Time (Standar Komitmen: 3 Jam / 180 Menit)"
+                    placeholder="180"
                     className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-bold cursor-not-allowed shadow-inner"
                   />
                   <span className="text-[11px] text-slate-500 mt-1 block">
-                    Standar Komitmen: {formData.priority} ({formData.targetRestoreMin >= 60 ? `${formData.targetRestoreMin / 60} Jam / ` : ''}{formData.targetRestoreMin} Menit)
+                    Standar Komitmen: 3 Jam (180 Menit)
                   </span>
                 </div>
               </div>

@@ -148,7 +148,7 @@ export function MainApp() {
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
     { id: 'standby_kpi', label: 'Input KPI Monthly', icon: Award, color: 'from-emerald-600 to-teal-700', show: isStandby && !isAdmin },
     { id: 'spareparts', label: 'Log Sparepart', icon: Package, color: 'from-indigo-600 to-violet-700', show: !isAdmin && (isStandby || userRole === 'DME' || userRole === 'site_manager_dme') },
-    { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer },
+    { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: (userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer) || isDwimitra || userEmailLower === 'dwimitra@co.id' },
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: !isAdmin && userRole !== 'DME' && !isK2Engineer && !isStandby },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: !isAdmin && userRole !== 'DME' && !isK2Engineer },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isAdmin && !isStandby && (userRole !== 'DME' || !!editingData) },

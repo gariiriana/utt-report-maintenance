@@ -35,7 +35,10 @@ import {
     Copy,
     ExternalLink,
     Package,
-    Search
+    Search,
+    Brain,
+    Sparkles,
+    Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -48,7 +51,10 @@ import {
     doc,
     updateDoc,
     deleteField,
-    serverTimestamp
+    serverTimestamp,
+    getDoc,
+    getDocs,
+    where
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { SLAForm, SLAPrefillData } from './SLAForm';
@@ -60,6 +66,15 @@ import { exportSLAReportToExcel } from '../utils/excelExport';
 import { exportCMReportToDocx, exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { normalizeEngineerName } from '@/utils/engineerSignatures';
 import { SLAMonthlyRecapModal } from './SLAMonthlyRecapModal';
+import { PredictiveReportModal } from './PredictiveReportModal';
+import { generatePredictiveReportAI } from '@/utils/aiPredictiveAgent';
+import { PredictiveReportData } from '@/types/predictiveReportTypes';
+import { exportPredictiveReportToDocx } from '@/utils/PredictiveReportWordExport';
+import { exportPredictiveReportToPdf } from '@/utils/PredictiveReportPdfExport';
+import { PeriodicPredictiveModal } from './PeriodicPredictiveModal';
+import { PeriodicPredictiveReportData } from '@/types/periodicPredictiveTypes';
+import { exportPeriodicPredictiveReportToDocx } from '@/utils/PeriodicPredictiveWordExport';
+import { exportPeriodicPredictiveReportToPdf } from '@/utils/PeriodicPredictivePdfExport';
 
 interface CorrectiveReport {
     id: string;
@@ -160,6 +175,12 @@ interface CorrectiveReport {
     approvedByName?: string;
     approvedByTitle?: string;
     approvedBySign?: string;
+
+    // Predictive Report fields
+    hasPredictiveReport?: boolean;
+    predictiveReportId?: string;
+    predictiveReportNumber?: string;
+    predictiveHealthStatus?: string;
 }
 
 interface CorrectiveMaintenanceProps {
@@ -199,6 +220,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [isPendingSlaExpanded, setIsPendingSlaExpanded] = useState<boolean>(true);
     const [isRecapModalOpen, setIsRecapModalOpen] = useState<boolean>(false);
     const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState<boolean>(false);
+
+    // State Predictive Maintenance Report (AI)
+    const [predictiveModalOpen, setPredictiveModalOpen] = useState<boolean>(false);
+    const [activePredictiveData, setActivePredictiveData] = useState<PredictiveReportData | null>(null);
+    const [activePredictiveReport, setActivePredictiveReport] = useState<CorrectiveReport | null>(null);
+    const [isLoadingPredictive, setIsLoadingPredictive] = useState<boolean>(false);
+    const [loadingPredictiveId, setLoadingPredictiveId] = useState<string | null>(null);
 
     // Scroll & Card Position Memory Refs
     const lastInteractedReportIdRef = useRef<string | null>(null);
@@ -272,10 +300,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     };
 
     // Filters State
-    const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
+    const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir' | 'predictive'>('cm_pdf');
     const [selectedCMType, setSelectedCMType] = useState<'all' | 'sparepart_all' | 'non_sparepart' | 'sparepart_dme' | 'consumable' | 'pending_sparepart_type'>('all');
     const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
     const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
+    const [predictiveReports, setPredictiveReports] = useState<PredictiveReportData[]>([]);
+    const [periodicReports, setPeriodicReports] = useState<PeriodicPredictiveReportData[]>([]);
+    const [isPeriodicModalOpen, setIsPeriodicModalOpen] = useState(false);
+    const [selectedPeriodicData, setSelectedPeriodicData] = useState<PeriodicPredictiveReportData | null>(null);
 
     useEffect(() => {
         if (initialSearchQuery !== undefined) {
@@ -289,6 +321,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     useEffect(() => {
         if (!user) {
             setReports([]);
+            setPredictiveReports([]);
+            setPeriodicReports([]);
             setLoading(false);
             return;
         }
@@ -313,8 +347,83 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             }
         );
 
-        return () => unsubscribe();
+        // Listener Real-time untuk Koleksi Dokumen Predictive Maintenance Reports
+        const qPred = query(collection(db, 'predictive_reports'));
+        const unsubscribePred = onSnapshot(
+            qPred,
+            (snapshot) => {
+                const data = snapshot.docs.map((doc) => {
+                    const d = doc.data();
+                    return {
+                        id: doc.id,
+                        ...d,
+                        createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : (d.createdAt ? new Date(d.createdAt) : new Date()),
+                    } as PredictiveReportData;
+                }).sort((a, b) => {
+                    const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return tB - tA;
+                });
+                setPredictiveReports(data);
+            },
+            (error) => {
+                console.error('Error loading predictive reports:', error);
+            }
+        );
+
+        // Listener Real-time untuk Koleksi Dokumen Periodic Predictive Reports (Bulanan & Tahunan)
+        const qPeriodic = query(collection(db, 'periodic_predictive_reports'));
+        const unsubscribePeriodic = onSnapshot(
+            qPeriodic,
+            (snapshot) => {
+                const data = snapshot.docs.map((doc) => {
+                    const d = doc.data();
+                    return {
+                        id: doc.id,
+                        ...d,
+                        createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : (d.createdAt ? new Date(d.createdAt) : new Date()),
+                    } as PeriodicPredictiveReportData;
+                }).sort((a, b) => {
+                    const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return tB - tA;
+                });
+                setPeriodicReports(data);
+            },
+            (error) => {
+                console.warn('Could not load periodic predictive reports or pending rules:', error);
+            }
+        );
+
+        return () => {
+            unsubscribe();
+            unsubscribePred();
+            unsubscribePeriodic();
+        };
     }, [user]);
+
+    // Handler Hapus Dokumen Predictive Report
+    const handleDeletePredictiveReport = async (predId: string, sourceDocId?: string) => {
+        if (!window.confirm('Yakin ingin menghapus dokumen Laporan Predictive Maintenance ini?')) return;
+        const toastId = toast.loading('Menghapus Laporan Predictive...');
+        try {
+            await deleteDoc(doc(db, 'predictive_reports', predId));
+            if (sourceDocId) {
+                try {
+                    await updateDoc(doc(db, 'corrective_reports', sourceDocId), {
+                        hasPredictiveReport: false,
+                        predictiveReportId: deleteField(),
+                        predictiveReportNumber: deleteField()
+                    });
+                } catch (e) {
+                    console.warn('Could not update parent CM doc:', e);
+                }
+            }
+            toast.success('Laporan Predictive berhasil dihapus', { id: toastId });
+        } catch (err: any) {
+            toast.error('Gagal menghapus: ' + (err?.message || 'Error'), { id: toastId });
+        }
+    };
 
     // Helper: compute accurate SLA compliance dynamically based on priority targets
     const getSLACompliance = (r: CorrectiveReport) => {
@@ -324,7 +433,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             if (prio === 'Low') return 2880;
             return 360;
         };
-        const targetRST = r.targetRestoreMin && r.targetRestoreMin !== 120 ? r.targetRestoreMin : getTargetByPrio(r.priority);
+        const targetRST = 180; // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
         const targetRSP = r.targetResolutionMin && r.targetResolutionMin !== 360 ? r.targetResolutionMin : getTargetByPrio(r.priority);
 
         const restoreComply = (r.actualRestoreTimeMin !== undefined && r.actualRestoreTimeMin > 0)
@@ -697,6 +806,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             if (archiveFolder === 'pir' && report.reportType !== 'PIR') {
                 return false;
             }
+            if (archiveFolder === 'predictive') {
+                return false;
+            }
         }
 
         // Filter Jenis Penanganan CM (hanya berlaku saat menampilkan folder CM)
@@ -903,6 +1015,33 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const allCMReports = reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR');
     const allSLAReports = reports.filter(r => r.reportType === 'SLA' && !r.deleteRequested);
     const allPIRReports = reports.filter(r => r.reportType === 'PIR');
+
+    // Filter Laporan Predictive Maintenance berdasarkan periode dan pencarian teks
+    const filteredPredictiveReports = predictiveReports.filter((pred) => {
+        // Incident / Created Date Filter (Day / Month / Year)
+        const d = pred.createdAt ? new Date(pred.createdAt) : null;
+        if (d && !isNaN(d.getTime())) {
+            if (selectedDay !== 'all' && d.getDate().toString() !== selectedDay) return false;
+            if (selectedMonth !== 'all' && d.getMonth().toString() !== selectedMonth) return false;
+            if (selectedYear !== 'all' && d.getFullYear().toString() !== selectedYear) return false;
+        }
+
+        // Query check
+        if (searchQuery.trim() !== '') {
+            const queryText = searchQuery.toLowerCase();
+            const equipMatch = (pred.equipmentName || '').toLowerCase().includes(queryText);
+            const numMatch = (pred.reportNumber || '').toLowerCase().includes(queryText);
+            const srcNameMatch = (pred.sourceMaintenanceName || '').toLowerCase().includes(queryText);
+            const srcTicketMatch = (pred.sourceTicketNumber || '').toLowerCase().includes(queryText);
+            const locMatch = (pred.locationRoom || '').toLowerCase().includes(queryText);
+            const catMatch = (pred.systemCategory || '').toLowerCase().includes(queryText);
+            const statusMatch = (pred.healthStatus || '').toLowerCase().includes(queryText);
+            const insightMatch = (pred.aiAnalysis?.rootCauseAnalysis || '').toLowerCase().includes(queryText);
+            const rootMatch = (pred.aiAnalysis?.potentialFailureMode || '').toLowerCase().includes(queryText);
+            return equipMatch || numMatch || srcNameMatch || srcTicketMatch || locMatch || catMatch || statusMatch || insightMatch || rootMatch;
+        }
+        return true;
+    });
 
     // Helper: Menentukan apakah Laporan CM memerlukan SLA/SLG
     // Jika jenis penanganan adalah Pergantian Sparepart:
@@ -1207,6 +1346,84 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         await exportCMReportToDocx(cmData);
     };
 
+    // Handler untuk membuka atau mengenerate Predictive Maintenance Report dari Laporan CM (Arsip Standby)
+    const handleOpenPredictiveFromCM = async (report: CorrectiveReport) => {
+        setIsLoadingPredictive(true);
+        setLoadingPredictiveId(report.id);
+        setActivePredictiveReport(report);
+        const toastId = toast.loading('Memeriksa Laporan Predictive Maintenance...');
+
+        try {
+            // 1. Cek jika sudah memiliki predictiveReportId tersimpan di Firestore
+            if (report.predictiveReportId) {
+                const pSnap = await getDoc(doc(db, 'predictive_reports', report.predictiveReportId));
+                if (pSnap.exists()) {
+                    const pData = { id: pSnap.id, ...pSnap.data() } as PredictiveReportData;
+                    setActivePredictiveData(pData);
+                    setPredictiveModalOpen(true);
+                    toast.dismiss(toastId);
+                    return;
+                }
+            }
+
+            // 2. Query predictive_reports dengan sourceDocId == report.id jika belum terlink di field lokal
+            if (report.id) {
+                try {
+                    const pQuery = query(
+                        collection(db, 'predictive_reports'),
+                        where('sourceDocId', '==', report.id)
+                    );
+                    const pSnaps = await getDocs(pQuery);
+                    if (!pSnaps.empty) {
+                        const foundDoc = pSnaps.docs[0];
+                        const pData = { id: foundDoc.id, ...foundDoc.data() } as PredictiveReportData;
+                        setActivePredictiveData(pData);
+                        setPredictiveModalOpen(true);
+                        toast.dismiss(toastId);
+                        return;
+                    }
+                } catch (qErr) {
+                    console.warn('Query existing predictive reports skipped or pending rules:', qErr);
+                }
+            }
+
+            // 3. Jika belum ada laporan prediktif, buat otomatis via AI Reliability Agent
+            toast.loading('AI Agent sedang menganalisis data CM untuk Laporan Prediktif...', { id: toastId });
+            const cmData = buildCMDataFromReport(report);
+            const firstPhoto = cmData.photos?.[0]?.photoBase64 || report.photoBase64 || undefined;
+            const equipName = cmData.equipmentName || report.equipmentName || report.incidentName || 'Critical Facility Equipment';
+            const symptoms = cmData.summaryProblemAnalysis || cmData.visualInspectionChecking || report.issue || 'Indikasi degradasi operasional pada peralatan.';
+
+            const generated = await generatePredictiveReportAI({
+                sourceDocId: report.id,
+                sourceCollection: 'corrective_reports',
+                sourceTicketNumber: cmData.incidentId || 'TICKET-CM-' + (report.id ? report.id.slice(-6) : Date.now().toString().slice(-4)),
+                sourceMaintenanceName: cmData.incidentName || `Laporan CM ${equipName}`,
+                sourceMaintenanceDate: report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+                equipmentName: equipName,
+                locationRoom: report.location || 'Data Center NeutraDC Cikarang',
+                descriptionOrSymptoms: symptoms,
+                correctiveActionDone: cmData.correctiveAction || report.actionTaken || '-',
+                recommendation: cmData.recommendation || report.recommendation || '-',
+                photoEvidenceBase64: firstPhoto,
+                userEmail: user?.email || report.reportedByEmail || undefined,
+                userName: user?.displayName || report.preparedByName || undefined,
+            }, (msg) => {
+                toast.loading(msg, { id: toastId });
+            });
+
+            setActivePredictiveData(generated);
+            setPredictiveModalOpen(true);
+            toast.success('Laporan Prediktif AI siap ditinjau!', { id: toastId });
+        } catch (err: any) {
+            console.error('Error opening predictive report for CM:', err);
+            toast.error(`Gagal memuat laporan prediktif: ${err?.message || 'Terjadi kesalahan sistem'}`, { id: toastId });
+        } finally {
+            setIsLoadingPredictive(false);
+            setLoadingPredictiveId(null);
+        }
+    };
+
     if (!readOnly) {
         return (
             <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-4 sm:py-8 relative w-full min-w-0 overflow-x-hidden">
@@ -1334,7 +1551,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             </div>
 
             {/* Folder Switcher Tabs in Arsip Standby */}
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-3 mb-6 border-b border-slate-200 pb-4 w-full">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3 mb-6 border-b border-slate-200 pb-4 w-full">
                 <button
                     type="button"
                     onClick={() => {
@@ -1344,7 +1561,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                         setPrefillSlaData(null);
                     }}
-                    className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'cm_pdf'
+                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'cm_pdf'
                         ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
@@ -1362,7 +1579,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                         setPrefillSlaData(null);
                     }}
-                    className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'sla'
+                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'sla'
                         ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
@@ -1395,7 +1612,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                         setPrefillSlaData(null);
                     }}
-                    className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'pir'
+                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'pir'
                         ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
@@ -1403,6 +1620,24 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                     <span className="sm:hidden">PIR ({allPIRReports.length})</span>
                     <span className="hidden sm:inline">Report PIR ({allPIRReports.length})</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setArchiveFolder('predictive');
+                        setShowForm(false);
+                        setEditingReportId(null);
+                        setReportFormType(null);
+                        setPrefillSlaData(null);
+                    }}
+                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'predictive'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                        }`}
+                >
+                    <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-inherit" />
+                    <span className="sm:hidden">PdM ({predictiveReports.length})</span>
+                    <span className="hidden sm:inline">Predictive Report ({predictiveReports.length})</span>
                 </button>
             </div>
 
@@ -1599,18 +1834,45 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                 <div className="flex items-center gap-2 justify-end shrink-0">
                                     {isAuthorizedRole && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleOpenForm(archiveFolder)}
-                                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-red-500/10 cursor-pointer text-xs shrink-0"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                            {archiveFolder === 'sla'
-                                                ? '+ Buat Form SLA Baru'
-                                                : archiveFolder === 'pir'
-                                                    ? '+ Buat Report PIR Baru'
-                                                    : '+ Buat Report CM Baru'}
-                                        </button>
+                                        archiveFolder === 'predictive' ? (
+                                            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setArchiveFolder('cm_pdf')}
+                                                    className="px-3 sm:px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-purple-500/10 cursor-pointer text-xs shrink-0"
+                                                    title="Buka tab Report CM untuk membuat analisis PdM per Laporan CM"
+                                                >
+                                                    <Brain className="w-4 h-4" />
+                                                    <span>+ Buat PdM per CM</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedPeriodicData(null);
+                                                        setIsPeriodicModalOpen(true);
+                                                    }}
+                                                    className="px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 hover:from-purple-800 hover:to-indigo-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-purple-500/20 cursor-pointer text-xs shrink-0"
+                                                    title="Buka generator Rekap Predictive Maintenance skala Bulanan & Tahunan dengan AI"
+                                                >
+                                                    <Sparkles className="w-4 h-4 text-purple-200" />
+                                                    <span>🧠 Rekap Prediktif (Bulanan / Tahunan)</span>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenForm(archiveFolder as any)}
+                                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-red-500/10 cursor-pointer text-xs shrink-0"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                {archiveFolder === 'sla'
+                                                    ? '+ Buat Form SLA Baru'
+                                                    : archiveFolder === 'pir'
+                                                        ? '+ Buat Report PIR Baru'
+                                                        : '+ Buat Report CM Baru'}
+                                            </button>
+                                        )
                                     )}
 
                                     {archiveFolder === 'sla' && (
@@ -1760,7 +2022,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                 {/* Total Counter Badge */}
                                 <div className="hidden lg:flex items-center text-[11px] font-semibold text-slate-500 shrink-0 ml-auto">
-                                    Total: <span className="ml-1.5 px-2 py-0.5 bg-slate-100 rounded-md font-bold text-slate-700">{filteredReports.length} laporan</span>
+                                    Total: <span className="ml-1.5 px-2 py-0.5 bg-slate-100 rounded-md font-bold text-slate-700">
+                                        {archiveFolder === 'predictive' ? filteredPredictiveReports.length : filteredReports.length} laporan
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -1769,6 +2033,365 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     {loading ? (
                         <div className="flex justify-center py-12">
                             <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
+                        </div>
+                    ) : archiveFolder === 'predictive' ? (
+                        /* DAFTAR DOKUMEN PREDICTIVE MAINTENANCE REPORT */
+                        <div className="space-y-6">
+                            {/* Section: Laporan Predictive AI Periodik (Bulanan & Tahunan) jika ada */}
+                            {periodicReports.length > 0 && (
+                                <div className="bg-gradient-to-r from-purple-900/5 via-indigo-900/5 to-purple-900/5 border border-purple-200/80 rounded-2xl p-4 sm:p-5 shadow-xs">
+                                    <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-purple-600/10 border border-purple-300/40 flex items-center justify-center text-purple-700">
+                                                <Sparkles className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                                                    Rekap Predictive Maintenance Periodik
+                                                    <span className="px-2 py-0.5 bg-purple-600 text-white rounded-full text-2xs font-extrabold">
+                                                        {periodicReports.length} Dokumen
+                                                    </span>
+                                                </h4>
+                                                <p className="text-xs text-slate-500">
+                                                    Dokumen ringkasan eksekutif keandalan fasilitas skala Bulanan & Tahunan
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedPeriodicData(null);
+                                                setIsPeriodicModalOpen(true);
+                                            }}
+                                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            <span>Buat Rekap Baru</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {periodicReports.map((prep) => (
+                                            <div key={prep.id} className="bg-white rounded-xl border border-purple-200/90 p-4 shadow-2xs hover:shadow-md hover:border-purple-400 transition flex flex-col justify-between gap-3">
+                                                <div>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-2 py-0.5 rounded">
+                                                            {prep.periodType === 'monthly' ? `Bulanan • ${prep.monthName} ${prep.year}` : `Tahunan • Tahun ${prep.year}`}
+                                                        </span>
+                                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                                            prep.overallStatus === 'Optimized' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'
+                                                        }`}>
+                                                            Health: {prep.facilityHealthScore}/100
+                                                        </span>
+                                                    </div>
+                                                    <h5 className="text-xs sm:text-sm font-bold text-slate-900 mt-2 line-clamp-2">
+                                                        {prep.title || prep.reportNumber}
+                                                    </h5>
+                                                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                                        {prep.executiveSummary}
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                                                    <span className="text-[11px] text-slate-400">
+                                                        {prep.totalCMEvents} CM • {prep.totalAbnormalFindings} Temuan
+                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSelectedPeriodicData(prep);
+                                                                setIsPeriodicModalOpen(true);
+                                                            }}
+                                                            className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded text-xs font-bold transition cursor-pointer"
+                                                        >
+                                                            Buka
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => exportPeriodicPredictiveReportToDocx(prep)}
+                                                            className="p-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded transition cursor-pointer"
+                                                            title="Download Word (.docx)"
+                                                        >
+                                                            <FileText className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => exportPeriodicPredictiveReportToPdf(prep)}
+                                                            className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded transition cursor-pointer"
+                                                            title="Download PDF"
+                                                        >
+                                                            <Download className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        {isAuthorizedRole && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={async () => {
+                                                                    if (!window.confirm('Hapus laporan periodik ini?')) return;
+                                                                    await deleteDoc(doc(db, 'periodic_predictive_reports', prep.id));
+                                                                    toast.success('Laporan periodik berhasil dihapus');
+                                                                }}
+                                                                className="p-1 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 rounded transition cursor-pointer"
+                                                                title="Hapus"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Section: Laporan Predictive Maintenance per Kasus CM */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                        <Brain className="w-4 h-4 text-purple-600" />
+                                        Laporan Predictive Maintenance per Kasus CM
+                                    </h4>
+                                    <span className="text-xs text-slate-500">
+                                        Total: <strong>{filteredPredictiveReports.length}</strong> laporan
+                                    </span>
+                                </div>
+
+                                {filteredPredictiveReports.length === 0 ? (
+                                    <div className="text-center py-16 bg-white/90 rounded-2xl border border-slate-200 shadow-sm">
+                                        <Brain className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                                        <h3 className="text-xl font-medium text-slate-900">Belum Ada Laporan Predictive Maintenance per Kasus CM</h3>
+                                        <p className="text-slate-500 mt-2 max-w-md mx-auto text-xs sm:text-sm">
+                                            Buka tab <strong>Report CM</strong> lalu klik tombol <strong>[🧠 Predictive AI]</strong> pada salah satu laporan CM untuk membuat analisis prediktif baru.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setArchiveFolder('cm_pdf')}
+                                            className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2 cursor-pointer shadow-sm"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            <span>Lihat Daftar Report CM</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-4">
+                                {filteredPredictiveReports.map((pred, idx) => {
+                                    const linkedCM = pred.sourceDocId ? allCMReports.find(c => c.id === pred.sourceDocId) : null;
+                                    return (
+                                        <motion.div
+                                            key={pred.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="bg-white/95 backdrop-blur-sm rounded-2xl border border-purple-200/90 overflow-hidden hover:border-purple-400 hover:shadow-lg transition shadow-md relative"
+                                        >
+                                            {/* Header Kartu PdM */}
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50/60 to-white px-5 py-3.5">
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                                                    <span className="px-2.5 py-0.5 bg-purple-950 text-white rounded-md text-[11px] font-black shadow-2xs">
+                                                        #{filteredPredictiveReports.length - idx}
+                                                    </span>
+                                                    <span className="px-2.5 py-0.5 bg-purple-100 border border-purple-300 text-purple-900 rounded-md text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1">
+                                                        <Brain className="w-3.5 h-3.5 text-purple-600" />
+                                                        PREDICTIVE REPORT
+                                                    </span>
+                                                    <span className="font-mono text-xs font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                                                        {pred.reportNumber}
+                                                    </span>
+                                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs ${
+                                                        pred.healthStatus === 'Critical'
+                                                            ? 'bg-rose-50 text-rose-700 border-rose-300'
+                                                            : pred.healthStatus === 'Warning'
+                                                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                                                : 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                                    }`}>
+                                                        Status: {pred.healthStatus || 'Caution'}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                                        {pred.aiAnalysis?.urgencyLevel || 'Medium'} Urgency
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
+                                                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                    <span>{pred.createdAt ? (typeof pred.createdAt === 'object' && pred.createdAt.toLocaleDateString ? pred.createdAt.toLocaleDateString('id-ID') : new Date(pred.createdAt).toLocaleDateString('id-ID')) : '-'}</span>
+                                                    <span className="text-slate-300">•</span>
+                                                    <User className="w-3.5 h-3.5 text-slate-400" />
+                                                    <span className="text-slate-700 font-medium">{pred.createdBy || 'Standby Engineer'}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Banner Dokumen CM Asal (Penjelasan Asal Laporan CM) */}
+                                            <div className="mx-4 sm:mx-5 mt-4 bg-gradient-to-r from-purple-50/80 via-indigo-50/40 to-white border border-purple-200/90 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                                                <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+                                                    <div className="p-2 bg-gradient-to-br from-purple-600 to-indigo-700 text-white rounded-lg shadow-xs shrink-0">
+                                                        <FileText className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100/80 px-1.5 py-0.2 rounded border border-purple-200">
+                                                                Berasal Dari Laporan CM Induk
+                                                            </span>
+                                                            <span className="font-mono text-[11px] text-slate-500">
+                                                                Tiket: <strong className="text-slate-800">{pred.sourceTicketNumber || linkedCM?.incidentId || 'N/A'}</strong>
+                                                            </span>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className="text-[11px] text-slate-500">
+                                                                Tgl Pelaksanaan CM: <strong className="text-slate-700">{pred.sourceMaintenanceDate || (linkedCM?.incidentDate || '-')}</strong>
+                                                            </span>
+                                                        </div>
+                                                        <h5 className="text-xs sm:text-sm font-bold text-slate-900 truncate mt-0.5" title={linkedCM?.incidentName || linkedCM?.issue || pred.sourceMaintenanceName}>
+                                                            {linkedCM?.incidentName || linkedCM?.equipmentName || linkedCM?.issue || pred.sourceMaintenanceName || 'Laporan Corrective Maintenance'}
+                                                        </h5>
+                                                    </div>
+                                                </div>
+
+                                                {linkedCM ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleNavigateToCM(linkedCM)}
+                                                        className="px-3 py-1.5 bg-white hover:bg-purple-100/80 text-purple-800 border border-purple-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer group"
+                                                        title="Klik untuk membuka Laporan CM asal di tab Report CM"
+                                                    >
+                                                        <span>Buka Laporan CM</span>
+                                                        <ExternalLink className="w-3.5 h-3.5 text-purple-600 group-hover:translate-x-0.5 transition-transform" />
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-[11px] text-slate-400 italic shrink-0">
+                                                        ID Dokumen CM: {pred.sourceDocId ? pred.sourceDocId.slice(0, 10) + '...' : '-'}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Detail Body */}
+                                            <div className="p-4 sm:p-5 flex flex-col md:flex-row gap-5 items-start">
+                                                {pred.photoEvidenceBase64 && (
+                                                    <div className="w-full md:w-56 shrink-0">
+                                                        <img
+                                                            src={pred.photoEvidenceBase64}
+                                                            alt={pred.equipmentName || 'Evidence'}
+                                                            className="w-full h-36 object-cover rounded-xl border border-slate-200 shadow-2xs"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <div className="flex-1 min-w-0 space-y-3">
+                                                    <div>
+                                                        <span className="text-[10px] font-extrabold text-purple-700 uppercase tracking-wider block mb-0.5">
+                                                            {pred.systemCategory || 'General Facility'} • {pred.locationRoom || 'Data Center NeutraDC Cikarang'}
+                                                        </span>
+                                                        <h4 className="text-base sm:text-lg font-bold text-slate-900">
+                                                            {pred.equipmentName || 'Critical Facility Equipment'}
+                                                        </h4>
+                                                    </div>
+
+                                                    {/* RUL & Root Cause Hypothesis */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                                                                Estimasi Sisa Umur Pakai (RUL)
+                                                            </span>
+                                                            <span className="text-sm sm:text-base font-black text-purple-900 mt-0.5 block">
+                                                                {pred.aiAnalysis?.remainingUsefulLife || 'N/A'}
+                                                            </span>
+                                                            <span className="text-[11px] text-slate-500 mt-0.5 block">
+                                                                Risiko SLA: <strong className="text-slate-800">{pred.aiAnalysis?.slaRiskAssessment || 'Terkendali'}</strong>
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                                                                Hipotesis Analisis Akar Masalah (RCA)
+                                                            </span>
+                                                            <p className="text-xs text-slate-700 line-clamp-2 mt-0.5 italic">
+                                                                "{pred.aiAnalysis?.rootCauseAnalysis || pred.aiAnalysis?.potentialFailureMode || '-'}"
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Rencana Mitigasi */}
+                                                    {pred.actionPlan?.immediateAction && (
+                                                        <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-3">
+                                                            <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block mb-0.5">
+                                                                Rekomendasi Tindakan Cepat (Immediate Action)
+                                                            </span>
+                                                            <p className="text-xs text-emerald-950 font-medium leading-relaxed">
+                                                                {pred.actionPlan.immediateAction}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Action Buttons */}
+                                                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setActivePredictiveData(pred);
+                                                                    setPredictiveModalOpen(true);
+                                                                }}
+                                                                className="h-8 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg inline-flex items-center gap-1.5 text-xs font-bold transition shadow-xs cursor-pointer"
+                                                            >
+                                                                <Brain className="w-3.5 h-3.5" />
+                                                                <span>Lihat / Edit PdM</span>
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={async () => {
+                                                                    const toastId = toast.loading('Menyiapkan dokumen Word PdM...');
+                                                                    try {
+                                                                        await exportPredictiveReportToDocx(pred);
+                                                                        toast.success('Laporan PdM Word berhasil diunduh!', { id: toastId });
+                                                                    } catch (e: any) {
+                                                                        toast.error('Gagal unduh Word: ' + (e?.message || 'Error'), { id: toastId });
+                                                                    }
+                                                                }}
+                                                                className="h-8 px-2.5 sm:px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap transition shadow-2xs cursor-pointer"
+                                                                title="Download Dokumen Resmi Word (DOCX)"
+                                                            >
+                                                                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                                <span>Word PdM</span>
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={async () => {
+                                                                    const toastId = toast.loading('Menyiapkan dokumen PDF PdM...');
+                                                                    try {
+                                                                        await exportPredictiveReportToPdf(pred);
+                                                                        toast.success('Laporan PdM PDF berhasil diunduh!', { id: toastId });
+                                                                    } catch (e: any) {
+                                                                        toast.error('Gagal unduh PDF: ' + (e?.message || 'Error'), { id: toastId });
+                                                                    }
+                                                                }}
+                                                                className="h-8 px-2.5 sm:px-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap transition shadow-2xs cursor-pointer"
+                                                                title="Download Dokumen Resmi PDF"
+                                                            >
+                                                                <FileText className="w-3.5 h-3.5 text-rose-600" />
+                                                                <span>PDF PdM</span>
+                                                            </button>
+                                                        </div>
+
+                                                        {isAuthorizedRole && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeletePredictiveReport(pred.id, pred.sourceDocId)}
+                                                                className="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                                title="Hapus Laporan Predictive ini"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     ) : filteredReports.length === 0 ? (
                         <div className="text-center py-16 bg-white/90 rounded-2xl border border-slate-200 shadow-sm">
@@ -2203,6 +2826,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                     {report.status}
                                                                 </div>
                                                             ) : null}
+                                                            {Boolean(report.hasPredictiveReport || report.predictiveReportId) && (
+                                                                <span
+                                                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 shadow-2xs"
+                                                                    title="Laporan Predictive Maintenance (PdM) berbasis AI sudah dibuat untuk CM ini"
+                                                                >
+                                                                    <Brain className="w-3 h-3 text-purple-600" />
+                                                                    PdM Ready
+                                                                </span>
+                                                            )}
                                                             {(() => {
                                                                 const isSparepart = isCMSparepart(report);
                                                                 const isConsumable = isSparepart && report.sparepartType === 'consumable';
@@ -2422,6 +3054,31 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span>Word CM</span>
                                                         </button>
 
+                                                        {(() => {
+                                                            const hasPdM = Boolean(report.hasPredictiveReport || report.predictiveReportId);
+                                                            const isThisLoading = loadingPredictiveId === report.id && isLoadingPredictive;
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleOpenPredictiveFromCM(report)}
+                                                                    disabled={isThisLoading}
+                                                                    className={`h-8 px-2.5 sm:px-3 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition shadow-2xs cursor-pointer ${
+                                                                        hasPdM
+                                                                            ? 'bg-purple-100 hover:bg-purple-200 border border-purple-300 text-purple-900 shadow-sm'
+                                                                            : 'bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700'
+                                                                    }`}
+                                                                    title={hasPdM ? 'Tinjau / Cetak Laporan Predictive Maintenance yang sudah dibuat' : 'Generate Laporan Predictive Maintenance (PdM) berbasis AI dari data CM ini'}
+                                                                >
+                                                                    {isThisLoading ? (
+                                                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600 shrink-0" />
+                                                                    ) : (
+                                                                        <Brain className={`w-3.5 h-3.5 shrink-0 ${hasPdM ? 'text-purple-700' : 'text-purple-600'}`} />
+                                                                    )}
+                                                                    <span>{hasPdM ? '✓ Lihat PdM' : 'Predictive AI'}</span>
+                                                                </button>
+                                                            );
+                                                        })()}
+
                                                         {isAuthorizedRole && (
                                                             <button
                                                                 onClick={() => handleOpenForm('cm_pdf', report.id)}
@@ -2544,6 +3201,53 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 isQcDme={isQcDme}
                 userEmail={user?.email || undefined}
             />
+
+            {/* Modal Predictive Maintenance Report (AI Agent) */}
+            {predictiveModalOpen && activePredictiveData && (
+                <PredictiveReportModal
+                    isOpen={predictiveModalOpen}
+                    onClose={() => setPredictiveModalOpen(false)}
+                    initialData={activePredictiveData}
+                    isLoadingAI={isLoadingPredictive}
+                    onRegenerateAI={() => activePredictiveReport ? handleOpenPredictiveFromCM(activePredictiveReport) : Promise.resolve()}
+                    onSaved={(saved) => {
+                        setActivePredictiveData(saved);
+                        if (activePredictiveReport) {
+                            setReports(prev => prev.map(r => {
+                                if (r.id === activePredictiveReport.id) {
+                                    return {
+                                        ...r,
+                                        hasPredictiveReport: true,
+                                        predictiveReportId: saved.id,
+                                        predictiveReportNumber: saved.reportNumber
+                                    };
+                                }
+                                return r;
+                            }));
+                        }
+                    }}
+                />
+            )}
+
+            {/* Modal Rekap Predictive Maintenance Periodik (Bulanan & Tahunan) */}
+            {isPeriodicModalOpen && (
+                <PeriodicPredictiveModal
+                    isOpen={isPeriodicModalOpen}
+                    onClose={() => {
+                        setIsPeriodicModalOpen(false);
+                        setSelectedPeriodicData(null);
+                    }}
+                    allCMReports={allCMReports}
+                    allAbnormalFindings={allCMReports.filter(r => r.category === 'abnormal' || r.issue)}
+                    allSparepartLogs={[]}
+                    userEmail={user?.email || undefined}
+                    userName={user?.displayName || 'Standby Engineer'}
+                    initialData={selectedPeriodicData}
+                    onSaved={(saved) => {
+                        setSelectedPeriodicData(saved);
+                    }}
+                />
+            )}
         </div>
     );
 }

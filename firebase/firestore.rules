@@ -492,6 +492,34 @@ service cloud.firestore {
       allow delete: if request.auth != null && isQcDmeSafe();
     }
 
+    // ============================================================================
+    // Koleksi: predictive_reports — Laporan Predictive Maintenance (PdM AI Agent)
+    // Akses: Admin, QC DME, Engineer, Standby Engineer, DME & Privileged can CRUD
+    // ============================================================================
+    match /predictive_reports/{reportId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME());
+      allow update: if request.auth != null 
+                    && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.createdBy == getEmail() || resource.data.createdBy == request.auth.uid);
+      allow delete: if request.auth != null 
+                    && (isAdminOrQcDme() || isStandbyEngineer() || isPrivilegedRole() || isEngineer() || resource.data.createdBy == getEmail() || resource.data.createdBy == request.auth.uid);
+    }
+
+    // ============================================================================
+    // Koleksi: periodic_predictive_reports — Laporan PdM Periodik (Bulanan & Tahunan)
+    // Akses: Admin, QC DME, Engineer, Standby Engineer, DME & Privileged can CRUD
+    // ============================================================================
+    match /periodic_predictive_reports/{reportId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME());
+      allow update: if request.auth != null 
+                    && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.createdBy == getEmail() || resource.data.createdBy == request.auth.uid);
+      allow delete: if request.auth != null 
+                    && (isAdminOrQcDme() || isStandbyEngineer() || isPrivilegedRole() || isEngineer() || resource.data.createdBy == getEmail() || resource.data.createdBy == request.auth.uid);
+    }
+
     match /standby_kpi_inputs/{docId} {
       allow read: if request.auth != null;
       allow create, update, delete: if request.auth != null && (isAdminOrQcDme() || isStandbyEngineer() || isPrivilegedRole() || isEngineer() || isDME());

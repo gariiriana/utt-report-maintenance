@@ -33,6 +33,25 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { AbnormalItem } from '../components/AbnormalFindingsCenter';
+import { PredictiveReportData } from '@/types/predictiveReportTypes';
+import { db } from '@/api/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+// Helper mengambil data laporan prediktif yang terikat 1-to-1 dengan item temuan
+async function resolvePredictiveReportData(item: AbnormalItem): Promise<PredictiveReportData | null> {
+  if (item.predictiveReportData) return item.predictiveReportData;
+  if (item.predictiveReportId) {
+    try {
+      const snap = await getDoc(doc(db, 'predictive_reports', item.predictiveReportId));
+      if (snap.exists()) {
+        return snap.data() as PredictiveReportData;
+      }
+    } catch (e) {
+      console.warn('Gagal memuat predictive report terkait:', e);
+    }
+  }
+  return null;
+}
 
 // Helper konversi base64 string ke Uint8Array untuk ImageRun docx
 function base64ToUint8Array(base64: string): Uint8Array {
@@ -649,6 +668,91 @@ export async function exportAbnormalRecapToWord(
               size: 14,
               color: COLOR_MUTED,
               font: 'Calibri',
+            }),
+          ],
+        })
+      );
+    }
+
+    // Bundling Laporan Predictive Maintenance (PdM) 1-to-1 jika ada
+    const pdmData = await resolvePredictiveReportData(item);
+    if (pdmData) {
+      detailReportParagraphs.push(
+        new Paragraph({
+          spacing: { before: 120, after: 50 },
+          shading: { type: ShadingType.SOLID, color: 'F5F3FF', fill: 'F5F3FF' },
+          border: {
+            left: { style: BorderStyle.SINGLE, size: 8, color: '6D28D9' },
+            top: { style: BorderStyle.SINGLE, size: 1, color: 'DDD6FE' },
+            right: { style: BorderStyle.SINGLE, size: 1, color: 'DDD6FE' },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: 'DDD6FE' },
+          },
+          indent: { left: 80 },
+          children: [
+            new TextRun({
+              text: `[🤖 LAMPIRAN ANALISIS PREDIKTIF AI] ${pdmData.reportNumber} — STATUS: ${pdmData.healthStatus.toUpperCase()}`,
+              bold: true,
+              size: 16,
+              color: '5B21B6',
+              font: 'Calibri',
+            }),
+            new TextRun({
+              text: `   |   Estimasi Sisa Umur (RUL): ${pdmData.aiAnalysis?.remainingUsefulLife || '-'}`,
+              bold: true,
+              size: 15,
+              color: 'B91C1C',
+              font: 'Calibri',
+            }),
+          ],
+        }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: borderThin,
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 28, type: WidthType.PERCENTAGE },
+                  shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                  borders: borderThin,
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Akar Masalah (Root Cause)', bold: true, size: 15, font: 'Calibri' })] })],
+                }),
+                new TableCell({
+                  width: { size: 72, type: WidthType.PERCENTAGE },
+                  borders: borderThin,
+                  children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.rootCauseAnalysis || '-', size: 15, font: 'Calibri' })] })],
+                }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 28, type: WidthType.PERCENTAGE },
+                  shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                  borders: borderThin,
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Potensi Modus Kegagalan', bold: true, size: 15, font: 'Calibri' })] })],
+                }),
+                new TableCell({
+                  width: { size: 72, type: WidthType.PERCENTAGE },
+                  borders: borderThin,
+                  children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.potentialFailureMode || '-', size: 15, font: 'Calibri' })] })],
+                }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 28, type: WidthType.PERCENTAGE },
+                  shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                  borders: borderThin,
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Rencana Tindakan Definitif', bold: true, size: 15, font: 'Calibri' })] })],
+                }),
+                new TableCell({
+                  width: { size: 72, type: WidthType.PERCENTAGE },
+                  borders: borderThin,
+                  children: [new Paragraph({ children: [new TextRun({ text: pdmData.actionPlan?.plannedOverhaulAction || pdmData.actionPlan?.immediateAction || '-', size: 15, font: 'Calibri' })] })],
+                }),
+              ],
             }),
           ],
         })

@@ -308,7 +308,7 @@ export function SLAMonthlyRecapModal({
     const respM = filteredSLAReports.filter(r => r.responseComply !== false && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true)).length;
     const onsiteM = filteredSLAReports.filter(r => r.onsiteComply !== false && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true)).length;
     const restoreM = filteredSLAReports.filter(r => {
-      const t = r.targetRestoreMin || getTargetByPriority(r.priority);
+      const t = 180; // SLA Target Komitmen Restore Time selalu 3 Jam (180 Menit)
       return r.restoreComply !== false && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= t : true);
     }).length;
     const resolutionM = filteredSLAReports.filter(r => {
