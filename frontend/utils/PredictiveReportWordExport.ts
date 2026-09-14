@@ -1008,7 +1008,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
 
           createSectionHeading('Lembar Pengesahan Resmi', '5'),
           new Paragraph({
-            keepWithNext: true,
+            keepNext: true,
             spacing: { before: 80, after: 60 },
             children: [
               new TextRun({
