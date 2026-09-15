@@ -75,7 +75,9 @@ import {
   isValidBOQItem,
   PrimaryGoalItem,
   generatePrimaryGoalsFromEquipments,
-  getEquipmentPrimaryGoal
+  getEquipmentPrimaryGoal,
+  fetchMonthCmReports,
+  getDefaultExecutiveSummaryParagraphs
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
@@ -388,6 +390,30 @@ export function MonthlyReportGenerator() {
   const [modalTitle, setModalTitle] = useState<string>('Laporan Bulanan Maintenance Juli 2026');
   const [isModalTitleCustomized, setIsModalTitleCustomized] = useState<boolean>(false);
   const [setupModalTab, setSetupModalTab] = useState<'archive' | 'new'>('archive');
+  const [isSyncingCm, setIsSyncingCm] = useState<boolean>(false);
+
+  // Handler sinkronisasi Laporan CM dari Firestore
+  const handleSyncCmReports = async () => {
+    if (!reportData) return;
+    setIsSyncingCm(true);
+    const toastId = toast.loading('Menyinkronkan data Laporan CM dari database...');
+    try {
+      const monthNum = reportData.monthNumber || selectedMonth || 7;
+      const yearNum = reportData.year || selectedYear || 2026;
+      const cmItems = await fetchMonthCmReports(monthNum, yearNum);
+      if (cmItems.length === 0) {
+        toast.info(`Tidak ditemukan laporan CM di database untuk ${reportData.monthName} ${yearNum}.`, { id: toastId });
+      } else {
+        setReportData(prev => prev ? ({ ...prev, cmReportsTable: cmItems }) : prev);
+        toast.success(`Berhasil menyinkronkan ${cmItems.length} Laporan CM dari database!`, { id: toastId });
+      }
+    } catch (err: any) {
+      console.error('Error syncing CM reports:', err);
+      toast.error('Gagal menyinkronkan data CM: ' + (err?.message || 'Error'), { id: toastId });
+    } finally {
+      setIsSyncingCm(false);
+    }
+  };
   const [setupModalSearch, setSetupModalSearch] = useState<string>('');
 
   // ─── Modal Ubah Nama File di Arsip Dokumen ─────────────────────────
@@ -786,6 +812,10 @@ export function MonthlyReportGenerator() {
                 const name = (eq.name || '').trim().toLowerCase();
                 return cls !== 'equipment' && cls !== 'total' && cls !== '' && name !== 'equipment' && name !== 'total';
               }).map((eq: any, i: number) => ({ ...eq, no: i + 1 }));
+            }
+
+            if (!Array.isArray(parsed.executiveSummaryParagraphs) || parsed.executiveSummaryParagraphs.length === 0) {
+              parsed.executiveSummaryParagraphs = getDefaultExecutiveSummaryParagraphs(parsed.monthNameEn, parsed.monthName, parsed.year);
             }
 
             parsed.reportTitle = titleToUse;
@@ -2680,140 +2710,139 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="font-serif space-y-4 text-slate-800 leading-relaxed text-sm">
-                <h2 className="text-[11pt] font-bold text-slate-900">1. Executive Summary</h2>
-                <BilingualTextarea
-                  value={reportData.executiveSummaryText !== undefined ? reportData.executiveSummaryText : 'Maintenance is a series of activities to maintain facilities and equipment so that they are always ready to use to carry out production effectively and efficiently according to the schedule that has been set and based on standards (functional and quality). The term maintenance comes from the Greek word tera which means to care for, maintain, and maintain. Maintenance is a system consisting of several elements in the form of facilities (machines), replacement of components or spare parts (materials), maintenance costs (money), maintenance activity planning (method) and maintenance executors (man).'}
-                  onChange={(val) => {
-                    const updated = { ...reportData };
-                    updated.executiveSummaryText = val;
-                    setReportData(updated);
-                  }}
-                  placeholderEn="Executive summary narrative in English..."
-                  placeholderId="Narasi ringkasan eksekutif Bahasa Indonesia (garis miring)..."
-                  classNameEn="w-full text-sm font-serif leading-relaxed text-slate-800 bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded-lg p-2 outline-none"
-                  classNameId="w-full text-xs font-serif italic leading-relaxed text-slate-600 bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded-lg p-2 outline-none"
-                  indentId={true}
-                />
-
-                <div className="flex items-center justify-between pt-2">
-                  <BilingualTextarea
-                    value={reportData.purposeOfReportTitle || 'Purpose of Report'}
-                    onChange={(val) => {
-                      const updated = { ...reportData };
-                      updated.purposeOfReportTitle = val;
-                      setReportData(updated);
-                    }}
-                    placeholderEn="Purpose of Report"
-                    placeholderId="Tujuan Laporan (garis miring)..."
-                    classNameEn="text-base font-bold text-slate-900 bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1 outline-none leading-tight font-serif"
-                    classNameId="text-xs italic font-semibold text-slate-600 bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1 outline-none leading-tight font-serif"
-                    containerClassName="flex-1 flex flex-col space-y-0.5"
-                    indentId={true}
-                  />
-                  <button
-                    onClick={() => {
-                      const updated = { ...reportData };
-                      if (!updated.purposePoints) {
-                        updated.purposePoints = [
-                          { title: 'Documentation of Preventive Maintenance Activities:\nDokumentasi Kegiatan Pemeliharaan Preventif:', desc: 'Records all PM activities that have been carried out for one month.\nMencatat seluruh aktivitas PM yang telah dilaksanakan selama satu bulan.' },
-                          { title: 'Equipment and System Performance Evaluation:\nEvaluasi Kinerja Peralatan dan Sistem:', desc: 'Assess the condition of equipment based on inspection and maintenance results.\nMenilai kondisi fisik dan performa operasional peralatan berdasarkan hasil inspeksi.' },
-                          { title: 'Reporting to Management:\nPelaporan kepada Manajemen Fasilitas:', desc: 'Provides management with a comprehensive overview of the condition of the facility.\nMemberikan gambaran menyeluruh kepada manajemen mengenai keandalan fasilitas.' },
-                          { title: 'Ensure Compliance with Procedures and Standards:\nMemastikan Kepatuhan terhadap Prosedur dan Standar:', desc: 'Prove that PM activities are carried out in accordance with applicable Procedures.\nMemverifikasi bahwa kegiatan PM dilaksanakan sesuai prosedur resmi data center.' }
-                        ];
-                      }
-                      updated.purposePoints.push({
-                        title: 'Technical Compliance Assurance:\nJaminan Kepatuhan Teknis:',
-                        desc: 'Maintain zero-interruption uptime and regulatory data center compliance.\nMenjaga ketersediaan tanpa jeda dan kepatuhan regulasi operasional fasilitas.'
-                      });
-                      setReportData(updated);
-                      toast.success('Poin tujuan berhasil ditambahkan!');
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer print:hidden"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Tambah Poin Tujuan</span>
-                  </button>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <h2 className="text-[11pt] font-bold text-slate-900">1. Executive Summary</h2>
+                  <div className="flex items-center gap-2 print:hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...reportData };
+                        const curList = Array.isArray(updated.executiveSummaryParagraphs) && updated.executiveSummaryParagraphs.length > 0
+                          ? [...updated.executiveSummaryParagraphs]
+                          : getDefaultExecutiveSummaryParagraphs(updated.monthNameEn, updated.monthName, updated.year);
+                        curList.push({
+                          en: "In addition, continuous monitoring and proactive maintenance routines will be sustained to preserve high-availability standards across all data center infrastructure.",
+                          id: "Selain itu, pemantauan berkelanjutan dan rutinitas pemeliharaan proaktif akan terus dipertahankan guna menjaga standar ketersediaan tinggi di seluruh infrastruktur data center."
+                        });
+                        updated.executiveSummaryParagraphs = curList;
+                        setReportData(updated);
+                        toast.success('Paragraf naratif berhasil ditambahkan!');
+                      }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold font-sans transition-all cursor-pointer"
+                      title="Tambah Paragraf Baru"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Paragraf</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...reportData };
+                        updated.executiveSummaryParagraphs = getDefaultExecutiveSummaryParagraphs(
+                          updated.monthNameEn,
+                          updated.monthName,
+                          updated.year
+                        );
+                        setReportData(updated);
+                        toast.info('Format Executive Summary di-reset ke 9 paragraf standar sesuai foto!');
+                      }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium font-sans transition-all cursor-pointer"
+                      title="Reset ke format resmi 9 paragraf"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset Format Sesuai Foto</span>
+                    </button>
+                  </div>
                 </div>
 
-                <BilingualTextarea
-                  value={reportData.purposeOfReportIntro !== undefined ? reportData.purposeOfReportIntro : 'To document, evaluate, and ensure that maintenance activities run according to plans and operational standards such as:'}
-                  onChange={(val) => {
-                    const updated = { ...reportData };
-                    updated.purposeOfReportIntro = val;
-                    setReportData(updated);
-                  }}
-                  placeholderEn="To document, evaluate, and ensure that maintenance activities..."
-                  placeholderId="Untuk mendokumentasikan, mengevaluasi... (garis miring)"
-                  classNameEn="w-full text-sm font-serif text-slate-800 bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
-                  classNameId="w-full text-xs font-serif italic text-slate-600 bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none"
-                  indentId={true}
-                />
+                {/* Daftar Paragraf Naratif Bilingual (Sesuai Foto Acuan) */}
+                <div className="space-y-4">
+                  {(
+                    (Array.isArray(reportData.executiveSummaryParagraphs) && reportData.executiveSummaryParagraphs.length > 0)
+                      ? reportData.executiveSummaryParagraphs
+                      : getDefaultExecutiveSummaryParagraphs(reportData.monthNameEn, reportData.monthName, reportData.year)
+                  ).map((para, pIdx) => {
+                    const paragraphHints = [
+                      "Definisi Pemeliharaan (Maintenance Definition)",
+                      "Tujuan Laporan (Report Purpose)",
+                      "First • Dokumentasi Kegiatan PM",
+                      "Second • Evaluasi Kondisi Fisik & Kinerja",
+                      "Third • Tinjauan Menyeluruh Manajemen",
+                      "Fourth • Kepatuhan Prosedur & Standar",
+                      `Siklus ${reportData.monthNameEn || 'Bulan'} ${reportData.year || '2026'} & Kondisi Umum`,
+                      "Anomali Operasional & Tindakan Korektif (CM)",
+                      "Jadwal Pemeliharaan Ditunda (Deferred Activities)"
+                    ];
+                    const hintLabel = paragraphHints[pIdx] || `Paragraf Narasi ${pIdx + 1}`;
 
-                <ol className="list-decimal pl-6 space-y-3">
-                  {(reportData.purposePoints || [
-                    { title: 'Documentation of Preventive Maintenance Activities:\nDokumentasi Kegiatan Pemeliharaan Preventif:', desc: 'Records all PM activities that have been carried out for one month.\nMencatat seluruh aktivitas PM yang telah dilaksanakan selama satu bulan.' },
-                    { title: 'Equipment and System Performance Evaluation:\nEvaluasi Kinerja Peralatan dan Sistem:', desc: 'Assess the condition of equipment based on inspection and maintenance results.\nMenilai kondisi fisik dan performa operasional peralatan berdasarkan hasil inspeksi.' },
-                    { title: 'Reporting to Management:\nPelaporan kepada Manajemen Fasilitas:', desc: 'Provides management with a comprehensive overview of the condition of the facility.\nMemberikan gambaran menyeluruh kepada manajemen mengenai keandalan fasilitas.' },
-                    { title: 'Ensure Compliance with Procedures and Standards:\nMemastikan Kepatuhan terhadap Prosedur dan Standar:', desc: 'Prove that PM activities are carried out in accordance with applicable Procedures.\nMemverifikasi bahwa kegiatan PM dilaksanakan sesuai prosedur resmi data center.' }
-                  ]).map((pt, pIdx) => (
-                    <li key={pIdx} className="group relative pr-8">
-                      <div className="space-y-1">
-                        <BilingualTextarea
-                          value={pt.title}
-                          onChange={(val) => {
-                            const updated = { ...reportData };
-                            if (!updated.purposePoints) updated.purposePoints = [];
-                            updated.purposePoints[pIdx].title = val;
-                            setReportData(updated);
-                          }}
-                          placeholderEn="Purpose Title in English..."
-                          placeholderId="Judul Tujuan Bahasa Indonesia (garis miring)..."
-                          classNameEn="font-bold text-slate-900 w-full bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1 outline-none text-sm leading-tight font-serif"
-                          classNameId="italic font-semibold text-slate-600 w-full bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1 outline-none text-xs leading-tight font-serif"
-                          indentId={true}
-                        />
-                        <BilingualTextarea
-                          value={pt.desc}
-                          onChange={(val) => {
-                            const updated = { ...reportData };
-                            if (!updated.purposePoints) updated.purposePoints = [];
-                            updated.purposePoints[pIdx].desc = val;
-                            setReportData(updated);
-                          }}
-                          placeholderEn="Purpose Description in English..."
-                          placeholderId="Deskripsi Tujuan Bahasa Indonesia (garis miring)..."
-                          classNameEn="w-full text-slate-800 bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1 outline-none text-xs leading-relaxed font-serif"
-                          classNameId="w-full text-slate-600 italic bg-transparent hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1 outline-none text-[11.5px] leading-relaxed font-serif"
-                          indentId={true}
-                        />
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const defaultPoints = [
-                            { title: 'Documentation of Preventive Maintenance Activities:', desc: 'Records all PM activities that have been carried out for one month. Include details such as schedule, equipment maintained, methods used, inspection results, and corrective actions if any.' },
-                            { title: 'Equipment and System Performance Evaluation:', desc: 'Assess the condition of equipment based on inspection and maintenance results.' },
-                            { title: 'Reporting to Management:', desc: 'Provides management with a comprehensive overview of the condition of the facility and the effectiveness of the PM program.' },
-                            { title: 'Ensure Compliance with Procedures and Standards:', desc: 'Prove that PM activities are carried out in accordance with applicable Procedures and regulations (e.g. national/international standards).' }
-                          ];
-                          setReportData(prev => {
-                            if (!prev) return prev;
-                            const curPoints = prev.purposePoints && prev.purposePoints.length > 0
-                              ? prev.purposePoints
-                              : defaultPoints;
-                            return { ...prev, purposePoints: curPoints.filter((_, i) => i !== pIdx) };
-                          });
-                          toast.info('Poin tujuan dihapus.');
-                        }}
-                        className="absolute right-0 top-1 opacity-0 group-hover:opacity-100 p-1 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
-                        title="Hapus poin"
+                    return (
+                      <div
+                        key={pIdx}
+                        className="group relative border border-slate-200/80 hover:border-blue-300 rounded-lg p-3 bg-white hover:bg-blue-50/20 transition-all space-y-2 print:border-none print:p-0 print:space-y-1.5 print:bg-transparent"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-600" />
-                      </button>
-                    </li>
-                  ))}
-                </ol>
+                        {/* Header baris kecil editor (disembunyikan saat print) */}
+                        <div className="flex items-center justify-between text-xs font-sans print:hidden">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-medium">
+                            <span className="font-bold text-blue-700">{pIdx + 1}.</span>
+                            <span>{hintLabel}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = { ...reportData };
+                              const curList = (Array.isArray(updated.executiveSummaryParagraphs) && updated.executiveSummaryParagraphs.length > 0)
+                                ? [...updated.executiveSummaryParagraphs]
+                                : getDefaultExecutiveSummaryParagraphs(updated.monthNameEn, updated.monthName, updated.year);
+                              updated.executiveSummaryParagraphs = curList.filter((_, i) => i !== pIdx);
+                              setReportData(updated);
+                              toast.info(`Paragraf ${pIdx + 1} dihapus.`);
+                            }}
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                            title="Hapus Paragraf Ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Input Teks Bahasa Inggris (Normal, Serif, Justified) */}
+                        <textarea
+                          rows={Math.max(2, Math.ceil((para.en || '').length / 85))}
+                          value={para.en || ''}
+                          placeholder="Teks naratif Bahasa Inggris (normal)..."
+                          onChange={(e) => {
+                            const updated = { ...reportData };
+                            const curList = (Array.isArray(updated.executiveSummaryParagraphs) && updated.executiveSummaryParagraphs.length > 0)
+                              ? [...updated.executiveSummaryParagraphs]
+                              : getDefaultExecutiveSummaryParagraphs(updated.monthNameEn, updated.monthName, updated.year);
+                            curList[pIdx] = { ...curList[pIdx], en: e.target.value };
+                            updated.executiveSummaryParagraphs = curList;
+                            setReportData(updated);
+                          }}
+                          className="w-full text-sm font-serif text-slate-900 leading-relaxed bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded p-1.5 outline-none resize-none text-justify print:p-0 print:border-none print:resize-none"
+                        />
+
+                        {/* Input Teks Bahasa Indonesia (Italic / Garis Miring, Serif, Justified) */}
+                        <div className="pl-3 border-l-2 border-blue-200/80 print:pl-0 print:border-none">
+                          <textarea
+                            rows={Math.max(2, Math.ceil((para.id || '').length / 85))}
+                            value={para.id || ''}
+                            placeholder="Terjemahan Bahasa Indonesia (garis miring)..."
+                            onChange={(e) => {
+                              const updated = { ...reportData };
+                              const curList = (Array.isArray(updated.executiveSummaryParagraphs) && updated.executiveSummaryParagraphs.length > 0)
+                                ? [...updated.executiveSummaryParagraphs]
+                                : getDefaultExecutiveSummaryParagraphs(updated.monthNameEn, updated.monthName, updated.year);
+                              curList[pIdx] = { ...curList[pIdx], id: e.target.value };
+                              updated.executiveSummaryParagraphs = curList;
+                              setReportData(updated);
+                            }}
+                            className="w-full text-[13px] font-serif italic text-slate-600 leading-relaxed bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded p-1.5 outline-none resize-none text-justify print:p-0 print:border-none print:resize-none"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
                 <div className="pt-6 flex items-center justify-between">
                   <h2 className="text-[11pt] font-bold text-slate-900">2. Key Highlight</h2>
@@ -3703,14 +3732,17 @@ export function MonthlyReportGenerator() {
                       const avgNum = updated.progressPmTable19.length > 0 ? (totalPctSum / updated.progressPmTable19.length) : 100;
                       updated.progressPmAverage = mNum === 7 ? '97,44%' : `${avgNum.toFixed(2).replace('.', ',')}%`;
 
-                      // 2. Reset SLA Orders Table (Foto 1 Bawah)
-                      updated.slaOrdersTable19 = [
-                        { no: '1.', activity: 'Response Time', unit: 'Order', actual: 18, finish: 15, pctFinish: '83,33%', comply: 'TM', pctComply: '83%' },
-                        { no: '2.', activity: 'Onsite Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
-                        { no: '3.', activity: 'Restore Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
-                        { no: '4.', activity: 'Resolution Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' }
+                      // 2. Reset Laporan CM Table (Pengganti SLA Orders)
+                      updated.cmReportsTable = [
+                        {
+                          no: '1.',
+                          incidentName: 'Alarm High Temp CRAC Unit',
+                          equipmentName: 'CRAC Unit 03',
+                          location: 'Server Room Fl. 2',
+                          incidentDate: `12 ${monthNameEn} ${updated.year || 2026}`,
+                          summaryProblemAnalysis: 'Pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional.'
+                        }
                       ];
-                      updated.slaOrdersPeriodTotal = '%';
 
                       // 3. Reset Service Credit Matrix (Foto 2)
                       updated.serviceCreditMatrix = [
@@ -4178,194 +4210,196 @@ export function MonthlyReportGenerator() {
                 </table>
               </div>
 
-              {/* 2. TABEL BAWAH: SLA Tiket / Order Fulfillment */}
+              {/* 2. TABEL BAWAH: Laporan Corrective Maintenance (CM) */}
               <div className="overflow-x-auto border border-black shadow-sm mt-6">
+                <div className="flex items-center justify-between bg-slate-50 px-3 py-2 border-b border-black print:hidden">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                      Tabel Laporan Corrective Maintenance (CM)
+                    </span>
+                    <span className="text-[11px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-full">
+                      {(reportData.cmReportsTable || []).length} Insiden
+                    </span>
+                    <span className="text-[10.5px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      ✓ Gangguan (Non-Sparepart) & Consumable Part (Tanpa BAUT DME)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isSyncingCm}
+                      onClick={handleSyncCmReports}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded border border-blue-200 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                      title="Sinkronkan data CM langsung dari database Firestore bulan ini"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCm ? 'animate-spin' : ''}`} />
+                      <span>{isSyncingCm ? 'Menyinkronkan...' : 'Sinkron CM'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...reportData };
+                        const current = updated.cmReportsTable ? [...updated.cmReportsTable] : [];
+                        const nextNo = `${current.length + 1}.`;
+                        current.push({
+                          no: nextNo,
+                          incidentName: '',
+                          equipmentName: '',
+                          location: '',
+                          incidentDate: `${reportData.monthName || 'Februari'} ${reportData.year || 2026}`,
+                          summaryProblemAnalysis: ''
+                        });
+                        updated.cmReportsTable = current;
+                        setReportData(updated);
+                        toast.success('Baris Laporan CM berhasil ditambahkan');
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors shadow-sm cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Laporan CM</span>
+                    </button>
+                  </div>
+                </div>
                 <table className="w-full text-left text-xs border-collapse font-serif">
                   <thead>
+                    <tr className="bg-[#0066B3] text-white font-bold border-b border-black">
+                      <th colSpan={6} className="py-2.5 px-3 text-center text-sm tracking-wide">
+                        Corrective Maintenance Report {reportData.monthNameEn || 'July'} {reportData.year || 2026}
+                      </th>
+                      <th className="w-8 print:hidden"></th>
+                    </tr>
                     <tr className="bg-[#0066B3] text-white font-bold border-b border-black text-center">
                       <th className="py-2 px-2 border-r border-black w-10">No</th>
-                      <th className="py-2 px-4 border-r border-black text-left min-w-[140px]">Activity</th>
-                      <th className="py-2 px-3 border-r border-black w-20">Unit</th>
-                      <th className="py-2 px-3 border-r border-black w-20">Actual</th>
-                      <th className="py-2 px-3 border-r border-black w-20">Finish</th>
-                      <th className="py-2 px-3 border-r border-black w-24">%Finish</th>
-                      <th className="py-2 px-3 border-r border-black w-20">Comply</th>
-                      <th className="py-2 px-3 text-center w-24">%Comply</th>
+                      <th className="py-2 px-3 border-r border-black min-w-[150px] text-left">Incident Name</th>
+                      <th className="py-2 px-3 border-r border-black min-w-[130px] text-left">Equipment Name</th>
+                      <th className="py-2 px-3 border-r border-black min-w-[120px] text-left">Location</th>
+                      <th className="py-2 px-3 border-r border-black w-28 text-center">Incident Date</th>
+                      <th className="py-2 px-3 border-r border-black min-w-[240px] text-left">Summary Corrective Report (Problem Analysis)</th>
                       <th className="w-8 print:hidden"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black text-slate-800">
-                    {(reportData.slaOrdersTable19 || [
-                      { no: '1.', activity: 'Response Time', unit: 'Order', actual: 18, finish: 15, pctFinish: '83,33%', comply: 'TM', pctComply: '83%' },
-                      { no: '2.', activity: 'Onsite Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
-                      { no: '3.', activity: 'Restore Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
-                      { no: '4.', activity: 'Resolution Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' }
-                    ]).map((row, sIdx) => (
-                      <tr key={sIdx} className="hover:bg-blue-50/20 group">
-                        <td className="py-1.5 px-2 text-center font-medium border-r border-black">
-                          <input
-                            type="text"
-                            value={row.no}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                updated.slaOrdersTable19[sIdx].no = e.target.value;
-                                setReportData(updated);
-                              }
-                            }}
-                            className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none"
-                          />
+                    {(reportData.cmReportsTable || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 px-3 text-center text-slate-500 italic bg-slate-50">
+                          Tidak ada insiden pemeliharaan korektif (CM) tercatat untuk periode ini. Klik "+ Tambah Laporan CM" untuk menambahkan.
                         </td>
-                        <td className="py-1.5 px-4 border-r border-black font-semibold text-slate-900">
-                          <input
-                            type="text"
-                            value={row.activity}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                updated.slaOrdersTable19[sIdx].activity = e.target.value;
-                                setReportData(updated);
-                              }
-                            }}
-                            className="w-full py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-semibold text-slate-900"
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 text-center border-r border-black">
-                          <input
-                            type="text"
-                            value={row.unit}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                updated.slaOrdersTable19[sIdx].unit = e.target.value;
-                                setReportData(updated);
-                              }
-                            }}
-                            className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none"
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 text-center border-r border-black">
-                          <input
-                            type="text"
-                            value={row.actual}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                const act = Number(e.target.value) || 0;
-                                updated.slaOrdersTable19[sIdx].actual = act;
-                                const fin = Number(updated.slaOrdersTable19[sIdx].finish) || 0;
-                                if (act > 0) {
-                                  updated.slaOrdersTable19[sIdx].pctFinish = `${((fin / act) * 100).toFixed(2).replace('.', ',').replace(',00', '')}%`;
-                                }
-                                setReportData(updated);
-                              }
-                            }}
-                            className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-medium"
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 text-center border-r border-black">
-                          <input
-                            type="text"
-                            value={row.finish}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                const fin = Number(e.target.value) || 0;
-                                updated.slaOrdersTable19[sIdx].finish = fin;
-                                const act = Number(updated.slaOrdersTable19[sIdx].actual) || 0;
-                                if (act > 0) {
-                                  updated.slaOrdersTable19[sIdx].pctFinish = `${((fin / act) * 100).toFixed(2).replace('.', ',').replace(',00', '')}%`;
-                                }
-                                setReportData(updated);
-                              }
-                            }}
-                            className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-medium"
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 text-center border-r border-black font-semibold">
-                          <input
-                            type="text"
-                            value={row.pctFinish}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                updated.slaOrdersTable19[sIdx].pctFinish = e.target.value;
-                                setReportData(updated);
-                              }
-                            }}
-                            className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-semibold text-slate-800"
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 text-center border-r border-black font-bold">
-                          <input
-                            type="text"
-                            value={row.comply}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                updated.slaOrdersTable19[sIdx].comply = e.target.value;
-                                setReportData(updated);
-                              }
-                            }}
-                            className={`w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-bold ${
-                              row.comply === 'TM' ? 'text-amber-700' : 'text-emerald-700'
-                            }`}
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 text-center font-bold text-blue-900">
-                          <input
-                            type="text"
-                            value={row.pctComply}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                updated.slaOrdersTable19[sIdx].pctComply = e.target.value;
-                                setReportData(updated);
-                              }
-                            }}
-                            className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-bold text-blue-900"
-                          />
-                        </td>
-                        <td className="py-1 px-1 print:hidden text-center">
-                          <button
-                            type="button"
-                            title="Hapus baris SLA"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              setReportData(prev => {
-                                if (!prev) return prev;
-                                const newSla = (prev.slaOrdersTable19 || []).filter((_, i) => i !== sIdx);
-                                return { ...prev, slaOrdersTable19: newSla };
-                              });
-                              toast.info('Baris SLA berhasil dihapus');
-                            }}
-                            className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                        <td className="print:hidden"></td>
                       </tr>
-                    ))}
-                    {/* Summary Row: Total Fulfillment */}
-                    <tr className="bg-[#0066B3] text-white font-bold border-t border-black">
-                      <td colSpan={7} className="py-2.5 px-4 text-center border-r border-black text-sm tracking-wide">
-                        Total Percentage Of Performance Fulfillment Period 1
-                      </td>
-                      <td className="py-1 px-2 text-center">
-                        <input
-                          type="text"
-                          value={reportData.slaOrdersPeriodTotal || '%'}
-                          onChange={(e) => {
-                            const updated = { ...reportData };
-                            updated.slaOrdersPeriodTotal = e.target.value;
-                            setReportData(updated);
-                          }}
-                          className="w-16 text-center font-bold text-sm py-1 text-white bg-transparent hover:bg-blue-700 focus:bg-blue-700 rounded outline-none"
-                        />
-                      </td>
-                      <td className="print:hidden bg-[#0066B3]"></td>
-                    </tr>
+                    ) : (
+                      (reportData.cmReportsTable || []).map((row, cmIdx) => (
+                        <tr key={cmIdx} className="hover:bg-blue-50/20 group">
+                          <td className="py-1.5 px-2 text-center font-medium border-r border-black">
+                            <input
+                              type="text"
+                              value={row.no}
+                              onChange={(e) => {
+                                const updated = { ...reportData };
+                                if (updated.cmReportsTable) {
+                                  updated.cmReportsTable[cmIdx].no = e.target.value;
+                                  setReportData(updated);
+                                }
+                              }}
+                              className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none"
+                            />
+                          </td>
+                          <td className="py-1.5 px-3 border-r border-black font-semibold text-slate-900">
+                            <input
+                              type="text"
+                              value={row.incidentName}
+                              placeholder="Nama Gangguan / Insiden..."
+                              onChange={(e) => {
+                                const updated = { ...reportData };
+                                if (updated.cmReportsTable) {
+                                  updated.cmReportsTable[cmIdx].incidentName = e.target.value;
+                                  setReportData(updated);
+                                }
+                              }}
+                              className="w-full py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-semibold text-slate-900"
+                            />
+                          </td>
+                          <td className="py-1.5 px-3 border-r border-black font-medium text-slate-800">
+                            <input
+                              type="text"
+                              value={row.equipmentName}
+                              placeholder="Nama Perangkat..."
+                              onChange={(e) => {
+                                const updated = { ...reportData };
+                                if (updated.cmReportsTable) {
+                                  updated.cmReportsTable[cmIdx].equipmentName = e.target.value;
+                                  setReportData(updated);
+                                }
+                              }}
+                              className="w-full py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none font-medium text-slate-800"
+                            />
+                          </td>
+                          <td className="py-1.5 px-3 border-r border-black text-slate-700">
+                            <input
+                              type="text"
+                              value={row.location}
+                              placeholder="Lokasi..."
+                              onChange={(e) => {
+                                const updated = { ...reportData };
+                                if (updated.cmReportsTable) {
+                                  updated.cmReportsTable[cmIdx].location = e.target.value;
+                                  setReportData(updated);
+                                }
+                              }}
+                              className="w-full py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none text-slate-700"
+                            />
+                          </td>
+                          <td className="py-1.5 px-2 text-center border-r border-black text-slate-800">
+                            <input
+                              type="text"
+                              value={row.incidentDate}
+                              placeholder="Tanggal..."
+                              onChange={(e) => {
+                                const updated = { ...reportData };
+                                if (updated.cmReportsTable) {
+                                  updated.cmReportsTable[cmIdx].incidentDate = e.target.value;
+                                  setReportData(updated);
+                                }
+                              }}
+                              className="w-full text-center py-0.5 bg-transparent hover:bg-white focus:bg-white rounded outline-none text-slate-800"
+                            />
+                          </td>
+                          <td className="py-1 px-2 border-r border-black">
+                            <textarea
+                              rows={row.summaryProblemAnalysis?.includes('\n') || (row.summaryProblemAnalysis?.length || 0) > 60 ? 2 : 1}
+                              value={row.summaryProblemAnalysis}
+                              placeholder="Rincian analisis masalah & tindakan korektif..."
+                              onChange={(e) => {
+                                const updated = { ...reportData };
+                                if (updated.cmReportsTable) {
+                                  updated.cmReportsTable[cmIdx].summaryProblemAnalysis = e.target.value;
+                                  setReportData(updated);
+                                }
+                              }}
+                              className="w-full text-xs py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none leading-tight"
+                            />
+                          </td>
+                          <td className="py-1 px-1 print:hidden text-center">
+                            <button
+                              type="button"
+                              title="Hapus baris Laporan CM"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setReportData(prev => {
+                                  if (!prev) return prev;
+                                  const newCm = (prev.cmReportsTable || []).filter((_, i) => i !== cmIdx);
+                                  return { ...prev, cmReportsTable: newCm };
+                                });
+                                toast.info('Baris Laporan CM berhasil dihapus');
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

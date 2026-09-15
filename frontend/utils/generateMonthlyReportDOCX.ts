@@ -34,7 +34,10 @@ import {
   EquipmentDetailItem,
   buildAllDynamicEquipmentTables,
   buildDynamicListOfTables,
-  generatePrimaryGoalsFromEquipments
+  generatePrimaryGoalsFromEquipments,
+  MonthlyCmReportItem,
+  ExecutiveSummaryParagraph,
+  getDefaultExecutiveSummaryParagraphs
 } from './monthlyReportData';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from './engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -736,103 +739,35 @@ export async function generateMonthlyReportDOCX(
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 300, after: 200 },
       children: [new TextRun({ text: "1. Executive Summary", bold: true, size: 22, color: "1E40AF" })]
-    }),
-    ...(() => {
-      const summaryText = data.executiveSummaryText || "Maintenance is a series of activities to maintain facilities and equipment so that they are always ready to use to carry out production effectively and efficiently according to the schedule that has been set and based on standards (functional and quality). The term maintenance comes from the Greek word tera which means to care for, maintain, and maintain. Maintenance is a system consisting of several elements in the form of facilities (machines), replacement of components or spare parts (materials), maintenance costs (money), maintenance activity planning (method) and maintenance executors (man).";
-      const parts = summaryText.split('\n');
-      if (parts.length > 1) {
-        return [
-          new Paragraph({
-            spacing: { after: 120 },
-            children: [new TextRun({ text: parts[0], size: 20 })]
-          }),
-          new Paragraph({
-            spacing: { after: 200 },
-            children: [new TextRun({ text: parts.slice(1).join('\n'), size: 19, italics: true, color: "4B5563" })]
-          })
-        ];
-      }
-      return [
+    })
+  );
+
+  const execParagraphs: ExecutiveSummaryParagraph[] = (data.executiveSummaryParagraphs && data.executiveSummaryParagraphs.length > 0)
+    ? data.executiveSummaryParagraphs
+    : getDefaultExecutiveSummaryParagraphs(data.monthNameEn, data.monthName, data.year);
+
+  execParagraphs.forEach(p => {
+    if (p.en && p.en.trim()) {
+      bodyChildren.push(
         new Paragraph({
-          spacing: { after: 200 },
-          children: [new TextRun({ text: summaryText, size: 20 })]
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { after: 60 },
+          children: [new TextRun({ text: p.en.trim(), size: 20 })]
         })
-      ];
-    })(),
-    new Paragraph({
-      heading: HeadingLevel.HEADING_2,
-      spacing: { before: 200, after: 150 },
-      children: (() => {
-        const title = data.purposeOfReportTitle || "Purpose of Report";
-        const parts = title.split('\n');
-        if (parts.length > 1) {
-          return [
-            new TextRun({ text: parts[0], bold: true, size: 22 }),
-            new TextRun({ break: 1 }),
-            new TextRun({ text: `   ${parts[1]}`, bold: true, italics: true, size: 20, color: "4B5563" })
-          ];
-        }
-        return [new TextRun({ text: title, bold: true, size: 22 })];
-      })()
-    }),
-    ...(() => {
-      const intro = data.purposeOfReportIntro || "To document, evaluate, and ensure that maintenance activities run according to plans and operational standards such as:";
-      const parts = intro.split('\n');
-      if (parts.length > 1) {
-        return [
-          new Paragraph({
-            spacing: { after: 60 },
-            children: [new TextRun({ text: parts[0], size: 20 })]
-          }),
-          new Paragraph({
-            spacing: { after: 150 },
-            children: [new TextRun({ text: parts.slice(1).join('\n'), size: 18, italics: true, color: "4B5563" })]
-          })
-        ];
-      }
-      return [
+      );
+    }
+    if (p.id && p.id.trim()) {
+      bodyChildren.push(
         new Paragraph({
-          spacing: { after: 150 },
-          children: [new TextRun({ text: intro, size: 20 })]
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { after: 180 },
+          children: [new TextRun({ text: p.id.trim(), size: 19, italics: true, color: "374151" })]
         })
-      ];
-    })(),
-    ...(data.purposePoints ? data.purposePoints.map((pt, idx) => {
-      const titleParts = (pt.title || '').split('\n');
-      const titleEn = titleParts[0] || '';
-      const titleId = titleParts[1] || '';
+      );
+    }
+  });
 
-      const descParts = (pt.desc || '').split('\n');
-      const descEn = descParts[0] || '';
-      const descId = descParts[1] || '';
-
-      const runs = [
-        new TextRun({ text: `${idx + 1}. `, bold: true, size: 20 }),
-        new TextRun({ text: `${titleEn} `, bold: true, size: 20 }),
-        new TextRun({ text: descEn, size: 20 })
-      ];
-
-      if (titleId || descId) {
-        runs.push(
-          new TextRun({ break: 1 }),
-          new TextRun({ text: `    ${titleId ? titleId + ' ' : ''}${descId || ''}`, italics: true, size: 18, color: "4B5563" })
-        );
-      }
-
-      return new Paragraph({
-        spacing: { after: 120 },
-        children: runs
-      });
-    }) : [
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: "1. Documentation of Preventive Maintenance Activities: Records all PM activities that have been carried out for one month.\n2. Equipment and System Performance Evaluation: Assess the condition of equipment based on inspection and maintenance results.\n3. Reporting to Management: Provides management with a comprehensive overview of the condition of the facility.\n4. Ensure Compliance with Procedures and Standards: Prove that PM activities are carried out in accordance with applicable Procedures.",
-            size: 20
-          })
-        ]
-      })
-    ]),
+  bodyChildren.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
@@ -1244,46 +1179,85 @@ export async function generateMonthlyReportDOCX(
     })
   ];
 
-  // 2. Table SLA Tiket / Order (Foto 1 Bawah)
-  const slaItems = data.slaOrdersTable19 || [
-    { no: '1.', activity: 'Response Time', unit: 'Order', actual: 18, finish: 15, pctFinish: '83,33%', comply: 'TM', pctComply: '83%' },
-    { no: '2.', activity: 'Onsite Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
-    { no: '3.', activity: 'Restore Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
-    { no: '4.', activity: 'Resolution Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' }
+  // 2. Table Laporan Corrective Maintenance (CM)
+  const cmItems: MonthlyCmReportItem[] = data.cmReportsTable || [
+    {
+      no: '1.',
+      incidentName: 'Alarm High Temp CRAC Unit',
+      equipmentName: 'CRAC Unit 03',
+      location: 'Server Room Fl. 2',
+      incidentDate: `12 ${monthEn} ${year}`,
+      summaryProblemAnalysis: 'Pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional.'
+    }
   ];
 
-  const slaDocxRows: TableRow[] = [
+  const cmDocxRows: TableRow[] = [
+    // Header Row 1: Table Title Banner
     new TableRow({
       children: [
-        new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 26, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Activity", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Unit", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Actual", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Finish", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Finish", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Comply", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Comply", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({
+          columnSpan: 6,
+          shading: { fill: COLOR_HEADER_BLUE },
+          borders: borderThin,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `Corrective Maintenance Report ${monthEn} ${year}`,
+                  bold: true,
+                  color: "FFFFFF",
+                  size: 20
+                })
+              ]
+            })
+          ]
+        })
       ]
     }),
-    ...slaItems.map(row => new TableRow({
-      children: [
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.no), size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.activity, bold: true, size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.unit, size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.actual), size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.finish), size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctFinish, size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.comply, bold: true, size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctComply, bold: true, size: 18 })] })] }),
-      ]
-    })),
-    // Summary Row: Total Fulfillment
+    // Header Row 2: Columns
     new TableRow({
       children: [
-        new TableCell({ columnSpan: 7, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Total Percentage Of Performance Fulfillment Period 1", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.slaOrdersPeriodTotal || "%", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 5, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Incident Name", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 17, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Equipment Name", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 16, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Incident Date", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 28, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Summary Corrective Report (Problem Analysis)", bold: true, color: "FFFFFF", size: 18 })] })] }),
       ]
-    })
+    }),
+    ...(cmItems.length === 0 ? [
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 6,
+            borders: borderThin,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: "No corrective maintenance incidents recorded for this period / Tidak ada catatan insiden perbaikan korektif pada periode ini",
+                    italics: true,
+                    color: "64748B",
+                    size: 18
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      })
+    ] : cmItems.map(row => new TableRow({
+      children: [
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.no), size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.incidentName || "-", bold: true, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.equipmentName || "-", size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.location || "-", size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.incidentDate || "-", size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.summaryProblemAnalysis || "-", size: 18 })] })] }),
+      ]
+    })))
   ];
 
   // 3. Table Matriks Service Credit (Foto 2)
@@ -1318,7 +1292,7 @@ export async function generateMonthlyReportDOCX(
   bodyChildren.push(
     new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: progressPmDocxRows }),
     new Paragraph({ spacing: { after: 300 } }),
-    new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: slaDocxRows }),
+    new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: cmDocxRows }),
     new Paragraph({ spacing: { after: 300 } }),
     new Table({ width: { size: 60, type: WidthType.PERCENTAGE }, rows: serviceCreditRows, alignment: AlignmentType.CENTER }),
     new Paragraph({ spacing: { after: 400 } })

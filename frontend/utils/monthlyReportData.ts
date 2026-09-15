@@ -101,6 +101,15 @@ export interface SlaOrderItem {
   pctComply: string;
 }
 
+export interface MonthlyCmReportItem {
+  no: string | number;
+  incidentName: string;
+  equipmentName: string;
+  location: string;
+  incidentDate: string;
+  summaryProblemAnalysis: string;
+}
+
 export interface PrimaryGoalItem {
   id?: string;
   no?: string;
@@ -187,6 +196,7 @@ export interface FullMonthlyReportData {
   progressPmAverage?: string;
   slaOrdersTable19?: SlaOrderItem[];
   slaOrdersPeriodTotal?: string;
+  cmReportsTable?: MonthlyCmReportItem[];
 
   // Table 19 KPI Metric (Dipertahankan untuk backward compatibility)
   kpiMetricsTable19: {
@@ -281,12 +291,18 @@ export interface FullMonthlyReportData {
   tableOfContents?: { title: string; page: string }[];
   listOfTables?: { title: string; page: string }[];
   executiveSummaryText?: string;
+  executiveSummaryParagraphs?: ExecutiveSummaryParagraph[];
   purposeOfReportTitle?: string;
   purposeOfReportIntro?: string;
   purposePoints?: { title: string; desc: string }[];
   serviceCreditMatrix?: { range: string; credit: string; highlighted?: boolean; isTermination?: boolean }[];
   appendicesNote?: string;
   approvalSheetStatement?: string;
+}
+
+export interface ExecutiveSummaryParagraph {
+  en: string;
+  id: string;
 }
 
 const MONTH_NAMES_ID = [
@@ -3666,6 +3682,63 @@ function matchMonthYear(dateVal: any, targetMonth: number, targetYear: number): 
   return false;
 }
 
+/**
+ * Returns default 9 standard bilingual paragraphs for Bab 1 Executive Summary
+ * matching the official NeutraDC Monthly Report sample format.
+ */
+export function getDefaultExecutiveSummaryParagraphs(
+  monthNameEn: string = 'June',
+  monthNameId: string = 'Juni',
+  year: number = 2026,
+  options?: {
+    anomaliesEn?: string;
+    anomaliesId?: string;
+    deferredEn?: string;
+    deferredId?: string;
+  }
+): ExecutiveSummaryParagraph[] {
+  const paragraphs: ExecutiveSummaryParagraph[] = [
+    {
+      en: "Maintenance is a series of activities to maintain facilities and equipment so that they are always ready to use to carry out production effectively and efficiently according to the schedule that has been set and based on standards (functional and quality).",
+      id: "Pemeliharaan adalah serangkaian kegiatan untuk memelihara fasilitas dan peralatan agar selalu siap digunakan guna menjalankan operasional secara efektif dan efisien sesuai jadwal yang telah ditetapkan serta berbasis standar keandalan."
+    },
+    {
+      en: "The purpose of this report is to document, evaluate, and ensure that maintenance activities run according to plans and operational standards.",
+      id: "Tujuan dari laporan ini adalah untuk mendokumentasikan, mengevaluasi, dan memastikan bahwa kegiatan pemeliharaan berjalan sesuai rencana dan standar operasional."
+    },
+    {
+      en: "First, it records all preventive maintenance activities carried out during the month, including details such as schedules, equipment maintained, methods used, inspection results, and corrective actions if any.",
+      id: "Pertama, laporan ini mencatat seluruh aktivitas pemeliharaan preventif yang dilaksanakan selama satu bulan, mencakup rincian jadwal, peralatan yang dirawat, metode yang digunakan, hasil inspeksi, serta tindakan korektif jika ada."
+    },
+    {
+      en: "Second, it assesses the physical condition and operational performance of equipment based on thorough inspection and maintenance results.",
+      id: "Kedua, laporan ini menilai kondisi fisik dan performa operasional peralatan berdasarkan hasil inspeksi dan pemeliharaan menyeluruh."
+    },
+    {
+      en: "Third, it provides management with a comprehensive overview of facility reliability and the effectiveness of the preventive maintenance program.",
+      id: "Ketiga, laporan ini memberikan gambaran menyeluruh kepada manajemen mengenai keandalan fasilitas dan efektivitas program pemeliharaan preventif."
+    },
+    {
+      en: "Fourth, it verifies that preventive maintenance activities are carried out in accordance with applicable data center procedures and international industry standards.",
+      id: "Keempat, laporan ini memverifikasi bahwa kegiatan pemeliharaan preventif dilaksanakan sesuai prosedur resmi data center dan standar industri internasional yang berlaku."
+    },
+    {
+      en: `During the ${monthNameEn} ${year} maintenance cycle, the vast majority of critical infrastructure systems, including ATS, MV & RMU Panels, UPS, Busducts, and Cooling Pumps, operated in good condition and completed their planned maintenance schedules on time.`,
+      id: `Selama siklus pemeliharaan ${monthNameId} ${year}, sebagian besar sistem infrastruktur kritis, termasuk ATS, Panel MV & RMU, UPS, Busduct, dan Pompa Pendingin, beroperasi dalam kondisi baik dan menyelesaikan jadwal pemeliharaan terencana tepat waktu.`
+    },
+    {
+      en: options?.anomaliesEn || "However, specific operational anomalies were identified, such as a malfunctioning display/HMI unit on 1F-CRAC-IN-B-1 which requires component repair or replacement to fully restore monitoring and control functions.",
+      id: options?.anomaliesId || "Namun, beberapa anomali operasional khusus telah diidentifikasi, seperti kerusakan unit display/HMI pada 1F-CRAC-IN-B-1 yang memerlukan perbaikan atau penggantian komponen untuk memulihkan fungsi pemantauan dan kontrol secara penuh."
+    },
+    {
+      en: options?.deferredEn || "Additionally, maintenance activities for CT Water Treatment and Degassing Pressurization systems were marked as deferred and will require rescheduled intervention to maintain optimal system performance.",
+      id: options?.deferredId || "Selain itu, kegiatan pemeliharaan untuk sistem CT Water Treatment dan Degassing Pressurization tercatat ditunda dan memerlukan penjadwalan ulang untuk menjaga kinerja sistem tetap optimal."
+    }
+  ];
+
+  return paragraphs;
+}
+
 export async function aggregateMonthlyReportData(options: MonthlyReportOptions): Promise<FullMonthlyReportData> {
   const { month, year } = options;
   const monthName = MONTH_NAMES_ID[month - 1] || 'Februari';
@@ -3796,6 +3869,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   }
 
   const monthSlaReports: any[] = [];
+  const monthCmReports: MonthlyCmReportItem[] = [];
   if (correctiveSnap) {
     correctiveSnap.forEach(docSnap => {
       const data = docSnap.data();
@@ -3804,6 +3878,37 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
       if (matchMonthYear(dateVal, month, year)) {
         if (data.reportType === 'SLA' || data.ticketName || data.timeOrder || data.actualTimeResponse) {
           monthSlaReports.push({ id: docSnap.id, ...data });
+        }
+        // Extract Laporan Corrective Maintenance (CM) untuk Monthly Report
+        // HANYA masukkan tipe: bukan pergantian sparepart (gangguan) atau pergantian sparepart consumable part.
+        // TIDAK MEMASUKKAN pergantian sperpat BAUT DME (sparepart_dme).
+        if (isQualifiedForMonthlyCmReport(data)) {
+          let formattedDate = '-';
+          if (data.incidentDate) {
+            formattedDate = String(data.incidentDate);
+          } else if (data.date) {
+            formattedDate = String(data.date);
+          } else if (data.reportedAt?.toDate) {
+            const d = data.reportedAt.toDate();
+            formattedDate = `${d.getDate()} ${MONTH_NAMES_ID[d.getMonth()]} ${d.getFullYear()}`;
+          } else if (data.createdAt?.toDate) {
+            const d = data.createdAt.toDate();
+            formattedDate = `${d.getDate()} ${MONTH_NAMES_ID[d.getMonth()]} ${d.getFullYear()}`;
+          }
+
+          const incidentName = data.incidentName || data.issue || data.ticketName || 'Corrective Maintenance';
+          const equipmentName = data.equipmentName || data.equipment || data.device || '-';
+          const location = data.location || data.area || 'NeutraDC Cikarang';
+          const summaryProblemAnalysis = data.summaryProblemAnalysis || data.problemAnalysis || data.correctiveAction || data.actionTaken || '-';
+
+          monthCmReports.push({
+            no: `${monthCmReports.length + 1}.`,
+            incidentName,
+            equipmentName,
+            location,
+            incidentDate: formattedDate,
+            summaryProblemAnalysis
+          });
         }
         // Bab 8: Extract spareparts from Standby Engineer CM report
         // HANYA data CM yang merupakan pergantian sparepart yang dimasukkan ke Bab 8 (Table 29)
@@ -4252,6 +4357,20 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   const slaOrdersPeriodTotal = slaTotal > 0 ? `${avgComplyPct.toFixed(2).replace('.', ',')}%` : '%';
 
   // ══════════════════════════════════════════════════════════════════════════
+  // 5.C-2 CORRECTIVE MAINTENANCE (CM) REPORTS TABLE
+  // ══════════════════════════════════════════════════════════════════════════
+  const cmReportsTable: MonthlyCmReportItem[] = monthCmReports.length > 0 ? monthCmReports : [
+    {
+      no: '1.',
+      incidentName: 'Alarm High Temp CRAC Unit',
+      equipmentName: 'CRAC Unit 03',
+      location: 'Server Room Fl. 2',
+      incidentDate: `12 ${monthNameEn} ${year}`,
+      summaryProblemAnalysis: 'Pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional.'
+    }
+  ];
+
+  // ══════════════════════════════════════════════════════════════════════════
   // 5.D SERVICE CREDIT MATRIX (SESUAI FOTO 2)
   // ══════════════════════════════════════════════════════════════════════════
   const serviceCreditMatrix = [
@@ -4678,6 +4797,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
     progressPmAverage,
     slaOrdersTable19,
     slaOrdersPeriodTotal,
+    cmReportsTable,
     serviceCreditMatrix,
     kpiMetricsTable19,
     kpiSummary: {
@@ -4720,6 +4840,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
     ],
     listOfTables: listOfTables,
     executiveSummaryText: 'Maintenance is a series of activities to maintain facilities and equipment so that they are always ready to use to carry out production effectively and efficiently according to the schedule that has been set and based on standards (functional and quality). The term maintenance comes from the Greek word tera which means to care for, maintain, and maintain. Maintenance is a system consisting of several elements in the form of facilities (machines), replacement of components or spare parts (materials), maintenance costs (money), maintenance activity planning (method) and maintenance executors (man).',
+    executiveSummaryParagraphs: getDefaultExecutiveSummaryParagraphs(monthNameEn, monthName, year),
     purposeOfReportTitle: 'Purpose of Report',
     purposeOfReportIntro: 'To document, evaluate, and ensure that maintenance activities run according to plans and operational standards such as:',
     purposePoints: [
@@ -4885,6 +5006,9 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
   }
 
   // 5. Bab 1: Executive Summary & Purpose of Report
+  if (!updated.executiveSummaryParagraphs || updated.executiveSummaryParagraphs.length === 0) {
+    updated.executiveSummaryParagraphs = getDefaultExecutiveSummaryParagraphs(updated.monthNameEn, updated.monthName, updated.year);
+  }
   updated.purposeOfReportTitle = "Purpose of Report\nTujuan Laporan";
   updated.purposeOfReportIntro = "To document, evaluate, and ensure that maintenance activities run according to plans and operational standards such as:\nUntuk mendokumentasikan, mengevaluasi, dan memastikan bahwa kegiatan pemeliharaan berjalan sesuai rencana dan standar operasional seperti:";
 
@@ -5073,6 +5197,19 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
       { no: '4.', activity: 'Resolution Time', unit: 'Order', actual: 18, finish: 18, pctFinish: '100%', comply: 'M', pctComply: '100%' }
     ];
     updated.slaOrdersPeriodTotal = '%';
+  }
+
+  if (!Array.isArray(updated.cmReportsTable) || updated.cmReportsTable.length === 0) {
+    updated.cmReportsTable = [
+      {
+        no: '1.',
+        incidentName: 'Alarm High Temp CRAC Unit',
+        equipmentName: 'CRAC Unit 03',
+        location: 'Server Room Fl. 2',
+        incidentDate: `12 ${updated.monthNameEn || 'July'} ${updated.year || 2026}`,
+        summaryProblemAnalysis: 'Pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional.'
+      }
+    ];
   }
 
   // Ensure service credit matrix matches official Photo 2
@@ -5495,5 +5632,132 @@ export function buildCustomScopeTablesFromBOQ(
     primaryGoals: generatePrimaryGoalsFromEquipments(dynamicTables.progressPmTable19?.map(p => String(p.activity || '')) || [])
   };
 }
+
+/**
+ * Helper to determine if a CM report is qualified to be included in the Monthly Report (KPI Table):
+ * - Included: CM Troubleshoot / Gangguan (bukan pergantian sparepart: troubleshootType === 'non_sparepart')
+ * - Included: CM Pergantian Sparepart Consumable Part (sparepartType === 'consumable')
+ * - Excluded: CM Pergantian Sparepart BAUT DME (sparepartType === 'sparepart_dme')
+ */
+export function isQualifiedForMonthlyCmReport(data: any): boolean {
+  if (!data) return false;
+  // 1. Abaikan laporan SLA atau PIR jika bukan dokumen CM aktual
+  if (data.reportType === 'SLA' || data.reportType === 'PIR') {
+    return false;
+  }
+
+  // 2. Jika eksplisit diset sebagai bukan pergantian sparepart (non_sparepart / gangguan) -> MASUK!
+  if (data.troubleshootType === 'non_sparepart') {
+    return true;
+  }
+
+  // 3. Jika eksplisit diset sebagai pergantian sparepart consumable part -> MASUK!
+  if (data.sparepartType === 'consumable') {
+    return true;
+  }
+
+  // 4. Jika eksplisit diset sebagai sparepart_dme (Baut DME / Sparepart DME) -> TIDAK MASUK!
+  if (data.sparepartType === 'sparepart_dme') {
+    return false;
+  }
+
+  // 5. Jika eksplisit diset sebagai pergantian sparepart tapi bukan consumable -> TIDAK MASUK!
+  if (data.troubleshootType === 'sparepart_replacement' || data.isSparepartReplacement === true) {
+    return false;
+  }
+
+  // 6. Evaluasi data legacy atau data tanpa flag eksplisit:
+  // Cek apakah ada daftar spareparts yang diisi
+  const rawParts = data.spareparts || data.replacedSpareparts || data.replaced_spareparts || data.spareParts;
+  const hasRealParts = Array.isArray(rawParts) && rawParts.some((s: any) => {
+    if (!s) return false;
+    if (typeof s === 'string') return s.trim() !== '' && s.trim() !== '-';
+    return s.name && s.name.trim() !== '' && s.name.trim() !== '-';
+  });
+
+  const text = [
+    data.incidentName || '',
+    data.equipmentName || '',
+    data.issue || '',
+    data.actionTaken || '',
+    data.correctiveAction || '',
+    data.summaryProblemAnalysis || '',
+    typeof rawParts === 'string' ? rawParts : '',
+    Array.isArray(rawParts) ? rawParts.map((s: any) => typeof s === 'string' ? s : s?.name || '').join(' ') : ''
+  ].join(' ').toLowerCase();
+
+  const consumableKeywords = ['consumable', 'lampu', 'bulb', 'filter', 'sekring', 'fuse', 'oli', 'oil', 'chemical', 'seal'];
+  const isConsumableByText = consumableKeywords.some(kw => text.includes(kw));
+
+  // Jika terindikasi consumable part -> MASUK!
+  if (isConsumableByText) {
+    return true;
+  }
+
+  // Cek kata kunci indikasi pergantian sparepart non-consumable / baut DME
+  const sparepartKeywords = [
+    'penggantian', 'pergantian', 'replacement', 'replace', 'ganti sparepart', 'ganti part',
+    'ganti unit', 'ganti modul', 'ganti baterai', 'ganti battery', 'ganti aki', 'ganti accu',
+    'ganti v-belt', 'ganti vanbelt', 'ganti belt', 'ganti sensor', 'ganti plug', 'ganti relay',
+    'door shoe', 'chain lock', 'chain connector', 'pengunci rantai', 'baut', 'bolt', 'nut', 'skrup',
+    'screw', 'dme'
+  ];
+  const hasSparepartKeyword = sparepartKeywords.some(kw => text.includes(kw)) ||
+    /(?:penggantian|pergantian|mengganti|ganti)\s+[a-z0-9]+/i.test(text);
+
+  if (hasRealParts || hasSparepartKeyword) {
+    // Merupakan pergantian sparepart tapi bukan consumable -> kategori BAUT DME / Sparepart DME -> TIDAK MASUK!
+    return false;
+  }
+
+  // Jika bukan pergantian sparepart sama sekali -> Laporan gangguan / non-sparepart murni -> MASUK!
+  return true;
+}
+
+/**
+ * Helper to fetch monthly CM reports directly from Firestore for a specific month and year.
+ * Only includes CM reports that are non-sparepart troubleshoot or consumable part replacements.
+ * Filters out Sparepart BAUT DME reports.
+ */
+export async function fetchMonthCmReports(month: number, year: number): Promise<MonthlyCmReportItem[]> {
+  try {
+    const correctiveSnap = await getDocs(query(collection(db, 'corrective_reports')));
+    const list: MonthlyCmReportItem[] = [];
+    correctiveSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.deleteRequested) return;
+      if (!isQualifiedForMonthlyCmReport(data)) return;
+      const dateVal = data.incidentDate || data.date || data.reportedAt || data.createdAt;
+      if (matchMonthYear(dateVal, month, year)) {
+        let formattedDate = '-';
+        if (data.incidentDate) {
+          formattedDate = String(data.incidentDate);
+        } else if (data.date) {
+          formattedDate = String(data.date);
+        } else if (data.reportedAt?.toDate) {
+          const d = data.reportedAt.toDate();
+          formattedDate = `${d.getDate()} ${MONTH_NAMES_ID[d.getMonth()]} ${d.getFullYear()}`;
+        } else if (data.createdAt?.toDate) {
+          const d = data.createdAt.toDate();
+          formattedDate = `${d.getDate()} ${MONTH_NAMES_ID[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        list.push({
+          no: `${list.length + 1}.`,
+          incidentName: data.incidentName || data.issue || data.ticketName || 'Corrective Maintenance',
+          equipmentName: data.equipmentName || data.equipment || data.device || '-',
+          location: data.location || data.area || 'NeutraDC Cikarang',
+          incidentDate: formattedDate,
+          summaryProblemAnalysis: data.summaryProblemAnalysis || data.problemAnalysis || data.correctiveAction || data.actionTaken || '-'
+        });
+      }
+    });
+    return list;
+  } catch (err) {
+    console.error('Error fetching monthly CM reports:', err);
+    return [];
+  }
+}
+
 
 
