@@ -1104,6 +1104,104 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     wsSummary.getCell(`H${totalMbRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
     wsSummary.getCell(`H${totalMbRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF08A' } };
     wsSummary.getCell(`H${totalMbRow}`).border = thinBorder;
+
+    // TABEL REKAPITULASI PENCAPAIAN KINERJA SLA & SLG MASING-MASING BULAN
+    let currentMonthRecapRow = totalMbRow + 2;
+
+    monthGroups.forEach((grp) => {
+      wsSummary.getRow(currentMonthRecapRow).height = 14;
+      currentMonthRecapRow++;
+
+      const titleCell = wsSummary.getCell(`A${currentMonthRecapRow}`);
+      titleCell.value = `REKAPITULASI PENCAPAIAN KINERJA SLA & SLG — BULAN ${grp.monthLabel.toUpperCase()}`;
+      titleCell.font = titleFontLarge;
+
+      const sub1Cell = wsSummary.getCell(`A${currentMonthRecapRow + 1}`);
+      sub1Cell.value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+      sub1Cell.font = titleFontSub;
+
+      const sub2Cell = wsSummary.getCell(`A${currentMonthRecapRow + 2}`);
+      sub2Cell.value = `Periode: Bulan ${grp.monthLabel} (${grp.reports.length} Order Tiket)`;
+      sub2Cell.font = titleFontSub;
+
+      const headerRowIndex = currentMonthRecapRow + 4;
+      const rHeader = wsSummary.getRow(headerRowIndex);
+      rHeader.height = 24;
+      sumHeaders.forEach((h, i) => {
+        const cell = wsSummary.getCell(`${sumCols[i]}${headerRowIndex}`);
+        cell.value = h;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+        cell.font = headerFontWhite;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = thinBorder;
+      });
+
+      const mCount = grp.reports.length;
+      const mRespPct = mCount > 0 ? grp.respMCount / mCount : 1;
+      const mOnsitePct = mCount > 0 ? grp.onsiteMCount / mCount : 1;
+      const mRestorePct = mCount > 0 ? grp.restoreMCount / mCount : 1;
+      const mResoPct = mCount > 0 ? grp.resolutionMCount / mCount : 1;
+
+      const mRowsData = [
+        { no: 1, title: 'Response Time', unit: 'Order', bobot: 0.05, count: mCount, comply: grp.respMCount, pct: mRespPct, score: grp.respScore / 100 },
+        { no: 2, title: 'Onsite Time (Principle Onsite)', unit: 'Order', bobot: 0.05, count: mCount, comply: grp.onsiteMCount, pct: mOnsitePct, score: grp.onsiteScore / 100 },
+        { no: 3, title: 'Restore Time (Service Restore)', unit: 'Order', bobot: 0.15, count: mCount, comply: grp.restoreMCount, pct: mRestorePct, score: grp.restoreScore / 100 },
+        { no: 4, title: 'Resolution Time (Problem Resolution)', unit: 'Order', bobot: 0.15, count: mCount, comply: grp.resolutionMCount, pct: mResoPct, score: grp.resolutionScore / 100 },
+      ];
+
+      const startDataRow = headerRowIndex + 1;
+      mRowsData.forEach((row, rIdx) => {
+        const rowNum = startDataRow + rIdx;
+        const r = wsSummary.getRow(rowNum);
+        r.height = 20;
+
+        wsSummary.getCell(`A${rowNum}`).value = row.no;
+        wsSummary.getCell(`B${rowNum}`).value = row.title;
+        wsSummary.getCell(`C${rowNum}`).value = row.unit;
+        wsSummary.getCell(`D${rowNum}`).value = row.count;
+        wsSummary.getCell(`E${rowNum}`).value = row.comply;
+        wsSummary.getCell(`F${rowNum}`).value = { formula: `IF(D${rowNum}>0,E${rowNum}/D${rowNum},1)`, result: row.pct };
+        wsSummary.getCell(`F${rowNum}`).numFmt = '0.00%';
+        wsSummary.getCell(`G${rowNum}`).value = row.bobot;
+        wsSummary.getCell(`G${rowNum}`).numFmt = '0%';
+        wsSummary.getCell(`H${rowNum}`).value = { formula: `F${rowNum}*G${rowNum}`, result: row.score };
+        wsSummary.getCell(`H${rowNum}`).numFmt = '0.00%';
+
+        sumCols.forEach(col => {
+          const cell = wsSummary.getCell(`${col}${rowNum}`);
+          cell.font = dataFont;
+          cell.border = thinBorder;
+          cell.alignment = col === 'B' ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+          if (col === 'H') {
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '166534' } };
+          }
+        });
+      });
+
+      const endDataRow = startDataRow + 3;
+      const mTotalRowNum = endDataRow + 1;
+      const rMTotal = wsSummary.getRow(mTotalRowNum);
+      rMTotal.height = 24;
+
+      wsSummary.mergeCells(`A${mTotalRowNum}:F${mTotalRowNum}`);
+      const lblMTotal = wsSummary.getCell(`A${mTotalRowNum}`);
+      lblMTotal.value = `TOTAL HASIL AKHIR PENCAPAIAN SLG BULAN ${grp.monthLabel.toUpperCase()} (MAX 40%):`;
+      lblMTotal.font = { name: 'Calibri', size: 11, bold: true, color: { argb: textDark } };
+      lblMTotal.alignment = { horizontal: 'right', vertical: 'middle' };
+      lblMTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+      lblMTotal.border = thinBorder;
+
+      wsSummary.mergeCells(`G${mTotalRowNum}:H${mTotalRowNum}`);
+      const mTotalVal = wsSummary.getCell(`G${mTotalRowNum}`);
+      mTotalVal.value = { formula: `SUM(H${startDataRow}:H${endDataRow})`, result: grp.totalScore / 100 };
+      mTotalVal.numFmt = '0.00%';
+      mTotalVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '854D0E' } };
+      mTotalVal.alignment = { horizontal: 'center', vertical: 'middle' };
+      mTotalVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF08A' } };
+      mTotalVal.border = thinBorder;
+
+      currentMonthRecapRow = mTotalRowNum + 1;
+    });
   }
 
   wsSummary.getColumn('A').width = 6;

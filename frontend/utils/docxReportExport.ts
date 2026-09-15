@@ -3306,6 +3306,126 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   }
 
+  // Helper untuk membuat Tabel Rekapitulasi Pencapaian Kinerja SLA & SLG per Bulan
+  const createMonthSummaryTable = (grp: MonthGroup) => {
+    const mCount = grp.reports.length || 1;
+    const mRespPct = (grp.respMCount / mCount) * 100;
+    const mOnsitePct = (grp.onsiteMCount / mCount) * 100;
+    const mRestorePct = (grp.restoreMCount / mCount) * 100;
+    const mResoPct = (grp.resolutionMCount / mCount) * 100;
+
+    const mData = [
+      { no: 1, indicator: 'Response Time', unit: 'Order', count: grp.reports.length, comply: grp.respMCount, pct: `${mRespPct.toFixed(0)}%`, bobot: '5%', score: `${grp.respScore.toFixed(2)}%` },
+      { no: 2, indicator: 'Onsite Time (Principle Onsite)', unit: 'Order', count: grp.reports.length, comply: grp.onsiteMCount, pct: `${mOnsitePct.toFixed(0)}%`, bobot: '5%', score: `${grp.onsiteScore.toFixed(2)}%` },
+      { no: 3, indicator: 'Restore Time (Service Restore)', unit: 'Order', count: grp.reports.length, comply: grp.restoreMCount, pct: `${mRestorePct.toFixed(0)}%`, bobot: '15%', score: `${grp.restoreScore.toFixed(2)}%` },
+      { no: 4, indicator: 'Resolution Time (Problem Resolution)', unit: 'Order', count: grp.reports.length, comply: grp.resolutionMCount, pct: `${mResoPct.toFixed(0)}%`, bobot: '15%', score: `${grp.resolutionScore.toFixed(2)}%` },
+    ];
+
+    const mRows = mData.map((row) => new TableRow({
+      children: [
+        String(row.no),
+        row.indicator,
+        row.unit,
+        String(row.count),
+        String(row.comply),
+        row.pct,
+        row.bobot,
+        row.score,
+      ].map((val, cIdx) => new TableCell({
+        width: { size: summaryWidths[cIdx], type: WidthType.PERCENTAGE },
+        margins: { top: 80, bottom: 80, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            alignment: [0, 2, 3, 4, 5, 6, 7].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
+            children: [
+              new TextRun({
+                text: String(val),
+                bold: cIdx === 1 || cIdx === 7,
+                size: 15,
+                color: cIdx === 7 ? '166534' : '1E293B',
+              }),
+            ],
+          }),
+        ],
+      })),
+    }));
+
+    const mTotalRow = new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: 6,
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                new TextRun({
+                  text: `TOTAL HASIL AKHIR PENCAPAIAN SLG BULAN ${grp.monthLabel.toUpperCase()} (MAX 40%):`,
+                  bold: true,
+                  size: 15,
+                  color: '0F172A',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          columnSpan: 2,
+          shading: { fill: 'FEF08A', type: ShadingType.CLEAR },
+          margins: { top: 100, bottom: 100, left: 80, right: 80 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${grp.totalScore.toFixed(2)}%`,
+                  bold: true,
+                  size: 16,
+                  color: '854D0E',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorderThin,
+      rows: [
+        new TableRow({
+          children: summaryHeaders.map((hText, cIdx) => new TableCell({
+            width: { size: summaryWidths[cIdx], type: WidthType.PERCENTAGE },
+            shading: { fill: '002060', type: ShadingType.CLEAR },
+            margins: { top: 100, bottom: 100, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: hText, bold: true, size: 15, color: 'FFFFFF' })],
+              }),
+            ],
+          })),
+        }),
+        ...mRows,
+        mTotalRow,
+      ],
+    });
+  };
+
+  const monthlyIndividualSummaryElements: (Paragraph | Table)[] = [];
+  if (monthGroups.length > 1) {
+    monthGroups.forEach((grp) => {
+      monthlyIndividualSummaryElements.push(
+        new Paragraph({ spacing: { before: 240, after: 60 } }),
+        createHeading(`REKAPITULASI PENCAPAIAN KINERJA SLA & SLG — BULAN ${grp.monthLabel.toUpperCase()}`),
+        createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nBulan: ${grp.monthLabel} (${grp.reports.length} Order Tiket)`),
+        createMonthSummaryTable(grp)
+      );
+    });
+  }
+
   // Build complete Word Document
   const doc = new Document({
     sections: [
@@ -3334,7 +3454,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         },
         children: [
           // Section 0: Summary Rekapitulasi Table
-          createHeading('REKAPITULASI PENCAPAIAN KINERJA SLA & SLG' + (monthGroups.length > 1 ? ' (KUMULATIF)' : '')),
+          createHeading('REKAPITULASI PENCAPAIAN KINERJA SLA & SLG' + (monthGroups.length > 1 ? ' (KUMULATIF KESELURUHAN)' : '')),
           createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}` + (monthGroups.length > 1 ? ` (Total ${monthGroups.length} Bulan)` : '')),
           tableSummary,
           ...(tableMonthlyBreakdown ? [
@@ -3343,6 +3463,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
             createSubHeading(`Perbandingan Pencapaian SLA/SLG Setiap Bulan Periode ${periodTitle}`),
             tableMonthlyBreakdown,
           ] : []),
+          ...monthlyIndividualSummaryElements,
           new Paragraph({ spacing: { after: 240 } }),
 
           // Section 1
