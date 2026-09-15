@@ -42,6 +42,7 @@ import {
 import { db } from '@/api/firebase';
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { useModalScrollLock } from '@/utils/modalScrollLock';
 
 interface PredictiveReportModalProps {
   isOpen: boolean;
@@ -149,6 +150,9 @@ export function PredictiveReportModal({
   useEffect(() => {
     setData(normalizePredictiveData(initialData));
   }, [initialData]);
+
+  // Kunci scrolling halaman latar belakang saat modal ini terbuka
+  useModalScrollLock(isOpen);
 
   if (!isOpen) return null;
 

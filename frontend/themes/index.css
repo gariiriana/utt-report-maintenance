@@ -258,4 +258,24 @@ input[type='number'] {
   .monthly-report-paper * {
     font-family: "Times New Roman", Times, Georgia, serif !important;
   }
+}
+
+/* ============================================================================
+   UNIVERSAL MODAL SCROLL LOCK & BACKGROUND CONTAINMENT
+   Mencegah background scrolling saat modal / popup apapun sedang aktif di layar.
+   ============================================================================ */
+html.modal-scroll-locked,
+body.modal-scroll-locked {
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+  touch-action: none;
+}
+
+/* Cegah overscroll chaining dari modal ke background window */
+[role="dialog"],
+[role="alertdialog"],
+[aria-modal="true"],
+.fixed.inset-0:not(.pointer-events-none),
+div[class*="fixed"][class*="inset-0"]:not(.pointer-events-none) {
+  overscroll-behavior: contain !important;
 }

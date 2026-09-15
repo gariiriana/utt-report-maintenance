@@ -21,6 +21,7 @@ import { useEffect } from 'react';
 import { logFirebaseEvent } from '@/api/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { AIChatWidget } from '@/components/AIChatWidget';
+import { initGlobalModalObserver } from '@/utils/modalScrollLock';
 
 /**
  * Helper internal: Memeriksa apakah URL browser mengakses dokumen publik Laporan HSE.
@@ -148,11 +149,18 @@ function AppWithBackground() {
 /** Root Export Entry Component `App` */
 export default function App() {
   useEffect(() => {
+    // Inisialisasi observer global pengunci background scroll saat modal aktif
+    const cleanupModalObserver = initGlobalModalObserver();
+
     // Analytics Log Firebase Analytics session start
     logFirebaseEvent('session_start', {
       timestamp: new Date().toISOString(),
       platform: 'web'
     });
+
+    return () => {
+      cleanupModalObserver();
+    };
   }, []);
 
   return (

@@ -23,6 +23,7 @@ import {
   PeriodicPredictiveReportData,
   PeriodicScope
 } from '@/types/periodicPredictiveTypes';
+import { useModalScrollLock } from '@/utils/modalScrollLock';
 import { generatePeriodicPredictiveReportAI } from '@/utils/aiPeriodicPredictiveAgent';
 import { exportPeriodicPredictiveReportToDocx } from '@/utils/PeriodicPredictiveWordExport';
 import { exportPeriodicPredictiveReportToPdf } from '@/utils/PeriodicPredictivePdfExport';
@@ -93,6 +94,9 @@ export const PeriodicPredictiveModal: React.FC<PeriodicPredictiveModalProps> = (
   initialData = null,
   onSaved
 }) => {
+  // Kunci scrolling halaman latar belakang saat modal ini aktif
+  useModalScrollLock(isOpen);
+
   const [scope, setScope] = useState<PeriodicScope>(initialData?.periodType || 'monthly');
   const [selectedMonth, setSelectedMonth] = useState<number>(initialData?.month || 9);
   const [selectedYear, setSelectedYear] = useState<number>(initialData?.year || 2026);
