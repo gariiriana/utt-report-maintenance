@@ -1200,7 +1200,60 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
       mTotalVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF08A' } };
       mTotalVal.border = thinBorder;
 
-      currentMonthRecapRow = mTotalRowNum + 1;
+      // TABEL RINCIAN EVALUASI SKOR SLG BULAN INI
+      const rincianTitleRow = mTotalRowNum + 2;
+      wsSummary.getRow(rincianTitleRow).height = 14;
+
+      const cellRincianTitle = wsSummary.getCell(`A${rincianTitleRow}`);
+      cellRincianTitle.value = `RINCIAN EVALUASI SKOR SLG — BULAN ${grp.monthLabel.toUpperCase()}`;
+      cellRincianTitle.font = { name: 'Calibri', size: 11, bold: true, color: { argb: textDark } };
+
+      const cellRincianSub = wsSummary.getCell(`A${rincianTitleRow + 1}`);
+      cellRincianSub.value = `Rincian Capaian Skor SLG Bulan ${grp.monthLabel}`;
+      cellRincianSub.font = { name: 'Calibri', size: 10, italic: true, color: { argb: '475569' } };
+
+      const rincianHeaderRow = rincianTitleRow + 2;
+      const rHeaderMb = wsSummary.getRow(rincianHeaderRow);
+      rHeaderMb.height = 24;
+      mbHeaders.forEach((h, i) => {
+        const cell = wsSummary.getCell(`${sumCols[i]}${rincianHeaderRow}`);
+        cell.value = h;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+        cell.font = headerFontWhite;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = thinBorder;
+      });
+
+      const rincianDataRow = rincianHeaderRow + 1;
+      const rDataMb = wsSummary.getRow(rincianDataRow);
+      rDataMb.height = 20;
+
+      wsSummary.getCell(`A${rincianDataRow}`).value = 1;
+      wsSummary.getCell(`B${rincianDataRow}`).value = grp.monthLabel;
+      wsSummary.getCell(`C${rincianDataRow}`).value = `${grp.reports.length} Order`;
+      wsSummary.getCell(`D${rincianDataRow}`).value = { formula: `H${startDataRow}`, result: grp.respScore / 100 };
+      wsSummary.getCell(`D${rincianDataRow}`).numFmt = '0.00%';
+      wsSummary.getCell(`E${rincianDataRow}`).value = { formula: `H${startDataRow + 1}`, result: grp.onsiteScore / 100 };
+      wsSummary.getCell(`E${rincianDataRow}`).numFmt = '0.00%';
+      wsSummary.getCell(`F${rincianDataRow}`).value = { formula: `H${startDataRow + 2}`, result: grp.restoreScore / 100 };
+      wsSummary.getCell(`F${rincianDataRow}`).numFmt = '0.00%';
+      wsSummary.getCell(`G${rincianDataRow}`).value = { formula: `H${startDataRow + 3}`, result: grp.resolutionScore / 100 };
+      wsSummary.getCell(`G${rincianDataRow}`).numFmt = '0.00%';
+      wsSummary.getCell(`H${rincianDataRow}`).value = { formula: `SUM(D${rincianDataRow}:G${rincianDataRow})`, result: grp.totalScore / 100 };
+      wsSummary.getCell(`H${rincianDataRow}`).numFmt = '0.00%';
+
+      sumCols.forEach(col => {
+        const cell = wsSummary.getCell(`${col}${rincianDataRow}`);
+        cell.font = dataFont;
+        cell.border = thinBorder;
+        cell.alignment = col === 'B' ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        if (col === 'H') {
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '166534' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDF4' } };
+        }
+      });
+
+      currentMonthRecapRow = rincianDataRow + 1;
     });
   }
 

@@ -3414,6 +3414,63 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   };
 
+  // Helper untuk membuat Tabel Rincian Evaluasi Skor SLG per Bulan
+  const createMonthBreakdownTable = (grp: MonthGroup) => {
+    const mbHeaders = ['NO', 'PERIODE BULAN', 'JUMLAH ORDER', 'RESPONSE TIME (5%)', 'ONSITE SUPPORT (5%)', 'RESTORE TIME (15%)', 'RESOLUTION TIME (15%)', 'TOTAL SKOR SLG (40%)'];
+    const mbWidths = [5, 19, 12, 13, 13, 13, 13, 12];
+
+    const row = new TableRow({
+      children: [
+        '1',
+        grp.monthLabel,
+        `${grp.reports.length} Order`,
+        `${grp.respScore.toFixed(2)}%`,
+        `${grp.onsiteScore.toFixed(2)}%`,
+        `${grp.restoreScore.toFixed(2)}%`,
+        `${grp.resolutionScore.toFixed(2)}%`,
+        `${grp.totalScore.toFixed(2)}%`,
+      ].map((val, cIdx) => new TableCell({
+        width: { size: mbWidths[cIdx], type: WidthType.PERCENTAGE },
+        margins: { top: 70, bottom: 70, left: 60, right: 60 },
+        shading: cIdx === 7 ? { fill: 'F0FDF4', type: ShadingType.CLEAR } : undefined,
+        children: [
+          new Paragraph({
+            alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: String(val),
+                bold: cIdx === 1 || cIdx === 7,
+                size: 14,
+                color: cIdx === 7 ? '166534' : '1E293B',
+              }),
+            ],
+          }),
+        ],
+      })),
+    });
+
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorderThin,
+      rows: [
+        new TableRow({
+          children: mbHeaders.map((hText, cIdx) => new TableCell({
+            width: { size: mbWidths[cIdx], type: WidthType.PERCENTAGE },
+            shading: { fill: '002060', type: ShadingType.CLEAR },
+            margins: { top: 90, bottom: 90, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: hText, bold: true, size: 13, color: 'FFFFFF' })],
+              }),
+            ],
+          })),
+        }),
+        row,
+      ],
+    });
+  };
+
   const monthlyIndividualSummaryElements: (Paragraph | Table)[] = [];
   if (monthGroups.length > 1) {
     monthGroups.forEach((grp) => {
@@ -3421,7 +3478,11 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         new Paragraph({ spacing: { before: 240, after: 60 } }),
         createHeading(`REKAPITULASI PENCAPAIAN KINERJA SLA & SLG — BULAN ${grp.monthLabel.toUpperCase()}`),
         createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nBulan: ${grp.monthLabel} (${grp.reports.length} Order Tiket)`),
-        createMonthSummaryTable(grp)
+        createMonthSummaryTable(grp),
+        new Paragraph({ spacing: { before: 140, after: 40 } }),
+        createHeading(`RINCIAN EVALUASI SKOR SLG — BULAN ${grp.monthLabel.toUpperCase()}`),
+        createSubHeading(`Rincian Capaian Skor SLG Bulan ${grp.monthLabel}`),
+        createMonthBreakdownTable(grp)
       );
     });
   }
