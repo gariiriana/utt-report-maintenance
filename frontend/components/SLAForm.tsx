@@ -575,10 +575,11 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
   };
 
   const validateStep = (targetStep: number): boolean => {
-    if (targetStep <= currentStep) return true;
+    // When clicking back to previous step, always allow
+    if (targetStep < currentStep) return true;
 
-    // Step 1 Validation: Response Time
-    if (targetStep > 1) {
+    // Step 1 Validation: Response Time (needed when moving to Step 2 or beyond)
+    if (targetStep >= 2) {
       if (!formData.location?.trim()) {
         toast.error('Mohon lengkapi Lokasi Gangguan di Step 1');
         setCurrentStep(1);
@@ -596,8 +597,8 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       }
     }
 
-    // Step 2 Validation: Onsite Principle
-    if (targetStep > 2) {
+    // Step 2 Validation: Onsite Principle (needed when moving to Step 3 or beyond)
+    if (targetStep >= 3) {
       if (!formData.actualTimeOnsite) {
         toast.error('Mohon isi Waktu Aktual Principle Onsite di Step 2');
         setCurrentStep(2);
@@ -610,8 +611,8 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       }
     }
 
-    // Step 3 Validation: Restore Time
-    if (targetStep > 3) {
+    // Step 3 Validation: Restore Time (needed when moving to Step 4 or beyond)
+    if (targetStep >= 4) {
       if (!formData.finishOrder) {
         toast.error('Mohon isi Waktu Layanan Pulih (Finish Order) di Step 3');
         setCurrentStep(3);
@@ -624,8 +625,8 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       }
     }
 
-    // Step 4 Validation: Resolution
-    if (targetStep > 4) {
+    // Step 4 Validation: Resolution (needed when submitting final form)
+    if (targetStep >= 5) {
       if (formData.photosResolution.length === 0) {
         toast.error('Mohon unggah minimal 1 Bukti Foto Resolution Time di Step 4');
         setCurrentStep(4);
@@ -639,6 +640,10 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     }
 
     return true;
+  };
+
+  const validateAllSteps = (): boolean => {
+    return validateStep(5);
   };
 
   const handleStepClick = (targetStep: number) => {
@@ -655,23 +660,12 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     setCurrentStep(prev => prev - 1);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateStep(4)) return;
-    if (!user) return;
-
-    const isLocalhost = import.meta.env.DEV || (
-      typeof window !== 'undefined' && (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.startsWith('192.168.') ||
-        window.location.hostname.endsWith('.local')
-      )
-    );
-
-    if (!isLocalhost && formData.photosResolution.length === 0) {
-      toast.error('Mohon unggah Bukti Foto Resolution Time pada Step 4');
-      return;
+  // Unified save logic for both Submit and Export DOCX buttons
+  const performSave = async (options?: { exportDocx?: boolean }): Promise<boolean> => {
+    if (!validateAllSteps()) return false;
+    if (!user) {
+      toast.error('Sesi login tidak aktif');
+      return false;
     }
 
     setSubmitting(true);
@@ -795,12 +789,9 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       let slaDocId = editId;
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), finalReport);
-        toast.success('Laporan SLA/SLG Corrective Maintenance berhasil diperbarui!', { id: 'save-sla-report' });
       } else {
         const newDocRef = await addDoc(collection(db, 'corrective_reports'), finalReport);
         slaDocId = newDocRef.id;
-        localStorage.removeItem('sla_form_draft');
-        toast.success('Laporan SLA/SLG Corrective Maintenance berhasil disimpan!', { id: 'save-sla-report' });
 
         await sendFileNotification({
           title: `Laporan SLA Baru: ${formData.ticketName || 'Work Order'}`,
@@ -823,7 +814,29 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
           console.warn('Could not update reverse slaReportId on CM doc:', cmLinkErr);
         }
       }
+
+      localStorage.removeItem('sla_form_draft');
+
+      if (options?.exportDocx) {
+        try {
+          await exportSLAReportToDocx({
+            ...finalReport,
+            photosResponse: photosResp,
+            photosOnsite: photosOnst,
+            photosRestore: photosRest,
+            photosResolution: photosReso
+          });
+          toast.success('Laporan SLA Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!', { id: 'save-sla-report' });
+        } catch (docxErr: any) {
+          console.error('Error during docx export after save:', docxErr);
+          toast.success('Laporan SLA berhasil disimpan ke database (unduhan Word gagal: ' + (docxErr.message || docxErr) + ')', { id: 'save-sla-report' });
+        }
+      } else {
+        toast.success(editId ? 'Perubahan Laporan SLA/SLG berhasil disimpan!' : 'Laporan SLA/SLG Corrective Maintenance berhasil disimpan!', { id: 'save-sla-report' });
+      }
+
       onSuccess();
+      return true;
     } catch (error: any) {
       console.error('Error saving SLA report:', error);
       const errMsg = error?.message || error?.toString() || '';
@@ -834,9 +847,15 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       } else {
         toast.error(`Gagal menyimpan laporan: ${errMsg || 'Kendala jaringan/database.'}`, { id: 'save-sla-report' });
       }
+      return false;
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performSave();
   };
 
   const steps = [
@@ -2015,73 +2034,47 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                disabled={submitting}
                 onClick={async () => {
-                  try {
-                    await exportSLAReportToDocx(formData);
-                    if (user) {
-                      const finalReport: any = {
-                        reportType: 'SLA',
-                        ticketName: (formData.ticketName || '').trim() || 'Work Order',
-                        location: (formData.location || '').trim() || 'Neutra DC Cikarang',
-                        priority: formData.priority || 'Medium',
-                        picDME: (formData.picDME || '').trim() || 'On Duty DME',
-                        picTDE: (formData.picTDE || '').trim() || 'FMA - OCS',
-                        remark: (formData.remark || '').trim() || 'Team melaksanakan perbaikan corrective.',
-                        issue: `[SLA / SLG] ${(formData.ticketName || '').trim() || 'Work Order'} (${formData.priority || 'Medium'})`,
-                        actionTaken: (formData.resolutionRemark || '').trim() || (formData.remark || '').trim() || 'Pemeliharaan corrective diselesaikan sesuai target SLA.',
-                        status: 'Resolved',
-                        quarter: `Q${Math.floor(new Date().getMonth() / 3) + 1}`,
-                        year: new Date().getFullYear().toString(),
-                        timeOrder: formData.timeOrder || '',
-                        actualTimeResponse: formData.actualTimeResponse || '',
-                        actualTimeOnsite: formData.actualTimeOnsite || '',
-                        startOrder: formData.startOrder || '',
-                        finishOrder: formData.finishOrder || '',
-                        resolutionRemark: (formData.resolutionRemark || '').trim(),
-                        reportedBy: user.uid,
-                        reportedByEmail: user.email || 'engineer@dwimitra.co.id',
-                        reportedAt: serverTimestamp(),
-                      };
-
-                      if (editId) {
-                        await updateDoc(doc(db, 'corrective_reports', editId), finalReport);
-                      } else {
-                        await addDoc(collection(db, 'corrective_reports'), finalReport);
-                      }
-                    }
-                    localStorage.removeItem('sla_form_draft');
-                    toast.success('Laporan SLA Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
-                  } catch (err: any) {
-                    console.error('Error exporting SLA DOCX:', err);
-                    toast.error('Gagal mengekspor Laporan SLA Word');
-                  }
+                  await performSave({ exportDocx: true });
                 }}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer"
+                className={`px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer disabled:opacity-50 ${
+                  !editId ? 'w-full sm:w-auto justify-center' : ''
+                }`}
               >
-                <Download className="w-4 h-4" />
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
                 Export DOCX
               </button>
 
-              <motion.button
-                key="submit-btn"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={submitting}
-                className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/10 disabled:opacity-50 cursor-pointer"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Menyimpan Laporan...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Simpan Laporan SLA
-                  </>
-                )}
-              </motion.button>
+              {editId && (
+                <motion.button
+                  key="save-changes-btn"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  disabled={submitting}
+                  onClick={async () => {
+                    await performSave();
+                  }}
+                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/10 disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Menyimpan Perubahan...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Simpan Perubahan
+                    </>
+                  )}
+                </motion.button>
+              )}
             </div>
           )}
         </div>
