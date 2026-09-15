@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LogOut, ShieldCheck, UserCircle, FileText, BarChart3,
-  FolderOpen, Sparkles, Package
+  FolderOpen, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { MOPWorkflow } from '@/components/MOPWorkflow';
@@ -17,7 +17,6 @@ import { MOPMonitoringDashboard } from '@/components/MOPMonitoringDashboard';
 import { DocumentList, ExcelDocument } from '@/components/DocumentList';
 import { ReportForm } from '@/components/ReportForm';
 import { MonthlyReportGenerator } from '@/components/MonthlyReportGenerator';
-import { SparepartManagement } from '@/components/SparepartManagement';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -32,11 +31,10 @@ import type { MOPWorkflowDoc } from '@/types/mopTypes';
 
 // ─── TAB DEFINITIONS ──────────────────────────────────────────────────────────
 
-type DMETab = 'workflow' | 'monitoring' | 'monthly_report' | 'spareparts' | 'corrective_archive' | 'documents';
+type DMETab = 'workflow' | 'monitoring' | 'monthly_report' | 'corrective_archive' | 'documents';
 
 const TAB_ITEMS: { id: DMETab; label: string; icon: typeof FileText; color: string }[] = [
   { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: Sparkles, color: 'from-blue-600 to-indigo-600' },
-  { id: 'spareparts', label: 'Log Sparepart', icon: Package, color: 'from-purple-600 to-pink-600' },
   { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700' },
   { id: 'workflow', label: 'MOP Workflow', icon: FileText, color: 'from-blue-500 to-sky-500' },
   { id: 'monitoring', label: 'Monitoring', icon: BarChart3, color: 'from-emerald-500 to-teal-500' },
@@ -167,17 +165,6 @@ export function DMEDashboard() {
               </motion.div>
             )}
 
-            {activeTab === 'spareparts' && (
-              <motion.div
-                key="spareparts"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                <SparepartManagement />
-              </motion.div>
-            )}
 
             {activeTab === 'corrective_archive' && (
               <motion.div

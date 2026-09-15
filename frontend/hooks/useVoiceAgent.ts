@@ -486,7 +486,7 @@ ATURAN UTAMA PERCAKAPAN SUARA (SANGAT KETAT):
 4. DILARANG berbicara panjang lebar atau membaca tabel.
 5. Jika pengguna meminta tindakan (navigasi halaman, buat laporan, cari data, export, refresh, tutup), sertakan tag aksi di PALING AKHIR jawaban:
    - Navigasi halaman: [ACTION: NAVIGATE: <halaman>]
-     (Daftar halaman: admin, report, documents, files, findings, finding_archive, corrective, corrective_archive, ptw, absen_tbm, absen_induction, pm_schedule, boq, berita_acara, monthly_report, spareparts, standby_kpi)
+     (Daftar halaman: admin, report, documents, files, findings, finding_archive, corrective, corrective_archive, ptw, absen_tbm, absen_induction, pm_schedule, boq, berita_acara, monthly_report)
    - Buat laporan baru: [ACTION: CREATE_REPORT]
    - Export/Download PDF: [ACTION: EXPORT_PDF]
    - Cari data/laporan: [ACTION: SEARCH: <query>]

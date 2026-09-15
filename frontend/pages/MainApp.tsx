@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award, FileSignature, ScanFace, Trash2 } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, ScanFace, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -33,11 +33,9 @@ import { AbsenTBM } from '@/components/AbsenTBM';
 import { AbsenInduction } from '@/components/AbsenInduction';
 import { PMSchedule } from '@/components/PMSchedule';
 import { BOQMasterAsset } from '@/components/BOQMasterAsset';
-import { SparepartManagement } from '@/components/SparepartManagement';
 import { MonthlyReportGenerator } from '@/components/MonthlyReportGenerator';
 import { BeritaAcaraReport } from '@/components/BeritaAcaraReport';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
-import { StandbyKPIInput } from '@/components/StandbyKPIInput';
 import { NotificationPage } from '@/components/NotificationPage';
 import { FaceRegistrationManagement } from '@/components/FaceRegistrationManagement';
 import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
@@ -47,7 +45,7 @@ import { db } from '@/api/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings';
+type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -123,8 +121,6 @@ export function MainApp() {
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: false },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
-    { id: 'standby_kpi', label: 'Input KPI Monthly', icon: Award, color: 'from-emerald-600 to-teal-700', show: isStandby && !isAdmin },
-    { id: 'spareparts', label: 'Log Sparepart', icon: Package, color: 'from-indigo-600 to-violet-700', show: !isAdmin && (isStandby || userRole === 'DME' || userRole === 'site_manager_dme') },
     { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: (userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer) || isDwimitra || userEmailLower === 'dwimitra@co.id' },
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: !isAdmin && userRole !== 'DME' && !isK2Engineer && !isStandby },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: !isAdmin && userRole !== 'DME' && !isK2Engineer },
@@ -450,8 +446,6 @@ export function MainApp() {
               <CorrectiveMaintenance readOnly={isTDEorCBRE} initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'corrective_archive' ? (
               <CorrectiveMaintenance readOnly={true} initialSearchQuery={navSearchQuery} />
-            ) : activeTab === 'spareparts' ? (
-              <SparepartManagement />
             ) : activeTab === 'findings' ? (
               <FindingManagement />
             ) : activeTab === 'finding_archive' ? (
@@ -460,8 +454,6 @@ export function MainApp() {
               <BOQMasterAsset />
             ) : activeTab === 'monthly_report' ? (
               <MonthlyReportGenerator />
-            ) : activeTab === 'standby_kpi' ? (
-              <StandbyKPIInput />
             ) : activeTab === 'pm_schedule' ? (
               <PMSchedule />
             ) : activeTab === 'berita_acara' ? (

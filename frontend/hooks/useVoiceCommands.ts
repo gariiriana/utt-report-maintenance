@@ -42,8 +42,6 @@ const PAGE_MAP: Record<string, string> = {
   boq: 'boq',
   master_asset: 'boq',
   pm_schedule: 'pm_schedule',
-  spareparts: 'spareparts',
-  standby_kpi: 'standby_kpi',
 };
 
 export function useVoiceCommands(): UseVoiceCommandsReturn {
@@ -164,8 +162,6 @@ function handleNavigate(args: Record<string, unknown>): { success: boolean; resu
   else if (rawPage.includes('monthly') || rawPage.includes('bulanan')) page = 'monthly_report';
   else if (rawPage.includes('boq') || rawPage.includes('asset')) page = 'boq';
   else if (rawPage.includes('pm') || rawPage.includes('schedule')) page = 'pm_schedule';
-  else if (rawPage.includes('sparepart')) page = 'spareparts';
-  else if (rawPage.includes('kpi') || rawPage.includes('standby')) page = 'standby_kpi';
 
   const targetTab = PAGE_MAP[page] || page;
 
