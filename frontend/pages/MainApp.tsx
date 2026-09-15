@@ -47,7 +47,7 @@ import { db } from '@/api/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings';
+type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -129,6 +129,7 @@ export function MainApp() {
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: !isAdmin && userRole !== 'DME' && !isK2Engineer && !isStandby },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: !isAdmin && userRole !== 'DME' && !isK2Engineer },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isAdmin && !isStandby && (userRole !== 'DME' || !!editingData) },
+    { id: 'arsip_dokumen', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isAdmin && !isStandby && userRole !== 'DME' && userRole !== 'site_manager_dme' },
     { id: 'documents', label: 'Management File', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: true },
     { id: 'pir', label: 'Report PIR', icon: AlertTriangle, color: 'from-amber-600 to-red-600', show: !isAdmin && isK2Engineer && !isStandby },
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: !isAdmin && userRole === 'DME' && !isK2Engineer },
@@ -226,7 +227,9 @@ export function MainApp() {
   // Handler untuk membersihkan data edit (kembali ke tab arsip dokumen)
   const clearEditingData = () => {
     setEditingData(null);
-    setActiveTab('documents');
+    // Engineer kembali ke Arsip Dokumen, role lain kembali ke Management File
+    const isEngineerRole = !isAdmin && !isStandby && userRole !== 'DME' && userRole !== 'site_manager_dme';
+    setActiveTab(isEngineerRole ? 'arsip_dokumen' : 'documents');
   };
 
   return (
@@ -434,6 +437,8 @@ export function MainApp() {
               <PTWManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'files' ? (
               <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
+            ) : activeTab === 'arsip_dokumen' ? (
+              <DocumentList viewMode="flat" onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'report' ? (
               <ReportForm
                 editingData={editingData}

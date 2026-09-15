@@ -295,9 +295,10 @@ interface DocumentListProps {
   filterOverride?: 'hse_utt';
   initialSearchQuery?: string;
   initialFolder?: string | null;
+  viewMode?: 'folder' | 'flat';
 }
 
-export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initialFolder }: DocumentListProps) {
+export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initialFolder, viewMode = 'folder' }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const userEmailLower = (user?.email || '').toLowerCase();
   const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
@@ -2703,6 +2704,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
 
   const renderContent = () => {
     if (filterOverride !== 'hse_utt') {
+      // viewMode='flat': Tampilan Arsip Dokumen per-akun engineer (daftar langsung)
+      // viewMode='folder': Tampilan Management File dengan struktur folder terpusat
+      if (viewMode === 'flat') {
+        return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
+      }
       return renderDmeContent();
     }
 
@@ -3314,8 +3320,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 mb-3.5 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 w-full max-w-full overflow-hidden">
         <div className="mb-3 sm:mb-6 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Management File & Arsip Dokumen</h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">Semua berkas operasional, laporan preventive & corrective maintenance terpusat</p>
+            <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">{viewMode === 'flat' ? 'Arsip Dokumen' : 'Management File & Arsip Dokumen'}</h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">{viewMode === 'flat' ? 'Arsip laporan maintenance akun Anda — hasil export PDF tersimpan di sini' : 'Semua berkas operasional, laporan preventive & corrective maintenance terpusat'}</p>
           </div>
           <button
             type="button"

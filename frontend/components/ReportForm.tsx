@@ -1393,35 +1393,45 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 'abnormalFinding.findingId': createdFindingId,
               }).catch(() => {});
             }
-            if (onClearEdit) onClearEdit();
+            // Setelah export berhasil: reset form untuk membuat laporan baru (tidak navigasi ke tab lain)
+            // Bersihkan draft lama dari IndexedDB
+            draftStorage.set('report_form_draft_v2', null).catch(console.error);
 
-            setUnits(prev => {
-              const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
-
-              const draft = {
-                userEmail: user?.email,
-                maintenanceName,
-                maintenanceTime,
-                companyType,
-                units: newUnits
-                  .filter(u => !u.isExported)
-                  .map(u => ({
-                    ...u,
-                    cards: u.cards.map(c => ({
-                      id: c.id,
-                      description: c.description,
-                      photoBase64: c.photoBase64,
-                      parameter: c.parameter || ''
-                    }))
-                  })),
-                timestamp: new Date().getTime()
-              };
-              draftStorage.set('report_form_draft_v2', draft).catch(console.error);
-
-              return newUnits;
+            // Reset semua state form ke kondisi awal
+            setMaintenanceName('');
+            setMaintenanceTime('');
+            setAbnormalStatus('none');
+            setFindingData({
+              partName: '',
+              partNumber: '',
+              brandName: '',
+              quantity: '1',
+              findingDate: new Date().toISOString().split('T')[0],
+              remark: '',
+              actionRecommendation: '',
             });
+            setFindingPhotos([]);
 
-            toast.success("Laporan berhasil diekspor & disimpan!", { id: toastId });
+            // Buat unit baru kosong agar form siap digunakan kembali
+            const newId = Math.random().toString(36).substr(2, 9);
+            const template = getAccountTemplate(user?.email);
+            let freshCards: PhotoCard[];
+            if (template && template.length > 0) {
+              freshCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
+            } else {
+              freshCards = createDefaultCards(11);
+            }
+            setUnits([{
+              id: newId,
+              tabName: 'Unit 1',
+              specificDetail: '',
+              vrvUnitDetail: '',
+              templateMode: 'indoor',
+              cards: freshCards,
+            }]);
+            setActiveUnitId(newId);
+
+            toast.success("Laporan berhasil diekspor & disimpan! Form siap untuk laporan baru.", { id: toastId });
           } else {
             toast.error("Gagal menyimpan data ke database. PDF telah diunduh tetapi arsip tidak tersimpan.", { id: toastId });
           }
