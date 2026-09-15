@@ -30,7 +30,8 @@ import {
   Trash2,
   Scissors,
   Crop,
-  Brain
+  Brain,
+  Users
 } from 'lucide-react';
 import {
   collection,
@@ -1257,69 +1258,110 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   return (
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
       {/* Header Banner Khusus QC DME */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-slate-900 via-rose-950 to-red-950 border border-rose-900/60 shadow-xl text-white p-5 sm:p-7">
-        <div className="absolute -right-12 -top-12 w-64 h-64 bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3 sm:gap-4">
-            <div className="p-3 sm:p-3.5 bg-gradient-to-br from-rose-600 to-red-700 rounded-2xl text-white shadow-lg border border-rose-400/30 shrink-0">
-              <AlertTriangle className="w-7 h-7 sm:w-8 sm:h-8 text-amber-300" />
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white/95 backdrop-blur-xl border border-rose-100/90 shadow-xl shadow-slate-900/5 p-5 sm:p-7 text-slate-800">
+        {/* Garis Aksen Dekorasi Top Bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-red-500" />
+        {/* Soft Background Blur Glow */}
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-4.5">
+            <div className="p-3.5 sm:p-4 bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl text-white shadow-lg shadow-rose-500/25 ring-4 ring-rose-50 shrink-0 flex items-center justify-center transition-transform hover:scale-105">
+              <AlertTriangle className="w-7 h-7 sm:w-8 sm:h-8 text-white stroke-[2.2]" />
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-white">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900">
                   Pusat Temuan Kondisi Abnormal
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/30 text-rose-200 border border-rose-400/40 uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200/90 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                   Quality Control DME
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1.5 max-w-2xl leading-relaxed">
                 Pengawasan terpadu terhadap seluruh laporan kerusakan, anomali parameter, dan temuan abnormal yang di-upload oleh akun maintenance role engineer.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap self-start lg:self-center">
             <button
               type="button"
               onClick={handleExportWordRecap}
               disabled={filteredItems.length === 0}
-              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border border-blue-400/40"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 cursor-pointer border border-blue-400/20"
               title="Unduh Rekap Lengkap Word (.docx) dengan Logo Dwimitra & NeutraDC, Detail & Foto Bukti"
             >
-              <FileText className="w-4 h-4 text-blue-200" />
+              <FileText className="w-4 h-4 text-blue-100" />
               <span>Ekspor Rekap Word (DOCX)</span>
             </button>
             <button
               type="button"
               onClick={handleExportExcelRecap}
               disabled={filteredItems.length === 0}
-              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border border-emerald-400/40"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 cursor-pointer border border-emerald-400/20"
               title="Unduh Rekap Spreadsheet (.xlsx)"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
               <span>Ekspor Rekap Excel</span>
             </button>
           </div>
         </div>
 
         {/* Kartu Statistik KPI */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 mt-6 pt-5 border-t border-rose-900/50">
-          <div className="bg-white/5 backdrop-blur-md rounded-xl p-3 border border-white/10">
-            <p className="text-[10px] sm:text-[11px] font-bold text-rose-300 uppercase tracking-wider">Total Laporan Abnormal</p>
-            <p className="text-xl sm:text-2xl font-black text-white mt-0.5">{stats.total}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-100 relative z-10">
+          <div className="bg-gradient-to-br from-rose-50/70 via-white to-red-50/40 rounded-2xl p-3.5 sm:p-4 border border-rose-100/90 shadow-2xs hover:shadow-md hover:border-rose-200 transition-all group">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-rose-700">Total Abnormal</span>
+              <div className="p-2 bg-rose-100/80 text-rose-600 rounded-xl group-hover:scale-110 transition-transform">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{stats.total}</span>
+              <span className="text-xs font-semibold text-slate-500">Laporan</span>
+            </div>
           </div>
-          <div className="bg-white/5 backdrop-blur-md rounded-xl p-3 border border-white/10">
-            <p className="text-[10px] sm:text-[11px] font-bold text-amber-300 uppercase tracking-wider">Akun Terlibat</p>
-            <p className="text-xl sm:text-2xl font-black text-white mt-0.5">{stats.totalAccounts} <span className="text-xs font-normal text-slate-300">Akun</span></p>
+
+          <div className="bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 rounded-2xl p-3.5 sm:p-4 border border-amber-100/90 shadow-2xs hover:shadow-md hover:border-amber-200 transition-all group">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-700">Akun Terlibat</span>
+              <div className="p-2 bg-amber-100/80 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
+                <Users className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{stats.totalAccounts}</span>
+              <span className="text-xs font-semibold text-slate-500">Akun</span>
+            </div>
           </div>
-          <div className="bg-white/5 backdrop-blur-md rounded-xl p-3 border border-white/10">
-            <p className="text-[10px] sm:text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Dengan Foto Bukti</p>
-            <p className="text-xl sm:text-2xl font-black text-white mt-0.5">{stats.withPhoto} <span className="text-xs font-normal text-slate-300">Unit</span></p>
+
+          <div className="bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/40 rounded-2xl p-3.5 sm:p-4 border border-emerald-100/90 shadow-2xs hover:shadow-md hover:border-emerald-200 transition-all group">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-emerald-700">Dengan Foto Bukti</span>
+              <div className="p-2 bg-emerald-100/80 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+                <Camera className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{stats.withPhoto}</span>
+              <span className="text-xs font-semibold text-slate-500">Unit</span>
+            </div>
           </div>
-          <div className="bg-white/5 backdrop-blur-md rounded-xl p-3 border border-white/10">
-            <p className="text-[10px] sm:text-[11px] font-bold text-blue-300 uppercase tracking-wider">Ada Rekomendasi</p>
-            <p className="text-xl sm:text-2xl font-black text-white mt-0.5">{stats.withReco} <span className="text-xs font-normal text-slate-300">Item</span></p>
+
+          <div className="bg-gradient-to-br from-blue-50/70 via-white to-indigo-50/40 rounded-2xl p-3.5 sm:p-4 border border-blue-100/90 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all group">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-blue-700">Ada Rekomendasi</span>
+              <div className="p-2 bg-blue-100/80 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{stats.withReco}</span>
+              <span className="text-xs font-semibold text-slate-500">Item</span>
+            </div>
           </div>
         </div>
       </div>

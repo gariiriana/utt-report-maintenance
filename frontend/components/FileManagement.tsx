@@ -53,9 +53,10 @@ import {
 import { exportSLAReportToExcel } from '@/utils/excelExport';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
-import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx, exportSLAMonthlyRecapToDocx } from '@/utils/docxReportExport';
+import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { useAuth } from './AuthContext';
+import { SLAMonthlyRecapModal } from './SLAMonthlyRecapModal';
 
 const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -522,6 +523,8 @@ export function FileManagement({
     const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString());
     const [forceSelectedMetadata, setForceSelectedMetadata] = useState(true);
     const [failedUploads, setFailedUploads] = useState<{ file: File; error: string }[]>([]);
+    const [isSLAModalOpen, setIsSLAModalOpen] = useState(false);
+    const [slaRecapReports, setSlaRecapReports] = useState<any[] | undefined>(undefined);
 
     const [internalSearchQuery, setInternalSearchQuery] = useState(initialSearchQuery);
     const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
@@ -553,9 +556,7 @@ export function FileManagement({
         setSelectedFolder(initialFolder || null);
         setSelectedQuarter(null);
         setSelectedMType(null);
-        if (initialFolder) {
-            setShowAllInFolder(true);
-        }
+        setShowAllInFolder(false);
     }, [initialFolder]);
 
     // Sinkronisasi pilihan form upload saat membuka folder tertentu
@@ -621,7 +622,7 @@ export function FileManagement({
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [deleteReason, setDeleteReason] = useState('');
     const [deleteModalMode, setDeleteModalMode] = useState<'request_delete' | 'review_request' | 'direct_delete' | 'cancel_request'>('request_delete');
-    const [showAllInFolder, setShowAllInFolder] = useState(() => Boolean(initialFolder));
+    const [showAllInFolder, setShowAllInFolder] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -2201,48 +2202,22 @@ export function FileManagement({
                                         ? `${selectedFolder} › ${selectedQuarter}` 
                                         : selectedFolder}
                                 </span>
-                                {showAllInFolder && (
-                                    <span className="ml-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-[11px] font-semibold">
-                                        (Menampilkan Seluruh Berkas)
-                                    </span>
-                                )}
                             </div>
 
                             <div className="flex items-center gap-2 flex-wrap sm:justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAllInFolder(prev => !prev)}
-                                    className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer shrink-0 border ${
-                                        showAllInFolder 
-                                            ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20' 
-                                            : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200'
-                                    }`}
-                                    title={showAllInFolder ? 'Kembali ke penjelajahan kategori/quarter' : `Tampilkan seluruh berkas di folder ${selectedFolder} secara langsung`}
-                                >
-                                    <FileText className="w-3.5 h-3.5" />
-                                    {showAllInFolder ? 'Mode Kategori / Quarter' : `Lihat Semua Berkas (${filteredFiles.filter(f => matchCategory(f.category, selectedFolder)).length})`}
-                                </button>
-
                                 {(selectedFolder === 'Form SLA/SLG' || selectedFolder === 'SLA/SLG' || selectedFolder === 'Report CM, SLA & PIR') && (
                                     <button
                                         type="button"
-                                        onClick={async () => {
-                                            const slaFiles = displayFiles.filter(f => f.isCorrectiveReport && f.reportType === 'SLA').map(f => f.originalReport).filter(Boolean);
-                                            if (slaFiles.length === 0) {
-                                                toast.error('Tidak ada data laporan SLA di folder ini untuk direkap.');
-                                                return;
-                                            }
-                                            const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
-                                            try {
-                                                const folderName = selectedQuarter ? `${selectedFolder} (${selectedQuarter})` : selectedFolder;
-                                                await exportSLAMonthlyRecapToDocx(slaFiles, folderName);
-                                                toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
-                                            } catch (err: any) {
-                                                console.error('Failed to export SLA recap:', err);
-                                                toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
-                                            }
+                                        onClick={() => {
+                                            const slaFiles = displayFiles
+                                                .filter(f => f.isCorrectiveReport && (f.reportType === 'SLA' || f.reportType === 'sla' || (f.originalReport?.issue && f.originalReport.issue.startsWith('[SLA'))))
+                                                .map(f => f.originalReport || f)
+                                                .filter(Boolean);
+                                            setSlaRecapReports(slaFiles.length > 0 ? slaFiles : undefined);
+                                            setIsSLAModalOpen(true);
                                         }}
                                         className="text-xs text-white bg-blue-600 hover:bg-blue-700 font-bold flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition-all shadow-sm cursor-pointer shrink-0"
+                                        title="Rekapitulasi SLA (Pilih Periode Tanggal/Bulan & Export Word/Excel)"
                                     >
                                         <FileText className="w-3.5 h-3.5" />
                                         Export Rekap SLA (DOCX)
@@ -2275,16 +2250,6 @@ export function FileManagement({
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            {selectedFolder && !showAllInFolder && filteredFiles.filter(f => matchCategory(f.category, selectedFolder)).length > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAllInFolder(true)}
-                                    className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
-                                >
-                                    <FileText className="w-3.5 h-3.5 text-amber-600" />
-                                    <span>Lihat {filteredFiles.filter(f => matchCategory(f.category, selectedFolder)).length} Berkas Langsung</span>
-                                </button>
-                            )}
                             <button
                                 type="button"
                                 onClick={() => handleSearchChange('')}
@@ -3132,6 +3097,13 @@ export function FileManagement({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Modal Rekap SLA Interaktif dengan Pilihan Rentang Tanggal & Bulan */}
+            <SLAMonthlyRecapModal
+                isOpen={isSLAModalOpen}
+                onClose={() => setIsSLAModalOpen(false)}
+                reports={slaRecapReports}
+            />
         </div>
     );
 }

@@ -1690,13 +1690,114 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
   );
 
   // -------------------------------------------------------------
+  // GROUPING PER BULAN (Untuk pemisahan multi-bulan + grand total kumulatif)
+  // -------------------------------------------------------------
+  const INDO_MONTH_NAMES = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  interface MonthGroup {
+    monthKey: string;
+    monthLabel: string;
+    reports: any[];
+    startIndex: number;
+    respMCount: number;
+    onsiteMCount: number;
+    restoreMCount: number;
+    resolutionMCount: number;
+    respScore: number;
+    onsiteScore: number;
+    restoreScore: number;
+    resolutionScore: number;
+    totalScore: number;
+  }
+
+  const monthGroups: MonthGroup[] = [];
+  reports.forEach((r, idx) => {
+    const ts = parseReportTime(r);
+    const d = ts > 0 ? new Date(ts) : new Date();
+    const yyyy = d.getFullYear();
+    const mm = d.getMonth();
+    const monthKey = `${yyyy}-${String(mm + 1).padStart(2, '0')}`;
+    const monthLabel = `${INDO_MONTH_NAMES[mm]} ${yyyy}`;
+
+    let grp = monthGroups.find(g => g.monthKey === monthKey);
+    if (!grp) {
+      grp = {
+        monthKey,
+        monthLabel,
+        reports: [],
+        startIndex: idx,
+        respMCount: 0,
+        onsiteMCount: 0,
+        restoreMCount: 0,
+        resolutionMCount: 0,
+        respScore: 0,
+        onsiteScore: 0,
+        restoreScore: 0,
+        resolutionScore: 0,
+        totalScore: 0,
+      };
+      monthGroups.push(grp);
+    }
+    grp.reports.push(r);
+  });
+
+  // Hitung KPI per bulan
+  monthGroups.forEach((grp) => {
+    const count = grp.reports.length;
+    grp.respMCount = grp.reports.filter(r => r.responseComply !== false && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true)).length;
+    grp.onsiteMCount = grp.reports.filter(r => r.onsiteComply !== false && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true)).length;
+    grp.restoreMCount = grp.reports.filter(r => {
+      const t = 180;
+      return r.restoreComply !== false && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= t : true);
+    }).length;
+    grp.resolutionMCount = grp.reports.filter(r => {
+      const getTargetByPriority = (prio?: string) => prio === 'Critical' ? 120 : prio === 'High' ? 240 : prio === 'Low' ? 2880 : 360;
+      const t = r.targetResolutionMin || getTargetByPriority(r.priority);
+      return r.resolutionComply !== false && (r.actualResolutionTimeMin !== undefined ? r.actualResolutionTimeMin <= t : true);
+    }).length;
+
+    grp.respScore = count > 0 ? Number(((grp.respMCount / count) * 5).toFixed(2)) : 5.00;
+    grp.onsiteScore = count > 0 ? Number(((grp.onsiteMCount / count) * 5).toFixed(2)) : 5.00;
+    grp.restoreScore = count > 0 ? Number(((grp.restoreMCount / count) * 15).toFixed(2)) : 15.00;
+    grp.resolutionScore = count > 0 ? Number(((grp.resolutionMCount / count) * 15).toFixed(2)) : 15.00;
+    grp.totalScore = Number((grp.respScore + grp.onsiteScore + grp.restoreScore + grp.resolutionScore).toFixed(2));
+  });
+
+  const createMonthDividerRow = (label: string, totalCols: number) => {
+    return new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: totalCols,
+          shading: { fill: '002060', type: ShadingType.CLEAR },
+          margins: { top: 70, bottom: 70, left: 80, right: 80 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.LEFT,
+              children: [
+                new TextRun({
+                  text: label,
+                  bold: true,
+                  size: 15,
+                  color: 'FFFFFF',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  };
+
+  // -------------------------------------------------------------
   // 1. EV RESPONSE TIME TABLE
   // -------------------------------------------------------------
   const respHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'PIC DME', 'PIC TDE', 'TIME ORDER', 'ACTUAL TIME', 'ACTUAL', 'TARGET', 'COMPLY', 'REMARK'];
   const respWidths = [4, 18, 11, 8, 8, 12, 12, 7, 6, 6, 8];
 
-  const respRows = reports.map((r, idx) => {
-    const comply = r.responseComply !== undefined ? r.responseComply : (r.actualResponseTimeMin ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+  const createRespRow = (r: any, idx: number, comply: boolean) => {
     return new TableRow({
       children: [
         String(idx + 1),
@@ -1729,9 +1830,106 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         ],
       })),
     });
-  });
+  };
 
-  // Calculate Response Compliance
+  const createRespSubtotalRow = (label: string, actualMin: number, targetMin: number, isComply: boolean) => {
+    return new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: 7,
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                new TextRun({
+                  text: label,
+                  bold: true,
+                  size: 13,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: respWidths[7], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(actualMin)}\n(${actualMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: respWidths[8], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(targetMin)}\n(${targetMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: respWidths[9], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'M' : 'TM',
+                  bold: true,
+                  size: 14,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: respWidths[10], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                  bold: true,
+                  size: 12,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  };
+
+  // Response Total Kumulatif
   const totalRespTargetMin = reports.reduce((sum, r) => sum + (r.targetResponseMin || 5), 0);
   const totalRespActualMin = reports.reduce((sum, r) => sum + (r.actualResponseTimeMin || 0), 0);
   const isRespTotalComply = totalRespActualMin <= totalRespTargetMin;
@@ -1740,14 +1938,16 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     children: [
       new TableCell({
         columnSpan: 7,
-        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        shading: { fill: 'CBD5E1', type: ShadingType.CLEAR },
         margins: { top: 80, bottom: 80, left: 85, right: 85 },
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
             children: [
               new TextRun({
-                text: `TOTAL (${reports.length} Order Tiket):`,
+                text: monthGroups.length > 1
+                  ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+                  : `TOTAL (${reports.length} Order Tiket):`,
                 bold: true,
                 size: 14,
                 color: '0F172A',
@@ -1831,6 +2031,29 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     ],
   });
 
+  const respTableRows: TableRow[] = [];
+  if (monthGroups.length > 1) {
+    monthGroups.forEach((grp) => {
+      respTableRows.push(createMonthDividerRow(`BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`, 11));
+      grp.reports.forEach((r, lIdx) => {
+        const globalIdx = grp.startIndex + lIdx;
+        const comply = r.responseComply !== undefined ? r.responseComply : (r.actualResponseTimeMin ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+        respTableRows.push(createRespRow(r, globalIdx, comply));
+      });
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualResponseTimeMin || 0), 0);
+      const mTarget = grp.reports.reduce((sum, r) => sum + (r.targetResponseMin || 5), 0);
+      const mComply = mActual <= mTarget;
+      respTableRows.push(createRespSubtotalRow(`Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`, mActual, mTarget, mComply));
+    });
+    respTableRows.push(respTotalRow);
+  } else {
+    reports.forEach((r, idx) => {
+      const comply = r.responseComply !== undefined ? r.responseComply : (r.actualResponseTimeMin ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+      respTableRows.push(createRespRow(r, idx, comply));
+    });
+    respTableRows.push(respTotalRow);
+  }
+
   const tableResponse = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -1848,8 +2071,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           ],
         })),
       }),
-      ...respRows,
-      respTotalRow,
+      ...respTableRows,
     ],
   });
 
@@ -1862,8 +2084,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
   const onsiteHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'PIC DME', 'PIC TDE', 'TIME ORDER', 'ACTUAL ONSITE', 'ACTUAL', 'TARGET', 'COMPLY', 'REMARK'];
   const onsiteWidths = [4, 18, 11, 8, 8, 12, 12, 7, 6, 6, 8];
 
-  const onsiteRows = reports.map((r, idx) => {
-    const comply = r.onsiteComply !== undefined ? r.onsiteComply : (r.actualOnsiteTimeMin ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+  const createOnsiteRow = (r: any, idx: number, comply: boolean) => {
     return new TableRow({
       children: [
         String(idx + 1),
@@ -1896,7 +2117,104 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         ],
       })),
     });
-  });
+  };
+
+  const createOnsiteSubtotalRow = (label: string, actualMin: number, targetMin: number, isComply: boolean) => {
+    return new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: 7,
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                new TextRun({
+                  text: label,
+                  bold: true,
+                  size: 13,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: onsiteWidths[7], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(actualMin)}\n(${actualMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: onsiteWidths[8], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(targetMin)}\n(${targetMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: onsiteWidths[9], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'M' : 'TM',
+                  bold: true,
+                  size: 14,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: onsiteWidths[10], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                  bold: true,
+                  size: 12,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  };
 
   const totalOnsiteTargetMin = reports.reduce((sum, r) => sum + (r.targetOnsiteMin || 120), 0);
   const totalOnsiteActualMin = reports.reduce((sum, r) => sum + (r.actualOnsiteTimeMin || 0), 0);
@@ -1906,14 +2224,16 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     children: [
       new TableCell({
         columnSpan: 7,
-        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        shading: { fill: 'CBD5E1', type: ShadingType.CLEAR },
         margins: { top: 80, bottom: 80, left: 85, right: 85 },
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
             children: [
               new TextRun({
-                text: `TOTAL (${reports.length} Order Tiket):`,
+                text: monthGroups.length > 1
+                  ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+                  : `TOTAL (${reports.length} Order Tiket):`,
                 bold: true,
                 size: 14,
                 color: '0F172A',
@@ -1997,6 +2317,29 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     ],
   });
 
+  const onsiteTableRows: TableRow[] = [];
+  if (monthGroups.length > 1) {
+    monthGroups.forEach((grp) => {
+      onsiteTableRows.push(createMonthDividerRow(`BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`, 11));
+      grp.reports.forEach((r, lIdx) => {
+        const globalIdx = grp.startIndex + lIdx;
+        const comply = r.onsiteComply !== undefined ? r.onsiteComply : (r.actualOnsiteTimeMin ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+        onsiteTableRows.push(createOnsiteRow(r, globalIdx, comply));
+      });
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualOnsiteTimeMin || 0), 0);
+      const mTarget = grp.reports.reduce((sum, r) => sum + (r.targetOnsiteMin || 120), 0);
+      const mComply = mActual <= mTarget;
+      onsiteTableRows.push(createOnsiteSubtotalRow(`Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`, mActual, mTarget, mComply));
+    });
+    onsiteTableRows.push(onsiteTotalRow);
+  } else {
+    reports.forEach((r, idx) => {
+      const comply = r.onsiteComply !== undefined ? r.onsiteComply : (r.actualOnsiteTimeMin ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+      onsiteTableRows.push(createOnsiteRow(r, idx, comply));
+    });
+    onsiteTableRows.push(onsiteTotalRow);
+  }
+
   const tableOnsite = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -2014,8 +2357,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           ],
         })),
       }),
-      ...onsiteRows,
-      onsiteTotalRow,
+      ...onsiteTableRows,
     ],
   });
 
@@ -2028,9 +2370,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
   const restoreHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'START ORDER', 'FINISH ORDER', 'ACTUAL RESTORE', 'TARGET', 'COMPLY', 'REMARK'];
   const restoreWidths = [4, 20, 12, 13, 13, 9, 7, 7, 15];
 
-  const restoreRows = reports.map((r, idx) => {
-    const targetRestore = 180; // SLA Target Komitmen Restore Time selalu 3 Jam (180 Menit)
-    const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= targetRestore : true);
+  const createRestoreRow = (r: any, idx: number, comply: boolean, targetRestore: number) => {
     return new TableRow({
       children: [
         String(idx + 1),
@@ -2061,7 +2401,104 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         ],
       })),
     });
-  });
+  };
+
+  const createRestoreSubtotalRow = (label: string, actualMin: number, targetMin: number, isComply: boolean) => {
+    return new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: 5,
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                new TextRun({
+                  text: label,
+                  bold: true,
+                  size: 13,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: restoreWidths[5], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(actualMin)}\n(${actualMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: restoreWidths[6], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(targetMin)}\n(${targetMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: restoreWidths[7], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'M' : 'TM',
+                  bold: true,
+                  size: 14,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: restoreWidths[8], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                  bold: true,
+                  size: 12,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  };
 
   const totalRestoreTargetMin = reports.reduce((sum) => sum + 180, 0);
   const totalRestoreActualMin = reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin || 0), 0);
@@ -2071,14 +2508,16 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     children: [
       new TableCell({
         columnSpan: 5,
-        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        shading: { fill: 'CBD5E1', type: ShadingType.CLEAR },
         margins: { top: 80, bottom: 80, left: 85, right: 85 },
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
             children: [
               new TextRun({
-                text: `TOTAL (${reports.length} Order Tiket):`,
+                text: monthGroups.length > 1
+                  ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+                  : `TOTAL (${reports.length} Order Tiket):`,
                 bold: true,
                 size: 14,
                 color: '0F172A',
@@ -2162,6 +2601,31 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     ],
   });
 
+  const restoreTableRows: TableRow[] = [];
+  if (monthGroups.length > 1) {
+    monthGroups.forEach((grp) => {
+      restoreTableRows.push(createMonthDividerRow(`BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`, 9));
+      grp.reports.forEach((r, lIdx) => {
+        const globalIdx = grp.startIndex + lIdx;
+        const targetRestore = 180;
+        const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= targetRestore : true);
+        restoreTableRows.push(createRestoreRow(r, globalIdx, comply, targetRestore));
+      });
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin || 0), 0);
+      const mTarget = grp.reports.reduce((sum) => sum + 180, 0);
+      const mComply = mActual <= mTarget;
+      restoreTableRows.push(createRestoreSubtotalRow(`Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`, mActual, mTarget, mComply));
+    });
+    restoreTableRows.push(restoreTotalRow);
+  } else {
+    reports.forEach((r, idx) => {
+      const targetRestore = 180;
+      const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= targetRestore : true);
+      restoreTableRows.push(createRestoreRow(r, idx, comply, targetRestore));
+    });
+    restoreTableRows.push(restoreTotalRow);
+  }
+
   const tableRestore = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -2179,8 +2643,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           ],
         })),
       }),
-      ...restoreRows,
-      restoreTotalRow,
+      ...restoreTableRows,
     ],
   });
 
@@ -2193,9 +2656,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
   const resolutionHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'START ORDER', 'FINISH ORDER', 'ACTUAL RESOLUTION', 'TARGET', 'COMPLY', 'REMARK'];
   const resolutionWidths = [4, 20, 12, 13, 13, 9, 7, 7, 15];
 
-  const resolutionRows = reports.map((r, idx) => {
-    const targetResolution = r.targetResolutionMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360);
-    const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= targetResolution : true);
+  const createResolutionRow = (r: any, idx: number, comply: boolean, targetResolution: number) => {
     return new TableRow({
       children: [
         String(idx + 1),
@@ -2226,9 +2687,107 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         ],
       })),
     });
-  });
+  };
 
-  const totalResolutionTargetMin = reports.reduce((sum, r) => sum + (r.targetResolutionMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360)), 0);
+  const createResolutionSubtotalRow = (label: string, actualMin: number, targetMin: number, isComply: boolean) => {
+    return new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: 5,
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                new TextRun({
+                  text: label,
+                  bold: true,
+                  size: 13,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: resolutionWidths[5], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(actualMin)}\n(${actualMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: resolutionWidths[6], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${formatMinToHHMM(targetMin)}\n(${targetMin} Mnt)`,
+                  bold: true,
+                  size: 12,
+                  color: '334155',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: resolutionWidths[7], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'M' : 'TM',
+                  bold: true,
+                  size: 14,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: resolutionWidths[8], type: WidthType.PERCENTAGE },
+          shading: { fill: isComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: isComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                  bold: true,
+                  size: 12,
+                  color: isComply ? '166534' : '991B1B',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  };
+
+  const getTargetReso = (r: any) => r.targetResolutionMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360);
+  const totalResolutionTargetMin = reports.reduce((sum, r) => sum + getTargetReso(r), 0);
   const totalResolutionActualMin = reports.reduce((sum, r) => sum + (r.actualResolutionTimeMin || 0), 0);
   const isResolutionTotalComply = totalResolutionActualMin <= totalResolutionTargetMin;
 
@@ -2236,14 +2795,16 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     children: [
       new TableCell({
         columnSpan: 5,
-        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        shading: { fill: 'CBD5E1', type: ShadingType.CLEAR },
         margins: { top: 80, bottom: 80, left: 85, right: 85 },
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
             children: [
               new TextRun({
-                text: `TOTAL (${reports.length} Order Tiket):`,
+                text: monthGroups.length > 1
+                  ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+                  : `TOTAL (${reports.length} Order Tiket):`,
                 bold: true,
                 size: 14,
                 color: '0F172A',
@@ -2327,6 +2888,31 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     ],
   });
 
+  const resolutionTableRows: TableRow[] = [];
+  if (monthGroups.length > 1) {
+    monthGroups.forEach((grp) => {
+      resolutionTableRows.push(createMonthDividerRow(`BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`, 9));
+      grp.reports.forEach((r, lIdx) => {
+        const globalIdx = grp.startIndex + lIdx;
+        const targetResolution = getTargetReso(r);
+        const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= targetResolution : true);
+        resolutionTableRows.push(createResolutionRow(r, globalIdx, comply, targetResolution));
+      });
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualResolutionTimeMin || 0), 0);
+      const mTarget = grp.reports.reduce((sum, r) => sum + getTargetReso(r), 0);
+      const mComply = mActual <= mTarget;
+      resolutionTableRows.push(createResolutionSubtotalRow(`Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`, mActual, mTarget, mComply));
+    });
+    resolutionTableRows.push(resolutionTotalRow);
+  } else {
+    reports.forEach((r, idx) => {
+      const targetResolution = getTargetReso(r);
+      const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= targetResolution : true);
+      resolutionTableRows.push(createResolutionRow(r, idx, comply, targetResolution));
+    });
+    resolutionTableRows.push(resolutionTotalRow);
+  }
+
   const tableResolution = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -2344,8 +2930,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           ],
         })),
       }),
-      ...resolutionRows,
-      resolutionTotalRow,
+      ...resolutionTableRows,
     ],
   });
 
@@ -2358,11 +2943,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
   const evHeaders = ['NO', 'ORDER / TICKET', 'RESPONSE TIME', 'ONSITE TIME', 'RESTORE TIME', 'RESOLUTION TIME'];
   const evWidths = [4, 20, 19, 19, 19, 19];
 
-  const evRows: TableRow[] = [];
-  for (let idx = 0; idx < reports.length; idx++) {
-    const r = reports[idx];
-    const pBytes = reportPhotosMap[idx];
-
+  const createEvidenceRow = (r: any, idx: number, pBytes: ReportPhotoBytes) => {
     const createCellPhotos = (bytesArray: Uint8Array[]) => {
       if (bytesArray.length === 0) {
         return [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: '-', size: 14, color: '94A3B8' })] })];
@@ -2382,64 +2963,115 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
       );
     };
 
-    evRows.push(
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: evWidths[0], type: WidthType.PERCENTAGE },
-            margins: { top: 60, bottom: 60, left: 40, right: 40 },
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(idx + 1), size: 14, color: '1E293B' })] })],
+    return new TableRow({
+      children: [
+        new TableCell({
+          width: { size: evWidths[0], type: WidthType.PERCENTAGE },
+          margins: { top: 60, bottom: 60, left: 40, right: 40 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(idx + 1), size: 14, color: '1E293B' })] })],
+        }),
+        new TableCell({
+          width: { size: evWidths[1], type: WidthType.PERCENTAGE },
+          margins: { top: 60, bottom: 60, left: 40, right: 40 },
+          children: [new Paragraph({ children: [new TextRun({ text: r.ticketName || r.issue || 'WO', bold: true, size: 14, color: '1E293B' })] })],
+        }),
+        new TableCell({
+          width: { size: evWidths[2], type: WidthType.PERCENTAGE },
+          margins: { top: 60, bottom: 60, left: 40, right: 40 },
+          children: createCellPhotos(pBytes.response),
+        }),
+        new TableCell({
+          width: { size: evWidths[3], type: WidthType.PERCENTAGE },
+          margins: { top: 60, bottom: 60, left: 40, right: 40 },
+          children: createCellPhotos(pBytes.onsite),
+        }),
+        new TableCell({
+          width: { size: evWidths[4], type: WidthType.PERCENTAGE },
+          margins: { top: 60, bottom: 60, left: 40, right: 40 },
+          children: createCellPhotos(pBytes.restore),
+        }),
+        new TableCell({
+          width: { size: evWidths[5], type: WidthType.PERCENTAGE },
+          margins: { top: 60, bottom: 60, left: 40, right: 40 },
+          children: createCellPhotos(pBytes.resolution),
+        }),
+      ],
+    });
+  };
+
+  const evidenceDocxElements: (Paragraph | Table)[] = [];
+  if (monthGroups.length > 1) {
+    evidenceDocxElements.push(
+      createHeading('5. EVIDENCE BUKTI FOTO DOKUMENTASI (4-STEP SLA/SLG)'),
+      createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle} (Rincian Bukti Foto Dipisahkan Per Bulan)`),
+      new Paragraph({ spacing: { after: 80 } })
+    );
+
+    monthGroups.forEach((grp, gIdx) => {
+      const monthEvRows = grp.reports.map((r, lIdx) => {
+        const globalIdx = grp.startIndex + lIdx;
+        return createEvidenceRow(r, lIdx, reportPhotosMap[globalIdx]);
+      });
+
+      const monthTableEvidence = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: cellBorderThin,
+        rows: [
+          new TableRow({
+            children: evHeaders.map((hText, cIdx) => new TableCell({
+              width: { size: evWidths[cIdx], type: WidthType.PERCENTAGE },
+              shading: { fill: '002060', type: ShadingType.CLEAR },
+              margins: { top: 80, bottom: 80, left: 40, right: 40 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: hText, bold: true, size: 13, color: 'FFFFFF' })],
+                }),
+              ],
+            })),
           }),
-          new TableCell({
-            width: { size: evWidths[1], type: WidthType.PERCENTAGE },
-            margins: { top: 60, bottom: 60, left: 40, right: 40 },
-            children: [new Paragraph({ children: [new TextRun({ text: r.ticketName || r.issue || 'WO', bold: true, size: 14, color: '1E293B' })] })],
-          }),
-          new TableCell({
-            width: { size: evWidths[2], type: WidthType.PERCENTAGE },
-            margins: { top: 60, bottom: 60, left: 40, right: 40 },
-            children: createCellPhotos(pBytes.response),
-          }),
-          new TableCell({
-            width: { size: evWidths[3], type: WidthType.PERCENTAGE },
-            margins: { top: 60, bottom: 60, left: 40, right: 40 },
-            children: createCellPhotos(pBytes.onsite),
-          }),
-          new TableCell({
-            width: { size: evWidths[4], type: WidthType.PERCENTAGE },
-            margins: { top: 60, bottom: 60, left: 40, right: 40 },
-            children: createCellPhotos(pBytes.restore),
-          }),
-          new TableCell({
-            width: { size: evWidths[5], type: WidthType.PERCENTAGE },
-            margins: { top: 60, bottom: 60, left: 40, right: 40 },
-            children: createCellPhotos(pBytes.resolution),
-          }),
+          ...monthEvRows,
         ],
-      })
+      });
+
+      evidenceDocxElements.push(
+        new Paragraph({ spacing: { before: gIdx > 0 ? 240 : 40, after: 60 } }),
+        createHeading(`5.${gIdx + 1}. BUKTI FOTO DOKUMENTASI — BULAN ${grp.monthLabel.toUpperCase()}`),
+        createSubHeading(`Dokumentasi 4-Step SLA/SLG Bulan ${grp.monthLabel} (${grp.reports.length} Order Tiket)`),
+        monthTableEvidence,
+        new Paragraph({ spacing: { after: 140 } })
+      );
+    });
+  } else {
+    const singleEvRows = reports.map((r, idx) => createEvidenceRow(r, idx, reportPhotosMap[idx]));
+    const tableEvidence = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorderThin,
+      rows: [
+        new TableRow({
+          children: evHeaders.map((hText, cIdx) => new TableCell({
+            width: { size: evWidths[cIdx], type: WidthType.PERCENTAGE },
+            shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+            margins: { top: 80, bottom: 80, left: 40, right: 40 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: hText, bold: true, size: 14, color: '0F172A' })],
+              }),
+            ],
+          })),
+        }),
+        ...singleEvRows,
+      ],
+    });
+
+    evidenceDocxElements.push(
+      createHeading('5. EVIDENCE BUKTI FOTO DOKUMENTASI (4-STEP SLA/SLG)'),
+      createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+      tableEvidence,
+      new Paragraph({ spacing: { after: 200 } })
     );
   }
-
-  const tableEvidence = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: cellBorderThin,
-    rows: [
-      new TableRow({
-        children: evHeaders.map((hText, cIdx) => new TableCell({
-          width: { size: evWidths[cIdx], type: WidthType.PERCENTAGE },
-          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-          margins: { top: 80, bottom: 80, left: 40, right: 40 },
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [new TextRun({ text: hText, bold: true, size: 14, color: '0F172A' })],
-            }),
-          ],
-        })),
-      }),
-      ...evRows,
-    ],
-  });
 
   // -------------------------------------------------------------
   // REKAPITULASI PENCAPAIAN SLA & SLG (SUMMARY TABLE)
@@ -2515,18 +3147,164 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
             columnSpan: 6,
             shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
             margins: { top: 100, bottom: 100, left: 100, right: 100 },
-            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'TOTAL HASIL AKHIR PENCAPAIAN SLG (MAX 40%):', bold: true, size: 16, color: '0F172A' })] })],
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [
+                  new TextRun({
+                    text: monthGroups.length > 1
+                      ? 'TOTAL HASIL AKHIR PENCAPAIAN SLG KUMULATIF (MAX 40%):'
+                      : 'TOTAL HASIL AKHIR PENCAPAIAN SLG (MAX 40%):',
+                    bold: true,
+                    size: 16,
+                    color: '0F172A',
+                  }),
+                ],
+              }),
+            ],
           }),
           new TableCell({
             columnSpan: 2,
             shading: { fill: 'FEF08A', type: ShadingType.CLEAR },
             margins: { top: 100, bottom: 100, left: 100, right: 100 },
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${totalSlgScore.toFixed(2)}% / 40.00%`, bold: true, size: 18, color: '854D0E' })] })],
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: `${totalSlgScore.toFixed(2)}% / 40.00%`,
+                    bold: true,
+                    size: 18,
+                    color: '854D0E',
+                  }),
+                ],
+              }),
+            ],
           }),
         ],
       }),
     ],
   });
+
+  // -------------------------------------------------------------
+  // TABEL KOMPARASI SKOR SLG PER BULAN (Jika Multi-Bulan)
+  // -------------------------------------------------------------
+  let tableMonthlyBreakdown: Table | null = null;
+  if (monthGroups.length > 1) {
+    const mbHeaders = ['NO', 'PERIODE BULAN', 'JUMLAH ORDER', 'RESPONSE (5%)', 'ONSITE (5%)', 'RESTORE (15%)', 'RESOLUTION (15%)', 'TOTAL SKOR SLG (40%)'];
+    const mbWidths = [5, 23, 12, 12, 12, 12, 12, 12];
+
+    const mbRows = monthGroups.map((grp, idx) => new TableRow({
+      children: [
+        String(idx + 1),
+        grp.monthLabel,
+        `${grp.reports.length} Order`,
+        `${grp.respScore.toFixed(2)}%`,
+        `${grp.onsiteScore.toFixed(2)}%`,
+        `${grp.restoreScore.toFixed(2)}%`,
+        `${grp.resolutionScore.toFixed(2)}%`,
+        `${grp.totalScore.toFixed(2)}%`,
+      ].map((val, cIdx) => new TableCell({
+        width: { size: mbWidths[cIdx], type: WidthType.PERCENTAGE },
+        margins: { top: 70, bottom: 70, left: 60, right: 60 },
+        shading: cIdx === 7 ? { fill: 'F0FDF4', type: ShadingType.CLEAR } : undefined,
+        children: [
+          new Paragraph({
+            alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: String(val),
+                bold: cIdx === 1 || cIdx === 7,
+                size: 14,
+                color: cIdx === 7 ? '166534' : '1E293B',
+              }),
+            ],
+          }),
+        ],
+      })),
+    }));
+
+    const mbTotalRow = new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: 2,
+          shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                new TextRun({
+                  text: `TOTAL KUMULATIF (${monthGroups.length} BULAN):`,
+                  bold: true,
+                  size: 14,
+                  color: '0F172A',
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: mbWidths[2], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 60, right: 60 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${reports.length} Order`, bold: true, size: 14, color: '0F172A' })] })],
+        }),
+        new TableCell({
+          width: { size: mbWidths[3], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 60, right: 60 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${respScore.toFixed(2)}%`, bold: true, size: 14, color: '0F172A' })] })],
+        }),
+        new TableCell({
+          width: { size: mbWidths[4], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 60, right: 60 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${onsiteScore.toFixed(2)}%`, bold: true, size: 14, color: '0F172A' })] })],
+        }),
+        new TableCell({
+          width: { size: mbWidths[5], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 60, right: 60 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${restoreScore.toFixed(2)}%`, bold: true, size: 14, color: '0F172A' })] })],
+        }),
+        new TableCell({
+          width: { size: mbWidths[6], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 60, right: 60 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${resolutionScore.toFixed(2)}%`, bold: true, size: 14, color: '0F172A' })] })],
+        }),
+        new TableCell({
+          width: { size: mbWidths[7], type: WidthType.PERCENTAGE },
+          shading: { fill: 'FEF08A', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 60, right: 60 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${totalSlgScore.toFixed(2)}% / 40.00%`, bold: true, size: 15, color: '854D0E' })] })],
+        }),
+      ],
+    });
+
+    tableMonthlyBreakdown = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorderThin,
+      rows: [
+        new TableRow({
+          children: mbHeaders.map((hText, cIdx) => new TableCell({
+            width: { size: mbWidths[cIdx], type: WidthType.PERCENTAGE },
+            shading: { fill: '002060', type: ShadingType.CLEAR },
+            margins: { top: 90, bottom: 90, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: hText, bold: true, size: 13, color: 'FFFFFF' })],
+              }),
+            ],
+          })),
+        }),
+        ...mbRows,
+        mbTotalRow,
+      ],
+    });
+  }
 
   // Build complete Word Document
   const doc = new Document({
@@ -2556,9 +3334,15 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         },
         children: [
           // Section 0: Summary Rekapitulasi Table
-          createHeading('REKAPITULASI PENCAPAIAN KINERJA SLA & SLG'),
-          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+          createHeading('REKAPITULASI PENCAPAIAN KINERJA SLA & SLG' + (monthGroups.length > 1 ? ' (KUMULATIF)' : '')),
+          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}` + (monthGroups.length > 1 ? ` (Total ${monthGroups.length} Bulan)` : '')),
           tableSummary,
+          ...(tableMonthlyBreakdown ? [
+            new Paragraph({ spacing: { before: 240, after: 60 } }),
+            createHeading('RINCIAN EVALUASI SKOR SLG PER BULAN'),
+            createSubHeading(`Perbandingan Pencapaian SLA/SLG Setiap Bulan Periode ${periodTitle}`),
+            tableMonthlyBreakdown,
+          ] : []),
           new Paragraph({ spacing: { after: 240 } }),
 
           // Section 1
@@ -2567,7 +3351,9 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableResponse,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Response Time dan telah di-approve User',
-            `• Total Target Kumulatif: ${totalRespTargetMin} Menit (${reports.length} Order x 5 Menit), Total Aktual: ${totalRespActualMin} Menit [Status Total: ${isRespTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
+            monthGroups.length > 1
+              ? `• Total Target Kumulatif: ${totalRespTargetMin} Menit (${reports.length} Order x 5 Menit), Total Aktual: ${totalRespActualMin} Menit [Status Total Kumulatif: ${isRespTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`
+              : `• Total Target Kumulatif: ${totalRespTargetMin} Menit (${reports.length} Order x 5 Menit), Total Aktual: ${totalRespActualMin} Menit [Status Total: ${isRespTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Kinerja Response Time (RT) x 5%',
             `• Hasil perhitungan Kinerja Response Time (RT): ${respScore.toFixed(2)}%`
           ),
@@ -2578,7 +3364,9 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableOnsite,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Onsite Time dan telah di-approve User',
-            `• Total Target Kumulatif: ${totalOnsiteTargetMin} Menit (${reports.length} Order x 120 Menit), Total Aktual: ${totalOnsiteActualMin} Menit [Status Total: ${isOnsiteTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
+            monthGroups.length > 1
+              ? `• Total Target Kumulatif: ${totalOnsiteTargetMin} Menit (${reports.length} Order x 120 Menit), Total Aktual: ${totalOnsiteActualMin} Menit [Status Total Kumulatif: ${isOnsiteTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`
+              : `• Total Target Kumulatif: ${totalOnsiteTargetMin} Menit (${reports.length} Order x 120 Menit), Total Aktual: ${totalOnsiteActualMin} Menit [Status Total: ${isOnsiteTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Onsite Time (OT) x 5%',
             `• Hasil perhitungan Kinerja Onsite Time (OT): ${onsiteScore.toFixed(2)}%`
           ),
@@ -2589,7 +3377,9 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableRestore,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Restore Time dan telah di-approve User',
-            `• Total Target Kumulatif: ${totalRestoreTargetMin} Menit, Total Aktual: ${totalRestoreActualMin} Menit [Status Total: ${isRestoreTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
+            monthGroups.length > 1
+              ? `• Total Target Kumulatif: ${totalRestoreTargetMin} Menit, Total Aktual: ${totalRestoreActualMin} Menit [Status Total Kumulatif: ${isRestoreTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`
+              : `• Total Target Kumulatif: ${totalRestoreTargetMin} Menit, Total Aktual: ${totalRestoreActualMin} Menit [Status Total: ${isRestoreTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Kinerja Restore Time (RST) x 15%',
             `• Hasil perhitungan Kinerja Restore Time (RST): ${restoreScore.toFixed(2)}%`
           ),
@@ -2600,16 +3390,15 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableResolution,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Resolution Time dan telah di-approve User',
-            `• Total Target Kumulatif: ${totalResolutionTargetMin} Menit, Total Aktual: ${totalResolutionActualMin} Menit [Status Total: ${isResolutionTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
+            monthGroups.length > 1
+              ? `• Total Target Kumulatif: ${totalResolutionTargetMin} Menit, Total Aktual: ${totalResolutionActualMin} Menit [Status Total Kumulatif: ${isResolutionTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`
+              : `• Total Target Kumulatif: ${totalResolutionTargetMin} Menit, Total Aktual: ${totalResolutionActualMin} Menit [Status Total: ${isResolutionTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Kinerja Resolution Time (RSP) X 15%',
             `• Hasil perhitungan Kinerja Resolution Time (RSP): ${resolutionScore.toFixed(2)}%`
           ),
 
-          // Section 5: Evidence
-          createHeading('5. EVIDENCE BUKTI FOTO DOKUMENTASI (4-STEP SLA/SLG)'),
-          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
-          tableEvidence,
-          new Paragraph({ spacing: { after: 200 } }),
+          // Section 5: Evidence (Dipisahkan Per Bulan jika Multi-Bulan)
+          ...evidenceDocxElements,
         ],
       },
     ],

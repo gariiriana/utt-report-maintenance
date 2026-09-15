@@ -1482,9 +1482,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 type="button"
                                 onClick={() => setIsRecapModalOpen(true)}
                                 className="w-full sm:w-auto px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer shrink-0"
+                                title="Rekapitulasi SLA: Export Word & Excel per Tanggal & Bulan"
                             >
                                 <FileText className="w-4 h-4" />
-                                <span>Rekap SLA Bulanan</span>
+                                <span>Rekap SLA (Per Tgl &amp; Bulan)</span>
                             </button>
                         )}
                     </div>
@@ -1880,9 +1881,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                             type="button"
                                             onClick={() => setIsRecapModalOpen(true)}
                                             className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
+                                            title="Rekapitulasi SLA: Export Word & Excel per Tanggal & Bulan"
                                         >
                                             <FileText className="w-4 h-4" />
-                                            Rekap SLA Bulanan
+                                            Rekap SLA (Per Tgl &amp; Bulan)
                                         </button>
                                     )}
                                 </div>

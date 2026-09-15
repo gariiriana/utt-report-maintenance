@@ -814,7 +814,82 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     }
   };
 
-  // Pre-calculate compliance numbers
+  // -------------------------------------------------------------
+  // GROUPING PER BULAN (Untuk pemisahan multi-bulan + grand total kumulatif)
+  // -------------------------------------------------------------
+  const INDO_MONTH_NAMES = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  interface MonthGroup {
+    monthKey: string;
+    monthLabel: string;
+    reports: any[];
+    startIndex: number;
+    respMCount: number;
+    onsiteMCount: number;
+    restoreMCount: number;
+    resolutionMCount: number;
+    respScore: number;
+    onsiteScore: number;
+    restoreScore: number;
+    resolutionScore: number;
+    totalScore: number;
+  }
+
+  const monthGroups: MonthGroup[] = [];
+  reports.forEach((r, idx) => {
+    const ts = parseReportTime(r);
+    const d = ts > 0 ? new Date(ts) : new Date();
+    const yyyy = d.getFullYear();
+    const mm = d.getMonth();
+    const monthKey = `${yyyy}-${String(mm + 1).padStart(2, '0')}`;
+    const monthLabel = `${INDO_MONTH_NAMES[mm]} ${yyyy}`;
+
+    let grp = monthGroups.find(g => g.monthKey === monthKey);
+    if (!grp) {
+      grp = {
+        monthKey,
+        monthLabel,
+        reports: [],
+        startIndex: idx,
+        respMCount: 0,
+        onsiteMCount: 0,
+        restoreMCount: 0,
+        resolutionMCount: 0,
+        respScore: 0,
+        onsiteScore: 0,
+        restoreScore: 0,
+        resolutionScore: 0,
+        totalScore: 0,
+      };
+      monthGroups.push(grp);
+    }
+    grp.reports.push(r);
+  });
+
+  monthGroups.forEach((grp) => {
+    const count = grp.reports.length;
+    grp.respMCount = grp.reports.filter(r => r.responseComply !== false && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true)).length;
+    grp.onsiteMCount = grp.reports.filter(r => r.onsiteComply !== false && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true)).length;
+    grp.restoreMCount = grp.reports.filter(r => {
+      const t = 180;
+      return r.restoreComply !== false && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= t : true);
+    }).length;
+    grp.resolutionMCount = grp.reports.filter(r => {
+      const t = r.targetResolutionMin || getTargetByPriority(r.priority);
+      return r.resolutionComply !== false && (r.actualResolutionTimeMin !== undefined ? r.actualResolutionTimeMin <= t : true);
+    }).length;
+
+    grp.respScore = count > 0 ? Number(((grp.respMCount / count) * 5).toFixed(2)) : 5.00;
+    grp.onsiteScore = count > 0 ? Number(((grp.onsiteMCount / count) * 5).toFixed(2)) : 5.00;
+    grp.restoreScore = count > 0 ? Number(((grp.restoreMCount / count) * 15).toFixed(2)) : 15.00;
+    grp.resolutionScore = count > 0 ? Number(((grp.resolutionMCount / count) * 15).toFixed(2)) : 15.00;
+    grp.totalScore = Number((grp.respScore + grp.onsiteScore + grp.restoreScore + grp.resolutionScore).toFixed(2));
+  });
+
+  // Pre-calculate cumulative compliance numbers
   const totalCount = reports.length;
   const respMCount = reports.filter(r => r.responseComply !== false && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true)).length;
   const onsiteMCount = reports.filter(r => r.onsiteComply !== false && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true)).length;
@@ -844,11 +919,11 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   const wsSummary = workbook.addWorksheet('Rekap Kinerja SLG');
   wsSummary.views = [{ showGridLines: true }];
 
-  wsSummary.getCell('A2').value = 'REKAPITULASI PENCAPAIAN KINERJA SLA & SLG';
+  wsSummary.getCell('A2').value = 'REKAPITULASI PENCAPAIAN KINERJA SLA & SLG' + (monthGroups.length > 1 ? ' (KUMULATIF)' : '');
   wsSummary.getCell('A2').font = titleFontLarge;
   wsSummary.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
   wsSummary.getCell('A3').font = titleFontSub;
-  wsSummary.getCell('A4').value = `Periode: ${periodTitle}`;
+  wsSummary.getCell('A4').value = `Periode: ${periodTitle}` + (monthGroups.length > 1 ? ` (Total ${monthGroups.length} Bulan)` : '');
   wsSummary.getCell('A4').font = titleFontSub;
 
   const sumHeaders = ['NO', 'INDIKATOR KINERJA SLA / SLG', 'SATUAN', 'JUMLAH ORDER', 'PENCAPAIAN (M)', '% COMPLY', 'BOBOT', 'HASIL AKHIR SLG'];
@@ -865,13 +940,11 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     cell.border = thinBorder;
   });
 
-  const lastDataRow = 6 + reports.length;
-
   const summaryRowsData = [
-    { no: 1, title: 'Response Time', unit: 'Order', sheet: '1. Response Time', complyCol: 'J', bobot: 0.05, count: totalCount, comply: respMCount, pct: respPct / 100, score: respScore / 100 },
-    { no: 2, title: 'Onsite Time (Principle Onsite)', unit: 'Order', sheet: '2. Onsite Support', complyCol: 'J', bobot: 0.05, count: totalCount, comply: onsiteMCount, pct: onsitePct / 100, score: onsiteScore / 100 },
-    { no: 3, title: 'Restore Time (Service Restore)', unit: 'Order', sheet: '3. Restore Time', complyCol: 'H', bobot: 0.15, count: totalCount, comply: restoreMCount, pct: restorePct / 100, score: restoreScore / 100 },
-    { no: 4, title: 'Resolution Time (Problem Resolution)', unit: 'Order', sheet: '4. Resolution Time', complyCol: 'I', bobot: 0.15, count: totalCount, comply: resolutionMCount, pct: resolutionPct / 100, score: resolutionScore / 100 },
+    { no: 1, title: 'Response Time', unit: 'Order', bobot: 0.05, count: totalCount, comply: respMCount, pct: respPct / 100, score: respScore / 100 },
+    { no: 2, title: 'Onsite Time (Principle Onsite)', unit: 'Order', bobot: 0.05, count: totalCount, comply: onsiteMCount, pct: onsitePct / 100, score: onsiteScore / 100 },
+    { no: 3, title: 'Restore Time (Service Restore)', unit: 'Order', bobot: 0.15, count: totalCount, comply: restoreMCount, pct: restorePct / 100, score: restoreScore / 100 },
+    { no: 4, title: 'Resolution Time (Problem Resolution)', unit: 'Order', bobot: 0.15, count: totalCount, comply: resolutionMCount, pct: resolutionPct / 100, score: resolutionScore / 100 },
   ];
 
   summaryRowsData.forEach((row, idx) => {
@@ -882,8 +955,8 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     wsSummary.getCell(`A${rowNum}`).value = row.no;
     wsSummary.getCell(`B${rowNum}`).value = row.title;
     wsSummary.getCell(`C${rowNum}`).value = row.unit;
-    wsSummary.getCell(`D${rowNum}`).value = { formula: `COUNTA('${row.sheet}'!B7:B${lastDataRow})`, result: row.count };
-    wsSummary.getCell(`E${rowNum}`).value = { formula: `COUNTIF('${row.sheet}'!${row.complyCol}7:${row.complyCol}${lastDataRow},"M")`, result: row.comply };
+    wsSummary.getCell(`D${rowNum}`).value = row.count;
+    wsSummary.getCell(`E${rowNum}`).value = row.comply;
     wsSummary.getCell(`F${rowNum}`).value = { formula: `IF(D${rowNum}>0,E${rowNum}/D${rowNum},1)`, result: row.pct };
     wsSummary.getCell(`F${rowNum}`).numFmt = '0.00%';
     wsSummary.getCell(`G${rowNum}`).value = row.bobot;
@@ -908,7 +981,9 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   rTotal.height = 24;
   wsSummary.mergeCells(`A${totalRowNum}:F${totalRowNum}`);
   const totalLabel = wsSummary.getCell(`A${totalRowNum}`);
-  totalLabel.value = 'TOTAL HASIL AKHIR PENCAPAIAN SLG (MAX 40%):';
+  totalLabel.value = monthGroups.length > 1
+    ? 'TOTAL HASIL AKHIR PENCAPAIAN SLG KUMULATIF (MAX 40%):'
+    : 'TOTAL HASIL AKHIR PENCAPAIAN SLG (MAX 40%):';
   totalLabel.font = { name: 'Calibri', size: 11, bold: true, color: { argb: textDark } };
   totalLabel.alignment = { horizontal: 'right', vertical: 'middle' };
   totalLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
@@ -923,14 +998,122 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   totalVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF08A' } };
   totalVal.border = thinBorder;
 
+  // TABEL KOMPARASI SKOR SLG PER BULAN (Jika Multi-Bulan)
+  if (monthGroups.length > 1) {
+    wsSummary.getRow(13).height = 14;
+
+    wsSummary.getCell('A14').value = 'RINCIAN EVALUASI SKOR SLG PER BULAN';
+    wsSummary.getCell('A14').font = { name: 'Calibri', size: 12, bold: true, color: { argb: textDark } };
+
+    wsSummary.getCell('A15').value = `Perbandingan Pencapaian SLA/SLG Setiap Bulan Periode ${periodTitle}`;
+    wsSummary.getCell('A15').font = { name: 'Calibri', size: 10, italic: true, color: { argb: '475569' } };
+
+    const mbHeaders = ['NO', 'PERIODE BULAN', 'JUMLAH ORDER', 'RESPONSE TIME (5%)', 'ONSITE SUPPORT (5%)', 'RESTORE TIME (15%)', 'RESOLUTION TIME (15%)', 'TOTAL SKOR SLG (40%)'];
+    const r16Mb = wsSummary.getRow(16);
+    r16Mb.height = 24;
+    mbHeaders.forEach((h, i) => {
+      const cell = wsSummary.getCell(`${sumCols[i]}16`);
+      cell.value = h;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+      cell.font = headerFontWhite;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = thinBorder;
+    });
+
+    monthGroups.forEach((grp, idx) => {
+      const rIdx = 17 + idx;
+      const r = wsSummary.getRow(rIdx);
+      r.height = 20;
+
+      wsSummary.getCell(`A${rIdx}`).value = idx + 1;
+      wsSummary.getCell(`B${rIdx}`).value = grp.monthLabel;
+      wsSummary.getCell(`C${rIdx}`).value = `${grp.reports.length} Order`;
+      wsSummary.getCell(`D${rIdx}`).value = grp.respScore / 100;
+      wsSummary.getCell(`D${rIdx}`).numFmt = '0.00%';
+      wsSummary.getCell(`E${rIdx}`).value = grp.onsiteScore / 100;
+      wsSummary.getCell(`E${rIdx}`).numFmt = '0.00%';
+      wsSummary.getCell(`F${rIdx}`).value = grp.restoreScore / 100;
+      wsSummary.getCell(`F${rIdx}`).numFmt = '0.00%';
+      wsSummary.getCell(`G${rIdx}`).value = grp.resolutionScore / 100;
+      wsSummary.getCell(`G${rIdx}`).numFmt = '0.00%';
+      wsSummary.getCell(`H${rIdx}`).value = grp.totalScore / 100;
+      wsSummary.getCell(`H${rIdx}`).numFmt = '0.00%';
+
+      sumCols.forEach(col => {
+        const cell = wsSummary.getCell(`${col}${rIdx}`);
+        cell.font = dataFont;
+        cell.border = thinBorder;
+        cell.alignment = col === 'B' ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        if (col === 'H') {
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '166534' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDF4' } };
+        }
+      });
+    });
+
+    // Grand total row for breakdown
+    const totalMbRow = 17 + monthGroups.length;
+    const rTotMb = wsSummary.getRow(totalMbRow);
+    rTotMb.height = 24;
+
+    wsSummary.mergeCells(`A${totalMbRow}:B${totalMbRow}`);
+    const lblTotMb = wsSummary.getCell(`A${totalMbRow}`);
+    lblTotMb.value = `TOTAL KUMULATIF (${monthGroups.length} BULAN):`;
+    lblTotMb.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+    lblTotMb.alignment = { horizontal: 'right', vertical: 'middle' };
+    lblTotMb.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+    lblTotMb.border = thinBorder;
+
+    wsSummary.getCell(`C${totalMbRow}`).value = `${reports.length} Order`;
+    wsSummary.getCell(`C${totalMbRow}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+    wsSummary.getCell(`C${totalMbRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    wsSummary.getCell(`C${totalMbRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+    wsSummary.getCell(`C${totalMbRow}`).border = thinBorder;
+
+    wsSummary.getCell(`D${totalMbRow}`).value = respScore / 100;
+    wsSummary.getCell(`D${totalMbRow}`).numFmt = '0.00%';
+    wsSummary.getCell(`D${totalMbRow}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+    wsSummary.getCell(`D${totalMbRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    wsSummary.getCell(`D${totalMbRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+    wsSummary.getCell(`D${totalMbRow}`).border = thinBorder;
+
+    wsSummary.getCell(`E${totalMbRow}`).value = onsiteScore / 100;
+    wsSummary.getCell(`E${totalMbRow}`).numFmt = '0.00%';
+    wsSummary.getCell(`E${totalMbRow}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+    wsSummary.getCell(`E${totalMbRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    wsSummary.getCell(`E${totalMbRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+    wsSummary.getCell(`E${totalMbRow}`).border = thinBorder;
+
+    wsSummary.getCell(`F${totalMbRow}`).value = restoreScore / 100;
+    wsSummary.getCell(`F${totalMbRow}`).numFmt = '0.00%';
+    wsSummary.getCell(`F${totalMbRow}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+    wsSummary.getCell(`F${totalMbRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    wsSummary.getCell(`F${totalMbRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+    wsSummary.getCell(`F${totalMbRow}`).border = thinBorder;
+
+    wsSummary.getCell(`G${totalMbRow}`).value = resolutionScore / 100;
+    wsSummary.getCell(`G${totalMbRow}`).numFmt = '0.00%';
+    wsSummary.getCell(`G${totalMbRow}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+    wsSummary.getCell(`G${totalMbRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    wsSummary.getCell(`G${totalMbRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+    wsSummary.getCell(`G${totalMbRow}`).border = thinBorder;
+
+    wsSummary.getCell(`H${totalMbRow}`).value = totalSlgScore / 100;
+    wsSummary.getCell(`H${totalMbRow}`).numFmt = '0.00%';
+    wsSummary.getCell(`H${totalMbRow}`).font = { name: 'Calibri', size: 11, bold: true, color: { argb: '854D0E' } };
+    wsSummary.getCell(`H${totalMbRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    wsSummary.getCell(`H${totalMbRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF08A' } };
+    wsSummary.getCell(`H${totalMbRow}`).border = thinBorder;
+  }
+
   wsSummary.getColumn('A').width = 6;
   wsSummary.getColumn('B').width = 36;
-  wsSummary.getColumn('C').width = 12;
-  wsSummary.getColumn('D').width = 14;
-  wsSummary.getColumn('E').width = 16;
-  wsSummary.getColumn('F').width = 12;
-  wsSummary.getColumn('G').width = 10;
-  wsSummary.getColumn('H').width = 18;
+  wsSummary.getColumn('C').width = 14;
+  wsSummary.getColumn('D').width = 18;
+  wsSummary.getColumn('E').width = 18;
+  wsSummary.getColumn('F').width = 18;
+  wsSummary.getColumn('G').width = 18;
+  wsSummary.getColumn('H').width = 20;
 
   // =========================================================================
   // SHEET 2: 1. RESPONSE TIME
@@ -959,41 +1142,105 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     cell.border = thinBorder;
   });
 
-  reports.forEach((r, idx) => {
-    const rowNum = 7 + idx;
-    const row = wsResp.getRow(rowNum);
-    row.height = 20;
+  let currentRespRow = 7;
+  const respSubtotalRows: number[] = [];
 
-    const comply = (r.responseComply !== false) && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+  monthGroups.forEach((grp) => {
+    if (monthGroups.length > 1) {
+      wsResp.mergeCells(`A${currentRespRow}:K${currentRespRow}`);
+      const bCell = wsResp.getCell(`A${currentRespRow}`);
+      bCell.value = `BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`;
+      bCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+      bCell.font = headerFontWhite;
+      bCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      wsResp.getRow(currentRespRow).height = 22;
+      currentRespRow++;
+    }
 
-    wsResp.getCell(`A${rowNum}`).value = idx + 1;
-    wsResp.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
-    wsResp.getCell(`C${rowNum}`).value = r.location || '-';
-    wsResp.getCell(`D${rowNum}`).value = r.picDME || 'On Duty DME';
-    wsResp.getCell(`E${rowNum}`).value = (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE;
-    wsResp.getCell(`F${rowNum}`).value = formatExcelDate(r.timeOrder);
-    wsResp.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeResponse);
-    wsResp.getCell(`H${rowNum}`).value = r.actualResponseTimeMin ?? 0;
-    wsResp.getCell(`I${rowNum}`).value = r.targetResponseMin || 5;
-    wsResp.getCell(`J${rowNum}`).value = { formula: `IF(H${rowNum}<=I${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
-    wsResp.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp';
+    const monthStartDataRow = currentRespRow;
+    grp.reports.forEach((r, lIdx) => {
+      const globalIdx = grp.startIndex + lIdx;
+      const rowNum = currentRespRow;
+      const row = wsResp.getRow(rowNum);
+      row.height = 20;
 
-    respCols.forEach(col => {
-      const cell = wsResp.getCell(`${col}${rowNum}`);
-      cell.font = dataFont;
-      cell.border = thinBorder;
-      cell.alignment = ['B', 'C', 'K'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
-      if (col === 'J') {
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
-      }
+      const comply = (r.responseComply !== false) && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+
+      wsResp.getCell(`A${rowNum}`).value = globalIdx + 1;
+      wsResp.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+      wsResp.getCell(`C${rowNum}`).value = r.location || '-';
+      wsResp.getCell(`D${rowNum}`).value = r.picDME || 'On Duty DME';
+      wsResp.getCell(`E${rowNum}`).value = (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE;
+      wsResp.getCell(`F${rowNum}`).value = formatExcelDate(r.timeOrder);
+      wsResp.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeResponse);
+      wsResp.getCell(`H${rowNum}`).value = r.actualResponseTimeMin ?? 0;
+      wsResp.getCell(`I${rowNum}`).value = r.targetResponseMin || 5;
+      wsResp.getCell(`J${rowNum}`).value = { formula: `IF(H${rowNum}<=I${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
+      wsResp.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp';
+
+      respCols.forEach(col => {
+        const cell = wsResp.getCell(`${col}${rowNum}`);
+        cell.font = dataFont;
+        cell.border = thinBorder;
+        cell.alignment = ['B', 'C', 'K'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        if (col === 'J') {
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+        }
+      });
+      currentRespRow++;
     });
+
+    if (monthGroups.length > 1) {
+      const subRowNum = currentRespRow;
+      respSubtotalRows.push(subRowNum);
+      const row = wsResp.getRow(subRowNum);
+      row.height = 22;
+
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualResponseTimeMin ?? 0), 0);
+      const mTarget = grp.reports.reduce((sum, r) => sum + (r.targetResponseMin || 5), 0);
+      const mComply = mActual <= mTarget;
+      const monthEndDataRow = subRowNum - 1;
+
+      wsResp.mergeCells(`A${subRowNum}:G${subRowNum}`);
+      const lblSub = wsResp.getCell(`A${subRowNum}`);
+      lblSub.value = `Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`;
+      lblSub.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '334155' } };
+      lblSub.alignment = { horizontal: 'right', vertical: 'middle' };
+      lblSub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+      wsResp.getCell(`H${subRowNum}`).value = { formula: `SUM(H${monthStartDataRow}:H${monthEndDataRow})`, result: mActual };
+      wsResp.getCell(`H${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsResp.getCell(`H${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsResp.getCell(`H${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsResp.getCell(`I${subRowNum}`).value = { formula: `SUM(I${monthStartDataRow}:I${monthEndDataRow})`, result: mTarget };
+      wsResp.getCell(`I${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsResp.getCell(`I${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsResp.getCell(`I${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsResp.getCell(`J${subRowNum}`).value = { formula: `IF(H${subRowNum}<=I${subRowNum},"M","TM")`, result: mComply ? 'M' : 'TM' };
+      wsResp.getCell(`J${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsResp.getCell(`J${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsResp.getCell(`J${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      wsResp.getCell(`K${subRowNum}`).value = { formula: `IF(J${subRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: mComply ? 'Memenuhi' : 'Tidak Memenuhi' };
+      wsResp.getCell(`K${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsResp.getCell(`K${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsResp.getCell(`K${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      respCols.forEach(col => {
+        wsResp.getCell(`${col}${subRowNum}`).border = thinBorder;
+      });
+
+      currentRespRow++;
+    }
   });
 
   // TOTAL ROW: Response Time
-  const totalRespRowNum = 7 + reports.length;
+  const totalRespRowNum = currentRespRow;
   const rTotalResp = wsResp.getRow(totalRespRowNum);
-  rTotalResp.height = 22;
+  rTotalResp.height = 24;
 
   const totalRespActualMin = reports.reduce((sum, r) => sum + (r.actualResponseTimeMin ?? 0), 0);
   const totalRespTargetMin = reports.reduce((sum, r) => sum + (r.targetResponseMin || 5), 0);
@@ -1001,17 +1248,26 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
 
   wsResp.mergeCells(`A${totalRespRowNum}:G${totalRespRowNum}`);
   const lblResp = wsResp.getCell(`A${totalRespRowNum}`);
-  lblResp.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblResp.value = monthGroups.length > 1
+    ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+    : `TOTAL (${reports.length} Order Tiket):`;
   lblResp.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   lblResp.alignment = { horizontal: 'right', vertical: 'middle' };
-  lblResp.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+  lblResp.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'CBD5E1' } };
 
-  wsResp.getCell(`H${totalRespRowNum}`).value = { formula: `SUM(H7:H${lastDataRow})`, result: totalRespActualMin };
+  const formulaRespH = monthGroups.length > 1
+    ? `SUM(${respSubtotalRows.map(r => `H${r}`).join(',')})`
+    : `SUM(H7:H${totalRespRowNum - 1})`;
+  const formulaRespI = monthGroups.length > 1
+    ? `SUM(${respSubtotalRows.map(r => `I${r}`).join(',')})`
+    : `SUM(I7:I${totalRespRowNum - 1})`;
+
+  wsResp.getCell(`H${totalRespRowNum}`).value = { formula: formulaRespH, result: totalRespActualMin };
   wsResp.getCell(`H${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsResp.getCell(`H${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsResp.getCell(`H${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsResp.getCell(`I${totalRespRowNum}`).value = { formula: `SUM(I7:I${lastDataRow})`, result: totalRespTargetMin };
+  wsResp.getCell(`I${totalRespRowNum}`).value = { formula: formulaRespI, result: totalRespTargetMin };
   wsResp.getCell(`I${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsResp.getCell(`I${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsResp.getCell(`I${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
@@ -1071,41 +1327,105 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     cell.border = thinBorder;
   });
 
-  reports.forEach((r, idx) => {
-    const rowNum = 7 + idx;
-    const row = wsOnsite.getRow(rowNum);
-    row.height = 20;
+  let currentOnsiteRow = 7;
+  const onsiteSubtotalRows: number[] = [];
 
-    const comply = (r.onsiteComply !== false) && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+  monthGroups.forEach((grp) => {
+    if (monthGroups.length > 1) {
+      wsOnsite.mergeCells(`A${currentOnsiteRow}:K${currentOnsiteRow}`);
+      const bCell = wsOnsite.getCell(`A${currentOnsiteRow}`);
+      bCell.value = `BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`;
+      bCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+      bCell.font = headerFontWhite;
+      bCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      wsOnsite.getRow(currentOnsiteRow).height = 22;
+      currentOnsiteRow++;
+    }
 
-    wsOnsite.getCell(`A${rowNum}`).value = idx + 1;
-    wsOnsite.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
-    wsOnsite.getCell(`C${rowNum}`).value = r.location || '-';
-    wsOnsite.getCell(`D${rowNum}`).value = r.picDME || 'On Duty DME';
-    wsOnsite.getCell(`E${rowNum}`).value = (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE;
-    wsOnsite.getCell(`F${rowNum}`).value = formatExcelDate(r.timeOrder);
-    wsOnsite.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeOnsite);
-    wsOnsite.getCell(`H${rowNum}`).value = r.actualOnsiteTimeMin ?? 0;
-    wsOnsite.getCell(`I${rowNum}`).value = r.targetOnsiteMin || 120;
-    wsOnsite.getCell(`J${rowNum}`).value = { formula: `IF(H${rowNum}<=I${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
-    wsOnsite.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp / Tiket';
+    const monthStartDataRow = currentOnsiteRow;
+    grp.reports.forEach((r, lIdx) => {
+      const globalIdx = grp.startIndex + lIdx;
+      const rowNum = currentOnsiteRow;
+      const row = wsOnsite.getRow(rowNum);
+      row.height = 20;
 
-    onsiteCols.forEach(col => {
-      const cell = wsOnsite.getCell(`${col}${rowNum}`);
-      cell.font = dataFont;
-      cell.border = thinBorder;
-      cell.alignment = ['B', 'C', 'K'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
-      if (col === 'J') {
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
-      }
+      const comply = (r.onsiteComply !== false) && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+
+      wsOnsite.getCell(`A${rowNum}`).value = globalIdx + 1;
+      wsOnsite.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+      wsOnsite.getCell(`C${rowNum}`).value = r.location || '-';
+      wsOnsite.getCell(`D${rowNum}`).value = r.picDME || 'On Duty DME';
+      wsOnsite.getCell(`E${rowNum}`).value = (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE;
+      wsOnsite.getCell(`F${rowNum}`).value = formatExcelDate(r.timeOrder);
+      wsOnsite.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeOnsite);
+      wsOnsite.getCell(`H${rowNum}`).value = r.actualOnsiteTimeMin ?? 0;
+      wsOnsite.getCell(`I${rowNum}`).value = r.targetOnsiteMin || 120;
+      wsOnsite.getCell(`J${rowNum}`).value = { formula: `IF(H${rowNum}<=I${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
+      wsOnsite.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp / Tiket';
+
+      onsiteCols.forEach(col => {
+        const cell = wsOnsite.getCell(`${col}${rowNum}`);
+        cell.font = dataFont;
+        cell.border = thinBorder;
+        cell.alignment = ['B', 'C', 'K'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        if (col === 'J') {
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+        }
+      });
+      currentOnsiteRow++;
     });
+
+    if (monthGroups.length > 1) {
+      const subRowNum = currentOnsiteRow;
+      onsiteSubtotalRows.push(subRowNum);
+      const row = wsOnsite.getRow(subRowNum);
+      row.height = 22;
+
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualOnsiteTimeMin ?? 0), 0);
+      const mTarget = grp.reports.reduce((sum, r) => sum + (r.targetOnsiteMin || 120), 0);
+      const mComply = mActual <= mTarget;
+      const monthEndDataRow = subRowNum - 1;
+
+      wsOnsite.mergeCells(`A${subRowNum}:G${subRowNum}`);
+      const lblSub = wsOnsite.getCell(`A${subRowNum}`);
+      lblSub.value = `Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`;
+      lblSub.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '334155' } };
+      lblSub.alignment = { horizontal: 'right', vertical: 'middle' };
+      lblSub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+      wsOnsite.getCell(`H${subRowNum}`).value = { formula: `SUM(H${monthStartDataRow}:H${monthEndDataRow})`, result: mActual };
+      wsOnsite.getCell(`H${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsOnsite.getCell(`H${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsOnsite.getCell(`H${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsOnsite.getCell(`I${subRowNum}`).value = { formula: `SUM(I${monthStartDataRow}:I${monthEndDataRow})`, result: mTarget };
+      wsOnsite.getCell(`I${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsOnsite.getCell(`I${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsOnsite.getCell(`I${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsOnsite.getCell(`J${subRowNum}`).value = { formula: `IF(H${subRowNum}<=I${subRowNum},"M","TM")`, result: mComply ? 'M' : 'TM' };
+      wsOnsite.getCell(`J${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsOnsite.getCell(`J${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsOnsite.getCell(`J${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      wsOnsite.getCell(`K${subRowNum}`).value = { formula: `IF(J${subRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: mComply ? 'Memenuhi' : 'Tidak Memenuhi' };
+      wsOnsite.getCell(`K${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsOnsite.getCell(`K${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsOnsite.getCell(`K${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      onsiteCols.forEach(col => {
+        wsOnsite.getCell(`${col}${subRowNum}`).border = thinBorder;
+      });
+
+      currentOnsiteRow++;
+    }
   });
 
   // TOTAL ROW: Onsite Support
-  const totalOnsiteRowNum = 7 + reports.length;
+  const totalOnsiteRowNum = currentOnsiteRow;
   const rTotalOnsite = wsOnsite.getRow(totalOnsiteRowNum);
-  rTotalOnsite.height = 22;
+  rTotalOnsite.height = 24;
 
   const totalOnsiteActualMin = reports.reduce((sum, r) => sum + (r.actualOnsiteTimeMin ?? 0), 0);
   const totalOnsiteTargetMin = reports.reduce((sum, r) => sum + (r.targetOnsiteMin || 120), 0);
@@ -1113,17 +1433,26 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
 
   wsOnsite.mergeCells(`A${totalOnsiteRowNum}:G${totalOnsiteRowNum}`);
   const lblOnsite = wsOnsite.getCell(`A${totalOnsiteRowNum}`);
-  lblOnsite.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblOnsite.value = monthGroups.length > 1
+    ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+    : `TOTAL (${reports.length} Order Tiket):`;
   lblOnsite.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   lblOnsite.alignment = { horizontal: 'right', vertical: 'middle' };
-  lblOnsite.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+  lblOnsite.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'CBD5E1' } };
 
-  wsOnsite.getCell(`H${totalOnsiteRowNum}`).value = { formula: `SUM(H7:H${lastDataRow})`, result: totalOnsiteActualMin };
+  const formulaOnsiteH = monthGroups.length > 1
+    ? `SUM(${onsiteSubtotalRows.map(r => `H${r}`).join(',')})`
+    : `SUM(H7:H${totalOnsiteRowNum - 1})`;
+  const formulaOnsiteI = monthGroups.length > 1
+    ? `SUM(${onsiteSubtotalRows.map(r => `I${r}`).join(',')})`
+    : `SUM(I7:I${totalOnsiteRowNum - 1})`;
+
+  wsOnsite.getCell(`H${totalOnsiteRowNum}`).value = { formula: formulaOnsiteH, result: totalOnsiteActualMin };
   wsOnsite.getCell(`H${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsOnsite.getCell(`H${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell(`H${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsOnsite.getCell(`I${totalOnsiteRowNum}`).value = { formula: `SUM(I7:I${lastDataRow})`, result: totalOnsiteTargetMin };
+  wsOnsite.getCell(`I${totalOnsiteRowNum}`).value = { formula: formulaOnsiteI, result: totalOnsiteTargetMin };
   wsOnsite.getCell(`I${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsOnsite.getCell(`I${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell(`I${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
@@ -1183,40 +1512,104 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     cell.border = thinBorder;
   });
 
-  reports.forEach((r, idx) => {
-    const rowNum = 7 + idx;
-    const row = wsRestore.getRow(rowNum);
-    row.height = 20;
+  let currentRestoreRow = 7;
+  const restoreSubtotalRows: number[] = [];
 
-    const targetRST = 180; // Target Komitmen Restore Time selalu 3 Jam (180 Menit)
-    const comply = (r.restoreComply !== false) && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= targetRST : true);
+  monthGroups.forEach((grp) => {
+    if (monthGroups.length > 1) {
+      wsRestore.mergeCells(`A${currentRestoreRow}:I${currentRestoreRow}`);
+      const bCell = wsRestore.getCell(`A${currentRestoreRow}`);
+      bCell.value = `BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`;
+      bCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+      bCell.font = headerFontWhite;
+      bCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      wsRestore.getRow(currentRestoreRow).height = 22;
+      currentRestoreRow++;
+    }
 
-    wsRestore.getCell(`A${rowNum}`).value = idx + 1;
-    wsRestore.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
-    wsRestore.getCell(`C${rowNum}`).value = r.location || '-';
-    wsRestore.getCell(`D${rowNum}`).value = formatExcelDate(r.startOrder || r.timeOrder);
-    wsRestore.getCell(`E${rowNum}`).value = formatExcelDate(r.finishOrder);
-    wsRestore.getCell(`F${rowNum}`).value = r.actualRestoreTimeMin ?? 0;
-    wsRestore.getCell(`G${rowNum}`).value = targetRST;
-    wsRestore.getCell(`H${rowNum}`).value = { formula: `IF(F${rowNum}<=G${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
-    wsRestore.getCell(`I${rowNum}`).value = r.remark || 'Perbaikan corrective restore service';
+    const monthStartDataRow = currentRestoreRow;
+    grp.reports.forEach((r, lIdx) => {
+      const globalIdx = grp.startIndex + lIdx;
+      const rowNum = currentRestoreRow;
+      const row = wsRestore.getRow(rowNum);
+      row.height = 20;
 
-    restCols.forEach(col => {
-      const cell = wsRestore.getCell(`${col}${rowNum}`);
-      cell.font = dataFont;
-      cell.border = thinBorder;
-      cell.alignment = ['B', 'C', 'I'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
-      if (col === 'H') {
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
-      }
+      const targetRST = 180;
+      const comply = (r.restoreComply !== false) && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= targetRST : true);
+
+      wsRestore.getCell(`A${rowNum}`).value = globalIdx + 1;
+      wsRestore.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+      wsRestore.getCell(`C${rowNum}`).value = r.location || '-';
+      wsRestore.getCell(`D${rowNum}`).value = formatExcelDate(r.startOrder || r.timeOrder);
+      wsRestore.getCell(`E${rowNum}`).value = formatExcelDate(r.finishOrder);
+      wsRestore.getCell(`F${rowNum}`).value = r.actualRestoreTimeMin ?? 0;
+      wsRestore.getCell(`G${rowNum}`).value = targetRST;
+      wsRestore.getCell(`H${rowNum}`).value = { formula: `IF(F${rowNum}<=G${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
+      wsRestore.getCell(`I${rowNum}`).value = r.actionTaken || r.remark || 'Perbaikan corrective restore service';
+
+      restCols.forEach(col => {
+        const cell = wsRestore.getCell(`${col}${rowNum}`);
+        cell.font = dataFont;
+        cell.border = thinBorder;
+        cell.alignment = ['B', 'C', 'I'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        if (col === 'H') {
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+        }
+      });
+      currentRestoreRow++;
     });
+
+    if (monthGroups.length > 1) {
+      const subRowNum = currentRestoreRow;
+      restoreSubtotalRows.push(subRowNum);
+      const row = wsRestore.getRow(subRowNum);
+      row.height = 22;
+
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin ?? 0), 0);
+      const mTarget = grp.reports.reduce((sum) => sum + 180, 0);
+      const mComply = mActual <= mTarget;
+      const monthEndDataRow = subRowNum - 1;
+
+      wsRestore.mergeCells(`A${subRowNum}:E${subRowNum}`);
+      const lblSub = wsRestore.getCell(`A${subRowNum}`);
+      lblSub.value = `Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`;
+      lblSub.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '334155' } };
+      lblSub.alignment = { horizontal: 'right', vertical: 'middle' };
+      lblSub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+      wsRestore.getCell(`F${subRowNum}`).value = { formula: `SUM(F${monthStartDataRow}:F${monthEndDataRow})`, result: mActual };
+      wsRestore.getCell(`F${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsRestore.getCell(`F${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsRestore.getCell(`F${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsRestore.getCell(`G${subRowNum}`).value = { formula: `SUM(G${monthStartDataRow}:G${monthEndDataRow})`, result: mTarget };
+      wsRestore.getCell(`G${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsRestore.getCell(`G${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsRestore.getCell(`G${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsRestore.getCell(`H${subRowNum}`).value = { formula: `IF(F${subRowNum}<=G${subRowNum},"M","TM")`, result: mComply ? 'M' : 'TM' };
+      wsRestore.getCell(`H${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsRestore.getCell(`H${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsRestore.getCell(`H${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      wsRestore.getCell(`I${subRowNum}`).value = { formula: `IF(H${subRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: mComply ? 'Memenuhi' : 'Tidak Memenuhi' };
+      wsRestore.getCell(`I${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsRestore.getCell(`I${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsRestore.getCell(`I${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      restCols.forEach(col => {
+        wsRestore.getCell(`${col}${subRowNum}`).border = thinBorder;
+      });
+
+      currentRestoreRow++;
+    }
   });
 
   // TOTAL ROW: Restore Time
-  const totalRestoreRowNum = 7 + reports.length;
+  const totalRestoreRowNum = currentRestoreRow;
   const rTotalRestore = wsRestore.getRow(totalRestoreRowNum);
-  rTotalRestore.height = 22;
+  rTotalRestore.height = 24;
 
   const totalRestoreActualMin = reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin ?? 0), 0);
   const totalRestoreTargetMin = reports.reduce((sum) => sum + 180, 0);
@@ -1224,17 +1617,26 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
 
   wsRestore.mergeCells(`A${totalRestoreRowNum}:E${totalRestoreRowNum}`);
   const lblRestore = wsRestore.getCell(`A${totalRestoreRowNum}`);
-  lblRestore.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblRestore.value = monthGroups.length > 1
+    ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+    : `TOTAL (${reports.length} Order Tiket):`;
   lblRestore.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   lblRestore.alignment = { horizontal: 'right', vertical: 'middle' };
-  lblRestore.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+  lblRestore.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'CBD5E1' } };
 
-  wsRestore.getCell(`F${totalRestoreRowNum}`).value = { formula: `SUM(F7:F${lastDataRow})`, result: totalRestoreActualMin };
+  const formulaRestoreF = monthGroups.length > 1
+    ? `SUM(${restoreSubtotalRows.map(r => `F${r}`).join(',')})`
+    : `SUM(F7:F${totalRestoreRowNum - 1})`;
+  const formulaRestoreG = monthGroups.length > 1
+    ? `SUM(${restoreSubtotalRows.map(r => `G${r}`).join(',')})`
+    : `SUM(G7:G${totalRestoreRowNum - 1})`;
+
+  wsRestore.getCell(`F${totalRestoreRowNum}`).value = { formula: formulaRestoreF, result: totalRestoreActualMin };
   wsRestore.getCell(`F${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsRestore.getCell(`F${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell(`F${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsRestore.getCell(`G${totalRestoreRowNum}`).value = { formula: `SUM(G7:G${lastDataRow})`, result: totalRestoreTargetMin };
+  wsRestore.getCell(`G${totalRestoreRowNum}`).value = { formula: formulaRestoreG, result: totalRestoreTargetMin };
   wsRestore.getCell(`G${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsRestore.getCell(`G${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell(`G${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
@@ -1292,41 +1694,105 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     cell.border = thinBorder;
   });
 
-  reports.forEach((r, idx) => {
-    const rowNum = 7 + idx;
-    const row = wsReso.getRow(rowNum);
-    row.height = 20;
+  let currentResoRow = 7;
+  const resoSubtotalRows: number[] = [];
 
-    const targetRSP = r.targetResolutionMin || getTargetByPriority(r.priority);
-    const comply = (r.resolutionComply !== false) && (r.actualResolutionTimeMin !== undefined ? r.actualResolutionTimeMin <= targetRSP : true);
+  monthGroups.forEach((grp) => {
+    if (monthGroups.length > 1) {
+      wsReso.mergeCells(`A${currentResoRow}:J${currentResoRow}`);
+      const bCell = wsReso.getCell(`A${currentResoRow}`);
+      bCell.value = `BULAN: ${grp.monthLabel.toUpperCase()} (${grp.reports.length} Order Tiket)`;
+      bCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+      bCell.font = headerFontWhite;
+      bCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      wsReso.getRow(currentResoRow).height = 22;
+      currentResoRow++;
+    }
 
-    wsReso.getCell(`A${rowNum}`).value = idx + 1;
-    wsReso.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
-    wsReso.getCell(`C${rowNum}`).value = r.priority || 'Medium';
-    wsReso.getCell(`D${rowNum}`).value = r.location || '-';
-    wsReso.getCell(`E${rowNum}`).value = formatExcelDate(r.startOrder || r.timeOrder);
-    wsReso.getCell(`F${rowNum}`).value = formatExcelDate(r.finishOrder);
-    wsReso.getCell(`G${rowNum}`).value = r.actualResolutionTimeMin ?? 0;
-    wsReso.getCell(`H${rowNum}`).value = targetRSP;
-    wsReso.getCell(`I${rowNum}`).value = { formula: `IF(G${rowNum}<=H${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
-    wsReso.getCell(`J${rowNum}`).value = r.resolutionRemark || r.remark || 'Troubleshooting terselesaikan penuh';
+    const monthStartDataRow = currentResoRow;
+    grp.reports.forEach((r, lIdx) => {
+      const globalIdx = grp.startIndex + lIdx;
+      const rowNum = currentResoRow;
+      const row = wsReso.getRow(rowNum);
+      row.height = 20;
 
-    resoCols.forEach(col => {
-      const cell = wsReso.getCell(`${col}${rowNum}`);
-      cell.font = dataFont;
-      cell.border = thinBorder;
-      cell.alignment = ['B', 'D', 'J'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
-      if (col === 'I') {
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
-      }
+      const targetRSP = r.targetResolutionMin || getTargetByPriority(r.priority);
+      const comply = (r.resolutionComply !== false) && (r.actualResolutionTimeMin !== undefined ? r.actualResolutionTimeMin <= targetRSP : true);
+
+      wsReso.getCell(`A${rowNum}`).value = globalIdx + 1;
+      wsReso.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+      wsReso.getCell(`C${rowNum}`).value = r.priority || 'Medium';
+      wsReso.getCell(`D${rowNum}`).value = r.location || '-';
+      wsReso.getCell(`E${rowNum}`).value = formatExcelDate(r.startOrder || r.timeOrder);
+      wsReso.getCell(`F${rowNum}`).value = formatExcelDate(r.finishOrder);
+      wsReso.getCell(`G${rowNum}`).value = r.actualResolutionTimeMin ?? 0;
+      wsReso.getCell(`H${rowNum}`).value = targetRSP;
+      wsReso.getCell(`I${rowNum}`).value = { formula: `IF(G${rowNum}<=H${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };
+      wsReso.getCell(`J${rowNum}`).value = r.resolutionRemark || r.remark || 'Troubleshooting terselesaikan penuh';
+
+      resoCols.forEach(col => {
+        const cell = wsReso.getCell(`${col}${rowNum}`);
+        cell.font = dataFont;
+        cell.border = thinBorder;
+        cell.alignment = ['B', 'D', 'J'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        if (col === 'I') {
+          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+        }
+      });
+      currentResoRow++;
     });
+
+    if (monthGroups.length > 1) {
+      const subRowNum = currentResoRow;
+      resoSubtotalRows.push(subRowNum);
+      const row = wsReso.getRow(subRowNum);
+      row.height = 22;
+
+      const mActual = grp.reports.reduce((sum, r) => sum + (r.actualResolutionTimeMin ?? 0), 0);
+      const mTarget = grp.reports.reduce((sum, r) => sum + (r.targetResolutionMin || getTargetByPriority(r.priority)), 0);
+      const mComply = mActual <= mTarget;
+      const monthEndDataRow = subRowNum - 1;
+
+      wsReso.mergeCells(`A${subRowNum}:F${subRowNum}`);
+      const lblSub = wsReso.getCell(`A${subRowNum}`);
+      lblSub.value = `Subtotal ${grp.monthLabel} (${grp.reports.length} Order):`;
+      lblSub.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '334155' } };
+      lblSub.alignment = { horizontal: 'right', vertical: 'middle' };
+      lblSub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+      wsReso.getCell(`G${subRowNum}`).value = { formula: `SUM(G${monthStartDataRow}:G${monthEndDataRow})`, result: mActual };
+      wsReso.getCell(`G${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsReso.getCell(`G${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsReso.getCell(`G${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsReso.getCell(`H${subRowNum}`).value = { formula: `SUM(H${monthStartDataRow}:H${monthEndDataRow})`, result: mTarget };
+      wsReso.getCell(`H${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+      wsReso.getCell(`H${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsReso.getCell(`H${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+
+      wsReso.getCell(`I${subRowNum}`).value = { formula: `IF(G${subRowNum}<=H${subRowNum},"M","TM")`, result: mComply ? 'M' : 'TM' };
+      wsReso.getCell(`I${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsReso.getCell(`I${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsReso.getCell(`I${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      wsReso.getCell(`J${subRowNum}`).value = { formula: `IF(I${subRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: mComply ? 'Memenuhi' : 'Tidak Memenuhi' };
+      wsReso.getCell(`J${subRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: mComply ? '166534' : '991B1B' } };
+      wsReso.getCell(`J${subRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsReso.getCell(`J${subRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: mComply ? 'DCFCE7' : 'FEE2E2' } };
+
+      resoCols.forEach(col => {
+        wsReso.getCell(`${col}${subRowNum}`).border = thinBorder;
+      });
+
+      currentResoRow++;
+    }
   });
 
   // TOTAL ROW: Resolution Time
-  const totalResoRowNum = 7 + reports.length;
+  const totalResoRowNum = currentResoRow;
   const rTotalReso = wsReso.getRow(totalResoRowNum);
-  rTotalReso.height = 22;
+  rTotalReso.height = 24;
 
   const totalResoActualMin = reports.reduce((sum, r) => sum + (r.actualResolutionTimeMin ?? 0), 0);
   const totalResoTargetMin = reports.reduce((sum, r) => sum + (r.targetResolutionMin || getTargetByPriority(r.priority)), 0);
@@ -1334,17 +1800,26 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
 
   wsReso.mergeCells(`A${totalResoRowNum}:F${totalResoRowNum}`);
   const lblReso = wsReso.getCell(`A${totalResoRowNum}`);
-  lblReso.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblReso.value = monthGroups.length > 1
+    ? `GRAND TOTAL KUMULATIF (${reports.length} Order Tiket - ${monthGroups.length} Bulan):`
+    : `TOTAL (${reports.length} Order Tiket):`;
   lblReso.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   lblReso.alignment = { horizontal: 'right', vertical: 'middle' };
-  lblReso.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+  lblReso.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'CBD5E1' } };
 
-  wsReso.getCell(`G${totalResoRowNum}`).value = { formula: `SUM(G7:G${lastDataRow})`, result: totalResoActualMin };
+  const formulaResoG = monthGroups.length > 1
+    ? `SUM(${resoSubtotalRows.map(r => `G${r}`).join(',')})`
+    : `SUM(G7:G${totalResoRowNum - 1})`;
+  const formulaResoH = monthGroups.length > 1
+    ? `SUM(${resoSubtotalRows.map(r => `H${r}`).join(',')})`
+    : `SUM(H7:H${totalResoRowNum - 1})`;
+
+  wsReso.getCell(`G${totalResoRowNum}`).value = { formula: formulaResoG, result: totalResoActualMin };
   wsReso.getCell(`G${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsReso.getCell(`G${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsReso.getCell(`G${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
 
-  wsReso.getCell(`H${totalResoRowNum}`).value = { formula: `SUM(H7:H${lastDataRow})`, result: totalResoTargetMin };
+  wsReso.getCell(`H${totalResoRowNum}`).value = { formula: formulaResoH, result: totalResoTargetMin };
   wsReso.getCell(`H${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
   wsReso.getCell(`H${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
   wsReso.getCell(`H${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
@@ -1357,7 +1832,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   wsReso.getCell(`J${totalResoRowNum}`).value = { formula: `IF(I${totalResoRowNum}="M","Memenuhi","Tidak Memenuhi")`, result: isResoTotalComply ? 'Memenuhi' : 'Tidak Memenuhi' };
   wsReso.getCell(`J${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isResoTotalComply ? '166534' : '991B1B' } };
   wsReso.getCell(`J${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
-  wsReso.getCell(`J${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isResoTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+  wsReso.getCell(`J${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRespTotalComply ? 'DCFCE7' : 'FEE2E2' } };
 
   resoCols.forEach(col => {
     wsReso.getCell(`${col}${totalResoRowNum}`).border = thinBorder;
@@ -1377,83 +1852,105 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
   addComplyConditionalFormatting(wsReso, `I7:I${totalResoRowNum}`, `J${totalResoRowNum}:J${totalResoRowNum}`);
 
   // =========================================================================
-  // SHEET 6: 5. EVIDENCE BUKTI FOTO
+  // SHEET 5 / EVIDENCE: BUKTI FOTO (Dipisahkan Per Bulan Jika Multi-Bulan)
   // =========================================================================
-  const wsEvidence = workbook.addWorksheet('5. Evidence Foto');
-  wsEvidence.views = [{ showGridLines: true }];
-
-  wsEvidence.getCell('A2').value = '5. EVIDENCE FOTO DOKUMENTASI (4-STEP SLA / SLG)';
-  wsEvidence.getCell('A2').font = titleFontLarge;
-  wsEvidence.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
-  wsEvidence.getCell('A3').font = titleFontSub;
-  wsEvidence.getCell('A4').value = `Periode: ${periodTitle}`;
-  wsEvidence.getCell('A4').font = titleFontSub;
-
   const evHeaders = ['NO', 'ORDER / TIKET', 'BUKTI RESPONSE TIME', 'BUKTI ONSITE SUPPORT', 'BUKTI RESTORE TIME', 'BUKTI RESOLUTION TIME'];
   const evCols = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-  const r6Ev = wsEvidence.getRow(6);
-  r6Ev.height = 24;
-  evHeaders.forEach((h, i) => {
-    const cell = wsEvidence.getCell(`${evCols[i]}6`);
-    cell.value = h;
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
-    cell.font = headerFontWhite;
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = thinBorder;
-  });
+  const createEvidenceWorksheet = (
+    sheetName: string,
+    titleHeader: string,
+    subHeader: string,
+    reportList: any[]
+  ) => {
+    const ws = workbook.addWorksheet(sheetName);
+    ws.views = [{ showGridLines: true }];
 
-  let currentEvRow = 7;
-  reports.forEach((r, idx) => {
-    const startRow = currentEvRow;
-    const endRow = currentEvRow + 4; // 5 Excel rows per ticket for image height
+    ws.getCell('A2').value = titleHeader;
+    ws.getCell('A2').font = titleFontLarge;
+    ws.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+    ws.getCell('A3').font = titleFontSub;
+    ws.getCell('A4').value = subHeader;
+    ws.getCell('A4').font = titleFontSub;
 
-    // Set row heights
-    for (let rIdx = startRow; rIdx <= endRow; rIdx++) {
-      wsEvidence.getRow(rIdx).height = 28;
-    }
+    const r6 = ws.getRow(6);
+    r6.height = 24;
+    evHeaders.forEach((h, i) => {
+      const cell = ws.getCell(`${evCols[i]}6`);
+      cell.value = h;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+      cell.font = headerFontWhite;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = thinBorder;
+    });
 
-    // Merge NO and Ticket Name
-    wsEvidence.mergeCells(`A${startRow}:A${endRow}`);
-    const cellNo = wsEvidence.getCell(`A${startRow}`);
-    cellNo.value = idx + 1;
-    cellNo.font = headerFontDark;
-    cellNo.alignment = { horizontal: 'center', vertical: 'middle' };
-    cellNo.border = thinBorder;
+    let currentEvRow = 7;
+    reportList.forEach((r, lIdx) => {
+      const displayNo = lIdx + 1;
+      const startRow = currentEvRow;
+      const endRow = currentEvRow + 4; // 5 Excel rows per ticket for image height
 
-    wsEvidence.mergeCells(`B${startRow}:B${endRow}`);
-    const cellTicket = wsEvidence.getCell(`B${startRow}`);
-    cellTicket.value = `${r.ticketName || r.issue || 'WO'}\n(${r.priority || 'Medium'})\n${r.location || '-'}`;
-    cellTicket.font = headerFontDark;
-    cellTicket.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    cellTicket.border = thinBorder;
+      for (let rIdx = startRow; rIdx <= endRow; rIdx++) {
+        ws.getRow(rIdx).height = 28;
+      }
 
-    // Photos
-    const respPhotos = getPhotos(r, 'photosResponse', 'photoResponse');
-    const onsitePhotos = getPhotos(r, 'photosOnsite', 'photoOnsite');
-    const restPhotos = getPhotos(r, 'photosRestore', 'photoRestore');
-    const resoPhotos = getPhotos(r, 'photosResolution', 'photoResolution');
+      ws.mergeCells(`A${startRow}:A${endRow}`);
+      const cellNo = ws.getCell(`A${startRow}`);
+      cellNo.value = displayNo;
+      cellNo.font = headerFontDark;
+      cellNo.alignment = { horizontal: 'center', vertical: 'middle' };
+      cellNo.border = thinBorder;
 
-    if (respPhotos[0]) addExcelImageSafe(respPhotos[0], `C${startRow}:C${endRow}`, wsEvidence);
-    if (onsitePhotos[0]) addExcelImageSafe(onsitePhotos[0], `D${startRow}:D${endRow}`, wsEvidence);
-    if (restPhotos[0]) addExcelImageSafe(restPhotos[0], `E${startRow}:E${endRow}`, wsEvidence);
-    if (resoPhotos[0]) addExcelImageSafe(resoPhotos[0], `F${startRow}:F${endRow}`, wsEvidence);
+      ws.mergeCells(`B${startRow}:B${endRow}`);
+      const cellTicket = ws.getCell(`B${startRow}`);
+      cellTicket.value = `${r.ticketName || r.issue || 'WO'}\n(${r.priority || 'Medium'})\n${r.location || '-'}`;
+      cellTicket.font = headerFontDark;
+      cellTicket.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cellTicket.border = thinBorder;
 
-    for (let rIdx = startRow; rIdx <= endRow; rIdx++) {
-      evCols.forEach(col => {
-        wsEvidence.getCell(`${col}${rIdx}`).border = thinBorder;
-      });
-    }
+      const respPhotos = getPhotos(r, 'photosResponse', 'photoResponse');
+      const onsitePhotos = getPhotos(r, 'photosOnsite', 'photoOnsite');
+      const restPhotos = getPhotos(r, 'photosRestore', 'photoRestore');
+      const resoPhotos = getPhotos(r, 'photosResolution', 'photoResolution');
 
-    currentEvRow = endRow + 1;
-  });
+      if (respPhotos[0]) addExcelImageSafe(respPhotos[0], `C${startRow}:C${endRow}`, ws);
+      if (onsitePhotos[0]) addExcelImageSafe(onsitePhotos[0], `D${startRow}:D${endRow}`, ws);
+      if (restPhotos[0]) addExcelImageSafe(restPhotos[0], `E${startRow}:E${endRow}`, ws);
+      if (resoPhotos[0]) addExcelImageSafe(resoPhotos[0], `F${startRow}:F${endRow}`, ws);
 
-  wsEvidence.getColumn('A').width = 6;
-  wsEvidence.getColumn('B').width = 24;
-  wsEvidence.getColumn('C').width = 26;
-  wsEvidence.getColumn('D').width = 26;
-  wsEvidence.getColumn('E').width = 26;
-  wsEvidence.getColumn('F').width = 26;
+      for (let rIdx = startRow; rIdx <= endRow; rIdx++) {
+        evCols.forEach(col => {
+          ws.getCell(`${col}${rIdx}`).border = thinBorder;
+        });
+      }
+
+      currentEvRow = endRow + 1;
+    });
+
+    ws.getColumn('A').width = 6;
+    ws.getColumn('B').width = 24;
+    ws.getColumn('C').width = 26;
+    ws.getColumn('D').width = 26;
+    ws.getColumn('E').width = 26;
+    ws.getColumn('F').width = 26;
+  };
+
+  if (monthGroups.length > 1) {
+    monthGroups.forEach((grp, gIdx) => {
+      const cleanMonth = grp.monthLabel.replace(/[\\/?*[\]:]/g, '');
+      const sheetName = `5.${gIdx + 1} Ev ${cleanMonth}`.slice(0, 31);
+      const titleHeader = `5.${gIdx + 1}. EVIDENCE FOTO DOKUMENTASI — BULAN ${grp.monthLabel.toUpperCase()}`;
+      const subHeader = `Bulan: ${grp.monthLabel} (${grp.reports.length} Order Tiket)`;
+      createEvidenceWorksheet(sheetName, titleHeader, subHeader, grp.reports);
+    });
+  } else {
+    createEvidenceWorksheet(
+      '5. Evidence Foto',
+      '5. EVIDENCE FOTO DOKUMENTASI (4-STEP SLA / SLG)',
+      `Periode: ${periodTitle} (${reports.length} Order Tiket)`,
+      reports
+    );
+  }
 
   // Save workbook
   const buffer = await workbook.xlsx.writeBuffer();
