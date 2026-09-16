@@ -2,7 +2,7 @@
 // FILE: frontend/utils/sopEopDocxImport.ts
 // Deskripsi: Engine Parser Berkas Microsoft Word (.docx) untuk SOP & EOP.
 //            Mengekstrak teks, tabel, metadata, langkah kerja bilingual,
-//            dan mengonversinya menjadi objek SOPDocumentData atau EOPDocumentData.
+//            CI equipment, approval, dan seluruh data seksi secara presisi 1:1.
 // ============================================================================
 
 import JSZip from 'jszip';
@@ -12,6 +12,8 @@ import {
   SOPCIEquipmentItem,
   SOPWorkStepItem,
   EOPWorkStepItem,
+  SOPPrerequisiteItem,
+  DocumentSigner,
   DEFAULT_SOP_DATA,
   DEFAULT_EOP_DATA,
   DEFAULT_AFFECTED_SYSTEMS,
@@ -34,224 +36,430 @@ export interface ParsedSopEopResult {
 }
 
 /**
+ * Decode entitas XML / HTML menjadi karakter asli
+ */
+function decodeEntities(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
+/**
  * Membersihkan string XML dan whitespace berlebih
  */
 function cleanText(raw: string): string {
   if (!raw) return '';
-  return raw
+  return decodeEntities(
+    raw
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+}
+
+/**
+ * Mengekstrak teks dwibahasa (English + Indonesian) dari elemen XML (<w:tc> atau <w:p>).
+ * Di berkas DOCX master, teks English dan Indonesian dipisahkan oleh <w:br/> atau </w:p>.
+ */
+function extractBilingualFromXml(elementXml: string): { en: string; id: string } {
+  if (!elementXml) return { en: '', id: '' };
+
+  const withDelim = elementXml
+    .replace(/<w:br\/>/g, '[[BR]]')
+    .replace(/<\/w:p>/g, '[[BR]]')
+    .replace(/<[^>]+>/g, '');
+
+  const lines = decodeEntities(withDelim)
+    .split('[[BR]]')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return { en: '', id: '' };
+  if (lines.length === 1) return { en: lines[0], id: lines[0] };
+
+  // Baris pertama English, baris kedua Indonesian
+  return {
+    en: lines[0],
+    id: lines[1]
+  };
+}
+
+/**
+ * Mengekstrak metadata teks dari dokumen XML secara cerdas dan tahan multiline
+ */
+function extractMetadata(xml: string, fileName: string, isEop: boolean) {
+  const norm = xml
+    .replace(/<w:br\/>/g, '\n')
+    .replace(/<\/w:p>/g, '\n')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+    .replace(/[ \t\f\v]+/g, ' ');
 
-/**
- * Memisahkan teks langkah kerja dwibahasa (English + Bahasa Indonesia)
- */
-function splitBilingualStep(text: string): { en: string; id: string } {
-  if (!text) return { en: '', id: '' };
-  let clean = cleanText(text);
-  // Hapus nomor urut di awal jika ada (misal: "1. ")
-  clean = clean.replace(/^\d+\.\s*/, '');
-
-  // Coba pisahkan berdasarkan kalimat pertama bertanda titik yang diikuti kalimat kedua
-  const m = clean.match(/^([\s\S]*?\.)\s*(?:\d+\.\s*)?([\s\S]*)$/);
-  if (m && m[1] && m[2] && m[2].trim().length > 0) {
-    return {
-      en: m[1].trim(),
-      id: m[2].trim()
-    };
-  }
-
-  return { en: clean, id: clean };
-}
-
-/**
- * Mengekstrak seluruh tabel dari dokumen XML Word
- */
-function extractTablesFromXml(xml: string): string[][][] {
-  const tblXmls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
-  return tblXmls.map((tbl) => {
-    const rows = tbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
-    return rows.map((r) => {
-      const cells = r.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
-      return cells.map(cleanText);
-    });
-  });
-}
-
-/**
- * Mengekstrak metadata teks dari dokumen XML
- */
-function extractMetadata(text: string) {
-  const norm = text.replace(/[ \t\r\f\v]+/g, ' ');
-
-  const getMatch = (pattern: RegExp): string => {
-    const m = norm.match(pattern);
-    return m && m[1] ? m[1].trim() : '';
+  const getMatch = (regex: RegExp): string => {
+    const m = norm.match(regex);
+    return m && m[1] ? decodeEntities(m[1].trim()) : '';
   };
 
-  const titleMatch = getMatch(/Document\s*Title\s*:\s*(.*?)(?:Judul\s*Dokumen|Document\s*Purpose)/i);
-  const purposeEn = getMatch(/Document\s*Purpose\s*:\s*(.*?)(?:Tujuan\s*Dokumen|Work\s*Location)/i);
-  const purposeId = getMatch(/Tujuan\s*Dokumen\s*:\s*(.*?)(?:Work\s*Location|Section|Seksi)/i);
-  const locationEn = getMatch(/Work\s*Location\s*:\s*(.*?)(?:Lokasi\s*Kerja|Section|Seksi)/i);
-  const locationId = getMatch(/Lokasi\s*Kerja\s*:\s*(.*?)(?:Section|Seksi|\n\n)/i);
+  let title = getMatch(/Document\s*Title\s*:\s*([\s\S]*?)(?:Judul\s*Dokumen|Document\s*Purpose)/i);
+  if (title === '-' || !title) {
+    const cleanFn = fileName.replace(/\.docx$/i, '').replace(/[-_]/g, ' ').toUpperCase();
+    if (/trafo|transformer/i.test(fileName) || /transformer/i.test(xml)) {
+      title = isEop
+        ? 'EOP GANGGUAN / PADAM TRANSFORMATOR (TRAFO)'
+        : 'SOP PEMELIHARAAN TRANSFORMATOR (TRAFO)';
+    } else {
+      title = isEop
+        ? cleanFn.includes('EOP')
+          ? cleanFn
+          : `EOP ${cleanFn}`
+        : cleanFn.includes('SOP')
+        ? cleanFn
+        : `SOP ${cleanFn}`;
+    }
+  }
 
-  const author = getMatch(/Author\s*:\s*(.*?)(?:Date\s*of\s*Creation|Penulis)/i);
-  const creationDate = getMatch(/Date\s*of\s*Creation\s*:\s*(.*?)(?:Penulis|Tanggal\s*Pembuatan)/i);
-  const revisionNumber = getMatch(/Revision\s*Number\s*:\s*(.*?)(?:Tanggal\s*Revisi|Nomor\s*Revisi|\n)/i);
-  const revisionDate = getMatch(/Date\s*Revision\s*:\s*(.*?)(?:Revision\s*Number|Nomor\s*Revisi|\n)/i);
+  const purposeEn = getMatch(/Document\s*Purpose\s*:\s*([\s\S]*?)(?:Tujuan\s*Dokumen|Work\s*Location)/i);
+  const purposeId = getMatch(/Tujuan\s*Dokumen\s*:\s*([\s\S]*?)(?:Work\s*Location|Section|Seksi)/i);
+  const locationEn =
+    getMatch(/Work\s*Location\s*:\s*([\s\S]*?)(?:Lokasi\s*Kerja|Section|Seksi)/i) || 'Neutra DC Cikarang';
+  const locationId =
+    getMatch(/Lokasi\s*Kerja\s*:\s*([\s\S]*?)(?:Section|Seksi|\n\n)/i) || 'Neutra DC Cikarang';
+
+  const author =
+    getMatch(/Author\s*:\s*([\s\S]*?)(?:Date\s*of\s*Creation|Penulis)/i) || 'Alif Darmawan';
+  const creationDate =
+    getMatch(/Date\s*of\s*Creation\s*:\s*([\s\S]*?)(?:Penulis|Tanggal\s*Pembuatan)/i) || '07 Sep 2026';
+  const revisionNumber =
+    getMatch(/Revision\s*Number\s*:\s*([\s\S]*?)(?:Tanggal\s*Revisi|Nomor\s*Revisi|Section|Seksi|\n\n)/i) ||
+    '00';
+  const revisionDate =
+    getMatch(
+      /(?:Date\s*Revision|Next\s*Date\s*Revision)\s*:\s*([\s\S]*?)(?:Revision\s*Number|Nomor\s*Revisi|Tanggal\s*Revisi|\n)/i
+    ) || 'N/A';
 
   return {
-    title: titleMatch && titleMatch !== '-' ? titleMatch : '',
-    purposeEn,
-    purposeId,
-    locationEn: locationEn || 'Neutra DC Cikarang',
-    locationId: locationId || 'Neutra DC Cikarang',
-    author: author || 'Alif Darmawan',
-    creationDate: creationDate || '07 Sep 2026',
-    revisionNumber: revisionNumber && revisionNumber !== 'T/A' ? revisionNumber : '',
-    revisionDate: revisionDate && revisionDate !== 'N/A' && revisionDate !== 'T/A' ? revisionDate : ''
+    title,
+    purposeEn: purposeEn || (isEop ? DEFAULT_EOP_DATA.documentPurposeEn : DEFAULT_SOP_DATA.documentPurposeEn),
+    purposeId: purposeId || (isEop ? DEFAULT_EOP_DATA.documentPurposeId : DEFAULT_SOP_DATA.documentPurposeId),
+    locationEn,
+    locationId,
+    author,
+    creationDate,
+    revisionNumber: revisionNumber === 'T/A' || !revisionNumber ? '00' : revisionNumber,
+    revisionDate: revisionDate === 'T/A' || !revisionDate ? 'N/A' : revisionDate
   };
 }
 
 /**
- * Parsing berkas Word SOP (14 Seksi)
+ * Mengekstrak tabel CI Equipment (SOP Seksi 2) dengan penanganan bilingual
+ */
+function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
+  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const ciTbl = tbls.find((t) => t.includes('CI Name') || t.includes('Nama CI'));
+  if (!ciTbl) return [...DEFAULT_SOP_DATA.equipmentList];
+
+  const trs = ciTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const headerIdx = trs.findIndex((tr) => tr.includes('CI Name') || tr.includes('Nama CI'));
+  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+
+  const items = dataRows
+    .map((tr, idx) => {
+      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      if (tcs.length < 3) return null;
+
+      const getLines = (cellXml?: string): string[] => {
+        if (!cellXml) return [];
+        return cellXml
+          .replace(/<w:br\/>/g, '[[BR]]')
+          .replace(/<\/w:p>/g, '[[BR]]')
+          .replace(/<[^>]+>/g, '')
+          .split('[[BR]]')
+          .map((l) => decodeEntities(l).replace(/\s+/g, ' ').trim())
+          .filter(Boolean);
+      };
+
+      const no = parseInt(getLines(tcs[0])[0], 10) || idx + 1;
+      const classId = getLines(tcs[1])[0] || 'TR';
+      const ciName = getLines(tcs[2])[0] || `TRAFO ${idx + 1}`;
+      const ciDescription = getLines(tcs[3])[0] || '';
+      const capacity = getLines(tcs[4])[0] || '2500 kVA';
+      const serialNumber = getLines(tcs[5])[0] || '';
+      const mfd = getLines(tcs[6])[0] || '2021';
+      const productName = getLines(tcs[7])[0] || 'TRAFINDO';
+
+      const modelLines = getLines(tcs[8]);
+      const model =
+        modelLines.length > 1
+          ? `${modelLines[0]} (${modelLines[1]})`
+          : modelLines[0] || 'Dry Type Cast Resin (Tipe Kering)';
+
+      const roomLines = getLines(tcs[9]);
+      const room =
+        roomLines.length > 1
+          ? `${roomLines[0]} (${roomLines[1]})`
+          : roomLines[0] || `Trafo Room ${idx + 1}`;
+
+      return {
+        no,
+        classId,
+        ciName,
+        ciDescription,
+        capacity,
+        serialNumber,
+        mfd,
+        productName,
+        model,
+        room
+      };
+    })
+    .filter(Boolean) as SOPCIEquipmentItem[];
+
+  return items.length > 0 ? items : [...DEFAULT_SOP_DATA.equipmentList];
+}
+
+/**
+ * Mengekstrak Prasyarat / Prerequisites (SOP Seksi 7) secara dwibahasa
+ */
+function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
+  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const prereqTbl = tbls.find(
+    (t) => t.includes('Check PTW is approved') || t.includes('Periksa bahwa PTW')
+  );
+  if (!prereqTbl) return [...DEFAULT_PREREQUISITES];
+
+  const trs = prereqTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const items = trs
+    .map((tr, idx) => {
+      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      if (tcs.length === 0) return null;
+
+      const bilingual = extractBilingualFromXml(tcs[0] || '');
+      if (!bilingual.en && !bilingual.id) return null;
+
+      return {
+        no: idx + 1,
+        requirementEn: bilingual.en,
+        requirementId: bilingual.id,
+        time: tcs[1] ? cleanText(tcs[1]) : '',
+        initial: tcs[2] ? cleanText(tcs[2]) : ''
+      };
+    })
+    .filter(Boolean) as SOPPrerequisiteItem[];
+
+  return items.length > 0 ? items : [...DEFAULT_PREREQUISITES];
+}
+
+/**
+ * Mengekstrak Langkah Kerja SOP (Seksi 10) secara dwibahasa presisi
+ */
+function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
+  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const stepTbl = tbls.find(
+    (t) =>
+      (t.includes('Action') || t.includes('Tindakan')) &&
+      (t.includes('Expected Outcome') || t.includes('Hasil yang Diharapkan'))
+  );
+  if (!stepTbl) return [...DEFAULT_SOP_DATA.workSteps];
+
+  const trs = stepTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const headerIdx = trs.findIndex(
+    (tr) => tr.includes('Expected Outcome') || tr.includes('Hasil yang Diharapkan')
+  );
+  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 2);
+
+  const steps = dataRows
+    .map((tr, idx) => {
+      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      if (tcs.length < 2) return null;
+
+      const action = extractBilingualFromXml(tcs[0] || '');
+      const outcome = extractBilingualFromXml(tcs[1] || '');
+      if (!action.en && !action.id) return null;
+
+      return {
+        no: idx + 1,
+        actionEn: action.en,
+        actionId: action.id,
+        expectedOutcomeEn: outcome.en,
+        expectedOutcomeId: outcome.id,
+        time: tcs[2] ? cleanText(tcs[2]) : '',
+        initial: tcs[3] ? cleanText(tcs[3]) : ''
+      };
+    })
+    .filter(Boolean) as SOPWorkStepItem[];
+
+  return steps.length > 0 ? steps : [...DEFAULT_SOP_DATA.workSteps];
+}
+
+/**
+ * Mengekstrak Langkah Kedaruratan EOP (Seksi 4) secara dwibahasa presisi
+ */
+function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
+  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const stepTbl = tbls.find(
+    (t) =>
+      (t.includes('Action') || t.includes('Tindakan')) &&
+      (t.includes('Expected Outcome') || t.includes('Hasil yang Diharapkan'))
+  );
+  if (!stepTbl) return [...DEFAULT_EOP_DATA.workSteps];
+
+  const trs = stepTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const headerIdx = trs.findIndex(
+    (tr) => tr.includes('Expected Outcome') || tr.includes('Hasil yang Diharapkan')
+  );
+  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+
+  const steps = dataRows
+    .map((tr, idx) => {
+      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      if (tcs.length < 3) return null;
+
+      // Kolom: [No, Action, Expected Outcome, Time, Name]
+      const noStr = cleanText(tcs[0] || '').replace(/\.$/, '');
+      const no = parseInt(noStr, 10) || idx + 1;
+      const action = extractBilingualFromXml(tcs[1] || '');
+      const outcome = extractBilingualFromXml(tcs[2] || '');
+      if (!action.en && !action.id) return null;
+
+      return {
+        no,
+        actionEn: action.en,
+        actionId: action.id,
+        expectedOutcomeEn: outcome.en,
+        expectedOutcomeId: outcome.id,
+        time: tcs[3] ? cleanText(tcs[3]) : '',
+        name: tcs[4] ? cleanText(tcs[4]) : ''
+      };
+    })
+    .filter(Boolean) as EOPWorkStepItem[];
+
+  return steps.length > 0 ? steps : [...DEFAULT_EOP_DATA.workSteps];
+}
+
+/**
+ * Mengekstrak tabel Approval / Pengesahan (4 Pejabat Penandatangan)
+ */
+function parseApprovals(xml: string): DocumentSigner[] {
+  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const appTbl = tbls.find(
+    (t) =>
+      t.includes('Project Manager') ||
+      t.includes('Chief Engineering') ||
+      t.includes('Facility Manager') ||
+      t.includes('Manajer Proyek')
+  );
+  if (!appTbl) return [...DEFAULT_DEFAULT_APPROVERS];
+
+  const trs = appTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const defaultRoles = [
+    { roleEn: 'Project Manager', roleId: 'Manajer Proyek', fallbackName: 'Dwi Tasmiyadi' },
+    { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', fallbackName: 'Habib Mulyana' },
+    { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas', fallbackName: 'Supriyatno' },
+    { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', fallbackName: 'Budi Susanto' }
+  ];
+
+  const approvers: DocumentSigner[] = defaultRoles.map((role, idx) => {
+    const tr = trs[idx];
+    if (!tr) {
+      return {
+        roleEn: role.roleEn,
+        roleId: role.roleId,
+        name: role.fallbackName,
+        date: '',
+        signature: ''
+      };
+    }
+
+    const raw = tr
+      .replace(/<w:br\/>/g, '[[BR]]')
+      .replace(/<\/w:p>/g, '[[BR]]')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    let extractedName = '';
+    const m = raw.match(
+      /(?:Project\s*Manager|Chief\s*Engineering|Facility\s*Manager|Assistant\s*Manager\s*HDC)\s*(.*?)(?:\[\[BR\]\]|Manajer|Kepala|Asisten|$)/i
+    );
+    if (m && m[1]) {
+      extractedName = m[1].replace(/\[\[BR\]\]/g, '').trim();
+    }
+
+    return {
+      roleEn: role.roleEn,
+      roleId: role.roleId,
+      name: extractedName || role.fallbackName,
+      date: '',
+      signature: ''
+    };
+  });
+
+  return approvers;
+}
+
+/**
+ * Parsing berkas Word SOP (14 Seksi) secara komprehensif
  */
 function parseSOPData(xml: string, fileName: string): SOPDocumentData {
-  const textWithBreaks = xml.replace(/<\/w:p>/g, '\n').replace(/<\/w:tr>/g, '\n').replace(/<[^>]+>/g, ' ');
-  const meta = extractMetadata(textWithBreaks);
-  const tables = extractTablesFromXml(xml);
+  const meta = extractMetadata(xml, fileName, false);
+  const equipmentList = parseCIEquipment(xml);
+  const prerequisites = parsePrerequisites(xml);
+  const workSteps = parseSOPWorkSteps(xml);
+  const approvals = parseApprovals(xml);
 
-  // 1. CI Equipment List (Seksi 2)
-  let equipmentList: SOPCIEquipmentItem[] = [];
-  const ciTable = tables.find((t) =>
-    t.some((row) => row.some((c) => c.includes('CI Name') || c.includes('Nama CI')))
+  // Seksi 3: Schedule / Work Information
+  const norm = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  const scheduleDateMatch = norm.match(
+    /SOP\s*Execution\s*Date\s*:\s*(.*?)(?:Reference\s*Ticket|Tanggal\s*Pelaksanaan)/i
+  );
+  const ticketMatch = norm.match(
+    /Reference\s*Ticket\s*Number\s*:\s*(.*?)(?:Tanggal\s*Pelaksanaan|Executed\s*by)/i
+  );
+  const executedMatch = norm.match(
+    /Executed\s*by\s*\(Name\)\s*:\s*(.*?)(?:Job\s*title|Dilaksanakan)/i
   );
 
-  if (ciTable && ciTable.length > 1) {
-    const dataRows = ciTable.slice(1);
-    equipmentList = dataRows
-      .filter((r) => r.length >= 4 && r.some((c) => c.trim().length > 0))
-      .map((r, idx) => ({
-        no: parseInt(r[0], 10) || idx + 1,
-        classId: r[1] || 'TR',
-        ciName: r[2] || `TRAFO ${idx + 1}`,
-        ciDescription: r[3] || '',
-        capacity: r[4] || '2500 kVA',
-        serialNumber: r[5] || '',
-        mfd: r[6] || '2021',
-        productName: r[7] || 'TRAFINDO',
-        model: r[8] || 'Dry Type Cast Resin (Tipe Kering)',
-        room: r[9] || `Trafo Room ${idx + 1}`
-      }));
-  }
-  if (equipmentList.length === 0) {
-    equipmentList = [...DEFAULT_SOP_DATA.equipmentList];
-  }
-
-  // 2. Schedule Info (Seksi 3)
-  const scheduleDateMatch = textWithBreaks.match(/SOP\s*Execution\s*Date\s*:\s*(.*?)(?:Reference\s*Ticket|Tanggal\s*Pelaksanaan)/i);
-  const ticketMatch = textWithBreaks.match(/Reference\s*Ticket\s*Number\s*:\s*(.*?)(?:Tanggal\s*Pelaksanaan|Executed\s*by)/i);
-  const executedMatch = textWithBreaks.match(/Executed\s*by\s*\(Name\)\s*:\s*(.*?)(?:Job\s*title|Dilaksanakan)/i);
-
-  // 3. Affected Systems (Seksi 4)
+  // Seksi 4: Affected Systems
   const affectedSystems = [...DEFAULT_AFFECTED_SYSTEMS];
-  let affectedSystemsDetails = '1. Standby Generator will be running if the source in the MV panel shut down .\n1. Generator Cadangan akan beroperasi jika sumber pada panel MV padam/dimatikan.';
-
-  const impactMatch = textWithBreaks.match(/if any of the item above is checked[\s\S]*?:\s*([\s\S]*?)(?:Section\s*5|Seksi\s*5)/i);
+  let affectedSystemsDetails =
+    '1. Standby Generator will be running if the source in the MV panel shut down .\n1. Generator Cadangan akan beroperasi jika sumber pada panel MV padam/dimatikan.';
+  const impactMatch = xml.match(
+    /if any of the item above is checked[\s\S]*?:\s*([\s\S]*?)(?:Section\s*5|Seksi\s*5)/i
+  );
   if (impactMatch && impactMatch[1]) {
-    const rawDetails = impactMatch[1].trim();
+    const rawDetails = cleanText(impactMatch[1]);
     if (rawDetails.length > 5) {
       affectedSystemsDetails = rawDetails;
     }
   }
 
-  // 4. Prerequisites (Seksi 7)
-  let prerequisites = [...DEFAULT_PREREQUISITES];
-  const prereqTable = tables.find((t) =>
-    t.some((row) => row.some((c) => c.includes('Check PTW is approved') || c.includes('Periksa bahwa PTW')))
-  );
-
-  if (prereqTable && prereqTable.length > 0) {
-    prerequisites = prereqTable
-      .filter((r) => r.length > 0 && r[0].trim().length > 0)
-      .map((r, idx) => {
-        const itemText = r[0].trim();
-        const split = splitBilingualStep(itemText);
-        return {
-          no: idx + 1,
-          requirementEn: split.en || itemText,
-          requirementId: split.id || itemText,
-          time: r[1] || '',
-          initial: r[2] || ''
-        };
-      });
-  }
-
-  // 5. Work Instructions (Seksi 10)
-  let workSteps: SOPWorkStepItem[] = [];
-  const stepTable = tables.find((t) =>
-    t.some((row) => row.some((c) => c.includes('Action') || c.includes('Tindakan')) &&
-                   row.some((c) => c.includes('Expected Outcome') || c.includes('Hasil yang Diharapkan')))
-  );
-
-  if (stepTable && stepTable.length > 2) {
-    const headerIdx = stepTable.findIndex((r) =>
-      r.some((c) => c.includes('Action') || c.includes('Tindakan'))
-    );
-    const dataRows = stepTable.slice(headerIdx >= 0 ? headerIdx + 1 : 2);
-
-    workSteps = dataRows
-      .filter((r) => r.length >= 2 && r.some((c) => c.trim().length > 0))
-      .map((r, idx) => {
-        const rawAction = r[0] || '';
-        const rawOutcome = r[1] || '';
-        const splitAction = splitBilingualStep(rawAction);
-        const splitOutcome = splitBilingualStep(rawOutcome);
-
-        return {
-          no: idx + 1,
-          actionEn: splitAction.en || rawAction,
-          actionId: splitAction.id || rawAction,
-          expectedOutcomeEn: splitOutcome.en || rawOutcome,
-          expectedOutcomeId: splitOutcome.id || rawOutcome,
-          time: r[2] || '',
-          initial: r[3] || ''
-        };
-      });
-  }
-  if (workSteps.length === 0) {
-    workSteps = [...DEFAULT_SOP_DATA.workSteps];
-  }
-
-  // 6. Back Out Procedures (Seksi 11)
+  // Seksi 11: Back Out Procedure
   let backOutProcedure = 'N/A T/A';
-  const backoutMatch = textWithBreaks.match(/(?:Section\s*11|Seksi\s*11)[\s\S]*?(?:Action|Tindakan)[\s\S]*?\n([^\n]+)/i);
+  const backoutMatch = xml.match(
+    /(?:Section\s*11|Seksi\s*11)[\s\S]*?(?:Action|Tindakan)[\s\S]*?<w:t[^>]*>([\s\S]*?)<\/w:t>/i
+  );
   if (backoutMatch && backoutMatch[1]) {
-    const bo = backoutMatch[1].trim();
+    const bo = cleanText(backoutMatch[1]);
     if (bo) backOutProcedure = bo;
-  }
-
-  // 7. Approvals (Seksi 13)
-  const approvals = [...DEFAULT_DEFAULT_APPROVERS];
-
-  // 8. Document Title Fallback
-  let docTitle = meta.title;
-  if (!docTitle || docTitle === '-') {
-    const cleanFileName = fileName.replace(/\.docx$/i, '').replace(/[-_]/g, ' ').toUpperCase();
-    docTitle = cleanFileName.includes('SOP') ? cleanFileName : `SOP ${cleanFileName}`;
   }
 
   return {
     type: 'SOP',
-    documentTitle: docTitle,
-    documentPurposeEn: meta.purposeEn || DEFAULT_SOP_DATA.documentPurposeEn,
-    documentPurposeId: meta.purposeId || DEFAULT_SOP_DATA.documentPurposeId,
+    documentTitle: meta.title,
+    documentPurposeEn: meta.purposeEn,
+    documentPurposeId: meta.purposeId,
     workLocationEn: meta.locationEn,
     workLocationId: meta.locationId,
     equipmentList,
-    executionDate: scheduleDateMatch && scheduleDateMatch[1] && scheduleDateMatch[1].trim() !== '-' ? scheduleDateMatch[1].trim() : '',
-    referenceTicketNumber: ticketMatch && ticketMatch[1] && ticketMatch[1].trim() !== '-' ? ticketMatch[1].trim() : '',
+    executionDate:
+      scheduleDateMatch && scheduleDateMatch[1] && scheduleDateMatch[1].trim() !== '-'
+        ? scheduleDateMatch[1].trim()
+        : '',
+    referenceTicketNumber:
+      ticketMatch && ticketMatch[1] && ticketMatch[1].trim() !== '-' ? ticketMatch[1].trim() : '',
     executedByName: executedMatch && executedMatch[1] ? executedMatch[1].trim() : 'DME Maintenance Team',
     executedByJobTitle: 'Teknisi Data Center',
     affectedSystems,
@@ -275,62 +483,18 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
 }
 
 /**
- * Parsing berkas Word EOP (8 Seksi)
+ * Parsing berkas Word EOP (8 Seksi) secara komprehensif
  */
 function parseEOPData(xml: string, fileName: string): EOPDocumentData {
-  const textWithBreaks = xml.replace(/<\/w:p>/g, '\n').replace(/<\/w:tr>/g, '\n').replace(/<[^>]+>/g, ' ');
-  const meta = extractMetadata(textWithBreaks);
-  const tables = extractTablesFromXml(xml);
-
-  // 1. Work Instruction / Emergency Steps (Seksi 4)
-  let workSteps: EOPWorkStepItem[] = [];
-  const stepTable = tables.find((t) =>
-    t.some((row) => row.some((c) => c.includes('Action') || c.includes('Tindakan')) &&
-                   row.some((c) => c.includes('Expected Outcome') || c.includes('Hasil yang Diharapkan')))
-  );
-
-  if (stepTable && stepTable.length > 1) {
-    const headerIdx = stepTable.findIndex((r) =>
-      r.some((c) => c.includes('Action') || c.includes('Tindakan'))
-    );
-    const dataRows = stepTable.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
-
-    workSteps = dataRows
-      .filter((r) => r.length >= 3 && r.some((c) => c.trim().length > 0))
-      .map((r, idx) => {
-        // Kolom: [No, Action, Expected Outcome, Time, Name]
-        const rawAction = r[1] || r[0] || '';
-        const rawOutcome = r[2] || r[1] || '';
-        const splitAction = splitBilingualStep(rawAction);
-        const splitOutcome = splitBilingualStep(rawOutcome);
-
-        return {
-          no: idx + 1,
-          actionEn: splitAction.en || rawAction,
-          actionId: splitAction.id || rawAction,
-          expectedOutcomeEn: splitOutcome.en || rawOutcome,
-          expectedOutcomeId: splitOutcome.id || rawOutcome,
-          time: r[3] || '',
-          name: r[4] || ''
-        };
-      });
-  }
-  if (workSteps.length === 0) {
-    workSteps = [...DEFAULT_EOP_DATA.workSteps];
-  }
-
-  // 2. Document Title Fallback
-  let docTitle = meta.title;
-  if (!docTitle || docTitle === '-') {
-    const cleanFileName = fileName.replace(/\.docx$/i, '').replace(/[-_]/g, ' ').toUpperCase();
-    docTitle = cleanFileName.includes('EOP') ? cleanFileName : `EOP ${cleanFileName}`;
-  }
+  const meta = extractMetadata(xml, fileName, true);
+  const workSteps = parseEOPWorkSteps(xml);
+  const approvals = parseApprovals(xml);
 
   return {
     type: 'EOP',
-    documentTitle: docTitle,
-    documentPurposeEn: meta.purposeEn || DEFAULT_EOP_DATA.documentPurposeEn,
-    documentPurposeId: meta.purposeId || DEFAULT_EOP_DATA.documentPurposeId,
+    documentTitle: meta.title,
+    documentPurposeEn: meta.purposeEn,
+    documentPurposeId: meta.purposeId,
     workLocationEn: meta.locationEn,
     workLocationId: meta.locationId,
     referencedDocuments: [...DEFAULT_EOP_DATA.referencedDocuments],
@@ -341,9 +505,9 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
     author: meta.author,
     dateOfCreation: meta.creationDate,
     nextDateRevision: meta.revisionDate || 'N/A',
-    revisionNumber: meta.revisionNumber || '01',
+    revisionNumber: meta.revisionNumber || '00',
     dryRun: { ...DEFAULT_EOP_DATA.dryRun },
-    approvals: [...DEFAULT_DEFAULT_APPROVERS],
+    approvals,
     additionalInformation: 'N/A T/A'
   };
 }
@@ -366,7 +530,8 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
   // SOP memiliki 14 seksi dan Informasi Peralatan (Equipment Information).
   // EOP memiliki 8 seksi (Section 8 – Additional Information) dan warna banner FF00FF.
   const isEop =
-    (!xml.includes('Section 14') && (xml.includes('FF00FF') || xml.includes('Section 8 – Additional') || /eop/i.test(file.name))) ||
+    (!xml.includes('Section 14') &&
+      (xml.includes('FF00FF') || xml.includes('Section 8 – Additional') || /eop/i.test(file.name))) ||
     /emergency\s*operating\s*procedure/i.test(xml);
 
   if (isEop) {
