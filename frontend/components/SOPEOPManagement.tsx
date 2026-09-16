@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   FileText,
   FolderOpen,
@@ -24,7 +25,9 @@ import {
   Square,
   Globe,
   CheckCircle2,
-  UploadCloud
+  UploadCloud,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -85,6 +88,28 @@ export function SOPEOPManagement() {
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveFilterType, setArchiveFilterType] = useState<'ALL' | 'SOP' | 'EOP'>('ALL');
+
+  // State Modal Konfirmasi In-App
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    title: string;
+    type?: string;
+  }>({
+    isOpen: false,
+    id: '',
+    title: '',
+    type: 'SOP',
+  });
+  const [isDeletingArchiveDoc, setIsDeletingArchiveDoc] = useState(false);
+
+  const [resetModal, setResetModal] = useState<{
+    isOpen: boolean;
+    target: 'sop' | 'eop';
+  }>({
+    isOpen: false,
+    target: 'sop',
+  });
 
   // Handle File Import (.docx)
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,11 +191,7 @@ export function SOPEOPManagement() {
   // ──────────────────────────────────────────────────────────────────────────
 
   const handleResetSop = () => {
-    if (confirm('Muat ulang template default Standar Trafo Trafindo untuk SOP? Perubahan yang belum disimpan akan hilang.')) {
-      setSopData({ ...DEFAULT_SOP_DATA });
-      setCurrentSopDocId(null);
-      toast.success('Template SOP Trafindo berhasil dimuat');
-    }
+    setResetModal({ isOpen: true, target: 'sop' });
   };
 
   const handleExportSop = async () => {
@@ -392,11 +413,20 @@ export function SOPEOPManagement() {
   // ──────────────────────────────────────────────────────────────────────────
 
   const handleResetEop = () => {
-    if (confirm('Muat ulang template default Standar Trafo Trafindo untuk EOP? Perubahan yang belum disimpan akan hilang.')) {
+    setResetModal({ isOpen: true, target: 'eop' });
+  };
+
+  const confirmResetTemplate = () => {
+    if (resetModal.target === 'sop') {
+      setSopData({ ...DEFAULT_SOP_DATA });
+      setCurrentSopDocId(null);
+      toast.success('Template SOP Trafindo berhasil dimuat ulang');
+    } else {
       setEopData({ ...DEFAULT_EOP_DATA });
       setCurrentEopDocId(null);
-      toast.success('Template EOP Trafindo berhasil dimuat');
+      toast.success('Template EOP Trafindo berhasil dimuat ulang');
     }
+    setResetModal((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleExportEop = async () => {
@@ -557,17 +587,29 @@ export function SOPEOPManagement() {
     }
   };
 
-  const handleDeleteArchiveDoc = async (id: string, title: string) => {
-    if (confirm(`Yakin ingin menghapus dokumen "${title}" dari arsip Cloud? Tindakan ini tidak dapat dibatalkan.`)) {
-      try {
-        await deleteDoc(doc(db, 'sop_eop_documents', id));
-        setArchiveList((prev) => prev.filter((d) => d.id !== id));
-        if (currentSopDocId === id) setCurrentSopDocId(null);
-        if (currentEopDocId === id) setCurrentEopDocId(null);
-        toast.success('Dokumen berhasil dihapus dari arsip');
-      } catch (err: any) {
-        toast.error(`Gagal menghapus: ${err?.message || err}`);
-      }
+  const promptDeleteArchiveDoc = (item: (SOPDocumentData | EOPDocumentData) & { id: string }) => {
+    setDeleteModal({
+      isOpen: true,
+      id: item.id,
+      title: item.documentTitle || 'Dokumen Tanpa Judul',
+      type: item.type || 'SOP',
+    });
+  };
+
+  const confirmDeleteArchiveDoc = async () => {
+    if (!deleteModal.id) return;
+    setIsDeletingArchiveDoc(true);
+    try {
+      await deleteDoc(doc(db, 'sop_eop_documents', deleteModal.id));
+      setArchiveList((prev) => prev.filter((d) => d.id !== deleteModal.id));
+      if (currentSopDocId === deleteModal.id) setCurrentSopDocId(null);
+      if (currentEopDocId === deleteModal.id) setCurrentEopDocId(null);
+      toast.success(`Dokumen "${deleteModal.title}" berhasil dihapus dari arsip Cloud`);
+      setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+    } catch (err: any) {
+      toast.error(`Gagal menghapus: ${err?.message || err}`);
+    } finally {
+      setIsDeletingArchiveDoc(false);
     }
   };
 
@@ -2455,8 +2497,8 @@ export function SOPEOPManagement() {
 
                       <button
                         type="button"
-                        onClick={() => handleDeleteArchiveDoc(item.id, item.documentTitle || 'Dokumen')}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                        onClick={() => promptDeleteArchiveDoc(item)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
                         title="Hapus Dokumen"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -2469,6 +2511,179 @@ export function SOPEOPManagement() {
           )}
         </div>
       )}
+
+      {/* ─── MODAL IN-APP: KONFIRMASI HAPUS DOKUMEN ARSIP ─────────────────── */}
+      <AnimatePresence>
+        {deleteModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => !isDeletingArchiveDoc && setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-200/80 max-w-md w-full relative overflow-hidden shadow-2xl text-slate-800"
+            >
+              <button
+                type="button"
+                onClick={() => !isDeletingArchiveDoc && setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
+                disabled={isDeletingArchiveDoc}
+                className="absolute top-4 right-4 p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition disabled:opacity-50 cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center justify-center mb-5">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-rose-500/20 rounded-full blur-xl animate-pulse" />
+                  <div className="relative p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+                    <Trash2 className="w-8 h-8 text-rose-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-black text-slate-900 mb-2">
+                  Hapus Dokumen Arsip?
+                </h3>
+                <p className="text-slate-600 text-sm">
+                  Yakin ingin menghapus dokumen ini dari arsip Cloud?
+                </p>
+
+                <div className="bg-slate-50 rounded-2xl p-3.5 my-3.5 border border-slate-200/80 text-left flex items-start gap-2.5">
+                  <span
+                    className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 mt-0.5 ${
+                      deleteModal.type === 'SOP'
+                        ? 'bg-red-100 text-red-700 border border-red-200'
+                        : 'bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200'
+                    }`}
+                  >
+                    {deleteModal.type}
+                  </span>
+                  <p className="text-slate-900 font-bold text-xs sm:text-sm line-clamp-2 leading-relaxed">
+                    {deleteModal.title}
+                  </p>
+                </div>
+
+                <p className="text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 bg-rose-50/80 border border-rose-200/60 rounded-xl py-2 px-3">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Tindakan ini permanen dan tidak dapat dibatalkan</span>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
+                  disabled={isDeletingArchiveDoc}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition border border-slate-200 shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteArchiveDoc}
+                  disabled={isDeletingArchiveDoc}
+                  className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                >
+                  {isDeletingArchiveDoc ? (
+                    <>
+                      <RotateCcw className="w-4 h-4 animate-spin" />
+                      <span>Menghapus...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Hapus Arsip</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── MODAL IN-APP: KONFIRMASI RESET TEMPLATE ─────────────────────── */}
+      <AnimatePresence>
+        {resetModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => setResetModal((prev) => ({ ...prev, isOpen: false }))}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-200 max-w-md w-full relative overflow-hidden shadow-2xl text-slate-800"
+            >
+              <button
+                type="button"
+                onClick={() => setResetModal((prev) => ({ ...prev, isOpen: false }))}
+                className="absolute top-4 right-4 p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center justify-center mb-5">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-xl animate-pulse" />
+                  <div className="relative p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                    <RotateCcw className="w-8 h-8 text-amber-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-black text-slate-900 mb-2">
+                  Muat Ulang Template Standar?
+                </h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Muat ulang template default Standar Trafo Trafindo untuk{' '}
+                  <strong className="text-slate-900 uppercase">{resetModal.target}</strong>?
+                </p>
+                <p className="text-amber-700 font-semibold text-xs flex items-center justify-center gap-1.5 bg-amber-50 border border-amber-200 rounded-xl py-2 px-3 mt-3">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Perubahan formulir yang belum disimpan ke Cloud akan hilang</span>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setResetModal((prev) => ({ ...prev, isOpen: false }))}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition border border-slate-200 shadow-xs cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmResetTemplate}
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Muat Ulang</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
