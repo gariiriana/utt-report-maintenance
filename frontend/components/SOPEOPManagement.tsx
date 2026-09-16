@@ -1961,6 +1961,9 @@ export function SOPEOPManagement() {
                   </button>
                 </div>
               ))}
+              {eopData.referencedDocuments.length === 0 && (
+                <p className="text-xs text-slate-400 italic py-2">Belum ada dokumen referensi (tabel kosong).</p>
+              )}
             </div>
           </div>
 

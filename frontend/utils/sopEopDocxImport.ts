@@ -13,6 +13,7 @@ import {
   SOPWorkStepItem,
   EOPWorkStepItem,
   SOPPrerequisiteItem,
+  SOPReferencedDocItem,
   DocumentSigner,
   DEFAULT_SOP_DATA,
   DEFAULT_EOP_DATA,
@@ -196,18 +197,14 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
       /(?:Date\s*Revision|Next\s*Date\s*Revision)\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Revision\s*Number|Nomor\s*Revisi|Tanggal\s*Revisi|\n|$)/i
     ) || 'N/A';
 
-  const isTrafoDoc = /trafo|transformer/i.test(title) || /trafo|transformer/i.test(fileName);
-  const fallbackPurposeEn = isTrafoDoc ? (isEop ? DEFAULT_EOP_DATA.documentPurposeEn : DEFAULT_SOP_DATA.documentPurposeEn) : '';
-  const fallbackPurposeId = isTrafoDoc ? (isEop ? DEFAULT_EOP_DATA.documentPurposeId : DEFAULT_SOP_DATA.documentPurposeId) : '';
-
   return {
     title,
-    purposeEn: purposeEn || fallbackPurposeEn,
-    purposeId: purposeId || (purposeEn ? '' : fallbackPurposeId),
-    locationEn,
-    locationId,
-    author,
-    creationDate,
+    purposeEn: purposeEn || '',
+    purposeId: purposeId || '',
+    locationEn: locationEn || 'Neutra DC Cikarang',
+    locationId: locationId || 'Neutra DC Cikarang',
+    author: author || 'DME Maintenance Team',
+    creationDate: creationDate || '07 Sep 2026',
     revisionNumber: revisionNumber === 'T/A' || !revisionNumber ? '00' : revisionNumber,
     revisionDate: revisionDate === 'T/A' || !revisionDate ? 'N/A' : revisionDate
   };
@@ -215,11 +212,12 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
 
 /**
  * Mengekstrak tabel CI Equipment (SOP Seksi 2) dengan penanganan bilingual
+ * Jika tabel tidak ada atau kosong, kembalikan array kosong []
  */
 function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
   const ciTbl = tbls.find((t) => t.includes('CI Name') || t.includes('Nama CI'));
-  if (!ciTbl) return [...DEFAULT_SOP_DATA.equipmentList];
+  if (!ciTbl) return [];
 
   const trs = ciTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
   const headerIdx = trs.findIndex((tr) => tr.includes('CI Name') || tr.includes('Nama CI'));
@@ -243,24 +241,26 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
 
       const no = parseInt(getLines(tcs[0])[0], 10) || idx + 1;
       const classId = getLines(tcs[1])[0] || 'TR';
-      const ciName = getLines(tcs[2])[0] || `TRAFO ${idx + 1}`;
+      const ciName = getLines(tcs[2])[0] || '';
       const ciDescription = getLines(tcs[3])[0] || '';
-      const capacity = getLines(tcs[4])[0] || '2500 kVA';
+      const capacity = getLines(tcs[4])[0] || '';
       const serialNumber = getLines(tcs[5])[0] || '';
-      const mfd = getLines(tcs[6])[0] || '2021';
-      const productName = getLines(tcs[7])[0] || 'TRAFINDO';
+      const mfd = getLines(tcs[6])[0] || '';
+      const productName = getLines(tcs[7])[0] || '';
 
       const modelLines = getLines(tcs[8]);
       const model =
         modelLines.length > 1
           ? `${modelLines[0]} (${modelLines[1]})`
-          : modelLines[0] || 'Dry Type Cast Resin (Tipe Kering)';
+          : modelLines[0] || '';
 
       const roomLines = getLines(tcs[9]);
       const room =
         roomLines.length > 1
           ? `${roomLines[0]} (${roomLines[1]})`
-          : roomLines[0] || `Trafo Room ${idx + 1}`;
+          : roomLines[0] || '';
+
+      if (!ciName && !ciDescription && !capacity && !serialNumber) return null;
 
       return {
         no,
@@ -277,18 +277,19 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
     })
     .filter(Boolean) as SOPCIEquipmentItem[];
 
-  return items.length > 0 ? items : [...DEFAULT_SOP_DATA.equipmentList];
+  return items;
 }
 
 /**
  * Mengekstrak Prasyarat / Prerequisites (SOP Seksi 7) secara dwibahasa
+ * Jika tabel tidak ada atau kosong, kembalikan array kosong []
  */
 function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
   const prereqTbl = tbls.find(
     (t) => t.includes('Check PTW is approved') || t.includes('Periksa bahwa PTW')
   );
-  if (!prereqTbl) return [...DEFAULT_PREREQUISITES];
+  if (!prereqTbl) return [];
 
   const trs = prereqTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
   const items = trs
@@ -309,11 +310,12 @@ function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
     })
     .filter(Boolean) as SOPPrerequisiteItem[];
 
-  return items.length > 0 ? items : [...DEFAULT_PREREQUISITES];
+  return items;
 }
 
 /**
  * Mengekstrak Langkah Kerja SOP (Seksi 10) secara dwibahasa presisi
+ * Jika tabel tidak ada atau kosong, kembalikan array kosong []
  */
 function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
@@ -322,7 +324,7 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
       (t.includes('Action') || t.includes('Tindakan')) &&
       (t.includes('Expected Outcome') || t.includes('Hasil yang Diharapkan'))
   );
-  if (!stepTbl) return [...DEFAULT_SOP_DATA.workSteps];
+  if (!stepTbl) return [];
 
   const trs = stepTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
   const headerIdx = trs.findIndex(
@@ -356,11 +358,12 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
     })
     .filter(Boolean) as SOPWorkStepItem[];
 
-  return steps.length > 0 ? steps : [...DEFAULT_SOP_DATA.workSteps];
+  return steps;
 }
 
 /**
  * Mengekstrak Langkah Kedaruratan EOP (Seksi 4) secara dwibahasa presisi
+ * Jika tabel tidak ada atau kosong, kembalikan array kosong []
  */
 function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
@@ -369,7 +372,7 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
       (t.includes('Action') || t.includes('Tindakan')) &&
       (t.includes('Expected Outcome') || t.includes('Hasil yang Diharapkan'))
   );
-  if (!stepTbl) return [...DEFAULT_EOP_DATA.workSteps];
+  if (!stepTbl) return [];
 
   const trs = stepTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
   const headerIdx = trs.findIndex(
@@ -406,7 +409,108 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
     })
     .filter(Boolean) as EOPWorkStepItem[];
 
-  return steps.length > 0 ? steps : [...DEFAULT_EOP_DATA.workSteps];
+  return steps;
+}
+
+/**
+ * Mengekstrak tabel Dokumen Referensi (SOP Seksi 5 / EOP Seksi 2).
+ * Jika tabel di Word kosong (hanya baris-baris kosong tanpa teks), kembalikan array kosong []
+ */
+function parseReferencedDocuments(xml: string): SOPReferencedDocItem[] {
+  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const refTbl = tbls.find(
+    (t) =>
+      (t.includes('Document Name') || t.includes('Nama Dokumen')) &&
+      (t.includes('Document Number') || t.includes('Nomor Dokumen'))
+  );
+  if (!refTbl) return [];
+
+  const trs = refTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const headerIdx = trs.findIndex(
+    (tr) =>
+      (tr.includes('Document Name') || tr.includes('Nama Dokumen')) &&
+      (tr.includes('Document Number') || tr.includes('Nomor Dokumen'))
+  );
+  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+
+  const docs: SOPReferencedDocItem[] = [];
+  for (const tr of dataRows) {
+    const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    if (tcs.length < 2) continue;
+    const name = cleanText(tcs[0]);
+    const number = cleanText(tcs[1]);
+    // Hanya simpan jika nama atau nomor terisi dan bukan tanda '-'
+    if ((name && name !== '-') || (number && number !== '-')) {
+      docs.push({ name, number });
+    }
+  }
+
+  return docs;
+}
+
+/**
+ * Mengekstrak Persyaratan K3 / EHS EOP (Seksi 3)
+ */
+function parseEOPEHSRequirements(xml: string): {
+  ppeEn: string;
+  ppeId: string;
+  commsEn: string;
+  commsId: string;
+} {
+  const sec3Match = xml.match(
+    /(?:Section\s*3|Seksi\s*3)[\s\S]*?(?:Enviro?nmental|K3)[\s\S]*?(?=(?:Section\s*4|Seksi\s*4))/i
+  );
+  if (!sec3Match) {
+    return { ppeEn: '', ppeId: '', commsEn: '', commsId: '' };
+  }
+
+  const raw = cleanText(sec3Match[0])
+    .replace(/(?:Section\s*3|Seksi\s*3)[^–—\-]*[–—\-]\s*(?:Enviro?nmental[^\n]*|K3[^\n]*)/i, '')
+    .replace(/Requirements\s*:?/i, '')
+    .trim();
+
+  if (!raw || raw.length < 5) {
+    return { ppeEn: '', ppeId: '', commsEn: '', commsId: '' };
+  }
+
+  const items = raw.split(/(?=\b\d+[\.\)])/).map((s) => s.trim()).filter(Boolean);
+  if (items.length > 0) {
+    return {
+      ppeEn: items.slice(0, 2).join('\n') || items[0] || '',
+      ppeId: '',
+      commsEn: items.slice(2).join('\n') || '',
+      commsId: ''
+    };
+  }
+
+  return {
+    ppeEn: raw,
+    ppeId: '',
+    commsEn: '',
+    commsId: ''
+  };
+}
+
+/**
+ * Mengekstrak Kondisi yang Diharapkan EOP (Seksi 4)
+ */
+function parseEOPExpectedConditions(xml: string): { en: string; id: string } {
+  const match = xml.match(
+    /(?:Expected\s*Conditions\s*(?:\/\s*Equipment\s*Status)?|Kondisi\s*yang\s*Diharapkan)[\s\S]*?(?=<w:tbl)/i
+  );
+  if (!match) return { en: '', id: '' };
+
+  const raw = cleanText(match[0])
+    .replace(/Expected\s*Conditions\s*(?:\/\s*Equipment\s*Status)?\s*:?/i, '')
+    .replace(/Kondisi\s*yang\s*Diharapkan\s*:?/i, '')
+    .trim();
+
+  const cleaned = raw.replace(/\b\d+[\.\)]/g, '').replace(/[-_]/g, '').trim();
+  if (!cleaned) {
+    return { en: '', id: '' };
+  }
+
+  return { en: raw, id: '' };
 }
 
 /**
@@ -534,13 +638,27 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     executedByJobTitle: 'Teknisi Data Center',
     affectedSystems,
     affectedSystemsDetails,
-    referencedDocuments: [...DEFAULT_SOP_DATA.referencedDocuments],
-    ehsRequirements: { ...DEFAULT_SOP_DATA.ehsRequirements },
+    referencedDocuments: parseReferencedDocuments(xml),
+    ehsRequirements: {
+      ppeEn: '',
+      ppeId: '',
+      jewelryEn: '',
+      jewelryId: '',
+      commsEn: '',
+      commsId: '',
+      lotoEn: '',
+      lotoId: ''
+    },
     prerequisites,
-    dryRun: { ...DEFAULT_SOP_DATA.dryRun },
+    dryRun: {
+      jobTitle: 'Teknisi Data Center',
+      name: '',
+      date: '',
+      signatureBase64: ''
+    },
     maintenancePeriod: 'annual',
-    conditionsPriorToExecutionEn: DEFAULT_SOP_DATA.conditionsPriorToExecutionEn,
-    conditionsPriorToExecutionId: DEFAULT_SOP_DATA.conditionsPriorToExecutionId,
+    conditionsPriorToExecutionEn: '',
+    conditionsPriorToExecutionId: '',
     workSteps,
     backOutProcedure,
     author: meta.author,
@@ -557,6 +675,9 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
  */
 function parseEOPData(xml: string, fileName: string): EOPDocumentData {
   const meta = extractMetadata(xml, fileName, true);
+  const referencedDocuments = parseReferencedDocuments(xml);
+  const ehsRequirements = parseEOPEHSRequirements(xml);
+  const expectedCond = parseEOPExpectedConditions(xml);
   const workSteps = parseEOPWorkSteps(xml);
   const approvals = parseApprovals(xml);
 
@@ -567,16 +688,21 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
     documentPurposeId: meta.purposeId,
     workLocationEn: meta.locationEn,
     workLocationId: meta.locationId,
-    referencedDocuments: [...DEFAULT_EOP_DATA.referencedDocuments],
-    ehsRequirements: { ...DEFAULT_EOP_DATA.ehsRequirements },
-    expectedConditionsEn: DEFAULT_EOP_DATA.expectedConditionsEn,
-    expectedConditionsId: DEFAULT_EOP_DATA.expectedConditionsId,
+    referencedDocuments,
+    ehsRequirements,
+    expectedConditionsEn: expectedCond.en,
+    expectedConditionsId: expectedCond.id,
     workSteps,
     author: meta.author,
     dateOfCreation: meta.creationDate,
     nextDateRevision: meta.revisionDate || 'N/A',
     revisionNumber: meta.revisionNumber || '00',
-    dryRun: { ...DEFAULT_EOP_DATA.dryRun },
+    dryRun: {
+      jobTitle: 'Teknisi Data Center',
+      name: '',
+      date: '',
+      signatureBase64: ''
+    },
     approvals,
     additionalInformation: 'N/A T/A'
   };
