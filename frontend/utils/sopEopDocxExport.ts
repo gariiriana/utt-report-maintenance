@@ -1080,10 +1080,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     const stepNo = st.no || i + 1;
     const cleanActionEn = (st.actionEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
     const rawActionId = ensureBilingualTranslation(cleanActionEn, st.actionId);
-    const cleanActionId = rawActionId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanActionEn;
+    const cleanActionId = rawActionId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || ensureBilingualTranslation(cleanActionEn);
     const cleanOutcomeEn = (st.expectedOutcomeEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
     const rawOutcomeId = ensureBilingualTranslation(cleanOutcomeEn, st.expectedOutcomeId);
-    const cleanOutcomeId = rawOutcomeId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanOutcomeEn;
+    const cleanOutcomeId = rawOutcomeId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || ensureBilingualTranslation(cleanOutcomeEn);
 
     return new TableRow({
       children: [
@@ -1692,10 +1692,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     const stepNo = st.no || i + 1;
     const cleanActionEn = (st.actionEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
     const rawActionId = ensureBilingualTranslation(cleanActionEn, st.actionId);
-    const cleanActionId = rawActionId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanActionEn;
+    const cleanActionId = rawActionId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || ensureBilingualTranslation(cleanActionEn);
     const cleanOutcomeEn = (st.expectedOutcomeEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
     const rawOutcomeId = ensureBilingualTranslation(cleanOutcomeEn, st.expectedOutcomeId);
-    const cleanOutcomeId = rawOutcomeId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanOutcomeEn;
+    const cleanOutcomeId = rawOutcomeId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || ensureBilingualTranslation(cleanOutcomeEn);
 
     return new TableRow({
       children: [

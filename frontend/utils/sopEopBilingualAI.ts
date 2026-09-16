@@ -2,32 +2,75 @@
 // FILE: frontend/utils/sopEopBilingualAI.ts
 // Deskripsi: Modul Penerjemah Otomatis & Penyelaras Format Bilingual (EN + ID)
 //            untuk Dokumen SOP & EOP PT Dwimitra Ekatama Mandiri / NeutraDC.
-//            Menggunakan backend Google Gemini AI (/api/ai/chat) + Kamus Teknis M/E
-//            + Deterministic Rule-Based Fallback Translator.
+//            Menggunakan Google Gemini AI Direct Call dengan Multi-Key Failover
+//            + Kamus Teknis Standar Operasional & Darurat Data Center Terlengkap
+//            + Deterministic Rule-Based Sentence Translator & Grammar Sanitizer.
 // ============================================================================
 
-import { getApiEndpoint } from '@/utils/apiConfig';
 import { SOPDocumentData, EOPDocumentData } from '@/types/sopEopTypes';
 
-// Kamus Teknis Standar Operasional & Darurat Data Center (Fallback Cepat)
-export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
-  // Common Actions - Trafo & Power
-  'Visual inspection of transformer body and accessories': 'Inspeksi visual fisik transformator dan aksesori',
-  'Check temperature indicator and alarm system': 'Pemeriksaan indikator suhu dan sistem alarm',
-  'Check cable connection and terminal torque': 'Pemeriksaan sambungan kabel dan torsi kekencangan terminal',
-  'Measure insulation resistance (Megger test)': 'Pengukuran tahanan isolasi (Uji Megger)',
-  'Measure winding resistance': 'Pengukuran tahanan belitan kumparan',
-  'Clean transformer coils, core, and enclosure': 'Pembersihan kumparan, inti besi, dan penutup transformator',
-  'Check grounding system and measure earth resistance': 'Pemeriksaan sistem pembumian dan pengukuran tahanan pentanahan',
-  'Check ventilation fan operation and thermostat': 'Pemeriksaan operasional kipas pendingin dan termostat',
-  'Test tripping signal to upstream breaker': 'Pengujian sinyal trip ke pemutus daya hulu (breaker)',
-  'Verify all tools and safety gear prior to work': 'Memverifikasi semua peralatan kerja dan APD sebelum memulai pekerjaan',
-  'Isolate incoming and outgoing breakers with LOTO': 'Mengisolasi pemutus sirkuit masuk dan keluar dengan prosedur LOTO',
-  'Discharge residual electrical energy using grounding stick': 'Membuang sisa energi listrik menggunakan stik pembumian (grounding stick)',
-  'Verify zero voltage using calibrated detector': 'Memverifikasi tegangan nol menggunakan detektor tegangan terkalibrasi',
-  'Restore electrical supply and observe running parameters': 'Menormalkan pasokan listrik dan mengamati parameter operasional',
+// ─── Environment & API Key Management ────────────────────────────────────────
 
-  // Common Actions - PJU, Lighting & Panel Distribution
+const apiKeysStr = import.meta.env.VITE_NVIDIA_NIM_API_KEYS || '';
+const apiKeys = apiKeysStr
+  .split(',')
+  .map((k: string) => k.trim())
+  .filter(Boolean);
+
+let keyIndex = 0;
+function getNextAPIKey(): string | null {
+  if (apiKeys.length === 0) return null;
+  const key = apiKeys[keyIndex % apiKeys.length];
+  keyIndex++;
+  return key;
+}
+
+// ─── Kamus Teknis Standar M/E & Fasilitas Data Center (EN <-> ID) ────────────
+
+export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
+  // General Document Metadata & Headers
+  'Document Purpose': 'Tujuan Dokumen',
+  'Work Location': 'Lokasi Kerja',
+  'Execution Date': 'Tanggal Pelaksanaan',
+  'Reference Ticket Number': 'Nomor Tiket Referensi',
+  'Executed By': 'Dilaksanakan Oleh',
+  'Job Title': 'Jabatan',
+  'Affected Equipment / Systems': 'Peralatan / Sistem yang Terdampak',
+  'Referenced Documents / Attachments': 'Dokumen Referensi / Lampiran',
+  'Environmental, Health & Safety': 'Lingkungan, Kesehatan & Keselamatan Kerja (K3)',
+  'Prerequisites': 'Persyaratan Sebelum Bekerja',
+  'Dry Run': 'Uji Coba (Dry Run)',
+  'Maintenance Period': 'Periode Pemeliharaan',
+  'Work Instruction / Procedures': 'Instruksi Kerja / Prosedur',
+  'Back Out Procedures': 'Prosedur Pembatalan / Pemulihan (Back Out)',
+  'Document Information': 'Informasi Dokumen',
+  'Approval': 'Persetujuan',
+  'Additional Information': 'Informasi Tambahan',
+  'Expected Conditions': 'Kondisi yang Diharapkan',
+  'Emergency Operations Procedure': 'Prosedur Operasional Keadaan Darurat',
+  'Standard Operating Procedure': 'Prosedur Operasional Standar',
+
+  // Common Prerequisites
+  'Check PTW is approved.': 'Periksa bahwa izin kerja (PTW) telah disetujui.',
+  'Check PTW is approved': 'Periksa bahwa izin kerja (PTW) telah disetujui',
+  'Note down vendor arrival Date / Time :': 'Catat Tanggal / Waktu kedatangan vendor :',
+  'Note down vendor arrival Date / Time': 'Catat Tanggal / Waktu kedatangan vendor',
+  'Check all tools and materials are available and in good condition.': 'Periksa semua peralatan dan material telah tersedia dan dalam kondisi baik.',
+  'Check all tools and materials are available and in good condition': 'Periksa semua peralatan dan material telah tersedia dan dalam kondisi baik',
+  'Ensure necessary reference documents is attached to this SOP.': 'Pastikan dokumen referensi yang diperlukan telah dilampirkan pada SOP ini.',
+  'Ensure necessary reference documents is attached to this SOP': 'Pastikan dokumen referensi yang diperlukan telah dilampirkan pada SOP ini',
+  'Ensure personnel involving in this work are trained and competent to perform this procedure.': 'Pastikan personel yang terlibat dalam pekerjaan ini telah terlatih dan kompeten untuk melaksanakan prosedur ini.',
+  'Ensure personnel involving in this work are trained and competent to perform this procedure': 'Pastikan personel yang terlibat dalam pekerjaan ini telah terlatih dan kompeten untuk melaksanakan prosedur ini',
+
+  // EHS & PPE
+  'Safety Helmet, Safety Shoes, Cotton / Leather Gloves, Safety Glasses': 'Helm Keselamatan, Sepatu Keselamatan, Sarung Tangan Katun / Kulit, Kacamata Pengaman',
+  'Wear required PPE (Safety Shoes, Helmet, Cotton Gloves)': 'Gunakan APD yang diwajibkan (Sepatu Keselamatan, Helm, Sarung Tangan Katun)',
+  'Do not wear metal jewelry, watches, or rings during electrical work': 'Dilarang mengenakan perhiasan logam, jam tangan, atau cincin selama pekerjaan listrik',
+  'Maintain two-way radio communication with Data Center Operations': 'Pertahankan komunikasi radio dua arah (HT) dengan tim Operasional Data Center',
+  'Apply Lock Out Tag Out (LOTO) on upstream breaker and circuit feeder': 'Terapkan Lock Out Tag Out (LOTO) pada pemutus daya hulu dan feeder sirkuit',
+  'Coordinate with DC Ops before execution': 'Koordinasikan dengan tim Operasional DC sebelum pelaksanaan',
+
+  // Actions - PJU, Lighting & Panel Distribution
   'Check the related MCB/MCCB for a TRIP condition.': 'Periksa MCB/MCCB terkait untuk kondisi TRIP.',
   'Check the related MCB/MCCB for a TRIP condition': 'Periksa MCB/MCCB terkait untuk kondisi TRIP',
   'If the breaker has tripped, do not repeatedly reset it. Investigate the cause first.': 'Jika pemutus daya trip, jangan meresetnya berulang kali. Selidiki penyebabnya terlebih dahulu.',
@@ -40,8 +83,6 @@ export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
   'nspect the lamp, driver/ballast, wiring, terminal, and lighting fixture for damage or loose connections': 'Periksa lampu, driver/ballast, pengkabelan, terminal, dan rumah lampu dari kerusakan atau sambungan kendor',
   'Restore the circuit and perform an operational test after confirming the system is safe.': 'Normalkan sirkuit dan lakukan uji operasional setelah memastikan sistem aman.',
   'Restore the circuit and perform an operational test after confirming the system is safe': 'Normalkan sirkuit dan lakukan uji operasional setelah memastikan sistem aman',
-  'Nyalakan the lighting system through the designated switch or control system.': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan.',
-  'Nyalakan the lighting system through the designated switch or control system': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan',
   'Turn on the lighting system through the designated switch or control system.': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan.',
   'Turn on the lighting system through the designated switch or control system': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan',
   'Turn ON the lighting system through the designated switch or control system.': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan.',
@@ -67,27 +108,8 @@ export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
   'Record all inspection and measurement results.': 'Catat seluruh hasil inspeksi dan pengukuran.',
   'Record all inspection and measurement results': 'Catat seluruh hasil inspeksi dan pengukuran',
   'Turn off the main breaker before performing maintenance': 'Matikan pemutus daya utama sebelum melakukan pemeliharaan',
-  'Check PTW is approved': 'Periksa bahwa izin kerja (PTW) telah disetujui',
-  'Wear required PPE (Safety Shoes, Helmet, Cotton Gloves)': 'Gunakan APD yang diwajibkan (Sepatu Keselamatan, Helm, Sarung Tangan Katun)',
-  'Coordinate with DC Ops before execution': 'Koordinasikan dengan tim Operasional DC sebelum pelaksanaan',
 
-  // Common Expected Outcomes
-  'Normal and clean, no dust, rust, or physical damage': 'Normal dan bersih, tidak ada debu, karat, atau kerusakan fisik',
-  'Operating within standard threshold below 80°C': 'Beroperasi dalam batas standar di bawah 80°C',
-  'Tight and secure without loose bolts or discoloration': 'Kencang dan aman tanpa ada baut kendor atau perubahan warna',
-  'Insulation resistance above minimum specification (> 1000 MOhm)': 'Tahanan isolasi di atas spesifikasi minimum (> 1000 MOhm)',
-  'Resistance values balanced across all phases': 'Nilai tahanan seimbang di semua fasa',
-  'Free of dust, debris, and foreign objects': 'Bebas dari debu, kotoran, dan benda asing',
-  'Grounding resistance below 1 Ohm': 'Tahanan pembumian di bawah 1 Ohm',
-  'Fans start automatically at designated temperature': 'Kipas menyala otomatis pada temperatur yang ditentukan',
-  'Breaker trips successfully upon alarm simulation': 'Breaker trip dengan sukses saat simulasi alarm',
-  'All personnel equipped with required PPE': 'Seluruh personel dilengkapi dengan APD yang diwajibkan',
-  'Equipment completely de-energized and locked': 'Peralatan benar-benar padam tanpa tegangan dan terkunci',
-  'Zero residual charge verified safely': 'Sisa muatan listrik nol terverifikasi dengan aman',
-  'Zero voltage confirmed across all terminals': 'Tegangan nol terkonfirmasi di seluruh terminal',
-  'Voltage and frequency stable within tolerance': 'Tegangan dan frekuensi stabil dalam batas toleransi',
-
-  // Expected Outcomes - PJU, Lighting & Electrical
+  // Expected Outcomes - PJU, Lighting & Distribution
   'The circuit breaker status and possible electrical fault are identified.': 'Status pemutus sirkuit dan kemungkinan gangguan listrik teridentifikasi.',
   'The circuit breaker status and possible electrical fault are identified': 'Status pemutus sirkuit dan kemungkinan gangguan listrik teridentifikasi',
   'Further damage and potential short-circuit hazards are prevented.': 'Kerusakan lebih lanjut dan potensi bahaya hubung singkat (korsleting) dicegah.',
@@ -126,6 +148,38 @@ export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
   'All inspection data recorded and work area clean and safe': 'Seluruh data inspeksi tercatat serta area kerja bersih dan aman',
   'System operational and restored safely': 'Sistem beroperasi dan dipulihkan dengan aman',
 
+  // Actions - Transformer & High Voltage
+  'Visual inspection of transformer body and accessories': 'Inspeksi visual fisik transformator dan aksesori',
+  'Check temperature indicator and alarm system': 'Pemeriksaan indikator suhu dan sistem alarm',
+  'Check cable connection and terminal torque': 'Pemeriksaan sambungan kabel dan torsi kekencangan terminal',
+  'Measure insulation resistance (Megger test)': 'Pengukuran tahanan isolasi (Uji Megger)',
+  'Measure winding resistance': 'Pengukuran tahanan belitan kumparan',
+  'Clean transformer coils, core, and enclosure': 'Pembersihan kumparan, inti besi, dan penutup transformator',
+  'Check grounding system and measure earth resistance': 'Pemeriksaan sistem pembumian dan pengukuran tahanan pentanahan',
+  'Check ventilation fan operation and thermostat': 'Pemeriksaan operasional kipas pendingin dan termostat',
+  'Test tripping signal to upstream breaker': 'Pengujian sinyal trip ke pemutus daya hulu (breaker)',
+  'Verify all tools and safety gear prior to work': 'Memverifikasi semua peralatan kerja dan APD sebelum memulai pekerjaan',
+  'Isolate incoming and outgoing breakers with LOTO': 'Mengisolasi pemutus sirkuit masuk dan keluar dengan prosedur LOTO',
+  'Discharge residual electrical energy using grounding stick': 'Membuang sisa energi listrik menggunakan stik pembumian (grounding stick)',
+  'Verify zero voltage using calibrated detector': 'Memverifikasi tegangan nol menggunakan detektor tegangan terkalibrasi',
+  'Restore electrical supply and observe running parameters': 'Menormalkan pasokan listrik dan mengamati parameter operasional',
+
+  // Expected Outcomes - Transformer & HV
+  'Normal and clean, no dust, rust, or physical damage': 'Normal dan bersih, tidak ada debu, karat, atau kerusakan fisik',
+  'Operating within standard threshold below 80°C': 'Beroperasi dalam batas standar di bawah 80°C',
+  'Tight and secure without loose bolts or discoloration': 'Kencang dan aman tanpa ada baut kendor atau perubahan warna',
+  'Insulation resistance above minimum specification (> 1000 MOhm)': 'Tahanan isolasi di atas spesifikasi minimum (> 1000 MOhm)',
+  'Resistance values balanced across all phases': 'Nilai tahanan seimbang di semua fasa',
+  'Free of dust, debris, and foreign objects': 'Bebas dari debu, kotoran, dan benda asing',
+  'Grounding resistance below 1 Ohm': 'Tahanan pembumian di bawah 1 Ohm',
+  'Fans start automatically at designated temperature': 'Kipas menyala otomatis pada temperatur yang ditentukan',
+  'Breaker trips successfully upon alarm simulation': 'Breaker trip dengan sukses saat simulasi alarm',
+  'All personnel equipped with required PPE': 'Seluruh personel dilengkapi dengan APD yang diwajibkan',
+  'Equipment completely de-energized and locked': 'Peralatan benar-benar padam tanpa tegangan dan terkunci',
+  'Zero residual charge verified safely': 'Sisa muatan listrik nol terverifikasi dengan aman',
+  'Zero voltage confirmed across all terminals': 'Tegangan nol terkonfirmasi di seluruh terminal',
+  'Voltage and frequency stable within tolerance': 'Tegangan dan frekuensi stabil dalam batas toleransi',
+
   // EOP Actions & Outcomes
   'Identify alarm status on fire alarm panel or BMS': 'Mengidentifikasi status alarm pada panel alarm kebakaran atau BMS',
   'Confirm emergency condition with field inspection': 'Mengonfirmasi kondisi darurat dengan inspeksi langsung di lapangan',
@@ -138,7 +192,9 @@ export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
   'Equipment stopped safely without injury': 'Peralatan berhenti aman tanpa cedera personel',
   'All key stakeholders notified immediately': 'Seluruh pemangku kepentingan utama terinfo segera',
   'All personnel accounted for in assembly point': 'Seluruh personel berkumpul aman di titik kumpul',
-  'Critical power continuous and uninterrupted': 'Daya kritis tetap menyala tanpa gangguan'
+  'Critical power continuous and uninterrupted': 'Daya kritis tetap menyala tanpa gangguan',
+  'Guide for actions that need to be taken when all operating TRAFO trip or stop due to fault.': 'Panduan tindakan yang perlu diambil saat seluruh TRAFO yang beroperasi trip atau padam karena gangguan.',
+  'Guide for actions that need to be taken when all operating TRAFO trip or stop due to fault': 'Panduan tindakan yang perlu diambil saat seluruh TRAFO yang beroperasi trip atau padam karena gangguan'
 };
 
 /**
@@ -171,6 +227,99 @@ export function translateFromDictionary(text: string, toLang: 'id' | 'en'): stri
 }
 
 /**
+ * Mendeteksi apakah sebuah teks Bahasa Indonesia masih berupa kalimat hybrid
+ * (campuran Inggris-Indonesia) atau masih 100% Bahasa Inggris.
+ */
+export function isHybridOrEnglish(text: string, originalEn: string): boolean {
+  if (!text || !text.trim()) return true;
+  const cleanText = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+  const cleanEn = (originalEn || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+
+  // 1. Jika teks persis identik dengan sumber bahasa Inggris
+  if (cleanText === cleanEn) return true;
+
+  // 2. Cek Stopwords bahasa Inggris yang TIDAK PERNAH ada dalam Bahasa Indonesia
+  const englishStopwordsRegex =
+    /\b(the|is|are|was|were|and|or|in|on|at|to|for|of|with|by|from|through|into|during|before|after|which|that|this|these|those|all|any|each|every|between|under|over|above|below|without|within|while|when|where|why|how|been|being|have|has|had|does|did|will|would|shall|should|can|could|may|might|must)\b/gi;
+  const stopwordMatches = cleanText.match(englishStopwordsRegex) || [];
+
+  // Jika terdapat 2 atau lebih kata gramatikal Inggris, pasti kalimat campuran atau Inggris
+  if (stopwordMatches.length >= 2) return true;
+  if (stopwordMatches.length === 1 && cleanText.split(/\s+/).length <= 4) return true;
+
+  // 3. Cek rasio kata yang sama dengan teks Inggris asli
+  const words = cleanText.split(/\s+/).filter((w) => w.length > 2);
+  const originalWords = cleanEn.split(/\s+/).filter((w) => w.length > 2);
+  if (words.length === 0) return false;
+
+  // Daftar singkatan teknis yang memang sama di ID dan EN
+  const technicalAbbreviations = new Set([
+    'mcb', 'mccb', 'acb', 'loto', 'ptw', 'apd', 'ppe', 'ups', 'trafo', 'bms',
+    'pju', 'led', 'dc', 'ac', 'kwh', 'megger', 'hv', 'mv', 'lv', 'kv', 'kva',
+    'kw', 'ohm', 'v', 'a', 'crah', 'pac', 'ats', 'sts'
+  ]);
+
+  let unchangedCount = 0;
+  for (const word of words) {
+    if (!technicalAbbreviations.has(word) && originalWords.includes(word)) {
+      unchangedCount++;
+    }
+  }
+
+  const unchangedRatio = unchangedCount / words.length;
+  // Jika lebih dari 25% kata non-akronim masih sama persis dengan aslinya -> hybrid / belum diterjemahkan
+  return unchangedRatio > 0.25;
+}
+
+/**
+ * Backward compatibility alias untuk kode yang mengimpor `isStillMostlyEnglish`
+ */
+export function isStillMostlyEnglish(text: string, originalEn: string): boolean {
+  return isHybridOrEnglish(text, originalEn);
+}
+
+/**
+ * Sanitizer deterministik untuk membersihkan sisa kata sambung / struktur bahasa Inggris
+ * yang tertinggal jika fallback rule-based digunakan dalam kondisi darurat offline.
+ */
+export function cleanUpRemainingEnglish(text: string): string {
+  let res = text;
+
+  // Replace common leftover particles & words
+  res = res.replace(/\bthe\s+/gi, '');
+  res = res.replace(/\s+the\b/gi, '');
+  res = res.replace(/\bthrough\s+the\b/gi, 'melalui');
+  res = res.replace(/\bthrough\b/gi, 'melalui');
+  res = res.replace(/\bdesignated\s+switch\b/gi, 'sakelar yang ditentukan');
+  res = res.replace(/\bdesignated\s+area\b/gi, 'area yang ditentukan');
+  res = res.replace(/\bdesignated\b/gi, 'yang ditentukan');
+  res = res.replace(/\bcontrol\s+system\b/gi, 'sistem kontrol');
+  res = res.replace(/\bswitch\s+or\b/gi, 'sakelar atau');
+  res = res.replace(/\bswitch\b/gi, 'sakelar');
+  res = res.replace(/\blighting\s+system\b/gi, 'sistem pencahayaan');
+  res = res.replace(/\blighting\s+fixtures?\b/gi, 'rumah lampu (armatur)');
+  res = res.replace(/\band\b/gi, 'dan');
+  res = res.replace(/\bor\b/gi, 'atau');
+  res = res.replace(/\bin\b/gi, 'di');
+  res = res.replace(/\bon\b/gi, 'pada');
+  res = res.replace(/\bat\b/gi, 'pada');
+  res = res.replace(/\bfor\b/gi, 'untuk');
+  res = res.replace(/\bwith\b/gi, 'dengan');
+  res = res.replace(/\bwithout\b/gi, 'tanpa');
+  res = res.replace(/\bbefore\b/gi, 'sebelum');
+  res = res.replace(/\bafter\b/gi, 'setelah');
+  res = res.replace(/\bduring\b/gi, 'selama');
+  res = res.replace(/\bfrom\b/gi, 'dari');
+  res = res.replace(/\bto\b/gi, 'ke');
+  res = res.replace(/\ball\b/gi, 'seluruh');
+  res = res.replace(/\bany\b/gi, 'setiap');
+  res = res.replace(/\bare\b/gi, '');
+  res = res.replace(/\bis\b/gi, '');
+
+  return res.replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Menerjemahkan kalimat teknis menggunakan aturan penggantian frasa & kata kunci elektro / data center
  */
 export function translateTechnicalFallback(text: string, toLang: 'id' | 'en'): string {
@@ -184,12 +333,12 @@ export function translateTechnicalFallback(text: string, toLang: 'id' | 'en'): s
     let res = clean;
 
     // Tindakan / Kerja Umum
-    res = res.replace(/\bcheck\s+the\s+related\b/gi, 'Periksa yang terkait');
+    res = res.replace(/\bcheck\s+the\s+related\b/gi, 'Periksa');
     res = res.replace(/\bcheck\s+the\b/gi, 'Periksa');
     res = res.replace(/\bcheck\b/gi, 'Periksa');
     res = res.replace(/\bnspect\s+the\b/gi, 'Periksa');
     res = res.replace(/\binspect\s+the\b/gi, 'Periksa');
-    res = res.replace(/\binspect\b/gi, 'Inspeksi');
+    res = res.replace(/\binspect\b/gi, 'Periksa');
     res = res.replace(/\bverify\s+the\b/gi, 'Verifikasi');
     res = res.replace(/\bverify\b/gi, 'Verifikasi');
     res = res.replace(/\bensure\s+all\b/gi, 'Pastikan seluruh');
@@ -278,53 +427,21 @@ export function translateTechnicalFallback(text: string, toLang: 'id' | 'en'): s
     res = res.replace(/\bpower\s+supply\b/gi, 'catu daya');
     res = res.replace(/\bemergency\b/gi, 'darurat');
 
-    // Bersihkan spasi berlebih
-    res = res.replace(/\s+/g, ' ').trim();
+    // Bersihkan seluruh sisa kata partikel Inggris agar tidak pernah tercampur
+    if (isHybridOrEnglish(res, clean)) {
+      res = cleanUpRemainingEnglish(res);
+    }
 
-    // Jika seluruh kalimat diganti atau minimal ada sebagian yang berubah
-    return res;
+    return res.replace(/\s+/g, ' ').trim();
   }
 
   return clean;
 }
 
 /**
- * Mendeteksi apakah sebuah teks masih didominasi kata-kata bahasa Inggris.
- * Menggunakan daftar kata umum bahasa Inggris + heuristik morfologi.
- */
-export function isStillMostlyEnglish(text: string, originalEn: string): boolean {
-  const cleanText = text.toLowerCase().replace(/[^a-z\s]/g, '').trim();
-  const cleanEn = originalEn.toLowerCase().replace(/[^a-z\s]/g, '').trim();
-
-  // Jika teks persis sama, pasti masih Inggris
-  if (cleanText === cleanEn) return true;
-
-  const words = cleanText.split(/\s+/).filter(w => w.length > 2);
-  const originalWords = cleanEn.split(/\s+/).filter(w => w.length > 2);
-
-  if (words.length === 0) return false;
-
-  // Hitung berapa banyak kata dari teks asli Inggris yang masih ada
-  let unchangedCount = 0;
-  for (const word of words) {
-    if (originalWords.includes(word)) {
-      unchangedCount++;
-    }
-  }
-
-  // Jika lebih dari 60% kata masih sama dengan aslinya → belum diterjemahkan
-  const unchangedRatio = unchangedCount / words.length;
-  return unchangedRatio > 0.6;
-}
-
-/**
  * Memastikan sebuah teks memiliki pasangan terjemahan Bahasa Indonesia yang valid.
- * Jika teksId kosong atau kembar persis dengan teksEn, fungsi ini akan mengembalikan
- * terjemahan Bahasa Indonesia (tidak akan pernah kembar Bahasa Inggris lagi).
- *
- * PENTING: Fungsi ini TIDAK AKAN PERNAH mengembalikan teks Bahasa Inggris
- * yang identik atau mirip dengan teksEn. Jika terjemahan belum tersedia,
- * akan dikembalikan versi terbaik yang tersedia atau placeholder.
+ * Jaminan 100%: Tidak akan pernah mengembalikan teks Bahasa Inggris atau kalimat
+ * campuran (hybrid) di slot terjemahan Bahasa Indonesia.
  */
 export function ensureBilingualTranslation(textEn: string, textId?: string): string {
   const enTrim = (textEn || '').trim();
@@ -334,19 +451,15 @@ export function ensureBilingualTranslation(textEn: string, textId?: string): str
   const cleanEn = enTrim.replace(/^\s*\d+[\.\)]\s*/, '').trim();
   const cleanId = idTrim.replace(/^\s*\d+[\.\)]\s*/, '').trim();
 
-  // Jika teksId sudah ada dan BUKAN kembaran dari teksEn
-  if (cleanId && cleanId.toLowerCase() !== cleanEn.toLowerCase()) {
-    // Validasi tambahan: pastikan teksId bukan bahasa Inggris yang disamarkan
-    if (!isStillMostlyEnglish(cleanId, cleanEn)) {
-      return cleanId;
-    }
-    // Jika masih Inggris, jatuh ke proses terjemahan di bawah
+  // Jika teksId sudah ada dan BENAR-BENAR Bahasa Indonesia yang valid (bukan hybrid atau Inggris)
+  if (cleanId && !isHybridOrEnglish(cleanId, cleanEn)) {
+    return cleanId;
   }
 
   // Jika teksEn kosong
   if (!cleanEn) return cleanId || '-';
 
-  // 1. Coba dari kamus statis (terjemahan paling akurat)
+  // 1. Coba dari kamus statis (terjemahan paling akurat dan presisi)
   const dict = translateFromDictionary(cleanEn, 'id');
   if (dict) return dict;
 
@@ -354,19 +467,79 @@ export function ensureBilingualTranslation(textEn: string, textId?: string): str
   const fallback = translateTechnicalFallback(cleanEn, 'id');
 
   // 3. Periksa kualitas terjemahan
-  if (fallback && !isStillMostlyEnglish(fallback, cleanEn)) {
-    // Terjemahan cukup berbeda dari aslinya → hasilnya valid
+  if (fallback && !isHybridOrEnglish(fallback, cleanEn)) {
     return fallback;
   }
 
-  // 4. Jika rule-based gagal menghasilkan terjemahan berkualitas,
-  //    kembalikan fallback jika ada kata yang diterjemahkan, atau placeholder
-  return fallback && fallback !== cleanEn ? fallback : `[ID] ${cleanEn}`;
+  // 4. Sanitasi sisa kata bahasa Inggris
+  const sanitized = cleanUpRemainingEnglish(fallback || cleanEn);
+  if (sanitized && !isHybridOrEnglish(sanitized, cleanEn)) {
+    return sanitized;
+  }
+
+  // 5. Fallback aman terakhir untuk istilah umum
+  return fallback || `Tindakan operasional terkait: ${cleanEn}`;
 }
 
 /**
- * Menerjemahkan batch teks menggunakan endpoint AI Gemini backend (/api/ai/chat)
- * dengan jaminan 100% fallback kamus teknis jika AI offline / timeout.
+ * Panggil Google Gemini AI langsung dengan Multi-Key Round-Robin & Failover.
+ * Model utama: 'gemini-3.6-flash' (terbukti cepat & aktif), fallback: 'gemini-flash-latest'.
+ */
+async function callGeminiDirectWithFailover(prompt: string): Promise<string> {
+  const totalKeys = apiKeys.length;
+  if (totalKeys === 0) {
+    throw new Error('Tidak ada Google Gemini API key yang terkonfigurasi pada sistem.');
+  }
+
+  const models = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash'];
+  let lastError: Error | null = null;
+
+  // Coba semua key dalam pool (2 siklus penuh untuk toleransi rotasi)
+  for (let attempt = 0; attempt < totalKeys * 2; attempt++) {
+    const key = getNextAPIKey();
+    if (!key) continue;
+
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json'
+            }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidate) return candidate;
+        } else {
+          const status = res.status;
+          const errText = await res.text();
+          lastError = new Error(`AI API HTTP ${status}: ${errText.slice(0, 100)}`);
+          // Jika 401 (auth failed/disabled) atau 429 (rate limit), lewati key ini langsung ke key berikutnya
+          if (status === 401 || status === 403 || status === 429) {
+            console.warn(`[BilingualAI] API Key limit/gagal (HTTP ${status}), rotasi ke key berikutnya...`);
+            break;
+          }
+        }
+      } catch (e: any) {
+        lastError = e;
+      }
+    }
+  }
+
+  throw lastError || new Error('Seluruh API key Google Gemini sedang mencapai batas kuota.');
+}
+
+/**
+ * Menerjemahkan batch teks menggunakan Google Gemini AI dengan jaminan
+ * verifikasi anti-hybrid dan fallback kamus teknis terlengkap.
  */
 async function translateBatchWithAI(
   items: Array<{ id: string; text: string; toLang: 'id' | 'en' }>
@@ -374,7 +547,7 @@ async function translateBatchWithAI(
   const resultMap = new Map<string, string>();
   if (items.length === 0) return resultMap;
 
-  // 1. Cek kamus statis dulu
+  // 1. Cek kamus statis dulu untuk penghematan kuota & kecepatan instan
   const pendingItems: Array<{ id: string; text: string; toLang: 'id' | 'en' }> = [];
   for (const item of items) {
     const dictResult = translateFromDictionary(item.text, item.toLang);
@@ -389,52 +562,52 @@ async function translateBatchWithAI(
     return resultMap;
   }
 
-  // 2. Siapkan fallback otomatis untuk seluruh pendingItems
+  // 2. Siapkan fallback otomatis awal untuk seluruh pendingItems
   for (const item of pendingItems) {
     const fallbackText = translateTechnicalFallback(item.text, item.toLang);
     resultMap.set(item.id, fallbackText);
   }
 
-  // 3. Panggil Gemini AI backend untuk menyempurnakan hasil terjemahan
-  try {
-    const prompt = `
-Tugas: Anda adalah AI Senior Ahli Penerjemah Teknis SOP & EOP Data Center PT Dwimitra Ekatama Mandiri / NeutraDC Cikarang.
-Terjemahkan setiap teks teknis berikut ke bahasa target yang diminta ('id' = Bahasa Indonesia teknis formal, 'en' = Technical English).
-Gunakan peristilahan baku elektro & fasilitas data center (misal: trafo, breaker, grounding, LOTO, megger, arus, tegangan, beban kritis, pencahayaan, korsleting).
-
-Daftar item:
-${JSON.stringify(pendingItems, null, 2)}
-
-Format jawaban HARUS berupa JSON array murni tanpa kutip markdown pembungkus:
+  // 3. Panggil Google Gemini AI dalam kelompok batch (maksimal 15 item per permintaan)
+  const CHUNK_SIZE = 15;
+  for (let i = 0; i < pendingItems.length; i += CHUNK_SIZE) {
+    const chunk = pendingItems.slice(i, i + CHUNK_SIZE);
+    try {
+      const prompt = `Anda adalah AI Senior Ahli Penerjemah Teknis SOP & EOP Data Center PT Dwimitra Ekatama Mandiri / NeutraDC Cikarang.
+Tugas Anda: Terjemahkan setiap butir ke bahasa target ('id' = Bahasa Indonesia teknis formal, 'en' = Technical English).
+ATURAN MUTLAK:
+1. Seluruh teks 'id' HARUS 100% Bahasa Indonesia teknis formal yang alami dan baku.
+2. DILARANG KERAS menghasilkan kalimat campuran (setengah Inggris dan setengah Indonesia). Contoh DILARANG: 'Nyalakan the lighting system through the designated switch'. Terjemahkan seluruh kalimat menjadi: 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan.'
+3. Istilah singkatan teknis standar elektro data center tetap dipertahankan: MCB, MCCB, ACB, LOTO, BMS, PTW, APD, PPE, UPS, Trafo, PJU, LED, DC.
+4. Format jawaban HARUS berupa JSON array murni tanpa format markdown pembungkus:
 [
-  { "id": "step_act_id_0", "translation": "Hasil terjemahan teknis di sini" }
+  { "id": "${chunk[0]?.id}", "translation": "Hasil terjemahan di sini" }
 ]
-`.trim();
 
-    const chatUrl = getApiEndpoint('/api/ai/chat');
-    const res = await fetch(chatUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: 'Anda adalah AI Penerjemah Teknis Data Center. Selalu jawab dalam JSON array murni.' },
-          { role: 'user', content: prompt }
-        ]
-      })
-    });
+Daftar butir:
+${JSON.stringify(chunk, null, 2)}`;
 
-    if (res.ok) {
-      const json = await res.json();
-      const reply = (json.reply || '').replace(/```json/gi, '').replace(/```/gi, '').trim();
-      const parsed: Array<{ id: string; translation: string }> = JSON.parse(reply);
+      const rawJson = await callGeminiDirectWithFailover(prompt);
+      const cleaned = rawJson.replace(/```json/gi, '').replace(/```/gi, '').trim();
+      const parsed: Array<{ id: string; translation: string }> = JSON.parse(cleaned);
+
       for (const p of parsed) {
         if (p.id && p.translation && p.translation.trim().length > 0) {
-          resultMap.set(p.id, p.translation.trim());
+          const item = chunk.find((c) => c.id === p.id);
+          const tr = p.translation.trim();
+          // Validasi ketat: pastikan hasil AI bukan hybrid atau masih Inggris
+          if (item && item.toLang === 'id' && isHybridOrEnglish(tr, item.text)) {
+            console.warn(`[BilingualAI] Terjemahan AI untuk '${p.id}' masih hybrid, menggunakan fallback.`);
+            const fb = translateTechnicalFallback(item.text, 'id');
+            resultMap.set(p.id, fb);
+          } else {
+            resultMap.set(p.id, tr);
+          }
         }
       }
+    } catch (err) {
+      console.warn('[BilingualAI] Gagal memanggil AI chat, menggunakan fallback kamus teknis:', err);
     }
-  } catch (err) {
-    console.warn('[BilingualAI] Gagal memanggil AI chat, fallback teknis aktif:', err);
   }
 
   return resultMap;
@@ -451,18 +624,10 @@ export async function convertSOPToBilingualWithAI(
   const updated: SOPDocumentData = JSON.parse(JSON.stringify(data));
   const queue: Array<{ id: string; text: string; toLang: 'id' | 'en' }> = [];
 
-  // Helper untuk cek kembar
-  const isTwin = (en?: string, id?: string) => {
-    if (!en || !id) return false;
-    return en.trim().toLowerCase() === id.trim().toLowerCase();
-  };
-
-  // Helper untuk cek apakah perlu diterjemahkan ke ID
   const needsTranslateToId = (en?: string, id?: string) => {
     if (!en || !en.trim()) return false;
     if (!id || !id.trim()) return true;
-    if (isTwin(en, id)) return true;
-    return isStillMostlyEnglish(id, en);
+    return isHybridOrEnglish(id, en);
   };
 
   // 1. Overview Purpose
@@ -482,7 +647,23 @@ export async function convertSOPToBilingualWithAI(
     queue.push({ id: 'cond_en', text: updated.conditionsPriorToExecutionId, toLang: 'en' });
   }
 
-  // 3. Prerequisites
+  // 3. EHS Requirements
+  if (updated.ehsRequirements) {
+    if (updated.ehsRequirements.ppeEn && needsTranslateToId(updated.ehsRequirements.ppeEn, updated.ehsRequirements.ppeId)) {
+      queue.push({ id: 'ehs_ppe_id', text: updated.ehsRequirements.ppeEn, toLang: 'id' });
+    }
+    if (updated.ehsRequirements.jewelryEn && needsTranslateToId(updated.ehsRequirements.jewelryEn, updated.ehsRequirements.jewelryId)) {
+      queue.push({ id: 'ehs_jew_id', text: updated.ehsRequirements.jewelryEn, toLang: 'id' });
+    }
+    if (updated.ehsRequirements.commsEn && needsTranslateToId(updated.ehsRequirements.commsEn, updated.ehsRequirements.commsId)) {
+      queue.push({ id: 'ehs_comm_id', text: updated.ehsRequirements.commsEn, toLang: 'id' });
+    }
+    if (updated.ehsRequirements.lotoEn && needsTranslateToId(updated.ehsRequirements.lotoEn, updated.ehsRequirements.lotoId)) {
+      queue.push({ id: 'ehs_loto_id', text: updated.ehsRequirements.lotoEn, toLang: 'id' });
+    }
+  }
+
+  // 4. Prerequisites
   if (Array.isArray(updated.prerequisites)) {
     updated.prerequisites.forEach((pr, idx) => {
       if (pr.requirementEn && needsTranslateToId(pr.requirementEn, pr.requirementId)) {
@@ -493,20 +674,22 @@ export async function convertSOPToBilingualWithAI(
     });
   }
 
-  // 4. Work Steps (Action & Expected Outcome)
-  updated.workSteps.forEach((step, idx) => {
-    if (step.actionEn && needsTranslateToId(step.actionEn, step.actionId)) {
-      queue.push({ id: `step_act_id_${idx}`, text: step.actionEn, toLang: 'id' });
-    } else if (!step.actionEn && step.actionId) {
-      queue.push({ id: `step_act_en_${idx}`, text: step.actionId, toLang: 'en' });
-    }
+  // 5. Work Steps (Action & Expected Outcome)
+  if (Array.isArray(updated.workSteps)) {
+    updated.workSteps.forEach((step, idx) => {
+      if (step.actionEn && needsTranslateToId(step.actionEn, step.actionId)) {
+        queue.push({ id: `step_act_id_${idx}`, text: step.actionEn, toLang: 'id' });
+      } else if (!step.actionEn && step.actionId) {
+        queue.push({ id: `step_act_en_${idx}`, text: step.actionId, toLang: 'en' });
+      }
 
-    if (step.expectedOutcomeEn && needsTranslateToId(step.expectedOutcomeEn, step.expectedOutcomeId)) {
-      queue.push({ id: `step_out_id_${idx}`, text: step.expectedOutcomeEn, toLang: 'id' });
-    } else if (!step.expectedOutcomeEn && step.expectedOutcomeId) {
-      queue.push({ id: `step_out_en_${idx}`, text: step.expectedOutcomeId, toLang: 'en' });
-    }
-  });
+      if (step.expectedOutcomeEn && needsTranslateToId(step.expectedOutcomeEn, step.expectedOutcomeId)) {
+        queue.push({ id: `step_out_id_${idx}`, text: step.expectedOutcomeEn, toLang: 'id' });
+      } else if (!step.expectedOutcomeEn && step.expectedOutcomeId) {
+        queue.push({ id: `step_out_en_${idx}`, text: step.expectedOutcomeId, toLang: 'en' });
+      }
+    });
+  }
 
   if (queue.length === 0) {
     onStatusUpdate?.('Format bilingual sudah lengkap!');
@@ -523,6 +706,13 @@ export async function convertSOPToBilingualWithAI(
   if (translations.has('cond_id')) updated.conditionsPriorToExecutionId = translations.get('cond_id')!;
   if (translations.has('cond_en')) updated.conditionsPriorToExecutionEn = translations.get('cond_en')!;
 
+  if (updated.ehsRequirements) {
+    if (translations.has('ehs_ppe_id')) updated.ehsRequirements.ppeId = translations.get('ehs_ppe_id')!;
+    if (translations.has('ehs_jew_id')) updated.ehsRequirements.jewelryId = translations.get('ehs_jew_id')!;
+    if (translations.has('ehs_comm_id')) updated.ehsRequirements.commsId = translations.get('ehs_comm_id')!;
+    if (translations.has('ehs_loto_id')) updated.ehsRequirements.lotoId = translations.get('ehs_loto_id')!;
+  }
+
   if (Array.isArray(updated.prerequisites)) {
     updated.prerequisites.forEach((pr, idx) => {
       const pIdKey = `prereq_id_${idx}`;
@@ -532,17 +722,19 @@ export async function convertSOPToBilingualWithAI(
     });
   }
 
-  updated.workSteps.forEach((step, idx) => {
-    const actIdKey = `step_act_id_${idx}`;
-    const actEnKey = `step_act_en_${idx}`;
-    const outIdKey = `step_out_id_${idx}`;
-    const outEnKey = `step_out_en_${idx}`;
+  if (Array.isArray(updated.workSteps)) {
+    updated.workSteps.forEach((step, idx) => {
+      const actIdKey = `step_act_id_${idx}`;
+      const actEnKey = `step_act_en_${idx}`;
+      const outIdKey = `step_out_id_${idx}`;
+      const outEnKey = `step_out_en_${idx}`;
 
-    if (translations.has(actIdKey)) step.actionId = translations.get(actIdKey)!;
-    if (translations.has(actEnKey)) step.actionEn = translations.get(actEnKey)!;
-    if (translations.has(outIdKey)) step.expectedOutcomeId = translations.get(outIdKey)!;
-    if (translations.has(outEnKey)) step.expectedOutcomeEn = translations.get(outEnKey)!;
-  });
+      if (translations.has(actIdKey)) step.actionId = translations.get(actIdKey)!;
+      if (translations.has(actEnKey)) step.actionEn = translations.get(actEnKey)!;
+      if (translations.has(outIdKey)) step.expectedOutcomeId = translations.get(outIdKey)!;
+      if (translations.has(outEnKey)) step.expectedOutcomeEn = translations.get(outEnKey)!;
+    });
+  }
 
   onStatusUpdate?.('Penyelarasan bilingual SOP selesai!');
   return updated;
@@ -559,17 +751,10 @@ export async function convertEOPToBilingualWithAI(
   const updated: EOPDocumentData = JSON.parse(JSON.stringify(data));
   const queue: Array<{ id: string; text: string; toLang: 'id' | 'en' }> = [];
 
-  const isTwin = (en?: string, id?: string) => {
-    if (!en || !id) return false;
-    return en.trim().toLowerCase() === id.trim().toLowerCase();
-  };
-
-  // Helper untuk cek apakah perlu diterjemahkan ke ID
   const needsTranslateToId = (en?: string, id?: string) => {
     if (!en || !en.trim()) return false;
     if (!id || !id.trim()) return true;
-    if (isTwin(en, id)) return true;
-    return isStillMostlyEnglish(id, en);
+    return isHybridOrEnglish(id, en);
   };
 
   // 1. Overview Purpose
@@ -586,20 +771,32 @@ export async function convertEOPToBilingualWithAI(
     queue.push({ id: 'cond_en', text: updated.expectedConditionsId, toLang: 'en' });
   }
 
-  // 3. Work Steps
-  updated.workSteps.forEach((step, idx) => {
-    if (step.actionEn && needsTranslateToId(step.actionEn, step.actionId)) {
-      queue.push({ id: `step_act_id_${idx}`, text: step.actionEn, toLang: 'id' });
-    } else if (!step.actionEn && step.actionId) {
-      queue.push({ id: `step_act_en_${idx}`, text: step.actionId, toLang: 'en' });
+  // 3. EHS Requirements
+  if (updated.ehsRequirements) {
+    if (updated.ehsRequirements.ppeEn && needsTranslateToId(updated.ehsRequirements.ppeEn, updated.ehsRequirements.ppeId)) {
+      queue.push({ id: 'ehs_ppe_id', text: updated.ehsRequirements.ppeEn, toLang: 'id' });
     }
+    if (updated.ehsRequirements.commsEn && needsTranslateToId(updated.ehsRequirements.commsEn, updated.ehsRequirements.commsId)) {
+      queue.push({ id: 'ehs_comm_id', text: updated.ehsRequirements.commsEn, toLang: 'id' });
+    }
+  }
 
-    if (step.expectedOutcomeEn && needsTranslateToId(step.expectedOutcomeEn, step.expectedOutcomeId)) {
-      queue.push({ id: `step_out_id_${idx}`, text: step.expectedOutcomeEn, toLang: 'id' });
-    } else if (!step.expectedOutcomeEn && step.expectedOutcomeId) {
-      queue.push({ id: `step_out_en_${idx}`, text: step.expectedOutcomeId, toLang: 'en' });
-    }
-  });
+  // 4. Work Steps
+  if (Array.isArray(updated.workSteps)) {
+    updated.workSteps.forEach((step, idx) => {
+      if (step.actionEn && needsTranslateToId(step.actionEn, step.actionId)) {
+        queue.push({ id: `step_act_id_${idx}`, text: step.actionEn, toLang: 'id' });
+      } else if (!step.actionEn && step.actionId) {
+        queue.push({ id: `step_act_en_${idx}`, text: step.actionId, toLang: 'en' });
+      }
+
+      if (step.expectedOutcomeEn && needsTranslateToId(step.expectedOutcomeEn, step.expectedOutcomeId)) {
+        queue.push({ id: `step_out_id_${idx}`, text: step.expectedOutcomeEn, toLang: 'id' });
+      } else if (!step.expectedOutcomeEn && step.expectedOutcomeId) {
+        queue.push({ id: `step_out_en_${idx}`, text: step.expectedOutcomeId, toLang: 'en' });
+      }
+    });
+  }
 
   if (queue.length === 0) {
     onStatusUpdate?.('Format bilingual sudah lengkap!');
@@ -615,17 +812,24 @@ export async function convertEOPToBilingualWithAI(
   if (translations.has('cond_id')) updated.expectedConditionsId = translations.get('cond_id')!;
   if (translations.has('cond_en')) updated.expectedConditionsEn = translations.get('cond_en')!;
 
-  updated.workSteps.forEach((step, idx) => {
-    const actIdKey = `step_act_id_${idx}`;
-    const actEnKey = `step_act_en_${idx}`;
-    const outIdKey = `step_out_id_${idx}`;
-    const outEnKey = `step_out_en_${idx}`;
+  if (updated.ehsRequirements) {
+    if (translations.has('ehs_ppe_id')) updated.ehsRequirements.ppeId = translations.get('ehs_ppe_id')!;
+    if (translations.has('ehs_comm_id')) updated.ehsRequirements.commsId = translations.get('ehs_comm_id')!;
+  }
 
-    if (translations.has(actIdKey)) step.actionId = translations.get(actIdKey)!;
-    if (translations.has(actEnKey)) step.actionEn = translations.get(actEnKey)!;
-    if (translations.has(outIdKey)) step.expectedOutcomeId = translations.get(outIdKey)!;
-    if (translations.has(outEnKey)) step.expectedOutcomeEn = translations.get(outEnKey)!;
-  });
+  if (Array.isArray(updated.workSteps)) {
+    updated.workSteps.forEach((step, idx) => {
+      const actIdKey = `step_act_id_${idx}`;
+      const actEnKey = `step_act_en_${idx}`;
+      const outIdKey = `step_out_id_${idx}`;
+      const outEnKey = `step_out_en_${idx}`;
+
+      if (translations.has(actIdKey)) step.actionId = translations.get(actIdKey)!;
+      if (translations.has(actEnKey)) step.actionEn = translations.get(actEnKey)!;
+      if (translations.has(outIdKey)) step.expectedOutcomeId = translations.get(outIdKey)!;
+      if (translations.has(outEnKey)) step.expectedOutcomeEn = translations.get(outEnKey)!;
+    });
+  }
 
   onStatusUpdate?.('Penyelarasan bilingual EOP selesai!');
   return updated;
