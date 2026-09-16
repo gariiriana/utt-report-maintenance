@@ -269,7 +269,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         if (options?.highlightOnly) return;
 
         let attempts = 0;
-        const maxAttempts = 18; // Polling hingga 1.8 detik untuk memastikan re-mounting DOM & layout gambar selesai
+        const maxAttempts = 30; // Polling hingga 3 detik untuk memastikan re-mounting DOM & unmount form selesai
         const intervalTime = 100;
 
         const attemptScroll = () => {
@@ -280,10 +280,24 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                 // Berikan highlight ring tegas & glow
+                el.classList.remove('ring-4', 'ring-red-500', 'shadow-2xl');
+                void el.offsetWidth; // trigger reflow
                 el.classList.add('ring-4', 'ring-red-500', 'shadow-2xl', 'transition-all', 'duration-500');
+
+                // Double check layout shift setelah animasi unmount form selesai (400ms)
+                setTimeout(() => {
+                    const freshEl = document.getElementById(`cm-report-card-${reportId}`);
+                    if (freshEl) {
+                        const rect = freshEl.getBoundingClientRect();
+                        if (rect.top < 60 || rect.bottom > window.innerHeight + 100) {
+                            freshEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                }, 400);
+
                 setTimeout(() => {
                     el.classList.remove('ring-4', 'ring-red-500', 'shadow-2xl');
-                }, 4000);
+                }, 4500);
                 return;
             }
 
@@ -293,7 +307,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         };
 
         requestAnimationFrame(() => {
-            setTimeout(attemptScroll, 60);
+            setTimeout(attemptScroll, 80);
         });
     }, []);
 
@@ -330,8 +344,17 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }, 50);
     };
 
-    const handleCloseForm = () => {
-        const targetId = lastInteractedReportIdRef.current || highlightedReportId || (typeof window !== 'undefined' ? sessionStorage.getItem('cm_last_interacted_id') : null);
+    const handleCloseForm = (specificId?: string) => {
+        const targetId = specificId || editingReportId || lastInteractedReportIdRef.current || highlightedReportId || (typeof window !== 'undefined' ? sessionStorage.getItem('cm_last_interacted_id') : null);
+
+        // Pastikan tab folder arsip yang aktif sesuai dengan form yang baru ditutup
+        if (reportFormType === 'cm_pdf' && archiveFolder !== 'cm_pdf') {
+            setArchiveFolder('cm_pdf');
+        } else if (reportFormType === 'sla' && archiveFolder !== 'sla') {
+            setArchiveFolder('sla');
+        } else if (reportFormType === 'pir' && archiveFolder !== 'pir') {
+            setArchiveFolder('pir');
+        }
 
         setShowForm(false);
         setReportFormType(null);
@@ -339,9 +362,44 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         setPrefillSlaData(null);
 
         if (targetId) {
+            lastInteractedReportIdRef.current = targetId;
+            setHighlightedReportId(targetId);
             try {
+                sessionStorage.setItem('cm_last_interacted_id', targetId);
                 sessionStorage.setItem('cm_should_scroll_to_report', 'true');
             } catch {}
+
+            // Jika laporan yang ditargetkan sedang tersembunyi oleh filter pencarian/status/kategori, reset filter tersebut
+            const targetReport = reports.find(r => r.id === targetId);
+            if (targetReport) {
+                if (searchQuery.trim() !== '') {
+                    const q = searchQuery.toLowerCase();
+                    const matches = (targetReport.incidentName || '').toLowerCase().includes(q)
+                        || (targetReport.equipmentName || '').toLowerCase().includes(q)
+                        || (targetReport.location || '').toLowerCase().includes(q)
+                        || (targetReport.issue || '').toLowerCase().includes(q)
+                        || (targetReport.ticketName || '').toLowerCase().includes(q);
+                    if (!matches) {
+                        setSearchQuery('');
+                    }
+                }
+                if (selectedTroubleStatus !== 'all') {
+                    const isClosed = targetReport.troubleStatus === 'closed' || (!targetReport.troubleStatus && targetReport.status === 'Resolved');
+                    const isOpen = targetReport.troubleStatus === 'open' || (!targetReport.troubleStatus && targetReport.status === 'Open');
+                    if ((selectedTroubleStatus === 'closed' && !isClosed) || (selectedTroubleStatus === 'open' && !isOpen)) {
+                        setSelectedTroubleStatus('all');
+                    }
+                }
+                if (selectedCMType !== 'all') {
+                    setSelectedCMType('all');
+                }
+                if (selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all') {
+                    setSelectedDay('all');
+                    setSelectedMonth('all');
+                    setSelectedYear('all');
+                }
+            }
+
             scrollToReport(targetId);
         }
     };
@@ -1849,7 +1907,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 </button>
             </div>
 
-            <AnimatePresence>
+            <AnimatePresence
+                onExitComplete={() => {
+                    const targetId = lastInteractedReportIdRef.current || highlightedReportId || (typeof window !== 'undefined' ? sessionStorage.getItem('cm_last_interacted_id') : null);
+                    if (targetId) {
+                        scrollToReport(targetId);
+                    }
+                }}
+            >
                 {showForm && (
                     <div className="mb-8" ref={formContainerRef}>
                         {reportFormType === 'sla' ? (
@@ -1862,8 +1927,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     editId={editingReportId || undefined}
                                     prefillData={prefillSlaData || undefined}
                                     availableCMReports={cmRequiringSLAReports}
-                                    onSuccess={handleCloseForm}
-                                    onCancel={handleCloseForm}
+                                    onSuccess={(savedId) => handleCloseForm(savedId || editingReportId || undefined)}
+                                    onCancel={(canceledId) => handleCloseForm(canceledId || editingReportId || undefined)}
                                 />
                             </motion.div>
                         ) : reportFormType === 'pir' ? (
@@ -1874,8 +1939,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             >
                                 <PIRReportFormModal
                                     editId={editingReportId || undefined}
-                                    onSuccess={handleCloseForm}
-                                    onCancel={handleCloseForm}
+                                    onSuccess={(savedId) => handleCloseForm(savedId || editingReportId || undefined)}
+                                    onCancel={(canceledId) => handleCloseForm(canceledId || editingReportId || undefined)}
                                 />
                             </motion.div>
                         ) : (
@@ -1886,8 +1951,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             >
                                 <CMReportFormModal
                                     editId={editingReportId || undefined}
-                                    onSuccess={handleCloseForm}
-                                    onCancel={handleCloseForm}
+                                    onSuccess={(savedId) => handleCloseForm(savedId || editingReportId || undefined)}
+                                    onCancel={(canceledId) => handleCloseForm(canceledId || editingReportId || undefined)}
                                 />
                             </motion.div>
                         )}
@@ -3514,7 +3579,11 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         <h4 className="text-sm font-semibold text-emerald-600 mb-1 flex items-center gap-2">
                                                             <CheckCircle2 className="w-3 h-3" /> Action Taken (Tindakan)
                                                         </h4>
-                                                        <p className="text-slate-700 text-sm leading-relaxed">{report.actionTaken || report.correctiveAction || '-'}</p>
+                                                        <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+                                                            {typeof (report.actionTaken || report.correctiveAction) === 'string'
+                                                                ? (report.actionTaken || report.correctiveAction || '-').replace(/([^\n])\s+(\d+[\.\)]\s+)/g, '$1\n$2')
+                                                                : (report.actionTaken || report.correctiveAction || '-')}
+                                                        </p>
                                                     </div>
                                                 </div>
 
@@ -3786,7 +3855,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 if (targetIdx === -1) return null;
                 const reportNum = filteredReports.length - targetIdx;
                 return (
-                    <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-300">
+                    <div className="fixed bottom-24 right-6 sm:bottom-6 sm:right-28 md:right-32 z-40 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-300">
                         <button
                             type="button"
                             onClick={() => scrollToReport(highlightedReportId)}

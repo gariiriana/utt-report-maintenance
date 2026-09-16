@@ -127,8 +127,8 @@ export interface SLAPrefillData {
 }
 
 interface SLAFormProps {
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess: (savedId?: string) => void;
+  onCancel: (canceledId?: string) => void;
   editId?: string;
   prefillData?: SLAPrefillData;
   availableCMReports?: any[];
@@ -835,7 +835,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
         toast.success(editId ? 'Perubahan Laporan SLA/SLG berhasil disimpan!' : 'Laporan SLA/SLG Corrective Maintenance berhasil disimpan!', { id: 'save-sla-report' });
       }
 
-      onSuccess();
+      onSuccess(slaDocId || editId);
       return true;
     } catch (error: any) {
       console.error('Error saving SLA report:', error);
@@ -909,7 +909,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
           {onCancel && (
             <button
               type="button"
-              onClick={onCancel}
+              onClick={() => onCancel(editId)}
               className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition cursor-pointer"
               title="Tutup Form"
             >
@@ -2011,7 +2011,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
             <button
               key="cancel-btn"
               type="button"
-              onClick={onCancel}
+              onClick={() => onCancel(editId)}
               className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 rounded-xl font-bold transition border border-slate-200 shadow-sm"
             >
               Batal

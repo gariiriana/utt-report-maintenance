@@ -40,6 +40,32 @@ export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
   'nspect the lamp, driver/ballast, wiring, terminal, and lighting fixture for damage or loose connections': 'Periksa lampu, driver/ballast, pengkabelan, terminal, dan rumah lampu dari kerusakan atau sambungan kendor',
   'Restore the circuit and perform an operational test after confirming the system is safe.': 'Normalkan sirkuit dan lakukan uji operasional setelah memastikan sistem aman.',
   'Restore the circuit and perform an operational test after confirming the system is safe': 'Normalkan sirkuit dan lakukan uji operasional setelah memastikan sistem aman',
+  'Nyalakan the lighting system through the designated switch or control system.': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan.',
+  'Nyalakan the lighting system through the designated switch or control system': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan',
+  'Turn on the lighting system through the designated switch or control system.': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan.',
+  'Turn on the lighting system through the designated switch or control system': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan',
+  'Turn ON the lighting system through the designated switch or control system.': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan.',
+  'Turn ON the lighting system through the designated switch or control system': 'Nyalakan sistem pencahayaan melalui sakelar atau sistem kontrol yang ditentukan',
+  'Check all lighting fixtures in the designated area.': 'Periksa seluruh rumah lampu (armatur) di area yang ditentukan.',
+  'Check all lighting fixtures in the designated area': 'Periksa seluruh rumah lampu (armatur) di area yang ditentukan',
+  'Check for flickering, dim lighting, unusual noise, or other abnormal conditions.': 'Periksa apakah ada kedipan, pencahayaan redup, suara tidak normal, atau kondisi abnormal lainnya.',
+  'Check for flickering, dim lighting, unusual noise, or other abnormal conditions': 'Periksa apakah ada kedipan, pencahayaan redup, suara tidak normal, atau kondisi abnormal lainnya',
+  'Check emergency lighting and confirm its standby condition.': 'Periksa lampu darurat dan pastikan dalam kondisi siaga (standby).',
+  'Check emergency lighting and confirm its standby condition': 'Periksa lampu darurat dan pastikan dalam kondisi siaga (standby)',
+  'Check lighting control panel, timers, sensors, and contactors.': 'Periksa panel kontrol pencahayaan, timer, sensor, dan kontaktor.',
+  'Check lighting control panel, timers, sensors, and contactors': 'Periksa panel kontrol pencahayaan, timer, sensor, dan kontaktor',
+  'Clean lamp covers, reflectors, and diffusers from dust and dirt.': 'Bersihkan penutup lampu, reflektor, dan diffuser dari debu dan kotoran.',
+  'Clean lamp covers, reflectors, and diffusers from dust and dirt': 'Bersihkan penutup lampu, reflektor, dan diffuser dari debu dan kotoran',
+  'Check wiring, terminal connections, and grounding of lighting fixtures.': 'Periksa pengkabelan, sambungan terminal, dan pentanahan rumah lampu.',
+  'Check wiring, terminal connections, and grounding of lighting fixtures': 'Periksa pengkabelan, sambungan terminal, dan pentanahan rumah lampu',
+  'Measure voltage and current on lighting distribution sub-panel.': 'Ukur tegangan dan arus pada sub-panel distribusi pencahayaan.',
+  'Measure voltage and current on lighting distribution sub-panel': 'Ukur tegangan dan arus pada sub-panel distribusi pencahayaan',
+  'Check emergency exit signs and ensure they are illuminated clearly.': 'Periksa lampu tanda keluar darurat (exit sign) dan pastikan menyala jelas.',
+  'Check emergency exit signs and ensure they are illuminated clearly': 'Periksa lampu tanda keluar darurat (exit sign) dan pastikan menyala jelas',
+  'Check PJU pole, arm, solar panel, and battery condition.': 'Periksa tiang PJU, lengan lampu, panel surya, dan kondisi baterai.',
+  'Check PJU pole, arm, solar panel, and battery condition': 'Periksa tiang PJU, lengan lampu, panel surya, dan kondisi baterai',
+  'Record all inspection and measurement results.': 'Catat seluruh hasil inspeksi dan pengukuran.',
+  'Record all inspection and measurement results': 'Catat seluruh hasil inspeksi dan pengukuran',
   'Turn off the main breaker before performing maintenance': 'Matikan pemutus daya utama sebelum melakukan pemeliharaan',
   'Check PTW is approved': 'Periksa bahwa izin kerja (PTW) telah disetujui',
   'Wear required PPE (Safety Shoes, Helmet, Cotton Gloves)': 'Gunakan APD yang diwajibkan (Sepatu Keselamatan, Helm, Sarung Tangan Katun)',
@@ -72,6 +98,32 @@ export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
   'The source of the lighting failure is identified safely': 'Sumber kegagalan pencahayaan teridentifikasi dengan aman',
   'The lighting point operates normally without abnormal indications.': 'Titik pencahayaan beroperasi normal tanpa indikasi abnormal.',
   'The lighting point operates normally without abnormal indications': 'Titik pencahayaan beroperasi normal tanpa indikasi abnormal',
+  'required lights are switched ON.': 'Lampu yang diperlukan menyala (ON).',
+  'required lights are switched ON': 'Lampu yang diperlukan menyala (ON)',
+  'Lighting system operates normally and required lights are switched ON.': 'Sistem pencahayaan beroperasi normal dan lampu yang diperlukan menyala (ON).',
+  'Lighting system operates normally and required lights are switched ON': 'Sistem pencahayaan beroperasi normal dan lampu yang diperlukan menyala (ON)',
+  'Lighting system beroperasi normal and required lights are switched ON.': 'Sistem pencahayaan beroperasi normal dan seluruh lampu yang dibutuhkan menyala (ON).',
+  'Lighting system beroperasi normal and required lights are switched ON': 'Sistem pencahayaan beroperasi normal dan seluruh lampu yang dibutuhkan menyala (ON)',
+  'All lighting fixtures provide adequate and stable illumination.': 'Seluruh rumah lampu memberikan pencahayaan yang memadai dan stabil.',
+  'All lighting fixtures provide adequate and stable illumination': 'Seluruh rumah lampu memberikan pencahayaan yang memadai dan stabil',
+  'No abnormal condition is observed during operation.': 'Tidak ditemukan kondisi abnormal selama pengoperasian.',
+  'No abnormal condition is observed during operation': 'Tidak ditemukan kondisi abnormal selama pengoperasian',
+  'Emergency lighting is available and ready to operate during power failure.': 'Lampu darurat tersedia dan siap beroperasi saat terjadi pemadaman listrik.',
+  'Emergency lighting is available and ready to operate during power failure': 'Lampu darurat tersedia dan siap beroperasi saat terjadi pemadaman listrik',
+  'Control panels, timers, and sensors operate as configured.': 'Panel kontrol, timer, dan sensor beroperasi sesuai konfigurasi.',
+  'Control panels, timers, and sensors operate as configured': 'Panel kontrol, timer, dan sensor beroperasi sesuai konfigurasi',
+  'Lamp covers and diffusers are clean and free of dust.': 'Penutup lampu dan diffuser bersih serta bebas dari debu.',
+  'Lamp covers and diffusers are clean and free of dust': 'Penutup lampu dan diffuser bersih serta bebas dari debu',
+  'All connections tight, secure, and properly grounded.': 'Seluruh sambungan kencang, aman, dan terhubung ke pembumian dengan baik.',
+  'All connections tight, secure, and properly grounded': 'Seluruh sambungan kencang, aman, dan terhubung ke pembumian dengan baik',
+  'Voltage and current values within normal nominal limits.': 'Nilai tegangan dan arus berada dalam batas nominal normal.',
+  'Voltage and current values within normal nominal limits': 'Nilai tegangan dan arus berada dalam batas nominal normal',
+  'Exit signs are clearly visible and functioning properly.': 'Lampu tanda keluar darurat terlihat jelas dan berfungsi dengan baik.',
+  'Exit signs are clearly visible and functioning properly': 'Lampu tanda keluar darurat terlihat jelas dan berfungsi dengan baik',
+  'PJU structure sturdy and electrical components intact.': 'Struktur tiang PJU kokoh dan komponen listrik dalam kondisi baik.',
+  'PJU structure sturdy and electrical components intact': 'Struktur tiang PJU kokoh dan komponen listrik dalam kondisi baik',
+  'All inspection data recorded and work area clean and safe.': 'Seluruh data inspeksi tercatat serta area kerja bersih dan aman.',
+  'All inspection data recorded and work area clean and safe': 'Seluruh data inspeksi tercatat serta area kerja bersih dan aman',
   'System operational and restored safely': 'Sistem beroperasi dan dipulihkan dengan aman',
 
   // EOP Actions & Outcomes
@@ -180,6 +232,45 @@ export function translateTechnicalFallback(text: string, toLang: 'id' | 'en'): s
     res = res.replace(/\boperates\s+normally\b/gi, 'beroperasi normal');
     res = res.replace(/\bwithout\s+abnormal\s+indications\b/gi, 'tanpa indikasi abnormal');
 
+    // Lighting, PJU, & Fixtures
+    res = res.replace(/\ball\s+lighting\s+fixtures\s+in\s+the\s+designated\s+area\b/gi, 'seluruh rumah lampu di area yang ditentukan');
+    res = res.replace(/\ball\s+lighting\s+fixtures\b/gi, 'seluruh rumah lampu (armatur)');
+    res = res.replace(/\blighting\s+fixtures\b/gi, 'rumah lampu (armatur)');
+    res = res.replace(/\blighting\s+fixture\b/gi, 'rumah lampu');
+    res = res.replace(/\bin\s+the\s+designated\s+area\b/gi, 'di area yang ditentukan');
+    res = res.replace(/\bthrough\s+the\s+designated\s+switch\s+or\s+control\s+system\b/gi, 'melalui sakelar atau sistem kontrol yang ditentukan');
+    res = res.replace(/\bthe\s+lighting\s+system\b/gi, 'sistem pencahayaan');
+    res = res.replace(/\blighting\s+system\b/gi, 'sistem pencahayaan');
+    res = res.replace(/\bdesignated\s+switch\b/gi, 'sakelar yang ditentukan');
+    res = res.replace(/\bcontrol\s+system\b/gi, 'sistem kontrol');
+    res = res.replace(/\bfor\s+flickering,\s+dim\s+lighting,\s+unusual\s+noise,\s+or\s+other\s+abnormal\s+conditions\b/gi, 'apakah ada kedipan, pencahayaan redup, suara tidak normal, atau kondisi abnormal lainnya');
+    res = res.replace(/\bflickering\b/gi, 'kedipan');
+    res = res.replace(/\bdim\s+lighting\b/gi, 'pencahayaan redup');
+    res = res.replace(/\bunusual\s+noise\b/gi, 'suara tidak normal');
+    res = res.replace(/\bother\s+abnormal\s+conditions\b/gi, 'kondisi abnormal lainnya');
+    res = res.replace(/\babnormal\s+conditions\b/gi, 'kondisi abnormal');
+    res = res.replace(/\babnormal\s+condition\b/gi, 'kondisi abnormal');
+    res = res.replace(/\bemergency\s+lighting\b/gi, 'lampu darurat');
+    res = res.replace(/\band\s+confirm\s+its\s+standby\s+condition\b/gi, 'dan pastikan kondisi siaganya (standby)');
+    res = res.replace(/\bconfirm\s+its\s+standby\s+condition\b/gi, 'pastikan kondisi siaganya (standby)');
+    res = res.replace(/\bstandby\s+condition\b/gi, 'kondisi siaga (standby)');
+    res = res.replace(/\bprovide\s+adequate\s+and\s+stable\s+illumination\b/gi, 'memberikan pencahayaan yang memadai dan stabil');
+    res = res.replace(/\badequate\s+and\s+stable\s+illumination\b/gi, 'pencahayaan yang memadai dan stabil');
+    res = res.replace(/\bno\s+abnormal\s+condition\s+is\s+observed\s+during\s+operation\b/gi, 'tidak ditemukan kondisi abnormal selama pengoperasian');
+    res = res.replace(/\bno\s+abnormal\s+condition\s+is\s+observed\b/gi, 'tidak ditemukan kondisi abnormal');
+    res = res.replace(/\bis\s+observed\s+during\s+operation\b/gi, 'teramati selama pengoperasian');
+    res = res.replace(/\bduring\s+operation\b/gi, 'selama pengoperasian');
+    res = res.replace(/\bis\s+available\s+and\s+ready\s+to\s+operate\s+during\s+power\s+failure\b/gi, 'tersedia dan siap beroperasi saat terjadi pemadaman listrik');
+    res = res.replace(/\bis\s+available\s+and\s+ready\s+to\s+operate\b/gi, 'tersedia dan siap beroperasi');
+    res = res.replace(/\bduring\s+power\s+failure\b/gi, 'saat terjadi pemadaman listrik');
+    res = res.replace(/\bare\s+switched\s+on\b/gi, 'menyala (ON)');
+    res = res.replace(/\bswitched\s+on\b/gi, 'menyala (ON)');
+    res = res.replace(/\brequired\s+lights\b/gi, 'lampu yang diperlukan');
+    res = res.replace(/\bcontrol\s+panel\b/gi, 'panel kontrol');
+    res = res.replace(/\bexit\s+signs\b/gi, 'lampu tanda keluar darurat (exit sign)');
+    res = res.replace(/\bclearly\s+visible\b/gi, 'terlihat jelas');
+    res = res.replace(/\bfunctioning\s+properly\b/gi, 'berfungsi dengan baik');
+
     // Komponen teknis
     res = res.replace(/\bcircuit\s+breaker\b/gi, 'pemutus sirkuit (breaker)');
     res = res.replace(/\blighting\s+fixture\b/gi, 'rumah lampu (fixture)');
@@ -198,34 +289,79 @@ export function translateTechnicalFallback(text: string, toLang: 'id' | 'en'): s
 }
 
 /**
+ * Mendeteksi apakah sebuah teks masih didominasi kata-kata bahasa Inggris.
+ * Menggunakan daftar kata umum bahasa Inggris + heuristik morfologi.
+ */
+export function isStillMostlyEnglish(text: string, originalEn: string): boolean {
+  const cleanText = text.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+  const cleanEn = originalEn.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+
+  // Jika teks persis sama, pasti masih Inggris
+  if (cleanText === cleanEn) return true;
+
+  const words = cleanText.split(/\s+/).filter(w => w.length > 2);
+  const originalWords = cleanEn.split(/\s+/).filter(w => w.length > 2);
+
+  if (words.length === 0) return false;
+
+  // Hitung berapa banyak kata dari teks asli Inggris yang masih ada
+  let unchangedCount = 0;
+  for (const word of words) {
+    if (originalWords.includes(word)) {
+      unchangedCount++;
+    }
+  }
+
+  // Jika lebih dari 60% kata masih sama dengan aslinya → belum diterjemahkan
+  const unchangedRatio = unchangedCount / words.length;
+  return unchangedRatio > 0.6;
+}
+
+/**
  * Memastikan sebuah teks memiliki pasangan terjemahan Bahasa Indonesia yang valid.
  * Jika teksId kosong atau kembar persis dengan teksEn, fungsi ini akan mengembalikan
  * terjemahan Bahasa Indonesia (tidak akan pernah kembar Bahasa Inggris lagi).
+ *
+ * PENTING: Fungsi ini TIDAK AKAN PERNAH mengembalikan teks Bahasa Inggris
+ * yang identik atau mirip dengan teksEn. Jika terjemahan belum tersedia,
+ * akan dikembalikan versi terbaik yang tersedia atau placeholder.
  */
 export function ensureBilingualTranslation(textEn: string, textId?: string): string {
   const enTrim = (textEn || '').trim();
   const idTrim = (textId || '').trim();
 
+  // Bersihkan penomoran awal agar pencocokan kamus dan fallback presisi
+  const cleanEn = enTrim.replace(/^\s*\d+[\.\)]\s*/, '').trim();
+  const cleanId = idTrim.replace(/^\s*\d+[\.\)]\s*/, '').trim();
+
   // Jika teksId sudah ada dan BUKAN kembaran dari teksEn
-  if (idTrim && idTrim.toLowerCase() !== enTrim.toLowerCase()) {
-    return idTrim;
+  if (cleanId && cleanId.toLowerCase() !== cleanEn.toLowerCase()) {
+    // Validasi tambahan: pastikan teksId bukan bahasa Inggris yang disamarkan
+    if (!isStillMostlyEnglish(cleanId, cleanEn)) {
+      return cleanId;
+    }
+    // Jika masih Inggris, jatuh ke proses terjemahan di bawah
   }
 
   // Jika teksEn kosong
-  if (!enTrim) return idTrim || '-';
+  if (!cleanEn) return cleanId || '-';
 
-  // 1. Coba dari kamus statis
-  const dict = translateFromDictionary(enTrim, 'id');
+  // 1. Coba dari kamus statis (terjemahan paling akurat)
+  const dict = translateFromDictionary(cleanEn, 'id');
   if (dict) return dict;
 
   // 2. Coba dari rule-based fallback
-  const fallback = translateTechnicalFallback(enTrim, 'id');
-  if (fallback && fallback.toLowerCase() !== enTrim.toLowerCase()) {
+  const fallback = translateTechnicalFallback(cleanEn, 'id');
+
+  // 3. Periksa kualitas terjemahan
+  if (fallback && !isStillMostlyEnglish(fallback, cleanEn)) {
+    // Terjemahan cukup berbeda dari aslinya → hasilnya valid
     return fallback;
   }
 
-  // Jika masih belum ada, buat terjemahan dasar yang informatif
-  return fallback;
+  // 4. Jika rule-based gagal menghasilkan terjemahan berkualitas,
+  //    kembalikan fallback jika ada kata yang diterjemahkan, atau placeholder
+  return fallback && fallback !== cleanEn ? fallback : `[ID] ${cleanEn}`;
 }
 
 /**
@@ -321,8 +457,16 @@ export async function convertSOPToBilingualWithAI(
     return en.trim().toLowerCase() === id.trim().toLowerCase();
   };
 
+  // Helper untuk cek apakah perlu diterjemahkan ke ID
+  const needsTranslateToId = (en?: string, id?: string) => {
+    if (!en || !en.trim()) return false;
+    if (!id || !id.trim()) return true;
+    if (isTwin(en, id)) return true;
+    return isStillMostlyEnglish(id, en);
+  };
+
   // 1. Overview Purpose
-  if (updated.documentPurposeEn && (!updated.documentPurposeId || isTwin(updated.documentPurposeEn, updated.documentPurposeId))) {
+  if (updated.documentPurposeEn && needsTranslateToId(updated.documentPurposeEn, updated.documentPurposeId)) {
     queue.push({ id: 'purpose_id', text: updated.documentPurposeEn, toLang: 'id' });
   } else if (!updated.documentPurposeEn && updated.documentPurposeId) {
     queue.push({ id: 'purpose_en', text: updated.documentPurposeId, toLang: 'en' });
@@ -331,7 +475,7 @@ export async function convertSOPToBilingualWithAI(
   // 2. Conditions Prior to Execution
   if (
     updated.conditionsPriorToExecutionEn &&
-    (!updated.conditionsPriorToExecutionId || isTwin(updated.conditionsPriorToExecutionEn, updated.conditionsPriorToExecutionId))
+    needsTranslateToId(updated.conditionsPriorToExecutionEn, updated.conditionsPriorToExecutionId)
   ) {
     queue.push({ id: 'cond_id', text: updated.conditionsPriorToExecutionEn, toLang: 'id' });
   } else if (!updated.conditionsPriorToExecutionEn && updated.conditionsPriorToExecutionId) {
@@ -341,7 +485,7 @@ export async function convertSOPToBilingualWithAI(
   // 3. Prerequisites
   if (Array.isArray(updated.prerequisites)) {
     updated.prerequisites.forEach((pr, idx) => {
-      if (pr.requirementEn && (!pr.requirementId || isTwin(pr.requirementEn, pr.requirementId))) {
+      if (pr.requirementEn && needsTranslateToId(pr.requirementEn, pr.requirementId)) {
         queue.push({ id: `prereq_id_${idx}`, text: pr.requirementEn, toLang: 'id' });
       } else if (!pr.requirementEn && pr.requirementId) {
         queue.push({ id: `prereq_en_${idx}`, text: pr.requirementId, toLang: 'en' });
@@ -351,13 +495,13 @@ export async function convertSOPToBilingualWithAI(
 
   // 4. Work Steps (Action & Expected Outcome)
   updated.workSteps.forEach((step, idx) => {
-    if (step.actionEn && (!step.actionId || isTwin(step.actionEn, step.actionId))) {
+    if (step.actionEn && needsTranslateToId(step.actionEn, step.actionId)) {
       queue.push({ id: `step_act_id_${idx}`, text: step.actionEn, toLang: 'id' });
     } else if (!step.actionEn && step.actionId) {
       queue.push({ id: `step_act_en_${idx}`, text: step.actionId, toLang: 'en' });
     }
 
-    if (step.expectedOutcomeEn && (!step.expectedOutcomeId || isTwin(step.expectedOutcomeEn, step.expectedOutcomeId))) {
+    if (step.expectedOutcomeEn && needsTranslateToId(step.expectedOutcomeEn, step.expectedOutcomeId)) {
       queue.push({ id: `step_out_id_${idx}`, text: step.expectedOutcomeEn, toLang: 'id' });
     } else if (!step.expectedOutcomeEn && step.expectedOutcomeId) {
       queue.push({ id: `step_out_en_${idx}`, text: step.expectedOutcomeId, toLang: 'en' });
@@ -420,15 +564,23 @@ export async function convertEOPToBilingualWithAI(
     return en.trim().toLowerCase() === id.trim().toLowerCase();
   };
 
+  // Helper untuk cek apakah perlu diterjemahkan ke ID
+  const needsTranslateToId = (en?: string, id?: string) => {
+    if (!en || !en.trim()) return false;
+    if (!id || !id.trim()) return true;
+    if (isTwin(en, id)) return true;
+    return isStillMostlyEnglish(id, en);
+  };
+
   // 1. Overview Purpose
-  if (updated.documentPurposeEn && (!updated.documentPurposeId || isTwin(updated.documentPurposeEn, updated.documentPurposeId))) {
+  if (updated.documentPurposeEn && needsTranslateToId(updated.documentPurposeEn, updated.documentPurposeId)) {
     queue.push({ id: 'purpose_id', text: updated.documentPurposeEn, toLang: 'id' });
   } else if (!updated.documentPurposeEn && updated.documentPurposeId) {
     queue.push({ id: 'purpose_en', text: updated.documentPurposeId, toLang: 'en' });
   }
 
   // 2. Expected Conditions
-  if (updated.expectedConditionsEn && (!updated.expectedConditionsId || isTwin(updated.expectedConditionsEn, updated.expectedConditionsId))) {
+  if (updated.expectedConditionsEn && needsTranslateToId(updated.expectedConditionsEn, updated.expectedConditionsId)) {
     queue.push({ id: 'cond_id', text: updated.expectedConditionsEn, toLang: 'id' });
   } else if (!updated.expectedConditionsEn && updated.expectedConditionsId) {
     queue.push({ id: 'cond_en', text: updated.expectedConditionsId, toLang: 'en' });
@@ -436,13 +588,13 @@ export async function convertEOPToBilingualWithAI(
 
   // 3. Work Steps
   updated.workSteps.forEach((step, idx) => {
-    if (step.actionEn && (!step.actionId || isTwin(step.actionEn, step.actionId))) {
+    if (step.actionEn && needsTranslateToId(step.actionEn, step.actionId)) {
       queue.push({ id: `step_act_id_${idx}`, text: step.actionEn, toLang: 'id' });
     } else if (!step.actionEn && step.actionId) {
       queue.push({ id: `step_act_en_${idx}`, text: step.actionId, toLang: 'en' });
     }
 
-    if (step.expectedOutcomeEn && (!step.expectedOutcomeId || isTwin(step.expectedOutcomeEn, step.expectedOutcomeId))) {
+    if (step.expectedOutcomeEn && needsTranslateToId(step.expectedOutcomeEn, step.expectedOutcomeId)) {
       queue.push({ id: `step_out_id_${idx}`, text: step.expectedOutcomeEn, toLang: 'id' });
     } else if (!step.expectedOutcomeEn && step.expectedOutcomeId) {
       queue.push({ id: `step_out_en_${idx}`, text: step.expectedOutcomeId, toLang: 'en' });

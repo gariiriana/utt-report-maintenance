@@ -56,7 +56,7 @@ import {
   DEFAULT_EOP_DATA
 } from '@/types/sopEopTypes';
 import { exportSOPToDocx, exportEOPToDocx } from '@/utils/sopEopDocxExport';
-import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI } from '@/utils/sopEopBilingualAI';
+import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI, isStillMostlyEnglish } from '@/utils/sopEopBilingualAI';
 import { importSopEopFromDocx } from '@/utils/sopEopDocxImport';
 
 type SubTab = 'sop' | 'eop' | 'archive';
@@ -125,7 +125,13 @@ export function SOPEOPManagement() {
 
       if (result.type === 'SOP' && result.sopData) {
         const needsBilingual = result.sopData.workSteps.some(
-          (s) => !s.actionId || s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase()
+          (s) =>
+            !s.actionId ||
+            !s.expectedOutcomeId ||
+            s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase() ||
+            s.expectedOutcomeId.trim().toLowerCase() === (s.expectedOutcomeEn || '').trim().toLowerCase() ||
+            (s.actionEn && isStillMostlyEnglish(s.actionId, s.actionEn)) ||
+            (s.expectedOutcomeEn && isStillMostlyEnglish(s.expectedOutcomeId, s.expectedOutcomeEn))
         );
 
         let finalSopData = result.sopData;
@@ -149,7 +155,13 @@ export function SOPEOPManagement() {
         );
       } else if (result.type === 'EOP' && result.eopData) {
         const needsBilingual = result.eopData.workSteps.some(
-          (s) => !s.actionId || s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase()
+          (s) =>
+            !s.actionId ||
+            !s.expectedOutcomeId ||
+            s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase() ||
+            s.expectedOutcomeId.trim().toLowerCase() === (s.expectedOutcomeEn || '').trim().toLowerCase() ||
+            (s.actionEn && isStillMostlyEnglish(s.actionId, s.actionEn)) ||
+            (s.expectedOutcomeEn && isStillMostlyEnglish(s.expectedOutcomeId, s.expectedOutcomeEn))
         );
 
         let finalEopData = result.eopData;

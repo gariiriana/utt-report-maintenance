@@ -56,8 +56,8 @@ function cleanPayloadForFirestore<T extends Record<string, any>>(obj: T): Partia
 }
 
 interface PIRReportFormModalProps {
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess: (savedId?: string) => void;
+  onCancel: (canceledId?: string) => void;
   editId?: string;
 }
 
@@ -378,20 +378,19 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
 
     try {
       const docPayload = await prepareDocPayload();
+      let savedDocId = editId;
 
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
         toast.success('Laporan PIR berhasil diperbarui!', { id: 'save-pir' });
       } else {
-        await addDoc(collection(db, 'corrective_reports'), docPayload);
-        toast.success('Laporan PIR berhasil disimpan!', { id: 'save-pir' });
-        try {
-          localStorage.removeItem('pir_report_draft');
-        } catch { /* ignore */ }
+        const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
+        savedDocId = newDocRef.id;
+        toast.success('Laporan PIR berhasil disimpan!');
 
         await sendFileNotification({
-          title: `Report PIR Baru: ${formData.incidentName || 'Postmortem Incident Report'}`,
-          fileName: formData.incidentName || 'Report PIR',
+          title: `Laporan PIR Baru: ${formData.incidentName || 'Post Incident Report'}`,
+          fileName: formData.incidentName || 'Laporan PIR',
           category: 'Report PIR',
           uploadedBy: user?.email || (isK2User ? 'Engineer K2' : 'Standby Engineer'),
           targetTab: 'pir',
@@ -399,7 +398,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         });
       }
 
-      onSuccess();
+      onSuccess(savedDocId);
     } catch (err: any) {
       console.error('Error saving PIR report:', err);
       const errMsg = err?.message || err?.toString() || '';
@@ -423,19 +422,21 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     setSubmitting(true);
     try {
       const docPayload = await prepareDocPayload();
+      let exportedDocId = editId;
 
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
         toast.success('Laporan PIR diekspor PDF & diperbarui!');
       } else {
-        await addDoc(collection(db, 'corrective_reports'), docPayload);
+        const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
+        exportedDocId = newDocRef.id;
         toast.success('Laporan PIR diekspor PDF & disimpan!');
         try {
           localStorage.removeItem('pir_report_draft');
         } catch { /* ignore */ }
       }
 
-      onSuccess();
+      onSuccess(exportedDocId);
     } catch (err) {
       console.error('Error auto-saving PIR report on export:', err);
     } finally {
@@ -489,7 +490,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
 
         <button
           type="button"
-          onClick={onCancel}
+          onClick={() => onCancel(editId)}
           className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition"
         >
           <X className="w-6 h-6" />

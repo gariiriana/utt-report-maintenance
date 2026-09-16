@@ -182,15 +182,18 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
     getMatch(/Lokasi\s*Kerja\s*:\s*([\s\S]*?)(?:Section|Seksi|\n\n)/i) || 'Neutra DC Cikarang';
 
   const author =
-    getMatch(/Author\s*:\s*([\s\S]*?)(?:Date\s*of\s*Creation|Penulis)/i) || 'Alif Darmawan';
+    getMatch(/Author\s*:?\s*([a-zA-Z0-9\s\.\,\'\-]+?)(?:Date\s*of\s*Creation|Penulis|\n|$)/i) || 'Alif Darmawan';
   const creationDate =
-    getMatch(/Date\s*of\s*Creation\s*:\s*([\s\S]*?)(?:Penulis|Tanggal\s*Pembuatan)/i) || '07 Sep 2026';
+    getMatch(
+      /Date\s*of\s*Creation\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Penulis|Tanggal\s*Pembuatan|Date\s*Revision|Next\s*Date\s*Revision|Revision\s*Number|\n|$)/i
+    ) || '07 Sep 2026';
   const revisionNumber =
-    getMatch(/Revision\s*Number\s*:\s*([\s\S]*?)(?:Tanggal\s*Revisi|Nomor\s*Revisi|Section|Seksi|\n\n)/i) ||
-    '00';
+    getMatch(
+      /Revision\s*Number\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Tanggal\s*Revisi|Nomor\s*Revisi|Section|Seksi|\n|$)/i
+    ) || '00';
   const revisionDate =
     getMatch(
-      /(?:Date\s*Revision|Next\s*Date\s*Revision)\s*:\s*([\s\S]*?)(?:Revision\s*Number|Nomor\s*Revisi|Tanggal\s*Revisi|\n)/i
+      /(?:Date\s*Revision|Next\s*Date\s*Revision)\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Revision\s*Number|Nomor\s*Revisi|Tanggal\s*Revisi|\n|$)/i
     ) || 'N/A';
 
   return {
@@ -332,12 +335,17 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
       const outcome = extractBilingualFromXml(tcs[1] || '');
       if (!action.en && !action.id) return null;
 
+      const cleanActionEn = (action.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const cleanActionId = (action.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const cleanOutcomeEn = (outcome.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const cleanOutcomeId = (outcome.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+
       return {
         no: idx + 1,
-        actionEn: action.en,
-        actionId: action.id,
-        expectedOutcomeEn: outcome.en,
-        expectedOutcomeId: outcome.id,
+        actionEn: cleanActionEn,
+        actionId: cleanActionId,
+        expectedOutcomeEn: cleanOutcomeEn,
+        expectedOutcomeId: cleanOutcomeId,
         time: tcs[2] ? cleanText(tcs[2]) : '',
         initial: tcs[3] ? cleanText(tcs[3]) : ''
       };
@@ -377,12 +385,17 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
       const outcome = extractBilingualFromXml(tcs[2] || '');
       if (!action.en && !action.id) return null;
 
+      const cleanActionEn = (action.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const cleanActionId = (action.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const cleanOutcomeEn = (outcome.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const cleanOutcomeId = (outcome.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+
       return {
         no,
-        actionEn: action.en,
-        actionId: action.id,
-        expectedOutcomeEn: outcome.en,
-        expectedOutcomeId: outcome.id,
+        actionEn: cleanActionEn,
+        actionId: cleanActionId,
+        expectedOutcomeEn: cleanOutcomeEn,
+        expectedOutcomeId: cleanOutcomeId,
         time: tcs[3] ? cleanText(tcs[3]) : '',
         name: tcs[4] ? cleanText(tcs[4]) : ''
       };

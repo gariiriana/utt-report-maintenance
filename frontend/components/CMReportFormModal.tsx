@@ -120,8 +120,8 @@ function parseIndoDateTime(value: string): { date: string; time: string } {
 }
 
 interface CMReportFormModalProps {
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess: (savedReportId?: string) => void;
+  onCancel: (canceledReportId?: string) => void;
   editId?: string;
 }
 
@@ -757,11 +757,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         reportedAt: serverTimestamp(),
       };
 
+      let targetResultId = editId;
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), reportPayload);
         toast.success('Laporan CM berhasil diperbarui!');
       } else {
-        await addDoc(collection(db, 'corrective_reports'), reportPayload);
+        const newDocRef = await addDoc(collection(db, 'corrective_reports'), reportPayload);
+        targetResultId = newDocRef.id;
         localStorage.removeItem('cm_report_draft');
         toast.success('Laporan CM berhasil disimpan!');
 
@@ -774,7 +776,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           searchQuery: formData.incidentName || formData.equipmentName || ''
         });
       }
-      onSuccess();
+      onSuccess(targetResultId);
     } catch (err: any) {
       console.error('Error saving CM report:', err);
       toast.error('Gagal menyimpan laporan CM');
@@ -811,7 +813,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           )}
           <button
             type="button"
-            onClick={onCancel}
+            onClick={() => onCancel(editId)}
             className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition cursor-pointer shrink-0"
             title="Tutup Form"
           >

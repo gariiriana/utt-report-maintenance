@@ -1078,10 +1078,12 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   const sopStepRows = (data.workSteps || []).map((st, i) => {
     const stepNo = st.no || i + 1;
-    const actionEn = st.actionEn || '-';
-    const actionId = ensureBilingualTranslation(actionEn, st.actionId);
-    const expectedOutcomeEn = st.expectedOutcomeEn || '-';
-    const expectedOutcomeId = ensureBilingualTranslation(expectedOutcomeEn, st.expectedOutcomeId);
+    const cleanActionEn = (st.actionEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
+    const rawActionId = ensureBilingualTranslation(cleanActionEn, st.actionId);
+    const cleanActionId = rawActionId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanActionEn;
+    const cleanOutcomeEn = (st.expectedOutcomeEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
+    const rawOutcomeId = ensureBilingualTranslation(cleanOutcomeEn, st.expectedOutcomeId);
+    const cleanOutcomeId = rawOutcomeId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanOutcomeEn;
 
     return new TableRow({
       children: [
@@ -1093,10 +1095,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
             new Paragraph({
               children: [
                 new TextRun({ text: `${stepNo}. `, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: actionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: cleanActionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
                 new TextRun({ text: `${stepNo}. `, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                new TextRun({ text: actionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: cleanActionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -1108,9 +1110,9 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: expectedOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: cleanOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: expectedOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: cleanOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -1189,39 +1191,137 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 12 – Document Information', 'Seksi 12 – Informasi Dokumen', false));
   children.push(createSpacer(40));
 
-  children.push(
-    new Paragraph({
-      spacing: { after: 40 },
-      children: [
-        new TextRun({ text: 'Author: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.author || 'Alif Darmawan', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '                    Date of Creation: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.dateOfCreation || '07 Sep 2026', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Penulis: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.author || 'Alif Darmawan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: '                    Tanggal Pembuatan: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.dateOfCreation || '07 Sep 2026', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
+  // Section 12 uses a clean borderless 4-column table layout matching master document
+  const docInfoColWidths = [1800, 2708, 2200, 2308]; // 4 columns: label, value, label, value = 9016
+  const docInfoBorders = {
+    top: BORDER_NONE,
+    bottom: BORDER_NONE,
+    left: BORDER_NONE,
+    right: BORDER_NONE,
+  };
 
   children.push(
-    new Paragraph({
-      spacing: { after: 60 },
-      children: [
-        new TextRun({ text: 'Date Revision: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.dateRevision || 'N/A', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '                    Revision Number: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.revisionNumber || '-', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Tanggal Revisi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.dateRevision || 'T/A', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: '                    Nomor Revisi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.revisionNumber || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+    new Table({
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: [
+        // Row 1: Author | : value | Date of Creation | : value
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: docInfoColWidths[0], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Author', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Penulis', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: docInfoColWidths[1], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: docInfoColWidths[2], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Date of Creation', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Tanggal Pembuatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: docInfoColWidths[3], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+          ],
+        }),
+        // Row 2: Date Revision | : value | Revision Number | : value
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: docInfoColWidths[0], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Date Revision', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Tanggal Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: docInfoColWidths[1], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.dateRevision || 'N/A'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.dateRevision || 'T/A'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: docInfoColWidths[2], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Revision Number', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Nomor Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: docInfoColWidths[3], type: WidthType.DXA },
+              borders: docInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.revisionNumber || '-'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.revisionNumber || '-'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+          ],
+        }),
       ],
     })
   );
+  children.push(createSpacer(60));
 
   // --------------------------------------------------------------------------
   // SECTION 13: Approval
@@ -1590,10 +1690,12 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
 
   const eopStepRows = (data.workSteps || []).map((st, i) => {
     const stepNo = st.no || i + 1;
-    const actionEn = st.actionEn || '-';
-    const actionId = ensureBilingualTranslation(actionEn, st.actionId);
-    const expectedOutcomeEn = st.expectedOutcomeEn || '-';
-    const expectedOutcomeId = ensureBilingualTranslation(expectedOutcomeEn, st.expectedOutcomeId);
+    const cleanActionEn = (st.actionEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
+    const rawActionId = ensureBilingualTranslation(cleanActionEn, st.actionId);
+    const cleanActionId = rawActionId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanActionEn;
+    const cleanOutcomeEn = (st.expectedOutcomeEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
+    const rawOutcomeId = ensureBilingualTranslation(cleanOutcomeEn, st.expectedOutcomeId);
+    const cleanOutcomeId = rawOutcomeId.replace(/^\s*\d+[\.\)]\s*/, '').trim() || cleanOutcomeEn;
 
     return new TableRow({
       children: [
@@ -1610,9 +1712,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: actionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: cleanActionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: actionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: cleanActionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -1624,9 +1726,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: expectedOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: cleanOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: expectedOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: cleanOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -1661,39 +1763,137 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 5 – Document Information', undefined, true));
   children.push(createSpacer(40));
 
-  children.push(
-    new Paragraph({
-      spacing: { after: 40 },
-      children: [
-        new TextRun({ text: 'Author: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.author || 'Alif Darmawan', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '                    Date of Creation: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.dateOfCreation || '7 sep 2026', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Penulis: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.author || 'Alif Darmawan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: '                    Tanggal Pembuatan: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.dateOfCreation || '7 sep 2026', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
+  // EOP Section 5 uses a clean borderless 4-column table layout matching master document
+  const eopDocInfoColWidths = [2200, 2308, 2200, 2308]; // 4 columns = 9016
+  const eopDocInfoBorders = {
+    top: BORDER_NONE,
+    bottom: BORDER_NONE,
+    left: BORDER_NONE,
+    right: BORDER_NONE,
+  };
 
   children.push(
-    new Paragraph({
-      spacing: { after: 60 },
-      children: [
-        new TextRun({ text: 'Next Date Revision: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.nextDateRevision || 'N / A', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '            Revision Number: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.revisionNumber || '-', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Tanggal Revisi Berikutnya: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.nextDateRevision || 'N / A', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: '            Nomor Revisi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.revisionNumber || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+    new Table({
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: [
+        // Row 1: Author | : value | Date of Creation | : value
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: eopDocInfoColWidths[0], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Author', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Penulis', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: eopDocInfoColWidths[1], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: eopDocInfoColWidths[2], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Date of Creation', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Tanggal Pembuatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: eopDocInfoColWidths[3], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+          ],
+        }),
+        // Row 2: Next Date Revision | : value | Revision Number | : value
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: eopDocInfoColWidths[0], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Next Date Revision', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Tanggal Revisi Berikutnya', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: eopDocInfoColWidths[1], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.nextDateRevision || 'N/A'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.nextDateRevision === 'N/A' || !data.nextDateRevision ? 'T/A' : data.nextDateRevision}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: eopDocInfoColWidths[2], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 60, right: 0 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: 'Revision Number', size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: 'Nomor Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+            new TableCell({
+              width: { size: eopDocInfoColWidths[3], type: WidthType.DXA },
+              borders: eopDocInfoBorders,
+              margins: { top: 40, bottom: 40, left: 0, right: 60 },
+              children: [new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: `: ${data.revisionNumber || '00'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `: ${data.revisionNumber || '00'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ],
+              })],
+            }),
+          ],
+        }),
       ],
     })
   );
+  children.push(createSpacer(60));
 
   // --------------------------------------------------------------------------
   // SECTION 6: Dry Run
