@@ -54,7 +54,7 @@ export function MainApp() {
 
   // Flag evaluasi hak akses peranan user
   const userEmailLower = (user?.email || '').toLowerCase();
-  const isDwimitra = userEmailLower === 'dwimitra@co.id' || userEmailLower.includes('dwimitra');
+  const isDwimitra = userEmailLower === 'dwimitra@co.id';
   const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
   const canViewAbnormal = isQcDme || isDwimitra;
   const isAdmin = userRole === 'admin' || isQcDme;
@@ -131,8 +131,8 @@ export function MainApp() {
     { id: 'pir', label: 'Report PIR', icon: AlertTriangle, color: 'from-amber-600 to-red-600', show: !isAdmin && isK2Engineer && !isStandby },
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: !isAdmin && userRole === 'DME' && !isK2Engineer },
     { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: FileText, color: 'from-blue-600 to-indigo-700', show: !isAdmin && (userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id') && !isStandby && !isK2Engineer },
-    { id: 'sop_eop', label: 'SOP & EOP', icon: BookOpen, color: 'from-amber-600 to-orange-700', show: isDwimitra || userEmailLower === 'dwimitra@co.id' },
-    { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || !!user?.email?.toLowerCase().includes('dwimitra') || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
+    { id: 'sop_eop', label: 'SOP & EOP', icon: BookOpen, color: 'from-amber-600 to-orange-700', show: isDwimitra },
+    { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || isDwimitra || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
     { id: 'berita_acara', label: 'BA Report', icon: FileSignature, color: 'from-violet-600 to-purple-700', show: isAdmin || userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id' },
   ] as const;
 
@@ -457,7 +457,11 @@ export function MainApp() {
             ) : activeTab === 'monthly_report' ? (
               <MonthlyReportGenerator />
             ) : activeTab === 'sop_eop' ? (
-              <SOPEOPManagement />
+              isDwimitra ? (
+                <SOPEOPManagement />
+              ) : (
+                <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
+              )
             ) : activeTab === 'pm_schedule' ? (
               <PMSchedule />
             ) : activeTab === 'berita_acara' ? (

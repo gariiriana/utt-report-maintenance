@@ -47,6 +47,9 @@ const TAB_ITEMS: { id: DMETab; label: string; icon: typeof FileText; color: stri
 
 export function DMEDashboard() {
   const { user, logout } = useAuth();
+  const userEmailLower = (user?.email || '').toLowerCase();
+  const isDwimitra = userEmailLower === 'dwimitra@co.id';
+  const visibleTabs = TAB_ITEMS.filter(tab => tab.id !== 'sop_eop' || isDwimitra);
   const [activeTab, setActiveTab] = useState<DMETab>('workflow');
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
@@ -127,7 +130,7 @@ export function DMEDashboard() {
 
           {/* ─── Tab Navigation ────────────────────────────────────────────── */}
           <div className="mt-3 flex gap-1 overflow-x-auto pb-0.5">
-            {TAB_ITEMS.map(tab => {
+            {visibleTabs.map(tab => {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
@@ -167,7 +170,7 @@ export function DMEDashboard() {
               </motion.div>
             )}
 
-            {activeTab === 'sop_eop' && (
+            {activeTab === 'sop_eop' && isDwimitra && (
               <motion.div
                 key="sop_eop"
                 initial={{ opacity: 0, y: 10 }}

@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   UploadCloud,
   AlertTriangle,
+  Lock,
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -669,6 +670,23 @@ export function SOPEOPManagement() {
       (item.workLocationEn || '').toLowerCase().includes(q);
     return matchesType && matchesSearch;
   });
+
+  const userEmail = (user?.email || '').trim().toLowerCase();
+  const isAuthorized = userEmail === 'dwimitra@co.id';
+
+  if (!isAuthorized) {
+    return (
+      <div className="w-full max-w-xl mx-auto my-16 p-8 bg-white/95 backdrop-blur-xl rounded-3xl border border-rose-200 shadow-xl text-center">
+        <div className="w-14 h-14 mx-auto mb-4 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
+          <Lock className="w-7 h-7" />
+        </div>
+        <h2 className="text-lg font-bold text-slate-900 mb-2">Akses Terbatas</h2>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          Modul <strong>SOP & EOP Master Management</strong> ini hanya dapat diakses oleh akun resmi <strong>dwimitra@co.id</strong>.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
