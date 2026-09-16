@@ -8,7 +8,7 @@
 //            Dilengkapi filter pencarian cepat, ekspor DOCX/Excel, serta konfirmasi hapus data.
 // ============================================================================
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     MapPin,
@@ -241,14 +241,70 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [isLoadingPredictive, setIsLoadingPredictive] = useState<boolean>(false);
     const [loadingPredictiveId, setLoadingPredictiveId] = useState<string | null>(null);
 
+    // State highlight & memori laporan aktif (misal laporan #48 yang di-update/inspeksi)
+    const [highlightedReportId, setHighlightedReportId] = useState<string | null>(() => {
+        try {
+            return sessionStorage.getItem('cm_last_interacted_id') || null;
+        } catch {
+            return null;
+        }
+    });
+
     // Scroll & Card Position Memory Refs
     const lastInteractedReportIdRef = useRef<string | null>(null);
     const savedScrollYRef = useRef<number>(0);
     const formContainerRef = useRef<HTMLDivElement | null>(null);
 
+    // Fungsi tangguh untuk auto-scroll dan visual focus menyuguhkan kembali kartu laporan
+    const scrollToReport = useCallback((reportId: string, options?: { highlightOnly?: boolean }) => {
+        if (!reportId) return;
+        setHighlightedReportId(reportId);
+        lastInteractedReportIdRef.current = reportId;
+        try {
+            sessionStorage.setItem('cm_last_interacted_id', reportId);
+        } catch {
+            // ignore
+        }
+
+        if (options?.highlightOnly) return;
+
+        let attempts = 0;
+        const maxAttempts = 18; // Polling hingga 1.8 detik untuk memastikan re-mounting DOM & layout gambar selesai
+        const intervalTime = 100;
+
+        const attemptScroll = () => {
+            attempts++;
+            const el = document.getElementById(`cm-report-card-${reportId}`);
+            if (el) {
+                // Posisikan tepat di tengah viewport agar seluruh kartu laporan terlihat jelas
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Berikan highlight ring tegas & glow
+                el.classList.add('ring-4', 'ring-red-500', 'shadow-2xl', 'transition-all', 'duration-500');
+                setTimeout(() => {
+                    el.classList.remove('ring-4', 'ring-red-500', 'shadow-2xl');
+                }, 4000);
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                setTimeout(attemptScroll, intervalTime);
+            }
+        };
+
+        requestAnimationFrame(() => {
+            setTimeout(attemptScroll, 60);
+        });
+    }, []);
+
     const handleOpenForm = (type: 'standard' | 'sla' | 'cm_pdf' | 'pir', reportId?: string) => {
         lastInteractedReportIdRef.current = reportId || null;
         if (reportId) {
+            setHighlightedReportId(reportId);
+            try {
+                sessionStorage.setItem('cm_last_interacted_id', reportId);
+                sessionStorage.setItem('cm_should_scroll_to_report', 'true');
+            } catch {}
             const el = document.getElementById(`cm-report-card-${reportId}`);
             if (el) {
                 const rect = el.getBoundingClientRect();
@@ -275,42 +331,34 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     };
 
     const handleCloseForm = () => {
-        const targetId = lastInteractedReportIdRef.current;
-        const targetScrollY = savedScrollYRef.current;
+        const targetId = lastInteractedReportIdRef.current || highlightedReportId || (typeof window !== 'undefined' ? sessionStorage.getItem('cm_last_interacted_id') : null);
 
         setShowForm(false);
         setReportFormType(null);
         setEditingReportId(null);
         setPrefillSlaData(null);
 
-        // Kembalikan posisi scroll tepat ke kartu laporan yang bersangkutan di bagian atas viewport
-        const restoreScroll = () => {
-            if (targetId) {
-                const el = document.getElementById(`cm-report-card-${targetId}`);
-                if (el) {
-                    const y = el.getBoundingClientRect().top + window.scrollY - 80;
-                    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-
-                    // Visual highlight indicator
-                    el.classList.add('ring-4', 'ring-red-500/70', 'shadow-2xl', 'transition-all', 'duration-500');
-                    setTimeout(() => {
-                        el.classList.remove('ring-4', 'ring-red-500/70', 'shadow-2xl');
-                    }, 2500);
-                    return true;
-                }
-            }
-            if (targetScrollY > 0) {
-                window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
-                return true;
-            }
-            return false;
-        };
-
-        // Multiple staggered attempts to handle DOM re-mounting and image/layout reflows
-        setTimeout(restoreScroll, 50);
-        setTimeout(restoreScroll, 150);
-        setTimeout(restoreScroll, 350);
+        if (targetId) {
+            try {
+                sessionStorage.setItem('cm_should_scroll_to_report', 'true');
+            } catch {}
+            scrollToReport(targetId);
+        }
     };
+
+    // Effect: Saat user kembali dari form edit/inspection (showForm false), suguhkan kembali laporan target
+    useEffect(() => {
+        if (!showForm) {
+            const shouldScroll = sessionStorage.getItem('cm_should_scroll_to_report') === 'true';
+            const targetId = lastInteractedReportIdRef.current || highlightedReportId || sessionStorage.getItem('cm_last_interacted_id');
+            if (targetId && (shouldScroll || lastInteractedReportIdRef.current)) {
+                scrollToReport(targetId);
+                try {
+                    sessionStorage.removeItem('cm_should_scroll_to_report');
+                } catch {}
+            }
+        }
+    }, [showForm, scrollToReport, highlightedReportId]);
 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir' | 'predictive'>('cm_pdf');
@@ -486,6 +534,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     };
 
     const handleQuickUpdateSparepartType = async (reportId: string, type: 'sparepart_dme' | 'consumable' | 'non_sparepart') => {
+        lastInteractedReportIdRef.current = reportId;
+        setHighlightedReportId(reportId);
+        try {
+            sessionStorage.setItem('cm_last_interacted_id', reportId);
+        } catch {}
+        if (selectedCMType !== 'all') {
+            setSelectedCMType('all');
+        }
         try {
             const reportRef = doc(db, 'corrective_reports', reportId);
             if (type === 'non_sparepart') {
@@ -507,6 +563,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 const typeLabel = type === 'consumable' ? 'Consumable Part (Wajib SLA)' : 'Sparepart DME / Baut (Tanpa SLA)';
                 toast.success(`Jenis sparepart berhasil diupdate: ${typeLabel}`);
             }
+            scrollToReport(reportId);
         } catch (err: any) {
             console.error('Error updating sparepart type:', err);
             toast.error('Gagal memperbarui jenis sparepart: ' + (err.message || 'Error'));
@@ -611,6 +668,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     // Handlers Pembaruan Status Trouble CM (Open vs Close / Solved)
     const handleOpenTroubleStatusModal = (report: CorrectiveReport, defaultStatus?: 'closed' | 'open') => {
+        lastInteractedReportIdRef.current = report.id;
+        setHighlightedReportId(report.id);
+        try {
+            sessionStorage.setItem('cm_last_interacted_id', report.id);
+            sessionStorage.setItem('cm_should_scroll_to_report', 'true');
+        } catch {}
         setSelectedReportForTrouble(report);
         const currentStatus = defaultStatus || report.troubleStatus || (report.status === 'Open' ? 'open' : 'closed');
         setTroubleForm({
@@ -623,6 +686,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     const handleSaveTroubleStatus = async () => {
         if (!selectedReportForTrouble) return;
+        const targetReport = selectedReportForTrouble;
+        const targetReportId = targetReport.id;
+
         if (troubleForm.status === 'open' && !troubleForm.pendingReason.trim()) {
             toast.error('Wajib mengisi catatan alasan kenapa trouble belum selesai!');
             return;
@@ -631,18 +697,25 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         try {
             setIsSavingTroubleStatus(true);
             const toastId = toast.loading('Menyimpan status trouble...');
-            const docRef = doc(db, 'corrective_reports', selectedReportForTrouble.id);
+            const docRef = doc(db, 'corrective_reports', targetReportId);
             const isClosed = troubleForm.status === 'closed';
 
             await updateDoc(docRef, {
                 troubleStatus: troubleForm.status,
-                troublePendingReason: !isClosed ? troubleForm.pendingReason.trim() : (selectedReportForTrouble.troublePendingReason || ''),
-                troubleCompletionNotes: isClosed ? troubleForm.completionNotes.trim() : (selectedReportForTrouble.troubleCompletionNotes || ''),
+                troublePendingReason: !isClosed ? troubleForm.pendingReason.trim() : (targetReport.troublePendingReason || ''),
+                troubleCompletionNotes: isClosed ? troubleForm.completionNotes.trim() : (targetReport.troubleCompletionNotes || ''),
                 troubleStatusUpdatedAt: serverTimestamp(),
                 troubleStatusUpdatedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
                 status: isClosed ? 'Resolved' : 'Open',
                 updatedAt: serverTimestamp()
             });
+
+            // Proteksi Filter: Jika user sedang filter "OPEN" tapi status diubah ke CLOSED (atau sebaliknya),
+            // sesuaikan selectedTroubleStatus ke 'all' agar laporan target tetap tampil di depan mata user
+            if (selectedTroubleStatus !== 'all' && selectedTroubleStatus !== troubleForm.status) {
+                setSelectedTroubleStatus('all');
+                toast.info(`Filter status trouble disesuaikan ke 'Semua' agar laporan tetap terlihat.`, { icon: 'ℹ️' });
+            }
 
             toast.success(
                 isClosed
@@ -652,6 +725,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             );
             setIsTroubleModalOpen(false);
             setSelectedReportForTrouble(null);
+
+            // Suguhkan kembali laporan yang baru diupdate tepat di tengah layar
+            scrollToReport(targetReportId);
         } catch (err: any) {
             console.error('Error saving trouble status:', err);
             toast.error('Gagal memperbarui status: ' + (err?.message || 'Error'));
@@ -661,6 +737,18 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     };
 
     const handleQuickResolveTrouble = async (report: CorrectiveReport) => {
+        lastInteractedReportIdRef.current = report.id;
+        setHighlightedReportId(report.id);
+        try {
+            sessionStorage.setItem('cm_last_interacted_id', report.id);
+            sessionStorage.setItem('cm_should_scroll_to_report', 'true');
+        } catch {}
+
+        if (selectedTroubleStatus === 'open') {
+            setSelectedTroubleStatus('all');
+            toast.info(`Filter status trouble disesuaikan ke 'Semua' agar laporan tetap terlihat.`, { icon: 'ℹ️' });
+        }
+
         try {
             const toastId = toast.loading('Menandai trouble sebagai Solved (Closed)...');
             const docRef = doc(db, 'corrective_reports', report.id);
@@ -673,6 +761,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 updatedAt: serverTimestamp()
             });
             toast.success('Laporan CM berhasil ditandai: CLOSED (Solved)', { id: toastId });
+            scrollToReport(report.id);
         } catch (err: any) {
             console.error('Error quick resolving trouble:', err);
             toast.error('Gagal memperbarui status: ' + (err?.message || 'Error'));
@@ -2569,13 +2658,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     id={`cm-report-card-${report.id}`}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`scroll-mt-24 bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.deleteRequested
-                                        ? 'border-amber-400 ring-2 ring-amber-400/20'
-                                        : report.reportType === 'PIR'
-                                            ? 'border-red-400'
-                                            : report.reportType === 'SLA'
-                                                ? 'border-red-300'
-                                                : 'border-slate-200'
+                                    className={`scroll-mt-24 rounded-2xl border overflow-hidden transition-all duration-300 shadow-lg relative ${
+                                        highlightedReportId === report.id
+                                            ? 'border-red-500 ring-4 ring-red-500/40 shadow-2xl bg-gradient-to-r from-red-50/50 via-white to-white'
+                                            : report.deleteRequested
+                                                ? 'border-amber-400 ring-2 ring-amber-400/20 bg-white/90 backdrop-blur-sm hover:border-amber-400'
+                                                : report.reportType === 'PIR'
+                                                    ? 'border-red-400 bg-white/90 backdrop-blur-sm hover:border-red-500'
+                                                    : report.reportType === 'SLA'
+                                                        ? 'border-red-300 bg-white/90 backdrop-blur-sm hover:border-red-400'
+                                                        : 'border-slate-200 bg-white/90 backdrop-blur-sm hover:border-blue-300'
                                         }`}
                                 >
                                     {/* Amber Banner when Deletion is Requested */}
@@ -2619,9 +2711,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         <div className="p-5 sm:p-6">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
-                                                    <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
+                                                    <span className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs ${
+                                                        highlightedReportId === report.id ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'
+                                                    }`}>
                                                         #{filteredReports.length - index}
                                                     </span>
+                                                    {highlightedReportId === report.id && (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-red-600 text-white shadow-xs animate-pulse">
+                                                            🎯 Laporan Terpilih #{filteredReports.length - index}
+                                                        </span>
+                                                    )}
                                                     <div className="px-3 py-1 bg-red-100 border border-red-300 rounded-lg text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-1.5">
                                                         <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
                                                         REPORT PIR (POSTMORTEM)
@@ -2751,9 +2850,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         <div className="p-5 sm:p-6">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
-                                                    <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
+                                                    <span className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs ${
+                                                        highlightedReportId === report.id ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'
+                                                    }`}>
                                                         #{filteredReports.length - index}
                                                     </span>
+                                                    {highlightedReportId === report.id && (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-red-600 text-white shadow-xs animate-pulse">
+                                                            🎯 Laporan Terpilih #{filteredReports.length - index}
+                                                        </span>
+                                                    )}
                                                     <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-600 uppercase tracking-wider">
                                                         SLA / SLG
                                                     </div>
@@ -3030,9 +3136,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                                     <div>
                                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                            <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
+                                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs ${
+                                                                highlightedReportId === report.id ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'
+                                                            }`}>
                                                                 #{filteredReports.length - index}
                                                             </span>
+                                                            {highlightedReportId === report.id && (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-red-600 text-white shadow-xs animate-pulse">
+                                                                    🎯 Laporan Terpilih #{filteredReports.length - index}
+                                                                </span>
+                                                            )}
 
                                                             {/* BADGE STATUS TROUBLE (OPEN VS CLOSED/SOLVED) */}
                                                             {(() => {
@@ -3601,7 +3714,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             {predictiveModalOpen && activePredictiveData && (
                 <PredictiveReportModal
                     isOpen={predictiveModalOpen}
-                    onClose={() => setPredictiveModalOpen(false)}
+                    onClose={() => {
+                        setPredictiveModalOpen(false);
+                        if (activePredictiveReport?.id) {
+                            scrollToReport(activePredictiveReport.id);
+                        }
+                    }}
                     initialData={activePredictiveData}
                     isLoadingAI={isLoadingPredictive}
                     onRegenerateAI={() => activePredictiveReport ? handleOpenPredictiveFromCM(activePredictiveReport) : Promise.resolve()}
@@ -3648,8 +3766,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             <CMTroubleStatusModal
                 isOpen={isTroubleModalOpen}
                 onClose={() => {
+                    const targetId = selectedReportForTrouble?.id || lastInteractedReportIdRef.current;
                     setIsTroubleModalOpen(false);
                     setSelectedReportForTrouble(null);
+                    if (targetId) {
+                        scrollToReport(targetId);
+                    }
                 }}
                 report={selectedReportForTrouble}
                 form={troubleForm}
@@ -3657,6 +3779,44 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 onSave={handleSaveTroubleStatus}
                 loading={isSavingTroubleStatus}
             />
+
+            {/* Floating Quick Jump Pill: Kembali ke Laporan Terpilih / Terakhir Dikerjakan */}
+            {highlightedReportId && !showForm && (() => {
+                const targetIdx = filteredReports.findIndex(r => r.id === highlightedReportId);
+                if (targetIdx === -1) return null;
+                const reportNum = filteredReports.length - targetIdx;
+                return (
+                    <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-300">
+                        <button
+                            type="button"
+                            onClick={() => scrollToReport(highlightedReportId)}
+                            className="px-4 py-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white rounded-full font-extrabold text-xs shadow-xl shadow-red-600/30 flex items-center gap-2 border-2 border-white/80 transition-all transform hover:scale-105 cursor-pointer group"
+                            title={`Meluncur kembali ke Laporan #${reportNum}`}
+                        >
+                            <span className="flex h-2 w-2 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                            </span>
+                            <span>🎯 Ke Laporan #{reportNum}</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setHighlightedReportId(null);
+                                try {
+                                    sessionStorage.removeItem('cm_last_interacted_id');
+                                    sessionStorage.removeItem('cm_should_scroll_to_report');
+                                } catch {}
+                            }}
+                            className="w-7 h-7 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white text-xs flex items-center justify-center shadow-md cursor-pointer transition"
+                            title="Tutup indikator laporan terpilih"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                );
+            })()}
         </div>
     );
 }

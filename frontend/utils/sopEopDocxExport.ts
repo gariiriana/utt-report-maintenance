@@ -1,7 +1,7 @@
 // ============================================================================
 // FILE: frontend/utils/sopEopDocxExport.ts
 // Deskripsi: Engine Ekspor Dokumen SOP & EOP ke Microsoft Word (.docx)
-//            Sesuai Standar Format Korporat DME & NeutraDC Cikarang (1:1)
+//            Standar Presisi 100% Identik Master Dokumen NeutraDC & PT DME
 // ============================================================================
 
 import {
@@ -20,13 +20,62 @@ import {
   Header,
   Footer,
   PageNumber,
+  UnderlineType,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { SOPDocumentData, EOPDocumentData } from '@/types/sopEopTypes';
-import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
-import logoNeutraDC from '@/assets/logo_neutradc.png';
+import logoDMEOriginal from '@/assets/sop_eop_logo2.jpeg';
+import logoNDCOriginal from '@/assets/sop_eop_logo1.jpeg';
 
-/** Helper to convert base64 or URL to Uint8Array for docx ImageRun */
+// ----------------------------------------------------------------------------
+// CONSTANTS & SIZES
+// ----------------------------------------------------------------------------
+const FONT_HEADING = 'Aptos Display';
+const FONT_BODY = 'Aptos';
+const CONTENT_WIDTH_DXA = 9016; // 15.9 cm exact printable area on A4 portrait
+
+// Colors
+const COLOR_BLACK = '000000';
+const COLOR_GREY_ID = '595959'; // Corporate translation grey
+const COLOR_BANNER_SOP = 'EE0000'; // Pure Red for SOP
+const COLOR_BANNER_EOP = 'FF00FF'; // Pure Magenta for EOP
+const COLOR_SUBTITLE_BANNER = 'E0E0E0';
+const COLOR_WHITE = 'FFFFFF';
+
+// Borders
+const BORDER_NONE = { style: BorderStyle.NONE, size: 0, color: 'auto' };
+
+const CELL_NO_BORDER = {
+  top: BORDER_NONE,
+  bottom: BORDER_NONE,
+  left: BORDER_NONE,
+  right: BORDER_NONE,
+};
+
+const CELL_BORDER_DIVIDER_TOP = {
+  top: { style: BorderStyle.SINGLE, size: 4, color: 'auto' },
+  bottom: BORDER_NONE,
+  left: BORDER_NONE,
+  right: BORDER_NONE,
+};
+
+const CELL_BORDER_DIVIDER_BOTTOM = {
+  top: BORDER_NONE,
+  bottom: { style: BorderStyle.SINGLE, size: 4, color: 'auto' },
+  left: BORDER_NONE,
+  right: BORDER_NONE,
+};
+
+const CELL_BORDERS_BOX = {
+  top: { style: BorderStyle.SINGLE, size: 4, color: 'auto' },
+  bottom: { style: BorderStyle.SINGLE, size: 4, color: 'auto' },
+  left: { style: BorderStyle.SINGLE, size: 4, color: 'auto' },
+  right: { style: BorderStyle.SINGLE, size: 4, color: 'auto' },
+};
+
+// ----------------------------------------------------------------------------
+// IMAGE HELPERS
+// ----------------------------------------------------------------------------
 function base64ToUint8Array(base64: string): Uint8Array {
   const raw = base64.includes(',') ? base64.split(',')[1] : base64;
   const binary = atob(raw);
@@ -53,7 +102,7 @@ async function loadImageAsUint8Array(src: string): Promise<Uint8Array> {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0);
-          const dataURL = canvas.toDataURL('image/png');
+          const dataURL = canvas.toDataURL('image/jpeg', 0.95);
           resolve(base64ToUint8Array(dataURL));
           return;
         }
@@ -67,65 +116,159 @@ async function loadImageAsUint8Array(src: string): Promise<Uint8Array> {
   });
 }
 
-// Border Styles
-const THIN_BORDER = {
-  style: BorderStyle.SINGLE,
-  size: 4,
-  color: '999999',
-};
+// ----------------------------------------------------------------------------
+// BILINGUAL RUN & PARAGRAPH BUILDERS
+// ----------------------------------------------------------------------------
 
-const CELL_BORDERS_ALL = {
-  top: THIN_BORDER,
-  bottom: THIN_BORDER,
-  left: THIN_BORDER,
-  right: THIN_BORDER,
-};
+/**
+ * Creates standard bilingual runs:
+ * Line 1: English (10pt, #000000, regular)
+ * Line 2: Indonesian (9pt, #595959, italics)
+ */
+function createBilingualRuns(
+  textEn: string,
+  textId: string,
+  opts?: {
+    sizeEn?: number; // half-points (20 = 10pt)
+    sizeId?: number; // half-points (18 = 9pt)
+    boldEn?: boolean;
+    boldId?: boolean;
+    underlineEn?: boolean;
+    isHeader?: boolean;
+  }
+): TextRun[] {
+  const fontToUse = opts?.isHeader ? FONT_HEADING : FONT_BODY;
+  const runs: TextRun[] = [
+    new TextRun({
+      text: textEn,
+      bold: opts?.boldEn ?? false,
+      underline: opts?.underlineEn ? { type: UnderlineType.SINGLE } : undefined,
+      color: COLOR_BLACK,
+      size: opts?.sizeEn ?? 20, // 10pt
+      font: fontToUse,
+    }),
+    new TextRun({
+      text: '',
+      break: 1, // Move to next line in the exact same paragraph
+    }),
+    new TextRun({
+      text: textId,
+      bold: opts?.boldId ?? false,
+      italics: true,
+      color: COLOR_GREY_ID,
+      size: opts?.sizeId ?? 18, // 9pt
+      font: fontToUse,
+    }),
+  ];
+  return runs;
+}
 
-const CELL_NO_BORDER = {
-  top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-  bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-  left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-  right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
-};
+/**
+ * Form field paragraph:
+ * LabelEn: ValEn
+ * LabelId: ValId (italic, grey)
+ * Menggunakan spacing after 0 dan line 240 persis dokumen master
+ */
+function createBilingualFieldParagraph(
+  labelEn: string,
+  valEn: string,
+  labelId: string,
+  valId: string,
+  spacingAfter = 0
+): Paragraph {
+  // Gunakan tab formatting agar tanda titik dua (:) sejajar vertikal sempurna seperti master
+  const isShortLabel = labelEn.length <= 14;
+  const tabSeparatorsEn = isShortLabel ? '\t\t' : '\t';
+  const isShortLabelId = labelId.length <= 14;
+  const tabSeparatorsId = isShortLabelId ? '\t\t' : '\t';
 
-/** Helper to build a colored Section Banner table */
+  return new Paragraph({
+    spacing: { after: spacingAfter, line: 240 },
+    children: [
+      new TextRun({
+        text: labelEn,
+        bold: false,
+        color: COLOR_BLACK,
+        size: 20,
+        font: FONT_BODY,
+      }),
+      new TextRun({
+        text: `${tabSeparatorsEn}: ${valEn || '-'}`,
+        bold: false,
+        color: COLOR_BLACK,
+        size: 20,
+        font: FONT_BODY,
+      }),
+      new TextRun({
+        text: '',
+        break: 1,
+      }),
+      new TextRun({
+        text: labelId,
+        italics: true,
+        color: COLOR_GREY_ID,
+        size: 18,
+        font: FONT_BODY,
+      }),
+      new TextRun({
+        text: `${tabSeparatorsId}: ${valId || '-'}`,
+        italics: true,
+        color: COLOR_GREY_ID,
+        size: 18,
+        font: FONT_BODY,
+      }),
+    ],
+  });
+}
+
+function createSpacer(_height?: number): Paragraph {
+  return new Paragraph({
+    spacing: { after: 0, line: 240 },
+    children: [],
+  });
+}
+
+/**
+ * Creates a colored Section Banner table cell spanning exact 9016 dxa
+ */
 function createSectionBanner(titleEn: string, titleId?: string, isEOP = false): Table {
-  const bgColor = isEOP ? 'FF00FF' : 'EE0000'; // EOP: Magenta, SOP: Red
-  const textChildren = [
+  const bgColor = isEOP ? COLOR_BANNER_EOP : COLOR_BANNER_SOP;
+  const textChildren: TextRun[] = [
     new TextRun({
       text: titleEn,
       bold: true,
-      color: 'FFFFFF',
+      color: COLOR_WHITE,
       size: 22, // 11pt
-      font: 'Calibri',
+      font: FONT_HEADING,
     }),
   ];
 
   if (titleId) {
     textChildren.push(
       new TextRun({
-        text: ` ${titleId}`,
+        text: `  ${titleId}`,
         bold: true,
-        color: 'FFFFFF',
-        size: 22,
-        font: 'Calibri',
+        italics: true,
+        color: COLOR_SUBTITLE_BANNER,
+        size: 20, // 10pt
+        font: FONT_HEADING,
       })
     );
   }
 
   return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
     rows: [
       new TableRow({
         children: [
           new TableCell({
-            width: { size: 100, type: WidthType.PERCENTAGE },
+            width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
             shading: { type: ShadingType.CLEAR, fill: bgColor, color: 'auto' },
             borders: CELL_NO_BORDER,
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                alignment: AlignmentType.LEFT,
                 children: textChildren,
               }),
             ],
@@ -136,100 +279,198 @@ function createSectionBanner(titleEn: string, titleId?: string, isEOP = false): 
   });
 }
 
-/** Helper to create spaced paragraph */
-function createSpacer(height = 100): Paragraph {
-  return new Paragraph({
-    spacing: { before: height, after: 0 },
-    children: [],
+
+
+// ----------------------------------------------------------------------------
+// DOCUMENT HEADER & FOOTER BUILDERS
+// ----------------------------------------------------------------------------
+function createDocumentHeader(
+  title: string,
+  subtitle: string,
+  dmeBytes: Uint8Array,
+  ndcBytes: Uint8Array,
+  isEOP: boolean
+): Header {
+  const highlightColor = isEOP ? 'magenta' : 'red';
+
+  return new Header({
+    children: [
+      new Table({
+        width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+        borders: CELL_NO_BORDER,
+        rows: [
+          new TableRow({
+            children: [
+              // Left Cell: Titles with Red / Magenta highlight
+              new TableCell({
+                width: { size: 6200, type: WidthType.DXA },
+                borders: CELL_NO_BORDER,
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: title,
+                        bold: true,
+                        size: 28, // 14pt
+                        color: COLOR_WHITE,
+                        highlight: highlightColor,
+                        font: FONT_HEADING,
+                      }),
+                      new TextRun({
+                        text: '',
+                        break: 1,
+                      }),
+                      new TextRun({
+                        text: subtitle,
+                        bold: true,
+                        size: 28, // 14pt
+                        color: COLOR_WHITE,
+                        highlight: highlightColor,
+                        font: FONT_HEADING,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              // Right Cell: Company Logos (NeutraDC + Dwimitra)
+              new TableCell({
+                width: { size: 2816, type: WidthType.DXA },
+                borders: CELL_NO_BORDER,
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                      ...(dmeBytes.length > 0
+                        ? [
+                            new ImageRun({
+                              data: dmeBytes,
+                              transformation: { width: 100, height: 42 },
+                              type: 'jpg',
+                            }),
+                            new TextRun({ text: '  ' }),
+                          ]
+                        : []),
+                      ...(ndcBytes.length > 0
+                        ? [
+                            new ImageRun({
+                              data: ndcBytes,
+                              transformation: { width: 78, height: 40 },
+                              type: 'jpg',
+                            }),
+                          ]
+                        : []),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      new Paragraph({
+        spacing: { after: 100 },
+        children: [],
+      }),
+    ],
   });
 }
 
-/**
- * ============================================================================
- * EXPORT SOP TO DOCX
- * ============================================================================
- */
+function createDocumentFooter(): Footer {
+  return new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({ text: 'Page ', size: 18, font: FONT_BODY }),
+          new TextRun({ children: [PageNumber.CURRENT], size: 18, bold: true, font: FONT_BODY }),
+          new TextRun({ text: ' of ', size: 18, font: FONT_BODY }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, bold: true, font: FONT_BODY }),
+        ],
+      }),
+    ],
+  });
+}
+
+// ============================================================================
+// EXPORT SOP TO DOCX (100% Master Precision)
+// ============================================================================
 export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
-  const [dmeLogoBytes, ndcLogoBytes] = await Promise.all([
-    loadImageAsUint8Array(logoDwimitra),
-    loadImageAsUint8Array(logoNeutraDC),
+  const [dmeBytes, ndcBytes] = await Promise.all([
+    loadImageAsUint8Array(logoDMEOriginal),
+    loadImageAsUint8Array(logoNDCOriginal),
   ]);
 
-  // Document Content Elements
   const children: (Paragraph | Table)[] = [];
 
   // --------------------------------------------------------------------------
   // SECTION 1: Document Overview
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 1 – Document Overview', 'Seksi 1 – Gambaran Umum Dokumen', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
-    new Paragraph({
-      spacing: { after: 60 },
-      children: [
-        new TextRun({ text: 'Document Title : ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentTitle || '-', size: 20, font: 'Calibri' }),
-        new TextRun({ text: '  Judul Dokumen : ', bold: true, italics: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentTitle || '-', italics: true, size: 20, font: 'Calibri' }),
-      ],
-    })
+    createBilingualFieldParagraph(
+      'Document Title',
+      data.documentTitle,
+      'Judul Dokumen',
+      data.documentTitle
+    )
   );
 
   children.push(
-    new Paragraph({
-      spacing: { after: 60 },
-      children: [
-        new TextRun({ text: 'Document Purpose : ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentPurposeEn || '-', size: 20, font: 'Calibri' }),
-        new TextRun({ text: '\nTujuan Dokumen : ', bold: true, italics: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentPurposeId || '-', italics: true, size: 20, font: 'Calibri' }),
-      ],
-    })
+    createBilingualFieldParagraph(
+      'Document Purpose',
+      data.documentPurposeEn,
+      'Tujuan Dokumen',
+      data.documentPurposeId
+    )
   );
 
   children.push(
-    new Paragraph({
-      spacing: { after: 120 },
-      children: [
-        new TextRun({ text: 'Work Location : ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.workLocationEn || 'Neutra DC Cikarang', size: 20, font: 'Calibri' }),
-        new TextRun({ text: '  Lokasi Kerja : ', bold: true, italics: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.workLocationId || 'Neutra DC Cikarang', italics: true, size: 20, font: 'Calibri' }),
-      ],
-    })
+    createBilingualFieldParagraph(
+      'Work Location',
+      data.workLocationEn || 'Neutra DC Cikarang',
+      'Lokasi Kerja',
+      data.workLocationId || 'Neutra DC Cikarang',
+      80
+    )
   );
 
   // --------------------------------------------------------------------------
   // SECTION 2: Equipment Information
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 2 – Equipment Information', 'Seksi 2 – Informasi Peralatan', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  // Equipment Table Header
+  // 10 exact column widths from master: [480, 771, 907, 1326, 1041, 1198, 642, 1143, 1152, 356] = 9016
+  const equipColWidths = [480, 771, 907, 1326, 1041, 1198, 642, 1143, 1152, 356];
+
+  const equipHeaderLabels: [string, string][] = [
+    ['No', 'No'],
+    ['Class id', 'ID Kelas'],
+    ['CI Name*', 'Nama CI*'],
+    ['CI Description*', 'Deskripsi CI*'],
+    ['Capacity', 'Kapasitas'],
+    ['Serial Number', 'Nomor Seri'],
+    ['MFD', 'Tahun MFD'],
+    ['Product Name', 'Nama Produk'],
+    ['Model', 'Model'],
+    ['Room', 'Ruangan'],
+  ];
+
   const equipHeaderRow = new TableRow({
     tableHeader: true,
-    children: [
-      'No\nNo',
-      'Class id\nID Kelas',
-      'CI Name*\nNama CI*',
-      'CI Description*\nDeskripsi CI*',
-      'Capacity\nKapasitas',
-      'Serial Number\nNomor Seri',
-      'MFD\nTahun MFD',
-      'Product Name\nNama Produk',
-      'Model\nModel',
-      'Room\nRuangan',
-    ].map(
-      (h) =>
+    children: equipHeaderLabels.map(
+      ([en, id], idx) =>
         new TableCell({
-          borders: CELL_BORDERS_ALL,
-          shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-          margins: { top: 60, bottom: 60, left: 60, right: 60 },
+          width: { size: equipColWidths[idx], type: WidthType.DXA },
+          borders: CELL_BORDERS_BOX,
+          shading: { type: ShadingType.CLEAR, fill: 'FFFFFF', color: 'auto' },
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
-              children: [new TextRun({ text: h, bold: true, size: 16, font: 'Calibri' })],
+              children: createBilingualRuns(en, id, { sizeEn: 18, sizeId: 16, boldEn: true, isHeader: true }),
             }),
           ],
         })
@@ -237,27 +478,37 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   });
 
   const equipDataRows = (data.equipmentList || []).map((eq, i) => {
+    const vals = [
+      String(eq.no || i + 1),
+      eq.classId || 'TR',
+      eq.ciName || '-',
+      eq.ciDescription || '-',
+      eq.capacity || '-',
+      eq.serialNumber || '-',
+      eq.mfd || '-',
+      eq.productName || '-',
+      eq.model || '-',
+      eq.room || '-',
+    ];
+
     return new TableRow({
-      children: [
-        String(eq.no || i + 1),
-        eq.classId || 'TR',
-        eq.ciName || '-',
-        eq.ciDescription || '-',
-        eq.capacity || '-',
-        eq.serialNumber || '-',
-        eq.mfd || '-',
-        eq.productName || '-',
-        eq.model || '-',
-        eq.room || '-',
-      ].map(
+      children: vals.map(
         (val, colIdx) =>
           new TableCell({
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
+            width: { size: equipColWidths[colIdx], type: WidthType.DXA },
+            borders: CELL_BORDERS_BOX,
+            margins: { top: 40, bottom: 40, left: 40, right: 40 },
             children: [
               new Paragraph({
                 alignment: colIdx === 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
-                children: [new TextRun({ text: val, size: 16, font: 'Calibri' })],
+                children: [
+                  new TextRun({
+                    text: val,
+                    size: 18, // 9pt
+                    color: COLOR_BLACK,
+                    font: FONT_BODY,
+                  }),
+                ],
               }),
             ],
           })
@@ -267,61 +518,70 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [equipHeaderRow, ...equipDataRows],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 3: Schedule / Work Information
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 3 – Schedule / Work Information', 'Seksi 3 – Informasi Jadwal / Pekerjaan', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
     new Paragraph({
-      spacing: { after: 60 },
+      spacing: { after: 40 },
       children: [
-        new TextRun({ text: 'SOP Execution Date: ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.executionDate || '-', size: 20, font: 'Calibri' }),
-        new TextRun({ text: '  Reference Ticket Number: ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.referenceTicketNumber || '-', size: 20, font: 'Calibri' }),
+        new TextRun({ text: 'SOP Execution Date: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.executionDate || '-', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '    Reference Ticket Number: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.referenceTicketNumber || '-', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Tanggal Pelaksanaan SOP: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.executionDate || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: '    Nomor Tiket Referensi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.referenceTicketNumber || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
       ],
     })
   );
 
   children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Executed by (Name)                    Job title', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Dilaksanakan oleh (Nama)              Jabatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  // Table executor [4395, 4626]
+  children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F9FAFB', color: 'auto' },
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              width: { size: 4395, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
               children: [
                 new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Executed by (Name):\n', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.executedByName || '-', size: 20, font: 'Calibri' }),
-                  ],
+                  children: [new TextRun({ text: data.executedByName || '-', size: 18, font: FONT_BODY })],
                 }),
               ],
             }),
             new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F9FAFB', color: 'auto' },
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              width: { size: 4626, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
               children: [
                 new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Job title:\n', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.executedByJobTitle || '-', size: 20, font: 'Calibri' }),
-                  ],
+                  children: [new TextRun({ text: data.executedByJobTitle || '-', size: 18, font: FONT_BODY })],
                 }),
               ],
             }),
@@ -330,66 +590,74 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 4: Affected Equipment / Systems
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 4 – Affected Equipment / Systems', 'Seksi 4 – Peralatan / Sistem yang Terdampak', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  // Grid 3 columns of affected systems checkboxes
-  const systems = data.affectedSystems || [];
-  const systemRows: TableRow[] = [];
-  for (let i = 0; i < systems.length; i += 3) {
-    const chunk = systems.slice(i, i + 3);
-    const cells = chunk.map(
-      (sys) =>
-        new TableCell({
-          width: { size: 33.33, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 60, right: 60 },
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({ text: sys.checked ? '☒ ' : '☐ ', bold: true, size: 20, font: 'Calibri' }),
-                new TextRun({ text: sys.labelEn, bold: true, size: 16, font: 'Calibri' }),
-                new TextRun({ text: `\n${sys.labelId}`, italics: true, size: 15, font: 'Calibri', color: '555555' }),
-              ],
-            }),
-          ],
-        })
+  const affSystems = data.affectedSystems || [];
+  const affRows: TableRow[] = [];
+  const affColsWidth = [3005, 3227, 2784];
+
+  for (let i = 0; i < affSystems.length; i += 3) {
+    const rowItems = [affSystems[i], affSystems[i + 1], affSystems[i + 2]];
+    affRows.push(
+      new TableRow({
+        children: rowItems.map((item, cIdx) => {
+          if (!item) {
+            return new TableCell({
+              width: { size: affColsWidth[cIdx], type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
+              children: [new Paragraph({})],
+            });
+          }
+          const checkMark = item.checked ? '☒ ' : '☐ ';
+          return new TableCell({
+            width: { size: affColsWidth[cIdx], type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 30, bottom: 30, left: 40, right: 40 },
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({ text: `${checkMark}${item.labelEn}`, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                  new TextRun({ text: '', break: 1 }),
+                  new TextRun({ text: `    ${item.labelId}`, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                ],
+              }),
+            ],
+          });
+        }),
+      })
     );
-    // Pad row if less than 3
-    while (cells.length < 3) {
-      cells.push(
-        new TableCell({
-          width: { size: 33.33, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          children: [new Paragraph({})],
-        })
-      );
-    }
-    systemRows.push(new TableRow({ children: cells }));
   }
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: systemRows,
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: affRows,
     })
   );
 
   children.push(
     new Paragraph({
-      spacing: { before: 60, after: 40 },
+      spacing: { before: 40, after: 20 },
       children: [
         new TextRun({
-          text: 'If any of the item above is checked, do provide details for each item respectively:\nJika ada item di atas yang dicentang, berikan rincian untuk masing-masing item tersebut:',
-          italics: true,
+          text: 'if any of the item above is checked, do provide details for each item respectively:',
           size: 16,
-          font: 'Calibri',
-          color: '555555',
+          color: COLOR_BLACK,
+          font: FONT_BODY,
+        }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({
+          text: 'jika ada item di atas yang dicentang, berikan rincian untuk masing-masing item tersebut:',
+          italics: true,
+          size: 18,
+          color: COLOR_GREY_ID,
+          font: FONT_BODY,
         }),
       ],
     })
@@ -397,16 +665,32 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              borders: CELL_BORDERS_ALL,
+              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: CELL_BORDERS_BOX,
               margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: data.affectedSystemsDetails || '-', size: 18, font: 'Calibri' })],
+                  children: [
+                    new TextRun({
+                      text: data.affectedSystemsDetails || '1. Standby Generator will be running if the source in the MV panel shut down.',
+                      size: 18,
+                      color: COLOR_BLACK,
+                      font: FONT_BODY,
+                    }),
+                    new TextRun({ text: '', break: 1 }),
+                    new TextRun({
+                      text: '1. Generator Cadangan akan beroperasi jika sumber pada panel MV padam/dimatikan.',
+                      italics: true,
+                      size: 18,
+                      color: COLOR_GREY_ID,
+                      font: FONT_BODY,
+                    }),
+                  ],
                 }),
               ],
             }),
@@ -415,112 +699,108 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 5: Referenced Documents / Attachments
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 5 – Referenced Documents / Attachments', 'Seksi 5 – Dokumen Referensi / Lampiran', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  const refDocs = data.referencedDocuments && data.referencedDocuments.length > 0
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Document Name                                                           Document Number', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Nama Dokumen                                                            Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  const refDocs = (data.referencedDocuments && data.referencedDocuments.length > 0)
     ? data.referencedDocuments
     : [{ name: '-', number: '-' }];
 
-  const refDocRows = refDocs.map(
-    (docItem) =>
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 60, type: WidthType.PERCENTAGE },
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: docItem.name || '-', size: 18, font: 'Calibri' })] })],
-          }),
-          new TableCell({
-            width: { size: 40, type: WidthType.PERCENTAGE },
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: docItem.number || '-', size: 18, font: 'Calibri' })] })],
-          }),
-        ],
-      })
+  const refRows = refDocs.map((rd) =>
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 6374, type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [new Paragraph({ children: [new TextRun({ text: rd.name || '-', size: 18, font: FONT_BODY })] })],
+        }),
+        new TableCell({
+          width: { size: 2642, type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [new Paragraph({ children: [new TextRun({ text: rd.number || '-', size: 18, font: FONT_BODY })] })],
+        }),
+      ],
+    })
   );
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          tableHeader: true,
-          children: [
-            new TableCell({
-              width: { size: 60, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: 'Document Name / Nama Dokumen', bold: true, size: 18, font: 'Calibri' })],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 40, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: 'Document Number / Nomor Dokumen', bold: true, size: 18, font: 'Calibri' })],
-                }),
-              ],
-            }),
-          ],
-        }),
-        ...refDocRows,
-      ],
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: refRows,
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 6: Environmental, Health & Safety (EHS)
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 6 – Enviromental , Health & Safety', 'Seksi 6 – Lingkungan, Kesehatan & Keselamatan Kerja', false));
-  children.push(createSpacer(60));
+  children.push(createSectionBanner('Section 6 – Environmental, Health & Safety', 'Seksi 6 – Lingkungan, Kesehatan & Keselamatan Kerja', false));
+  children.push(createSpacer(40));
+
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Requirements', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
 
   const ehs = data.ehsRequirements || {
-    ppeEn: '1. Wear Personal Protective Equipment (PPE) such as rubber gloves and footwear, protective eye wear, and protective helmet.',
-    ppeId: '1. Gunakan Alat Pelindung Diri (APD) seperti sarung tangan karet dan sepatu keselamatan, kacamata pelindung, serta helm pelindung.',
-    jewelryEn: '2. Remove rings and metal wrist watches, jewelry, or any metal objects kept in the clothes pocket.',
-    jewelryId: '2. Lepaskan cincin dan jam tangan logam, perhiasan, atau benda logam apa pun yang disimpan di dalam saku pakaian.',
-    commsEn: '3. Communication device such as handy-talkie (HT) is on hand.',
-    commsId: '3. Perangkat komunikasi seperti handy-talkie (HT) siap digunakan.',
-    lotoEn: '4. Lock-Out / Tag-Out devices and tools.',
-    lotoId: '4. Peralatan dan perlengkapan Lock-Out / Tag-Out.'
+    ppeEn: 'Wear Personal Protective Equipment (PPE) such as rubber gloves and footwear, protective eye wear, and protective helmet.',
+    ppeId: 'Gunakan Alat Pelindung Diri (APD) seperti sarung tangan karet dan sepatu keselamatan, kacamata pelindung, serta helm pelindung.',
+    jewelryEn: 'Remove rings and metal wrist watches, jewelry, or any metal objects kept in the clothes pocket.',
+    jewelryId: 'Lepaskan cincin dan jam tangan logam, perhiasan, atau benda logam apa pun yang disimpan di dalam saku pakaian.',
+    commsEn: 'Communication device such as handy-talkie (HT) is on hand.',
+    commsId: 'Perangkat komunikasi seperti handy-talkie (HT) siap digunakan.',
+    lotoEn: 'Lock-Out / Tag-Out devices and tools.',
+    lotoId: 'Peralatan dan perlengkapan Lock-Out / Tag-Out.',
   };
+
+  const ehsItems: [string, string][] = [
+    [`1. ${ehs.ppeEn}`, `1. ${ehs.ppeId}`],
+    [`2. ${ehs.jewelryEn}`, `2. ${ehs.jewelryId}`],
+    [`3. ${ehs.commsEn}`, `3. ${ehs.commsId}`],
+    [`4. ${ehs.lotoEn}`, `4. ${ehs.lotoId}`],
+  ];
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        { en: ehs.ppeEn, id: ehs.ppeId },
-        { en: ehs.jewelryEn, id: ehs.jewelryId },
-        { en: ehs.commsEn, id: ehs.commsId },
-        { en: ehs.lotoEn, id: ehs.lotoId },
-      ].map(
-        (item) =>
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: ehsItems.map(
+        ([en, id]) =>
           new TableRow({
             children: [
               new TableCell({
-                borders: CELL_BORDERS_ALL,
+                width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+                borders: CELL_BORDER_DIVIDER_BOTTOM,
                 margins: { top: 40, bottom: 40, left: 60, right: 60 },
                 children: [
                   new Paragraph({
                     children: [
-                      new TextRun({ text: `${item.en}\n`, size: 17, font: 'Calibri' }),
-                      new TextRun({ text: item.id, italics: true, size: 16, font: 'Calibri', color: '444444' }),
+                      new TextRun({ text: en, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                      new TextRun({ text: '', break: 1 }),
+                      new TextRun({ text: id, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                     ],
                   }),
                 ],
@@ -530,158 +810,191 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ),
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 7: Prerequisites
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 7 – Prerequisites', 'Seksi 7 – Prasyarat', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  const prereqs = data.prerequisites && data.prerequisites.length > 0 ? data.prerequisites : [];
-  const prereqRows = prereqs.map(
-    (p) =>
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 70, type: WidthType.PERCENTAGE },
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({ text: `${p.requirementEn}\n`, size: 17, font: 'Calibri' }),
-                  new TextRun({ text: p.requirementId, italics: true, size: 16, font: 'Calibri', color: '444444' }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 15, type: WidthType.PERCENTAGE },
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 40, right: 40 },
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: p.time || '-', size: 17, font: 'Calibri' })] })],
-          }),
-          new TableCell({
-            width: { size: 15, type: WidthType.PERCENTAGE },
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 40, right: 40 },
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: p.initial || '-', size: 17, font: 'Calibri' })] })],
-          }),
-        ],
-      })
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Requirements                                                  Time           Initial', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Persyaratan                                                   Waktu          Inisial', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  const prereqs = (data.prerequisites && data.prerequisites.length > 0)
+    ? data.prerequisites
+    : [
+        { requirementEn: '1. Check PTW is approved.', requirementId: '1. Periksa bahwa PTW telah disetujui.', time: '', initial: '' },
+        { requirementEn: '2. Note down vendor arrival Date / Time :', requirementId: '2. Catat Tanggal / Waktu kedatangan vendor :', time: '', initial: '' },
+        { requirementEn: '3. Check all tools and materials are available and in good condition.', requirementId: '3. Periksa semua peralatan dan material telah tersedia dan dalam kondisi baik.', time: '', initial: '' },
+        { requirementEn: '4. Ensure necessary reference documents is attached to this SOP.', requirementId: '4. Pastikan dokumen referensi yang diperlukan telah dilampirkan pada SOP ini.', time: '', initial: '' },
+        { requirementEn: '5. Ensure personnel involving in this work are trained and competent to perform this procedure.', requirementId: '5. Pastikan personel yang terlibat dalam pekerjaan ini telah terlatih dan kompeten untuk melaksanakan prosedur ini.', time: '', initial: '' },
+      ];
+
+  const prereqRows = prereqs.map((pr) =>
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 6091, type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: pr.requirementEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: pr.requirementId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: 1842, type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          children: [new Paragraph({ children: [new TextRun({ text: pr.time || '', size: 18, font: FONT_BODY })] })],
+        }),
+        new TableCell({
+          width: { size: 1083, type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          children: [new Paragraph({ children: [new TextRun({ text: pr.initial || '', size: 18, font: FONT_BODY })] })],
+        }),
+      ],
+    })
   );
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          tableHeader: true,
-          children: [
-            new TableCell({
-              width: { size: 70, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Requirements / Persyaratan', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 15, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 40, right: 40 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Time / Waktu', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 15, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 40, right: 40 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Initial / Inisial', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-          ],
-        }),
-        ...prereqRows,
-      ],
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: prereqRows,
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 8: Dry Run
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 8 – Dry Run', 'Seksi 8 – Uji Coba (Dry Run)', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  const dry = data.dryRun || { jobTitle: 'Chief Engineering', name: 'Habib Mulyana', date: '07 Sep 2026' };
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  const dryRunData = data.dryRun || { jobTitle: '-', name: '-', date: '-' };
+
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
+        new TableRow({
+          tableHeader: true,
+          children: [
+            ['Job Title:', 'Jabatan:'],
+            ['Name:', 'Nama:'],
+            ['Signature:', 'Tanda Tangan:'],
+            ['Date:', 'Tanggal:'],
+          ].map(([en, id]) =>
+            new TableCell({
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: [
+                new Paragraph({
+                  children: createBilingualRuns(en, id, { sizeEn: 20, sizeId: 18, isHeader: true }),
+                }),
+              ],
+            })
+          ),
+        }),
         new TableRow({
           children: [
             new TableCell({
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Completed by:  ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: 'Diselesaikan oleh:\n', italics: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: `Job Title / Jabatan: ${dry.jobTitle || '-'}\n`, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: `Name / Nama: ${dry.name || '-'}\n`, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: `Date / Tanggal: ${dry.date || '-'}\n`, size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: [new Paragraph({ children: [new TextRun({ text: dryRunData.jobTitle || '-', size: 18, font: FONT_BODY })] })],
+            }),
+            new TableCell({
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: [new Paragraph({ children: [new TextRun({ text: dryRunData.name || '-', size: 18, font: FONT_BODY })] })],
+            }),
+            new TableCell({
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
+            }),
+            new TableCell({
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
+              children: [new Paragraph({ children: [new TextRun({ text: dryRunData.date || '-', size: 18, font: FONT_BODY })] })],
             }),
           ],
         }),
       ],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 9: Maintenance Period
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 9 – Maintenance Periode', 'Seksi 9 – Periode Pemeliharaan', false));
-  children.push(createSpacer(60));
+  children.push(createSectionBanner('Section 9 – Maintenance Period', 'Seksi 9 – Periode Pemeliharaan', false));
+  children.push(createSpacer(40));
 
-  const is6Mo = data.maintenancePeriod === '6_months';
+  const is6Months = data.maintenancePeriod === '6_months';
   const isAnnual = data.maintenancePeriod === 'annual';
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              width: { size: 4508, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
               children: [
                 new Paragraph({
                   children: [
-                    new TextRun({ text: is6Mo ? '☒ ' : '☐ ', bold: true, size: 22, font: 'Calibri' }),
-                    new TextRun({ text: '6 Months ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: '6 Bulan', italics: true, size: 18, font: 'Calibri' }),
+                    new TextRun({ text: `${is6Months ? '☒ ' : '☐ '}6 Months`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
+                    new TextRun({ text: '', break: 1 }),
+                    new TextRun({ text: '    6 Bulan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                   ],
                 }),
               ],
             }),
             new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              width: { size: 4508, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 40, bottom: 40, left: 80, right: 80 },
               children: [
                 new Paragraph({
                   children: [
-                    new TextRun({ text: isAnnual ? '☒ ' : '☐ ', bold: true, size: 22, font: 'Calibri' }),
-                    new TextRun({ text: 'Annual ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: 'Tahunan', italics: true, size: 18, font: 'Calibri' }),
+                    new TextRun({ text: `${isAnnual ? '☒ ' : '☐ '}Annual`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
+                    new TextRun({ text: '', break: 1 }),
+                    new TextRun({ text: '    Tahunan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                   ],
                 }),
               ],
@@ -691,65 +1004,114 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 10: Work Instruction / Procedures
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 10 – Work Instruction / Procedures', 'Seksi 10 – Instruksi / Prosedur Kerja', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
     new Paragraph({
-      spacing: { after: 60 },
+      spacing: { after: 40 },
       children: [
-        new TextRun({ text: data.conditionsPriorToExecutionEn || 'Conditions / Equipment status prior to SOP Execution:', bold: true, size: 18, font: 'Calibri' }),
-        new TextRun({ text: `\n${data.conditionsPriorToExecutionId || 'Kondisi / Status peralatan sebelum Pelaksanaan SOP:'}`, italics: true, size: 17, font: 'Calibri', color: '444444' }),
+        new TextRun({
+          text: 'Conditions / Equipment status prior to SOP Execution:',
+          size: 18,
+          color: COLOR_BLACK,
+          font: FONT_BODY,
+        }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({
+          text: 'Kondisi / Status peralatan sebelum Pelaksanaan SOP:',
+          italics: true,
+          size: 18,
+          color: COLOR_GREY_ID,
+          font: FONT_BODY,
+        }),
       ],
     })
   );
 
-  const steps = data.workSteps || [];
-  const stepRows = steps.map((s, idx) => {
+  // Exact 4-column widths from master: [4248, 1843, 1842, 1083] = 9016
+  const sopStepColWidths = [4248, 1843, 1842, 1083];
+
+  const sopStepHeaderRow = new TableRow({
+    tableHeader: true,
+    children: [
+      new TableCell({
+        width: { size: sopStepColWidths[0], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [new Paragraph({ children: createBilingualRuns('Action', 'Tindakan', { underlineEn: true, isHeader: true }) })],
+      }),
+      new TableCell({
+        width: { size: sopStepColWidths[1], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [new Paragraph({ children: createBilingualRuns('Expected Outcome', 'Hasil yang Diharapkan', { underlineEn: true, isHeader: true }) })],
+      }),
+      new TableCell({
+        width: { size: sopStepColWidths[2], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [new Paragraph({ children: createBilingualRuns('Time', 'Waktu', { underlineEn: true, isHeader: true }) })],
+      }),
+      new TableCell({
+        width: { size: sopStepColWidths[3], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [new Paragraph({ children: createBilingualRuns('Initial', 'Inisial', { underlineEn: true, isHeader: true }) })],
+      }),
+    ],
+  });
+
+  const sopStepRows = (data.workSteps || []).map((st, i) => {
+    const stepNo = st.no || i + 1;
     return new TableRow({
       children: [
         new TableCell({
-          width: { size: 50, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
+          width: { size: sopStepColWidths[0], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
           margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: `${s.actionEn || `${idx + 1}. -`}\n`, size: 17, font: 'Calibri' }),
-                new TextRun({ text: s.actionId || '', italics: true, size: 16, font: 'Calibri', color: '444444' }),
+                new TextRun({ text: `${stepNo}. `, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: st.actionEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: `${stepNo}. `, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: st.actionId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
         }),
         new TableCell({
-          width: { size: 34, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
+          width: { size: sopStepColWidths[1], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
           margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: `${s.expectedOutcomeEn || '-'}\n`, size: 17, font: 'Calibri' }),
-                new TextRun({ text: s.expectedOutcomeId || '', italics: true, size: 16, font: 'Calibri', color: '444444' }),
+                new TextRun({ text: st.expectedOutcomeEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: st.expectedOutcomeId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
         }),
         new TableCell({
-          width: { size: 8, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 30, right: 30 },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: s.time || '-', size: 16, font: 'Calibri' })] })],
+          width: { size: sopStepColWidths[2], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          children: [new Paragraph({ children: [new TextRun({ text: st.time || '', size: 18, font: FONT_BODY })] })],
         }),
         new TableCell({
-          width: { size: 8, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 30, right: 30 },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: s.initial || '-', size: 16, font: 'Calibri' })] })],
+          width: { size: sopStepColWidths[3], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          children: [new Paragraph({ children: [new TextRun({ text: st.initial || '', size: 18, font: FONT_BODY })] })],
         }),
       ],
     });
@@ -757,65 +1119,46 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          tableHeader: true,
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Action / Tindakan', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 34, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Expected Outcome / Hasil yang Diharapkan', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 8, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 30, right: 30 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Time', bold: true, size: 16, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 8, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 30, right: 30 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Initial', bold: true, size: 16, font: 'Calibri' })] })],
-            }),
-          ],
-        }),
-        ...stepRows,
-      ],
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: [sopStepHeaderRow, ...sopStepRows],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 11: Back Out Procedures
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 11 – Back Out Procedures', 'Seksi 11 – Prosedur Pemulihan (Back Out)', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
+
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Action', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Tindakan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 40, bottom: 40, left: 60, right: 60 },
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: data.backOutProcedure || 'N/A (T/A)', size: 18, font: 'Calibri' })],
+                  children: [
+                    new TextRun({ text: data.backOutProcedure || 'N/A', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                    new TextRun({ text: '', break: 1 }),
+                    new TextRun({ text: 'T/A', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                  ],
                 }),
               ],
             }),
@@ -824,142 +1167,126 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 12: Document Information
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 12 – Document Information', 'Seksi 12 – Informasi Dokumen', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
-    new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Author / Penulis: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.author || '-', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Date of Creation / Tanggal Pembuatan: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.dateOfCreation || '-', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Date Revision / Tanggal Revisi: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.dateRevision || 'N/A', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Revision Number / Nomor Revisi: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.revisionNumber || '0', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        }),
+    new Paragraph({
+      spacing: { after: 40 },
+      children: [
+        new TextRun({ text: 'Author: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.author || 'Alif Darmawan', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '                    Date of Creation: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.dateOfCreation || '07 Sep 2026', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Penulis: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.author || 'Alif Darmawan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: '                    Tanggal Pembuatan: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.dateOfCreation || '07 Sep 2026', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
       ],
     })
   );
-  children.push(createSpacer(120));
+
+  children.push(
+    new Paragraph({
+      spacing: { after: 60 },
+      children: [
+        new TextRun({ text: 'Date Revision: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.dateRevision || 'N/A', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '                    Revision Number: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.revisionNumber || '-', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Tanggal Revisi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.dateRevision || 'T/A', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: '                    Nomor Revisi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.revisionNumber || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
 
   // --------------------------------------------------------------------------
   // SECTION 13: Approval
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 13 – Approval', 'Seksi 13 – Persetujuan', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  const approvers = data.approvals || [
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Job Title                      Name                           Signature                     Date', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Jabatan                        Nama                           Tanda Tangan                  Tanggal', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  const defaultApprovals = [
     { roleEn: 'Project Manager', roleId: 'Manajer Proyek', name: 'Dwi Tasmiyadi' },
     { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', name: 'Habib Mulyana' },
     { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas', name: 'Supriyatno' },
     { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', name: 'Budi Susanto' },
   ];
 
-  const approvalCells = approvers.map(
-    (app) =>
-      new TableCell({
-        width: { size: 25, type: WidthType.PERCENTAGE },
-        borders: CELL_BORDERS_ALL,
-        margins: { top: 60, bottom: 60, left: 40, right: 40 },
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ text: app.roleEn, bold: true, size: 16, font: 'Calibri' }),
-              new TextRun({ text: `\n${app.roleId}`, italics: true, size: 15, font: 'Calibri', color: '555555' }),
-              new TextRun({ text: '\n\n\n( Tanda Tangan )\n\n', size: 15, font: 'Calibri', color: '888888' }),
-              new TextRun({ text: app.name || '-', bold: true, size: 17, font: 'Calibri' }),
-            ],
-          }),
-        ],
-      })
-  );
+  const approvalList = (data.approvals && data.approvals.length > 0) ? data.approvals : defaultApprovals;
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [new TableRow({ children: approvalCells })],
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: approvalList.map((app) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 50, bottom: 50, left: 60, right: 60 },
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: `${app.roleEn}          ${app.name}`, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                    new TextRun({ text: '', break: 1 }),
+                    new TextRun({ text: `${app.roleId}          ${app.name}`, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      ),
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 14: Additional Information
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 14 – Additional Information', 'Seksi 14 – Informasi Tambahan', false));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: CELL_BORDERS_BOX,
+              margins: { top: 100, bottom: 100, left: 80, right: 80 },
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: data.additionalInformation || '-', size: 18, font: 'Calibri' })],
+                  children: [
+                    new TextRun({
+                      text: data.additionalInformation || ' ',
+                      size: 18,
+                      font: FONT_BODY,
+                    }),
+                  ],
                 }),
               ],
             }),
@@ -970,109 +1297,54 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   );
 
   // --------------------------------------------------------------------------
-  // BUILD DOCUMENT
+  // BUILD DOCUMENT (A4 Portrait, exact margins)
   // --------------------------------------------------------------------------
   const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: FONT_BODY,
+          },
+        },
+        heading1: {
+          run: {
+            font: FONT_HEADING,
+          },
+        },
+        heading2: {
+          run: {
+            font: FONT_HEADING,
+          },
+        },
+      },
+    },
     sections: [
       {
         properties: {
           page: {
-            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+            size: { width: 11906, height: 16838 }, // A4
+            margin: {
+              top: 1440,
+              right: 1440,
+              bottom: 1440,
+              left: 1440,
+              header: 708,
+              footer: 708,
+            },
           },
         },
         headers: {
-          default: new Header({
-            children: [
-              new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                rows: [
-                  new TableRow({
-                    children: [
-                      new TableCell({
-                        width: { size: 25, type: WidthType.PERCENTAGE },
-                        borders: CELL_NO_BORDER,
-                        children: [
-                          dmeLogoBytes.length > 0
-                            ? new Paragraph({
-                                children: [
-                                  new ImageRun({
-                                    data: dmeLogoBytes,
-                                    transformation: { width: 110, height: 40 },
-                                    type: 'png',
-                                  }),
-                                ],
-                              })
-                            : new Paragraph({ children: [new TextRun({ text: 'DME', bold: true })] }),
-                        ],
-                      }),
-                      new TableCell({
-                        width: { size: 50, type: WidthType.PERCENTAGE },
-                        borders: CELL_NO_BORDER,
-                        children: [
-                          new Paragraph({
-                            alignment: AlignmentType.CENTER,
-                            children: [
-                              new TextRun({
-                                text: 'STANDARD OPERATING PROCEDURE\n',
-                                bold: true,
-                                size: 20,
-                                font: 'Calibri',
-                                color: 'CC0000',
-                              }),
-                              new TextRun({
-                                text: 'NeutraDC – Cikarang',
-                                bold: true,
-                                size: 18,
-                                font: 'Calibri',
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                      new TableCell({
-                        width: { size: 25, type: WidthType.PERCENTAGE },
-                        borders: CELL_NO_BORDER,
-                        children: [
-                          ndcLogoBytes.length > 0
-                            ? new Paragraph({
-                                alignment: AlignmentType.RIGHT,
-                                children: [
-                                  new ImageRun({
-                                    data: ndcLogoBytes,
-                                    transformation: { width: 110, height: 38 },
-                                    type: 'png',
-                                  }),
-                                ],
-                              })
-                            : new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'NeutraDC', bold: true })] }),
-                        ],
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-              new Paragraph({
-                border: { bottom: { color: 'CC0000', size: 12, style: BorderStyle.SINGLE } },
-                spacing: { after: 120 },
-                children: [],
-              }),
-            ],
-          }),
+          default: createDocumentHeader(
+            'STANDARD OPERATING PROCEDURE  ',
+            'NeutraDC – Cikarang',
+            dmeBytes,
+            ndcBytes,
+            false
+          ),
         },
         footers: {
-          default: new Footer({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({ text: 'Page ', size: 18, font: 'Calibri' }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 18, font: 'Calibri' }),
-                  new TextRun({ text: ' of ', size: 18, font: 'Calibri' }),
-                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, font: 'Calibri' }),
-                ],
-              }),
-            ],
-          }),
+          default: createDocumentFooter(),
         },
         children,
       },
@@ -1084,15 +1356,13 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   saveAs(blob, `${cleanTitle}.docx`);
 }
 
-/**
- * ============================================================================
- * EXPORT EOP TO DOCX
- * ============================================================================
- */
+// ============================================================================
+// EXPORT EOP TO DOCX (100% Master Precision)
+// ============================================================================
 export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
-  const [dmeLogoBytes, ndcLogoBytes] = await Promise.all([
-    loadImageAsUint8Array(logoDwimitra),
-    loadImageAsUint8Array(logoNeutraDC),
+  const [dmeBytes, ndcBytes] = await Promise.all([
+    loadImageAsUint8Array(logoDMEOriginal),
+    loadImageAsUint8Array(logoNDCOriginal),
   ]);
 
   const children: (Paragraph | Table)[] = [];
@@ -1101,142 +1371,131 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // SECTION 1: Document Overview
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 1 – Document Overview', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
-    new Paragraph({
-      spacing: { after: 60 },
-      children: [
-        new TextRun({ text: 'Document Title : ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentTitle || '-', size: 20, font: 'Calibri' }),
-        new TextRun({ text: '  Judul Dokumen : ', bold: true, italics: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentTitle || '-', italics: true, size: 20, font: 'Calibri' }),
-      ],
-    })
+    createBilingualFieldParagraph(
+      'Document Title',
+      data.documentTitle,
+      'Judul Dokumen',
+      data.documentTitle
+    )
   );
 
   children.push(
-    new Paragraph({
-      spacing: { after: 60 },
-      children: [
-        new TextRun({ text: 'Document Purpose : ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentPurposeEn || '-', size: 20, font: 'Calibri' }),
-        new TextRun({ text: '\nTujuan Dokumen : ', bold: true, italics: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.documentPurposeId || '-', italics: true, size: 20, font: 'Calibri' }),
-      ],
-    })
+    createBilingualFieldParagraph(
+      'Document Purpose',
+      data.documentPurposeEn || 'Guide for actions that need to be taken when all operating TRAFO trip or stop due to fault.',
+      'Tujuan Dokumen',
+      data.documentPurposeId || 'Panduan tindakan yang perlu diambil saat seluruh TRAFO yang beroperasi trip atau padam karena gangguan.'
+    )
   );
 
   children.push(
-    new Paragraph({
-      spacing: { after: 120 },
-      children: [
-        new TextRun({ text: 'Work Location : ', bold: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.workLocationEn || 'Neutra DC Cikarang', size: 20, font: 'Calibri' }),
-        new TextRun({ text: '  Lokasi Kerja : ', bold: true, italics: true, size: 20, font: 'Calibri' }),
-        new TextRun({ text: data.workLocationId || 'Neutra DC Cikarang', italics: true, size: 20, font: 'Calibri' }),
-      ],
-    })
+    createBilingualFieldParagraph(
+      'Work Location',
+      data.workLocationEn || 'Neutra DC Cikarang',
+      'Lokasi Kerja',
+      data.workLocationId || 'Neutra DC Cikarang',
+      80
+    )
   );
 
   // --------------------------------------------------------------------------
   // SECTION 2: Referenced Document / Attachments
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 2 – Referenced Document / Attachments', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  const refDocs = data.referencedDocuments && data.referencedDocuments.length > 0
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Document Name                                                           Document Number', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Nama Dokumen                                                            Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  // EOP master column widths: [6516, 2500] = 9016
+  const refDocs = (data.referencedDocuments && data.referencedDocuments.length > 0)
     ? data.referencedDocuments
     : [{ name: '-', number: '-' }];
 
-  const refDocRows = refDocs.map(
-    (docItem) =>
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 60, type: WidthType.PERCENTAGE },
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: docItem.name || '-', size: 18, font: 'Calibri' })] })],
-          }),
-          new TableCell({
-            width: { size: 40, type: WidthType.PERCENTAGE },
-            borders: CELL_BORDERS_ALL,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: docItem.number || '-', size: 18, font: 'Calibri' })] })],
-          }),
-        ],
-      })
+  const refDocRows = refDocs.map((docItem) =>
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 6516, type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [new Paragraph({ children: [new TextRun({ text: docItem.name || '-', size: 18, font: FONT_BODY })] })],
+        }),
+        new TableCell({
+          width: { size: 2500, type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [new Paragraph({ children: [new TextRun({ text: docItem.number || '-', size: 18, font: FONT_BODY })] })],
+        }),
+      ],
+    })
   );
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          tableHeader: true,
-          children: [
-            new TableCell({
-              width: { size: 60, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: 'Document Name / Nama Dokumen', bold: true, size: 18, font: 'Calibri' })],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 40, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: 'Document Number / Nomor Dokumen', bold: true, size: 18, font: 'Calibri' })],
-                }),
-              ],
-            }),
-          ],
-        }),
-        ...refDocRows,
-      ],
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: refDocRows,
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 3: Environmental, Health & Safety
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 3 – Enviromental , Health & Safety', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSectionBanner('Section 3 – Environmental, Health & Safety', undefined, true));
+  children.push(createSpacer(40));
 
-  const ehs = data.ehsRequirements || {
-    ppeEn: '1. Wear Personal Protective Equipment (PPE) such as rubber gloves and footwear, protective eye wear, and protective helmet.',
-    ppeId: '1. Gunakan Alat Pelindung Diri (APD) seperti sarung tangan karet dan sepatu bot, kacamata pelindung , dan helm pelindung .',
-    commsEn: '2. Communication device such as handy-talkie (HT) is on hand.',
-    commsId: '2. Perangkat komunikasi seperti handy-talkie (HT) tersedia / siap digunakan .',
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Requirements', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  const eopEhs = data.ehsRequirements || {
+    ppeEn: 'Wear Personal Protective Equipment (PPE) such as rubber gloves and footwear, protective eye wear, and protective helmet.',
+    ppeId: 'Gunakan Alat Pelindung Diri (APD) seperti sarung tangan karet dan sepatu bot, kacamata pelindung, dan helm pelindung.',
+    commsEn: 'Communication device such as handy-talkie (HT) is on hand.',
+    commsId: 'Perangkat komunikasi seperti handy-talkie (HT) tersedia / siap digunakan.',
   };
+
+  const eopEhsItems: [string, string][] = [
+    [`1. ${eopEhs.ppeEn}`, `1. ${eopEhs.ppeId}`],
+    [`2. ${eopEhs.commsEn}`, `2. ${eopEhs.commsId}`],
+  ];
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        { en: ehs.ppeEn, id: ehs.ppeId },
-        { en: ehs.commsEn, id: ehs.commsId },
-      ].map(
-        (item) =>
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: eopEhsItems.map(
+        ([en, id]) =>
           new TableRow({
             children: [
               new TableCell({
-                borders: CELL_BORDERS_ALL,
+                width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+                borders: CELL_BORDER_DIVIDER_BOTTOM,
                 margins: { top: 40, bottom: 40, left: 60, right: 60 },
                 children: [
                   new Paragraph({
                     children: [
-                      new TextRun({ text: `${item.en}\n`, size: 17, font: 'Calibri' }),
-                      new TextRun({ text: item.id, italics: true, size: 16, font: 'Calibri', color: '444444' }),
+                      new TextRun({ text: en, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                      new TextRun({ text: '', break: 1 }),
+                      new TextRun({ text: id, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                     ],
                   }),
                 ],
@@ -1246,71 +1505,124 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
       ),
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 4: Work Instruction / Procedure
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 4 – Work Instruction / Procedure', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
     new Paragraph({
-      spacing: { after: 60 },
+      spacing: { after: 40 },
       children: [
-        new TextRun({ text: data.expectedConditionsEn || 'Expected Conditions / Equipment Status:', bold: true, size: 18, font: 'Calibri' }),
-        new TextRun({ text: `\n${data.expectedConditionsId || 'Kondisi yang Diharapkan / Status Peralatan:'}`, italics: true, size: 17, font: 'Calibri', color: '444444' }),
+        new TextRun({
+          text: 'Expected Conditions / Equipment Status:',
+          size: 18,
+          color: COLOR_BLACK,
+          font: FONT_BODY,
+        }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({
+          text: 'Kondisi yang Diharapkan / Status Peralatan:',
+          italics: true,
+          size: 18,
+          color: COLOR_GREY_ID,
+          font: FONT_BODY,
+        }),
       ],
     })
   );
 
-  const steps = data.workSteps || [];
-  const stepRows = steps.map((s, idx) => {
+  // Exact 5-column widths from master: [455, 4785, 2064, 855, 857] = 9016
+  const eopStepColWidths = [455, 4785, 2064, 855, 857];
+
+  const eopStepHeaderRow = new TableRow({
+    tableHeader: true,
+    children: [
+      new TableCell({
+        width: { size: eopStepColWidths[0], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 20, right: 20 },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No', size: 20, font: FONT_BODY })] })],
+      }),
+      new TableCell({
+        width: { size: eopStepColWidths[1], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 40, right: 40 },
+        children: [new Paragraph({ children: createBilingualRuns('Action', 'Tindakan', { isHeader: true }) })],
+      }),
+      new TableCell({
+        width: { size: eopStepColWidths[2], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 40, right: 40 },
+        children: [new Paragraph({ children: createBilingualRuns('Expected Outcome', 'Hasil yang Diharapkan', { isHeader: true }) })],
+      }),
+      new TableCell({
+        width: { size: eopStepColWidths[3], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 20, right: 20 },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: createBilingualRuns('Time', 'Waktu', { isHeader: true }) })],
+      }),
+      new TableCell({
+        width: { size: eopStepColWidths[4], type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 20, right: 20 },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: createBilingualRuns('Name', 'Nama', { isHeader: true }) })],
+      }),
+    ],
+  });
+
+  const eopStepRows = (data.workSteps || []).map((st, i) => {
+    const stepNo = st.no || i + 1;
     return new TableRow({
       children: [
         new TableCell({
-          width: { size: 6, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 30, right: 30 },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${s.no || idx + 1}.`, size: 16, font: 'Calibri' })] })],
+          width: { size: eopStepColWidths[0], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
+          margins: { top: 40, bottom: 40, left: 20, right: 20 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${stepNo}.`, size: 18, font: FONT_BODY })] })],
         }),
         new TableCell({
-          width: { size: 44, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          width: { size: eopStepColWidths[1], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: `${s.actionEn || '-'}\n`, size: 17, font: 'Calibri' }),
-                new TextRun({ text: s.actionId || '', italics: true, size: 16, font: 'Calibri', color: '444444' }),
+                new TextRun({ text: st.actionEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: st.actionId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
         }),
         new TableCell({
-          width: { size: 34, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          width: { size: eopStepColWidths[2], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: `${s.expectedOutcomeEn || '-'}\n`, size: 17, font: 'Calibri' }),
-                new TextRun({ text: s.expectedOutcomeId || '', italics: true, size: 16, font: 'Calibri', color: '444444' }),
+                new TextRun({ text: st.expectedOutcomeEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: st.expectedOutcomeId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
         }),
         new TableCell({
-          width: { size: 8, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 30, right: 30 },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: s.time || '-', size: 16, font: 'Calibri' })] })],
+          width: { size: eopStepColWidths[3], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
+          margins: { top: 40, bottom: 40, left: 20, right: 20 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: st.time || '', size: 18, font: FONT_BODY })] })],
         }),
         new TableCell({
-          width: { size: 8, type: WidthType.PERCENTAGE },
-          borders: CELL_BORDERS_ALL,
-          margins: { top: 40, bottom: 40, left: 30, right: 30 },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: s.name || '-', size: 16, font: 'Calibri' })] })],
+          width: { size: eopStepColWidths[4], type: WidthType.DXA },
+          borders: CELL_BORDER_DIVIDER_TOP,
+          margins: { top: 40, bottom: 40, left: 20, right: 20 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: st.name || '', size: 18, font: FONT_BODY })] })],
         }),
       ],
     });
@@ -1318,265 +1630,206 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          tableHeader: true,
-          children: [
-            new TableCell({
-              width: { size: 6, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 30, right: 30 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No', bold: true, size: 16, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 44, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Action / Tindakan', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 34, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Expected Outcome / Hasil yang Diharapkan', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 8, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 30, right: 30 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Time', bold: true, size: 16, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 8, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 30, right: 30 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Name', bold: true, size: 16, font: 'Calibri' })] })],
-            }),
-          ],
-        }),
-        ...stepRows,
-      ],
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: [eopStepHeaderRow, ...eopStepRows],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 5: Document Information
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 5 – Document Information', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
-    new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Author / Penulis: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.author || '-', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Date of Creation / Tanggal Pembuatan: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.dateOfCreation || '-', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Next Date Revision / Tanggal Revisi Berikutnya: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.nextDateRevision || 'N/A', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: 'Revision Number / Nomor Revisi: ', bold: true, size: 18, font: 'Calibri' }),
-                    new TextRun({ text: data.revisionNumber || '0', size: 18, font: 'Calibri' }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        }),
+    new Paragraph({
+      spacing: { after: 40 },
+      children: [
+        new TextRun({ text: 'Author: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.author || 'Alif Darmawan', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '                    Date of Creation: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.dateOfCreation || '7 sep 2026', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Penulis: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.author || 'Alif Darmawan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: '                    Tanggal Pembuatan: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.dateOfCreation || '7 sep 2026', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
       ],
     })
   );
-  children.push(createSpacer(120));
+
+  children.push(
+    new Paragraph({
+      spacing: { after: 60 },
+      children: [
+        new TextRun({ text: 'Next Date Revision: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.nextDateRevision || 'N / A', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '            Revision Number: ', size: 20, font: FONT_BODY }),
+        new TextRun({ text: data.revisionNumber || '-', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Tanggal Revisi Berikutnya: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.nextDateRevision || 'N / A', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: '            Nomor Revisi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        new TextRun({ text: data.revisionNumber || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
 
   // --------------------------------------------------------------------------
   // SECTION 6: Dry Run
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 6 – Dry Run', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  const dry = data.dryRun || { jobTitle: 'Chief Engineering', name: 'Habib Mulyana', date: '07 Sep 2026' };
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  const eopDryRun = data.dryRun || { jobTitle: '-', name: '-', date: '-' };
+
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
         new TableRow({
           tableHeader: true,
           children: [
+            ['Job Title:', 'Jabatan:'],
+            ['Name:', 'Nama:'],
+            ['Signature:', 'Tanda Tangan:'],
+            ['Date:', 'Tanggal:'],
+          ].map(([en, id]) =>
             new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
               margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Job Title / Jabatan', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: 'Name / Nama', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Signature', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
-              shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Date / Tanggal', bold: true, size: 18, font: 'Calibri' })] })],
-            }),
-          ],
+              children: [
+                new Paragraph({
+                  children: createBilingualRuns(en, id, { sizeEn: 20, sizeId: 18, isHeader: true }),
+                }),
+              ],
+            })
+          ),
         }),
         new TableRow({
           children: [
             new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
               margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: dry.jobTitle || '-', size: 18, font: 'Calibri' })] })],
+              children: [new Paragraph({ children: [new TextRun({ text: eopDryRun.jobTitle || '-', size: 18, font: FONT_BODY })] })],
             }),
             new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
               margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: dry.name || '-', size: 18, font: 'Calibri' })] })],
+              children: [new Paragraph({ children: [new TextRun({ text: eopDryRun.name || '-', size: 18, font: FONT_BODY })] })],
             }),
             new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
               margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: '( Tanda Tangan )', size: 16, font: 'Calibri', color: '888888' })] })],
+              children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
             }),
             new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              borders: CELL_BORDERS_ALL,
+              width: { size: 2254, type: WidthType.DXA },
+              borders: CELL_NO_BORDER,
               margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: dry.date || '-', size: 18, font: 'Calibri' })] })],
+              children: [new Paragraph({ children: [new TextRun({ text: eopDryRun.date || '-', size: 18, font: FONT_BODY })] })],
             }),
           ],
         }),
       ],
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 7: Approval
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 7 – Approval', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
-  const approvers = data.approvals || [
+  children.push(
+    new Paragraph({
+      spacing: { after: 20 },
+      children: [
+        new TextRun({ text: 'Job Title                      Name                           Signature                     Date', size: 20, font: FONT_BODY }),
+        new TextRun({ text: '', break: 1 }),
+        new TextRun({ text: 'Jabatan                        Nama                           Tanda Tangan                  Tanggal', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+      ],
+    })
+  );
+
+  const eopDefaultApprovals = [
     { roleEn: 'Project Manager', roleId: 'Manajer Proyek', name: 'Dwi Tasmiyadi' },
     { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', name: 'Habib Mulyana' },
     { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas', name: 'Supriyatno' },
     { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', name: 'Budi Susanto' },
   ];
 
-  const approvalCells = approvers.map(
-    (app) =>
-      new TableCell({
-        width: { size: 25, type: WidthType.PERCENTAGE },
-        borders: CELL_BORDERS_ALL,
-        margins: { top: 60, bottom: 60, left: 40, right: 40 },
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ text: app.roleEn, bold: true, size: 16, font: 'Calibri' }),
-              new TextRun({ text: `\n${app.roleId}`, italics: true, size: 15, font: 'Calibri', color: '555555' }),
-              new TextRun({ text: '\n\n\n( Tanda Tangan )\n\n', size: 15, font: 'Calibri', color: '888888' }),
-              new TextRun({ text: app.name || '-', bold: true, size: 17, font: 'Calibri' }),
-            ],
-          }),
-        ],
-      })
-  );
+  const eopApprovalList = (data.approvals && data.approvals.length > 0) ? data.approvals : eopDefaultApprovals;
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [new TableRow({ children: approvalCells })],
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: eopApprovalList.map((app) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: CELL_BORDER_DIVIDER_BOTTOM,
+              margins: { top: 50, bottom: 50, left: 60, right: 60 },
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: `${app.roleEn}          ${app.name}`, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                    new TextRun({ text: '', break: 1 }),
+                    new TextRun({ text: `${app.roleId}          ${app.name}`, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      ),
     })
   );
-  children.push(createSpacer(120));
+  children.push(createSpacer(80));
 
   // --------------------------------------------------------------------------
   // SECTION 8: Additional Information
   // --------------------------------------------------------------------------
   children.push(createSectionBanner('Section 8 – Additional Information', undefined, true));
-  children.push(createSpacer(60));
+  children.push(createSpacer(40));
 
   children.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              borders: CELL_BORDERS_ALL,
-              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+              borders: CELL_BORDERS_BOX,
+              margins: { top: 100, bottom: 100, left: 80, right: 80 },
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: data.additionalInformation || '-', size: 18, font: 'Calibri' })],
+                  children: [
+                    new TextRun({
+                      text: data.additionalInformation || ' ',
+                      size: 18,
+                      font: FONT_BODY,
+                    }),
+                  ],
                 }),
               ],
             }),
@@ -1587,109 +1840,54 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   );
 
   // --------------------------------------------------------------------------
-  // BUILD DOCUMENT
+  // BUILD DOCUMENT (A4 Portrait, EOP exact margins)
   // --------------------------------------------------------------------------
   const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: FONT_BODY,
+          },
+        },
+        heading1: {
+          run: {
+            font: FONT_HEADING,
+          },
+        },
+        heading2: {
+          run: {
+            font: FONT_HEADING,
+          },
+        },
+      },
+    },
     sections: [
       {
         properties: {
           page: {
-            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+            size: { width: 11906, height: 16838 }, // A4
+            margin: {
+              top: 1701, // Master EOP top margin
+              right: 1440,
+              bottom: 1440,
+              left: 1440,
+              header: 709,
+              footer: 709,
+            },
           },
         },
         headers: {
-          default: new Header({
-            children: [
-              new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                rows: [
-                  new TableRow({
-                    children: [
-                      new TableCell({
-                        width: { size: 25, type: WidthType.PERCENTAGE },
-                        borders: CELL_NO_BORDER,
-                        children: [
-                          dmeLogoBytes.length > 0
-                            ? new Paragraph({
-                                children: [
-                                  new ImageRun({
-                                    data: dmeLogoBytes,
-                                    transformation: { width: 110, height: 40 },
-                                    type: 'png',
-                                  }),
-                                ],
-                              })
-                            : new Paragraph({ children: [new TextRun({ text: 'DME', bold: true })] }),
-                        ],
-                      }),
-                      new TableCell({
-                        width: { size: 50, type: WidthType.PERCENTAGE },
-                        borders: CELL_NO_BORDER,
-                        children: [
-                          new Paragraph({
-                            alignment: AlignmentType.CENTER,
-                            children: [
-                              new TextRun({
-                                text: 'EMERGENCY OPERATING PROCEDURE\n',
-                                bold: true,
-                                size: 20,
-                                font: 'Calibri',
-                                color: 'CC0099',
-                              }),
-                              new TextRun({
-                                text: 'NeutraDC – Cikarang',
-                                bold: true,
-                                size: 18,
-                                font: 'Calibri',
-                              }),
-                            ],
-                          }),
-                        ],
-                      }),
-                      new TableCell({
-                        width: { size: 25, type: WidthType.PERCENTAGE },
-                        borders: CELL_NO_BORDER,
-                        children: [
-                          ndcLogoBytes.length > 0
-                            ? new Paragraph({
-                                alignment: AlignmentType.RIGHT,
-                                children: [
-                                  new ImageRun({
-                                    data: ndcLogoBytes,
-                                    transformation: { width: 110, height: 38 },
-                                    type: 'png',
-                                  }),
-                                ],
-                              })
-                            : new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'NeutraDC', bold: true })] }),
-                        ],
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-              new Paragraph({
-                border: { bottom: { color: 'CC0099', size: 12, style: BorderStyle.SINGLE } },
-                spacing: { after: 120 },
-                children: [],
-              }),
-            ],
-          }),
+          default: createDocumentHeader(
+            'EMERGENCY OPERATING PROCEDURE',
+            'NeutraDC – Cikarang',
+            dmeBytes,
+            ndcBytes,
+            true
+          ),
         },
         footers: {
-          default: new Footer({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({ text: 'Page ', size: 18, font: 'Calibri' }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 18, font: 'Calibri' }),
-                  new TextRun({ text: ' of ', size: 18, font: 'Calibri' }),
-                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, font: 'Calibri' }),
-                ],
-              }),
-            ],
-          }),
+          default: createDocumentFooter(),
         },
         children,
       },

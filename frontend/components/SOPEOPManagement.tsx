@@ -5,7 +5,7 @@
 //            Penyimpanan Arsip Cloud di Firestore, serta Ekspor 1:1 ke Word (.docx).
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   FolderOpen,
@@ -23,7 +23,8 @@ import {
   CheckSquare,
   Square,
   Globe,
-  CheckCircle2
+  CheckCircle2,
+  UploadCloud
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -53,12 +54,17 @@ import {
 } from '@/types/sopEopTypes';
 import { exportSOPToDocx, exportEOPToDocx } from '@/utils/sopEopDocxExport';
 import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI } from '@/utils/sopEopBilingualAI';
+import { importSopEopFromDocx } from '@/utils/sopEopDocxImport';
 
 type SubTab = 'sop' | 'eop' | 'archive';
 
 export function SOPEOPManagement() {
   const { user } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('sop');
+
+  // File import ref & state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   // State SOP
   const [sopData, setSopData] = useState<SOPDocumentData>(() => ({ ...DEFAULT_SOP_DATA }));
@@ -79,6 +85,42 @@ export function SOPEOPManagement() {
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveFilterType, setArchiveFilterType] = useState<'ALL' | 'SOP' | 'EOP'>('ALL');
+
+  // Handle File Import (.docx)
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setIsImporting(true);
+    const loadingToast = toast.loading(`Membaca & menganalisis berkas "${file.name}"...`);
+    try {
+      const result = await importSopEopFromDocx(file);
+      toast.dismiss(loadingToast);
+
+      if (result.type === 'SOP' && result.sopData) {
+        setSopData(result.sopData);
+        setCurrentSopDocId(null);
+        setActiveSubTab('sop');
+        toast.success(
+          `Berkas SOP "${file.name}" berhasil diimpor! Terisi otomatis: 14 Seksi, ${result.summary.stepCount} Langkah Kerja, ${result.summary.equipmentCount || 0} Peralatan CI.`
+        );
+      } else if (result.type === 'EOP' && result.eopData) {
+        setEopData(result.eopData);
+        setCurrentEopDocId(null);
+        setActiveSubTab('eop');
+        toast.success(
+          `Berkas EOP "${file.name}" berhasil diimpor! Terisi otomatis: 8 Seksi, ${result.summary.stepCount} Langkah Kedaruratan.`
+        );
+      }
+    } catch (err: any) {
+      toast.dismiss(loadingToast);
+      console.error('Gagal mengimpor berkas Word:', err);
+      toast.error(`Gagal mengimpor berkas Word: ${err?.message || 'Format berkas tidak dikenali'}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   // Load Archive from Firestore
   const fetchArchive = async () => {
@@ -542,6 +584,15 @@ export function SOPEOPManagement() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Hidden File Input for .docx Import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileImport}
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        className="hidden"
+      />
+
       {/* ─── HEADER UTAMA ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -669,6 +720,17 @@ export function SOPEOPManagement() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 overflow-x-auto pb-1 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                title="Unggah berkas Word (.docx) SOP/EOP untuk membaca isi berkas dan mengisi form secara otomatis"
+              >
+                <UploadCloud className={`w-3.5 h-3.5 ${isImporting ? 'animate-bounce' : ''}`} />
+                <span>{isImporting ? 'Membaca...' : 'Import Word (.docx)'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleBilingualSop}
@@ -1666,6 +1728,17 @@ export function SOPEOPManagement() {
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 overflow-x-auto pb-1 sm:pb-0">
               <button
                 type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                title="Unggah berkas Word (.docx) SOP/EOP untuk membaca isi berkas dan mengisi form secara otomatis"
+              >
+                <UploadCloud className={`w-3.5 h-3.5 ${isImporting ? 'animate-bounce' : ''}`} />
+                <span>{isImporting ? 'Membaca...' : 'Import Word (.docx)'}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleBilingualEop}
                 disabled={isBilingualEop}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 shadow-sm shadow-teal-500/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
@@ -2282,15 +2355,28 @@ export function SOPEOPManagement() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={fetchArchive}
-              disabled={isLoadingArchive}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all self-end sm:self-auto"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 ${isLoadingArchive ? 'animate-spin' : ''}`} />
-              <span>Muat Ulang</span>
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                title="Unggah berkas Word (.docx) untuk membaca isi berkas dan mengisi form secara otomatis"
+              >
+                <UploadCloud className={`w-3.5 h-3.5 ${isImporting ? 'animate-bounce' : ''}`} />
+                <span>{isImporting ? 'Membaca...' : 'Import Word (.docx)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={fetchArchive}
+                disabled={isLoadingArchive}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all whitespace-nowrap cursor-pointer"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isLoadingArchive ? 'animate-spin' : ''}`} />
+                <span>Muat Ulang</span>
+              </button>
+            </div>
           </div>
 
           {/* List Dokumen Tersimpan */}
