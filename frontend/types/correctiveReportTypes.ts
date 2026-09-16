@@ -33,6 +33,13 @@ export interface CMReportData {
   isSparepartReplacement?: boolean;                             // Flag pembantu cepat
   isTroubleshootSelected?: boolean;                             // Flag eksplisit user telah memilih salah satu opsi
 
+  // Status Trouble / Temuan Masalah CM (Open vs Closed)
+  troubleStatus?: 'open' | 'closed';           // Status penyelesaian trouble: 'closed' (solved) atau 'open' (belum selesai)
+  troublePendingReason?: string;               // Catatan alasan trouble belum selesai (wajib jika 'open')
+  troubleCompletionNotes?: string;             // Catatan penyelesaian opsional jika 'closed'
+  troubleStatusUpdatedAt?: any;                // Timestamp kapan status diupdate
+  troubleStatusUpdatedBy?: string;             // Email/identitas user yang mengupdate status
+
   // Halaman 1: Informasi Insiden & Spesifikasi Perangkat
   incidentName: string;                     // Nama Insiden/Gangguan (misal "Alarm High Temp CRAC 03")
   location: string;                         // Lokasi Ruangan (misal "CRAC Room 3 - Campus 5")

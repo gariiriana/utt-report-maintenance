@@ -120,12 +120,23 @@ export async function exportSingleHSEFindingPDF(
       doc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerY + 4, col3W - 5, 14, 'logo_neutra', 'FAST');
     }
 
+    const isPositive = finding.findingType === 'positive';
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
     doc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
-    doc.text(`LEMBAR LAPORAN TEMUAN K3 / HSE (${variantLabel})`, centerX, headerY + 7.5, { align: 'center' });
+    doc.text(
+      isPositive ? `LEMBAR TEMUAN POSITIF K3 (${variantLabel})` : `LEMBAR LAPORAN TEMUAN K3 / HSE (${variantLabel})`,
+      centerX,
+      headerY + 7.5,
+      { align: 'center' }
+    );
 
     doc.setFontSize(8).setFont('helvetica', 'bold').setTextColor(DARK);
-    doc.text('HEALTH, SAFETY & ENVIRONMENT FINDING REPORT', centerX, headerY + 12.5, { align: 'center' });
+    doc.text(
+      isPositive ? 'HEALTH & SAFETY SAFE PRACTICE / RECOGNITION REPORT' : 'HEALTH, SAFETY & ENVIRONMENT FINDING REPORT',
+      centerX,
+      headerY + 12.5,
+      { align: 'center' }
+    );
 
     doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
     doc.text(companyTitle, centerX, headerY + 17, { align: 'center' });
@@ -144,7 +155,11 @@ export async function exportSingleHSEFindingPDF(
     doc.setFillColor(statusBg[0], statusBg[1], statusBg[2]);
     doc.roundedRect(margin, curY, contentW, 8, 1, 1, 'F');
     doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(statusTextColor[0], statusTextColor[1], statusTextColor[2]);
-    doc.text(`STATUS TEMUAN: ${statusInfo.label.toUpperCase()}`, margin + 4, curY + 5.5);
+    doc.text(
+      isPositive ? `STATUS: ${statusInfo.label.toUpperCase()} — APRESIASI K3` : `STATUS TEMUAN: ${statusInfo.label.toUpperCase()}`,
+      margin + 4,
+      curY + 5.5
+    );
 
     const dateStr = finding.findingDate || new Date().toISOString().split('T')[0];
     doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
@@ -153,9 +168,10 @@ export async function exportSingleHSEFindingPDF(
     curY += 12;
 
     // Info Table (2 Columns Grid)
-    const severityInfo = HSE_SEVERITY_CONFIG[finding.severity]?.label || finding.severity || 'Unsafe Condition';
+    const severityInfo = HSE_SEVERITY_CONFIG[finding.severity]?.label || finding.severity || (isPositive ? 'Safe Condition' : 'Unsafe Condition');
 
     const infoBody: (string[])[] = [
+      ['Jenis Temuan', isPositive ? 'Temuan Positif (Safe Behavior / Condition)' : 'Temuan Negatif (Unsafe Condition / Action)'],
       ['Judul Temuan', finding.title || '-'],
       ['Lokasi Temuan', finding.location || '-'],
     ];
@@ -168,11 +184,11 @@ export async function exportSingleHSEFindingPDF(
     const resolvedDateText = finding.status === 'close'
       ? (finding.resolvedAt
           ? (typeof finding.resolvedAt === 'string' ? finding.resolvedAt : new Date(finding.resolvedAt).toLocaleDateString('id-ID'))
-          : 'Selesai (Close)')
+          : (isPositive ? 'Tercatat Selesai (Apresiasi Langsung)' : 'Selesai (Close)'))
       : 'Belum Selesai (Status: OPEN — Menunggu Tindak Lanjut)';
 
     infoBody.push(
-      ['Tingkat Bahaya / Risiko', severityInfo],
+      [isPositive ? 'Kategori Tindakan / Kondisi' : 'Tingkat Bahaya / Risiko', severityInfo],
       ['Pihak Terkait / Subkon', finding.targetPerson || '-'],
       ['Petugas Inspeksi', finding.inspectorName || finding.reportedBy || '-'],
       ['Tgl Diselesaikan', resolvedDateText]
@@ -228,25 +244,33 @@ export async function exportSingleHSEFindingPDF(
 
     curY = (doc as any).lastAutoTable.finalY + 5;
 
-    // Photo Box Section: Side by Side BEFORE vs AFTER
+    // Photo Box Section: Side by Side BEFORE vs AFTER (or Positive Documentation)
     doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
     const beforePhotoCountLabel = allBeforePhotos.length > 1 ? ` (${allBeforePhotos.length} foto)` : '';
     const afterPhotoCountLabel = allAfterPhotos.length > 1 ? ` (${allAfterPhotos.length} foto)` : '';
-    doc.text(`II. Dokumentasi Foto Utama (Before vs After):`, margin, curY);
+    doc.text(
+      isPositive ? 'II. Dokumentasi Foto Temuan Positif (Safe Practice):' : 'II. Dokumentasi Foto Utama (Before vs After):',
+      margin,
+      curY
+    );
     curY += 3;
 
     const photoBoxW = (contentW - 6) / 2;
     const photoBoxH = 65;
 
     // --- BEFORE BOX ---
-    doc.setDrawColor(245, 158, 11); // Amber border
+    doc.setDrawColor(isPositive ? 16 : 245, isPositive ? 185 : 158, isPositive ? 129 : 11);
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, curY, photoBoxW, photoBoxH, 1, 1, 'D');
 
-    doc.setFillColor(254, 243, 199);
+    doc.setFillColor(isPositive ? 209 : 254, isPositive ? 250 : 243, isPositive ? 229 : 199);
     doc.rect(margin, curY, photoBoxW, 6, 'F');
-    doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(180, 83, 9);
-    doc.text(`KONDISI TEMUAN (BEFORE)${beforePhotoCountLabel}`, margin + 3, curY + 4.2);
+    doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(isPositive ? 4 : 180, isPositive ? 120 : 83, isPositive ? 87 : 9);
+    doc.text(
+      isPositive ? `FOTO DOKUMENTASI POSITIF${beforePhotoCountLabel}` : `KONDISI TEMUAN (BEFORE)${beforePhotoCountLabel}`,
+      margin + 3,
+      curY + 4.2
+    );
 
     if (beforeBase64) {
       try {
@@ -281,16 +305,34 @@ export async function exportSingleHSEFindingPDF(
 
     // --- AFTER BOX ---
     const afterBoxX = margin + photoBoxW + 6;
-    doc.setDrawColor(finding.status === 'close' ? 16 : 226, finding.status === 'close' ? 185 : 232, finding.status === 'close' ? 129 : 240);
+    doc.setDrawColor(
+      (finding.status === 'close' || isPositive) ? 16 : 226,
+      (finding.status === 'close' || isPositive) ? 185 : 232,
+      (finding.status === 'close' || isPositive) ? 129 : 240
+    );
     doc.setLineWidth(0.3);
     doc.roundedRect(afterBoxX, curY, photoBoxW, photoBoxH, 1, 1, 'D');
 
-    doc.setFillColor(finding.status === 'close' ? 209 : 241, finding.status === 'close' ? 250 : 245, finding.status === 'close' ? 229 : 249);
+    doc.setFillColor(
+      (finding.status === 'close' || isPositive) ? 209 : 241,
+      (finding.status === 'close' || isPositive) ? 250 : 245,
+      (finding.status === 'close' || isPositive) ? 229 : 249
+    );
     doc.rect(afterBoxX, curY, photoBoxW, 6, 'F');
-    doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(finding.status === 'close' ? 4 : 100, finding.status === 'close' ? 120 : 116, finding.status === 'close' ? 87 : 139);
-    doc.text(finding.status === 'close' ? `BUKTI PENYELESAIAN (AFTER)${afterPhotoCountLabel}` : 'TINDAK LANJUT / AFTER', afterBoxX + 3, curY + 4.2);
+    doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(
+      (finding.status === 'close' || isPositive) ? 4 : 100,
+      (finding.status === 'close' || isPositive) ? 120 : 116,
+      (finding.status === 'close' || isPositive) ? 87 : 139
+    );
+    doc.text(
+      isPositive
+        ? (afterBase64 ? `DOKUMENTASI TAMBAHAN${afterPhotoCountLabel}` : 'STATUS APRESIASI K3')
+        : (finding.status === 'close' ? `BUKTI PENYELESAIAN (AFTER)${afterPhotoCountLabel}` : 'TINDAK LANJUT / AFTER'),
+      afterBoxX + 3,
+      curY + 4.2
+    );
 
-    if (afterBase64 && finding.status === 'close') {
+    if (afterBase64 && (finding.status === 'close' || isPositive)) {
       try {
         const dims = await getImageDimensions(afterBase64);
         const maxImgW = photoBoxW - 6;
@@ -315,7 +357,9 @@ export async function exportSingleHSEFindingPDF(
       }
     } else {
       doc.setFontSize(7.5).setFont('helvetica', 'italic').setTextColor(GRAY);
-      const afterText = '(Menunggu Bukti Foto Penyelesaian / Closing)';
+      const afterText = isPositive
+        ? '(Temuan Positif: Sesuai Standar & Budaya Aman)'
+        : '(Menunggu Bukti Foto Penyelesaian / Closing)';
       doc.text(afterText, afterBoxX + photoBoxW / 2, curY + photoBoxH / 2, { align: 'center' });
     }
 
@@ -324,14 +368,20 @@ export async function exportSingleHSEFindingPDF(
 
     curY += photoBoxH + 5;
 
-    // Tindakan Korektif & Catatan Penutupan
+    // Tindakan Korektif & Catatan Penutupan / Apresiasi
     doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
-    doc.text('III. Tindakan Korektif / Catatan Penutupan:', margin, curY);
+    doc.text(
+      isPositive ? 'III. Apresiasi & Catatan Budaya K3:' : 'III. Tindakan Korektif / Catatan Penutupan:',
+      margin,
+      curY
+    );
     curY += 2;
 
-    const resolutionText = finding.status === 'close' 
-      ? (finding.afterNotes || finding.closingNotes || 'Tindakan perbaikan telah diselesaikan dan diverifikasi sesuai standar K3.')
-      : 'Temuan dalam status OPEN menunggu perbaikan dan pengunggahan bukti After.';
+    const resolutionText = isPositive
+      ? (finding.afterNotes || finding.closingNotes || 'Apresiasi atas kepatuhan standar keselamatan kerja dan penerapan tindakan aman di lingkungan kerja NeutraDC.')
+      : (finding.status === 'close' 
+          ? (finding.afterNotes || finding.closingNotes || 'Tindakan perbaikan telah diselesaikan dan diverifikasi sesuai standar K3.')
+          : 'Temuan dalam status OPEN menunggu perbaikan dan pengunggahan bukti After.');
 
     autoTable(doc, {
       startY: curY,
@@ -551,11 +601,13 @@ export async function exportHSEFindingsRecapPDF(
 
       const openCount = findings.filter(f => f.status === 'open').length;
       const closeCount = findings.filter(f => f.status === 'close').length;
+      const positiveCount = findings.filter(f => f.findingType === 'positive').length;
+      const negativeCount = findings.filter(f => f.findingType !== 'positive').length;
       const todayPrint = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
       currentDoc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
       currentDoc.text(
-        `Total Temuan: ${findings.length} Dokumen  |  OPEN: ${openCount}  |  CLOSE: ${closeCount}  |  Tanggal Cetak: ${todayPrint}`,
+        `Total: ${findings.length}  |  Negatif: ${negativeCount}  |  Positif: ${positiveCount}  |  OPEN: ${openCount}  |  CLOSE: ${closeCount}  |  Cetak: ${todayPrint}`,
         centerX,
         headerTopY + 16.8,
         { align: 'center' }
@@ -575,22 +627,27 @@ export async function exportHSEFindingsRecapPDF(
 
     // Build Table Rows
     const tableRows = findings.map((f, idx) => {
-      const sevCfg = HSE_SEVERITY_CONFIG[f.severity] || { label: f.severity || 'Unsafe Condition' };
+      const isPos = f.findingType === 'positive';
+      const sevCfg = HSE_SEVERITY_CONFIG[f.severity] || { label: f.severity || (isPos ? 'Safe Condition' : 'Unsafe Condition') };
       const statCfg = HSE_STATUS_CONFIG[f.status] || HSE_STATUS_CONFIG.open;
       const dateText = f.findingDate || '-';
       const timeText = f.findingTime ? `${f.findingTime} WIB` : '';
       const inspectorText = f.inspectorName || f.reportedBy || 'HSE Officer';
-      const titleLocationText = `${f.title || '-'}\nLokasi: ${f.location || '-'}\nPihak: ${f.targetPerson || '-'}`;
+      const titleLocationText = `${isPos ? '[POSITIF] ' : '[NEGATIF] '}${f.title || '-'}\nLokasi: ${f.location || '-'}\nPihak: ${f.targetPerson || '-'}`;
       const statusText = `${statCfg.label.split(' (')[0]}\n(${sevCfg.label.split(' (')[0]})`;
 
-      const notesText = f.status === 'close'
-        ? (f.afterNotes || f.closingNotes || f.description || 'Temuan telah diselesaikan dan diverifikasi.')
-        : (f.description || f.beforeNotes || 'Dalam proses tindak lanjut perbaikan.');
+      const notesText = isPos
+        ? (f.description || f.afterNotes || 'Apresiasi budaya K3.')
+        : (f.status === 'close'
+            ? (f.afterNotes || f.closingNotes || f.description || 'Temuan telah diselesaikan dan diverifikasi.')
+            : (f.description || f.beforeNotes || 'Dalam proses tindak lanjut perbaikan.'));
 
       const beforePlaceholder = f.beforePhoto ? '' : '(Tidak Ada Foto)';
-      const afterPlaceholder = f.status === 'close'
-        ? (f.afterPhoto ? '' : '(Foto Belum Ada)')
-        : '(Status OPEN\nMenunggu Bukti)';
+      const afterPlaceholder = isPos
+        ? (f.afterPhoto ? '' : '(Kondisi Aman / Selesai)')
+        : (f.status === 'close'
+            ? (f.afterPhoto ? '' : '(Foto Belum Ada)')
+            : '(Status OPEN\nMenunggu Bukti)');
 
       return [
         String(idx + 1),

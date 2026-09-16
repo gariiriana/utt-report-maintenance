@@ -38,7 +38,10 @@ import {
     Search,
     Brain,
     Sparkles,
-    Download
+    Download,
+    HelpCircle,
+    CheckSquare,
+    FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -63,9 +66,11 @@ import { PIRReportFormModal } from './PIRReportFormModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { sendFileNotification } from '@/utils/notificationService';
 import { exportSLAReportToExcel } from '../utils/excelExport';
-import { exportCMReportToDocx, exportSLAReportToDocx } from '@/utils/docxReportExport';
+import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx } from '@/utils/docxReportExport';
+import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { normalizeEngineerName } from '@/utils/engineerSignatures';
 import { SLAMonthlyRecapModal } from './SLAMonthlyRecapModal';
+import { CMMonthlyRecapModal } from './CMMonthlyRecapModal';
 import { PredictiveReportModal } from './PredictiveReportModal';
 import { generatePredictiveReportAI } from '@/utils/aiPredictiveAgent';
 import { PredictiveReportData } from '@/types/predictiveReportTypes';
@@ -108,6 +113,13 @@ interface CorrectiveReport {
     troubleshootType?: 'non_sparepart' | 'sparepart_replacement';
     sparepartType?: 'sparepart_dme' | 'consumable';
     isSparepartReplacement?: boolean;
+
+    // Trouble Status fields (Open vs Closed)
+    troubleStatus?: 'open' | 'closed';
+    troublePendingReason?: string;
+    troubleCompletionNotes?: string;
+    troubleStatusUpdatedAt?: any;
+    troubleStatusUpdatedBy?: string;
 
     // SLA fields
     ticketName?: string;
@@ -219,6 +231,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [prefillSlaData, setPrefillSlaData] = useState<SLAPrefillData | null>(null);
     const [isPendingSlaExpanded, setIsPendingSlaExpanded] = useState<boolean>(true);
     const [isRecapModalOpen, setIsRecapModalOpen] = useState<boolean>(false);
+    const [isCMRecapModalOpen, setIsCMRecapModalOpen] = useState<boolean>(false);
     const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState<boolean>(false);
 
     // State Predictive Maintenance Report (AI)
@@ -302,12 +315,27 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir' | 'predictive'>('cm_pdf');
     const [selectedCMType, setSelectedCMType] = useState<'all' | 'sparepart_all' | 'non_sparepart' | 'sparepart_dme' | 'consumable' | 'pending_sparepart_type'>('all');
+    const [selectedTroubleStatus, setSelectedTroubleStatus] = useState<'all' | 'closed' | 'open' | 'unmarked'>('all');
     const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
     const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
     const [predictiveReports, setPredictiveReports] = useState<PredictiveReportData[]>([]);
     const [periodicReports, setPeriodicReports] = useState<PeriodicPredictiveReportData[]>([]);
     const [isPeriodicModalOpen, setIsPeriodicModalOpen] = useState(false);
     const [selectedPeriodicData, setSelectedPeriodicData] = useState<PeriodicPredictiveReportData | null>(null);
+
+    // Trouble Status Update Modal State
+    const [isTroubleModalOpen, setIsTroubleModalOpen] = useState(false);
+    const [selectedReportForTrouble, setSelectedReportForTrouble] = useState<CorrectiveReport | null>(null);
+    const [troubleForm, setTroubleForm] = useState<{
+        status: 'closed' | 'open';
+        pendingReason: string;
+        completionNotes: string;
+    }>({
+        status: 'closed',
+        pendingReason: '',
+        completionNotes: ''
+    });
+    const [isSavingTroubleStatus, setIsSavingTroubleStatus] = useState(false);
 
     useEffect(() => {
         if (initialSearchQuery !== undefined) {
@@ -581,6 +609,76 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
     };
 
+    // Handlers Pembaruan Status Trouble CM (Open vs Close / Solved)
+    const handleOpenTroubleStatusModal = (report: CorrectiveReport, defaultStatus?: 'closed' | 'open') => {
+        setSelectedReportForTrouble(report);
+        const currentStatus = defaultStatus || report.troubleStatus || (report.status === 'Open' ? 'open' : 'closed');
+        setTroubleForm({
+            status: currentStatus,
+            pendingReason: report.troublePendingReason || '',
+            completionNotes: report.troubleCompletionNotes || ''
+        });
+        setIsTroubleModalOpen(true);
+    };
+
+    const handleSaveTroubleStatus = async () => {
+        if (!selectedReportForTrouble) return;
+        if (troubleForm.status === 'open' && !troubleForm.pendingReason.trim()) {
+            toast.error('Wajib mengisi catatan alasan kenapa trouble belum selesai!');
+            return;
+        }
+
+        try {
+            setIsSavingTroubleStatus(true);
+            const toastId = toast.loading('Menyimpan status trouble...');
+            const docRef = doc(db, 'corrective_reports', selectedReportForTrouble.id);
+            const isClosed = troubleForm.status === 'closed';
+
+            await updateDoc(docRef, {
+                troubleStatus: troubleForm.status,
+                troublePendingReason: !isClosed ? troubleForm.pendingReason.trim() : (selectedReportForTrouble.troublePendingReason || ''),
+                troubleCompletionNotes: isClosed ? troubleForm.completionNotes.trim() : (selectedReportForTrouble.troubleCompletionNotes || ''),
+                troubleStatusUpdatedAt: serverTimestamp(),
+                troubleStatusUpdatedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
+                status: isClosed ? 'Resolved' : 'Open',
+                updatedAt: serverTimestamp()
+            });
+
+            toast.success(
+                isClosed
+                    ? 'Status trouble berhasil ditandai: CLOSED (Solved)'
+                    : 'Status trouble berhasil ditandai: OPEN (Belum Selesai)',
+                { id: toastId }
+            );
+            setIsTroubleModalOpen(false);
+            setSelectedReportForTrouble(null);
+        } catch (err: any) {
+            console.error('Error saving trouble status:', err);
+            toast.error('Gagal memperbarui status: ' + (err?.message || 'Error'));
+        } finally {
+            setIsSavingTroubleStatus(false);
+        }
+    };
+
+    const handleQuickResolveTrouble = async (report: CorrectiveReport) => {
+        try {
+            const toastId = toast.loading('Menandai trouble sebagai Solved (Closed)...');
+            const docRef = doc(db, 'corrective_reports', report.id);
+            await updateDoc(docRef, {
+                troubleStatus: 'closed',
+                troubleCompletionNotes: report.troubleCompletionNotes || 'Telah diselesaikan oleh engineer onsite.',
+                troubleStatusUpdatedAt: serverTimestamp(),
+                troubleStatusUpdatedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
+                status: 'Resolved',
+                updatedAt: serverTimestamp()
+            });
+            toast.success('Laporan CM berhasil ditandai: CLOSED (Solved)', { id: toastId });
+        } catch (err: any) {
+            console.error('Error quick resolving trouble:', err);
+            toast.error('Gagal memperbarui status: ' + (err?.message || 'Error'));
+        }
+    };
+
     const INDO_MONTHS_MAP: Record<string, number> = {
         'januari': 0, 'jan': 0, 'january': 0,
         'februari': 1, 'feb': 1, 'february': 1,
@@ -683,14 +781,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             if (t > 0) return t;
         }
         return 0;
-    };
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'Resolved': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-            case 'InProgress': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-            default: return 'bg-red-500/20 text-red-400 border-red-500/30';
-        }
     };
 
     // Helper: Mendeteksi secara akurat apakah sebuah Laporan CM adalah Pergantian Sparepart
@@ -827,6 +917,20 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             }
         }
 
+        // Filter Status Trouble CM (Open vs Close)
+        if (archiveFolder === 'cm_pdf' && selectedTroubleStatus !== 'all') {
+            const isClosed = report.troubleStatus === 'closed' || (!report.troubleStatus && report.status === 'Resolved');
+            const isOpen = report.troubleStatus === 'open' || (!report.troubleStatus && report.status === 'Open');
+
+            if (selectedTroubleStatus === 'closed') {
+                if (!isClosed) return false;
+            } else if (selectedTroubleStatus === 'open') {
+                if (!isOpen) return false;
+            } else if (selectedTroubleStatus === 'unmarked') {
+                if (isClosed || isOpen) return false;
+            }
+        }
+
         // Incident Date Filter (Day / Month / Year)
         const reportTimestamp = getReportIncidentTime(report);
         if (reportTimestamp > 0) {
@@ -878,8 +982,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             const incidentMatch = report.incidentName?.toLowerCase().includes(queryText);
             const reasonMatch = report.deleteReason?.toLowerCase().includes(queryText);
             const requestedByMatch = report.deleteRequestedBy?.toLowerCase().includes(queryText);
+            const troubleReasonMatch = report.troublePendingReason?.toLowerCase().includes(queryText);
+            const troubleNotesMatch = report.troubleCompletionNotes?.toLowerCase().includes(queryText);
+            const troubleStatusMatch = report.troubleStatus?.toLowerCase().includes(queryText)
+                || (report.troubleStatus === 'closed' && (queryText === 'close' || queryText === 'closed' || queryText === 'solved'))
+                || (report.troubleStatus === 'open' && (queryText === 'open' || queryText === 'pending'));
 
-            return locationMatch || issueMatch || actionMatch || ticketMatch || remarkMatch || incidentMatch || reasonMatch || requestedByMatch;
+            return locationMatch || issueMatch || actionMatch || ticketMatch || remarkMatch || incidentMatch || reasonMatch || requestedByMatch || troubleReasonMatch || troubleNotesMatch || troubleStatusMatch;
         }
 
         return true;
@@ -1535,6 +1644,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     initialMonth={selectedMonth}
                     initialYear={selectedYear}
                 />
+
+                {/* Modal Rekap CM Bulanan & Rentang Tanggal */}
+                <CMMonthlyRecapModal
+                    isOpen={isCMRecapModalOpen}
+                    onClose={() => setIsCMRecapModalOpen(false)}
+                    reports={allCMReports}
+                    initialMonth={selectedMonth}
+                    initialYear={selectedYear}
+                />
             </div >
         );
     }
@@ -1876,6 +1994,18 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         )
                                     )}
 
+                                    {archiveFolder === 'cm_pdf' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCMRecapModalOpen(true)}
+                                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
+                                            title="Rekapitulasi Laporan CM: Export Word, Excel, & PDF per Tanggal & Rentang Bulan"
+                                        >
+                                            <FileSpreadsheet className="w-4 h-4" />
+                                            Rekap CM (Per Tgl &amp; Rentang Bulan)
+                                        </button>
+                                    )}
+
                                     {archiveFolder === 'sla' && (
                                         <button
                                             type="button"
@@ -1984,6 +2114,35 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         );
                                     })()}
 
+                                    {/* Filter Status Trouble CM (Open vs Close) */}
+                                    {archiveFolder === 'cm_pdf' && (() => {
+                                        const cmList = reports.filter(r => !r.deleteRequested && (r.reportType !== 'SLA' && r.reportType !== 'PIR'));
+                                        const closedCount = cmList.filter(r => r.troubleStatus === 'closed' || (!r.troubleStatus && r.status === 'Resolved')).length;
+                                        const openCount = cmList.filter(r => r.troubleStatus === 'open' || (!r.troubleStatus && r.status === 'Open')).length;
+                                        const unmarkedCount = cmList.filter(r => !r.troubleStatus && (!r.status || (r.status !== 'Resolved' && r.status !== 'Open'))).length;
+
+                                        return (
+                                            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
+                                                <select
+                                                    value={selectedTroubleStatus}
+                                                    onChange={(e) => setSelectedTroubleStatus(e.target.value as any)}
+                                                    title="Filter Status Trouble / Temuan CM (Open / Close)"
+                                                    aria-label="Filter Status Trouble / Temuan CM"
+                                                    className={`px-2.5 py-1.5 bg-transparent text-xs font-semibold outline-none cursor-pointer ${
+                                                        selectedTroubleStatus === 'open' ? 'text-rose-700 font-bold' :
+                                                        selectedTroubleStatus === 'closed' ? 'text-emerald-700 font-bold' :
+                                                        'text-slate-800'
+                                                    }`}
+                                                >
+                                                    <option value="all">Semua Status Trouble ({cmList.length})</option>
+                                                    <option value="closed">🟢 Selesai / Solved ({closedCount})</option>
+                                                    <option value="open">🔴 Open / Belum Selesai ({openCount})</option>
+                                                    <option value="unmarked">⚪ Belum Ditandai ({unmarkedCount})</option>
+                                                </select>
+                                            </div>
+                                        );
+                                    })()}
+
                                     {/* Filter Status Approval */}
                                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
                                         <select
@@ -1996,13 +2155,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     : 'text-slate-800'
                                                 }`}
                                         >
-                                            <option value="all">Semua Status</option>
+                                            <option value="all">Semua Status Approval</option>
                                             <option value="pending_delete">Menunggu Hapus ({reports.filter(r => r.deleteRequested).length})</option>
                                         </select>
                                     </div>
 
                                     {/* Reset Filter Button */}
-                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all') && (
+                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all' || selectedTroubleStatus !== 'all') && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -2010,6 +2169,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 setSelectedMonth('all');
                                                 setSelectedYear('all');
                                                 setSelectedCMType('all');
+                                                setSelectedTroubleStatus('all');
                                                 setSearchQuery('');
                                                 setAdminDeleteFilter('all');
                                             }}
@@ -2480,6 +2640,56 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 </div>
 
                                                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const toastId = toast.loading('Menyiapkan dokumen Word PIR (.docx)...');
+                                                            try {
+                                                                const rawIncidentDate = report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+                                                                await exportPIRReportToDocx({
+                                                                    ...(report as any),
+                                                                    incidentDate: rawIncidentDate || report.incidentDate,
+                                                                    incidentName: report.incidentName || report.issue || 'Post Incident Report'
+                                                                });
+                                                                toast.success('Laporan PIR Word (.docx) berhasil diunduh!', { id: toastId });
+                                                            } catch (err: any) {
+                                                                console.error('Failed to export PIR DOCX:', err);
+                                                                toast.error(`Gagal mengunduh Word PIR: ${err.message || err}`, { id: toastId });
+                                                            }
+                                                        }}
+                                                        className="h-8 px-2.5 sm:px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition shadow-2xs cursor-pointer"
+                                                        title="Export Laporan PIR ke Microsoft Word (.docx)"
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                        <span>Word PIR</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const toastId = toast.loading('Menyiapkan dokumen PDF PIR...');
+                                                            try {
+                                                                const effectiveCompanyType = (report as any).companyType || 'neutra';
+                                                                const rawIncidentDate = report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+                                                                await generatePIRReportPDF({
+                                                                    ...(report as any),
+                                                                    companyType: effectiveCompanyType,
+                                                                    incidentDate: rawIncidentDate || report.incidentDate,
+                                                                    incidentName: report.incidentName || report.issue || 'Post Incident Report'
+                                                                });
+                                                                toast.success('Laporan PIR PDF berhasil diunduh!', { id: toastId });
+                                                            } catch (err: any) {
+                                                                console.error('Failed to export PIR PDF:', err);
+                                                                toast.error(`Gagal mengunduh PDF PIR: ${err.message || err}`, { id: toastId });
+                                                            }
+                                                        }}
+                                                        className="h-8 px-2.5 sm:px-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition shadow-2xs cursor-pointer"
+                                                        title="Export Laporan PIR ke PDF"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                                        <span>PDF PIR</span>
+                                                    </button>
+
                                                     {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => handleOpenForm('pir', report.id)}
@@ -2823,11 +3033,59 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
                                                                 #{filteredReports.length - index}
                                                             </span>
-                                                            {report.status ? (
-                                                                <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)}`}>
-                                                                    {report.status}
-                                                                </div>
-                                                            ) : null}
+
+                                                            {/* BADGE STATUS TROUBLE (OPEN VS CLOSED/SOLVED) */}
+                                                            {(() => {
+                                                                const isClosed = report.troubleStatus === 'closed' || (!report.troubleStatus && report.status === 'Resolved');
+                                                                const isOpen = report.troubleStatus === 'open' || (!report.troubleStatus && report.status === 'Open');
+
+                                                                if (isClosed) {
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleOpenTroubleStatusModal(report, 'closed');
+                                                                            }}
+                                                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 shadow-2xs transition cursor-pointer"
+                                                                            title="Trouble Telah Di-Solved / Closed (Klik untuk update / lihat detail)"
+                                                                        >
+                                                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                                                            <span>Closed (Solved)</span>
+                                                                        </button>
+                                                                    );
+                                                                } else if (isOpen) {
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleOpenTroubleStatusModal(report, 'open');
+                                                                            }}
+                                                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-rose-400 shadow-xs animate-pulse transition cursor-pointer"
+                                                                            title="Trouble Masih OPEN (Klik untuk melihat catatan alasan / update status)"
+                                                                        >
+                                                                            <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                                                            <span>OPEN (Belum Selesai)</span>
+                                                                        </button>
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleOpenTroubleStatusModal(report);
+                                                                            }}
+                                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-800 border border-dashed border-slate-300 hover:border-amber-400 transition cursor-pointer"
+                                                                            title="Tandai apakah permasalahan ini sudah Solved (Closed) atau masih Open"
+                                                                        >
+                                                                            <HelpCircle className="w-3 h-3 text-slate-400" />
+                                                                            <span>Tandai Status Trouble</span>
+                                                                        </button>
+                                                                    );
+                                                                }
+                                                            })()}
                                                             {Boolean(report.hasPredictiveReport || report.predictiveReportId) && (
                                                                 <span
                                                                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 shadow-2xs"
@@ -3056,6 +3314,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span>Word CM</span>
                                                         </button>
 
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenTroubleStatusModal(report)}
+                                                            className="h-8 px-2.5 sm:px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition shadow-2xs cursor-pointer"
+                                                            title="Update status penyelesaian trouble (Open / Close)"
+                                                        >
+                                                            <CheckSquare className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                                                            <span>Status Trouble</span>
+                                                        </button>
+
                                                         {(() => {
                                                             const hasPdM = Boolean(report.hasPredictiveReport || report.predictiveReportId);
                                                             const isThisLoading = loadingPredictiveId === report.id && isLoadingPredictive;
@@ -3137,6 +3405,122 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     </div>
                                                 </div>
 
+                                                {/* DETAIL TAMPILAN STATUS TROUBLE (OPEN VS CLOSED) */}
+                                                {(() => {
+                                                    const isClosed = report.troubleStatus === 'closed' || (!report.troubleStatus && report.status === 'Resolved');
+                                                    const isOpen = report.troubleStatus === 'open' || (!report.troubleStatus && report.status === 'Open');
+
+                                                    if (isOpen) {
+                                                        return (
+                                                            <div className="mt-4 p-3.5 bg-rose-50/90 border-2 border-rose-300 rounded-xl shadow-2xs">
+                                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                                                    <div className="flex items-start gap-2.5 min-w-0">
+                                                                        <div className="w-7 h-7 rounded-lg bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                                                                            <AlertTriangle className="w-4 h-4" />
+                                                                        </div>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                <span className="text-xs font-black text-rose-900 uppercase tracking-wide">
+                                                                                    Status Masalah: OPEN (Belum Selesai)
+                                                                                </span>
+                                                                                {report.troubleStatusUpdatedBy && (
+                                                                                    <span className="text-[10px] text-rose-700 bg-rose-100/90 px-2 py-0.5 rounded-full font-medium">
+                                                                                        Oleh: {report.troubleStatusUpdatedBy}
+                                                                                    </span>
+                                                                                )}
+                                                                                {report.troubleStatusUpdatedAt && (
+                                                                                    <span className="text-[10px] text-rose-500 font-medium">
+                                                                                        {report.troubleStatusUpdatedAt?.toDate ? report.troubleStatusUpdatedAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="text-xs text-rose-950 mt-1.5 font-medium bg-white/80 p-2.5 rounded-lg border border-rose-200">
+                                                                                <span className="font-bold text-rose-900">Catatan Alasan: </span>
+                                                                                <span className="whitespace-pre-wrap">{report.troublePendingReason || report.recommendation || 'Belum dicatat alasannya.'}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleQuickResolveTrouble(report)}
+                                                                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                                                                            title="Tandai masalah ini telah diselesaikan (Close)"
+                                                                        >
+                                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                            <span>Tandai Solved (Close)</span>
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleOpenTroubleStatusModal(report, 'open')}
+                                                                            className="px-2.5 py-1.5 bg-white hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                                                                            title="Edit alasan atau ubah status"
+                                                                        >
+                                                                            <PenTool className="w-3 h-3" />
+                                                                            <span>Edit Alasan</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (isClosed) {
+                                                        return (
+                                                            <div className="mt-3.5 px-3.5 py-2 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-900 flex-wrap">
+                                                                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                                    <span className="font-bold">Trouble Solved (Closed)</span>
+                                                                    {report.troubleStatusUpdatedBy && (
+                                                                        <span className="text-[10px] text-emerald-700 font-medium">
+                                                                            • ditandai oleh {report.troubleStatusUpdatedBy}
+                                                                        </span>
+                                                                    )}
+                                                                    {report.troubleCompletionNotes && (
+                                                                        <span className="text-slate-600 italic">
+                                                                            • "{report.troubleCompletionNotes}"
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleOpenTroubleStatusModal(report, 'closed')}
+                                                                    className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline shrink-0 cursor-pointer"
+                                                                >
+                                                                    Ubah Status
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <div className="mt-3 px-3 py-1.5 bg-slate-50 border border-dashed border-slate-300 rounded-lg flex items-center justify-between gap-2 text-xs text-slate-600 flex-wrap">
+                                                            <span className="flex items-center gap-1.5 font-medium">
+                                                                <HelpCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                                Status trouble belum ditentukan: Apakah permasalahan sudah Solved (Closed) atau masih Open?
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleQuickResolveTrouble(report)}
+                                                                    className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded text-[11px] font-bold transition cursor-pointer"
+                                                                    title="Tandai Solved (Closed)"
+                                                                >
+                                                                    ✓ Solved
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleOpenTroubleStatusModal(report, 'open')}
+                                                                    className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded text-[11px] font-bold transition cursor-pointer"
+                                                                    title="Tandai Open & Isi Catatan Alasan"
+                                                                >
+                                                                    ⚠️ Open
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+
                                                 {report.spareParts && (
                                                     <div className="mt-4 pt-4 border-t border-slate-200">
                                                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Spare Parts Used:</span>
@@ -3182,6 +3566,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 isOpen={isRecapModalOpen}
                 onClose={() => setIsRecapModalOpen(false)}
                 reports={allSLAReports}
+                initialMonth={selectedMonth}
+                initialYear={selectedYear}
+            />
+
+            {/* Modal Rekap CM Bulanan & Rentang Tanggal */}
+            <CMMonthlyRecapModal
+                isOpen={isCMRecapModalOpen}
+                onClose={() => setIsCMRecapModalOpen(false)}
+                reports={allCMReports}
                 initialMonth={selectedMonth}
                 initialYear={selectedYear}
             />
@@ -3250,6 +3643,303 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     }}
                 />
             )}
+
+            {/* Modal Dialog Update Status Trouble CM (Open vs Closed/Solved) */}
+            <CMTroubleStatusModal
+                isOpen={isTroubleModalOpen}
+                onClose={() => {
+                    setIsTroubleModalOpen(false);
+                    setSelectedReportForTrouble(null);
+                }}
+                report={selectedReportForTrouble}
+                form={troubleForm}
+                setForm={setTroubleForm}
+                onSave={handleSaveTroubleStatus}
+                loading={isSavingTroubleStatus}
+            />
+        </div>
+    );
+}
+
+// ============================================================================
+// KOMPONEN: CMTroubleStatusModal
+// Modal dialog untuk mengupdate status trouble CM (Close/Solved vs Open/Belum Selesai)
+// Beserta input catatan alasan pending dan preset tag cepat
+// ============================================================================
+interface CMTroubleStatusModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    report: CorrectiveReport | null;
+    form: {
+        status: 'closed' | 'open';
+        pendingReason: string;
+        completionNotes: string;
+    };
+    setForm: React.Dispatch<React.SetStateAction<{
+        status: 'closed' | 'open';
+        pendingReason: string;
+        completionNotes: string;
+    }>>;
+    onSave: () => void;
+    loading: boolean;
+}
+
+const OPEN_REASON_PRESETS = [
+    'Menunggu Part Pengganti dari Vendor',
+    'Menunggu Jadwal Pemadaman / Maintenance Window',
+    'Koordinasi dengan Principal / Tim Spesialis',
+    'Sedang Tahap Observasi & Monitoring Unit',
+    'Memerlukan Alat Kerja Khusus / Pengadaan Material'
+];
+
+const CLOSED_NOTES_PRESETS = [
+    'Unit telah beroperasi normal & handal',
+    'Penggantian komponen selesai & diuji optimal',
+    'Troubleshoot selesai, sistem kembali optimal'
+];
+
+function CMTroubleStatusModal({
+    isOpen,
+    onClose,
+    report,
+    form,
+    setForm,
+    onSave,
+    loading
+}: CMTroubleStatusModalProps) {
+    if (!isOpen || !report) return null;
+
+    const handleAddPreset = (presetText: string, field: 'pendingReason' | 'completionNotes') => {
+        const current = form[field].trim();
+        if (!current) {
+            setForm(prev => ({ ...prev, [field]: presetText }));
+        } else if (!current.includes(presetText)) {
+            setForm(prev => ({ ...prev, [field]: `${current}, ${presetText}` }));
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden my-auto"
+            >
+                {/* Modal Header */}
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center font-bold">
+                            <CheckSquare className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                                Update Status Trouble CM
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Tentukan apakah masalah sudah solved atau masih open dengan kendala
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
+                        title="Tutup"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    {/* Ringkasan Dokumen CM */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5">
+                            Laporan Perangkat / Issue
+                        </span>
+                        <div className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                            <span>{report.incidentName || report.issue || report.equipmentName || 'Laporan Standby'}</span>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>Area: <strong>{report.location || '-'}</strong></span>
+                        </div>
+                    </div>
+
+                    {/* Dua Pilihan Kartu Status */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                            Pilih Status Penyelesaian Trouble
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Opsi 1: Selesai / Solved (Close) */}
+                            <button
+                                type="button"
+                                onClick={() => setForm(prev => ({ ...prev, status: 'closed' }))}
+                                className={`p-3.5 rounded-xl border-2 text-left transition flex items-start gap-3 cursor-pointer ${
+                                    form.status === 'closed'
+                                        ? 'border-emerald-500 bg-emerald-50/70 shadow-sm'
+                                        : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50'
+                                }`}
+                            >
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                    form.status === 'closed' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                    <CheckCircle2 className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>Close (Solved)</span>
+                                        {form.status === 'closed' && (
+                                            <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                                                Dipilih
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                                        Permasalahan atau trouble sudah berhasil di-solved/selesai.
+                                    </p>
+                                </div>
+                            </button>
+
+                            {/* Opsi 2: Belum Selesai (Open) */}
+                            <button
+                                type="button"
+                                onClick={() => setForm(prev => ({ ...prev, status: 'open' }))}
+                                className={`p-3.5 rounded-xl border-2 text-left transition flex items-start gap-3 cursor-pointer ${
+                                    form.status === 'open'
+                                        ? 'border-rose-500 bg-rose-50/80 shadow-sm'
+                                        : 'border-slate-200 bg-white hover:border-rose-300 hover:bg-slate-50'
+                                }`}
+                            >
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                    form.status === 'open' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                    <AlertTriangle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>Open (Belum Selesai)</span>
+                                        {form.status === 'open' && (
+                                            <span className="text-[10px] font-black text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded">
+                                                Dipilih
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                                        Permasalahan belum selesai, wajib sertakan catatan alasan kendala.
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Form Dinamis: Jika OPEN */}
+                    {form.status === 'open' && (
+                        <div className="bg-rose-50/60 border border-rose-200 rounded-xl p-3.5 sm:p-4 space-y-2.5">
+                            <label className="block text-xs font-bold text-rose-900">
+                                Catatan Alasan Trouble Belum Selesai <span className="text-red-600">*</span>
+                            </label>
+                            <p className="text-[11px] text-rose-700">
+                                Jelaskan alasan kendala teknis (contoh: menunggu sparepart modul fan dari vendor, perlu jadwal pemadaman terencana, dll).
+                            </p>
+
+                            {/* Preset Tags Cepat */}
+                            <div>
+                                <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wide block mb-1.5">
+                                    Preset Alasan Cepat (Klik untuk memilih):
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {OPEN_REASON_PRESETS.map((preset, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => handleAddPreset(preset, 'pendingReason')}
+                                            className="px-2 py-1 text-[11px] font-medium bg-white hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-lg shadow-2xs transition cursor-pointer"
+                                        >
+                                            + {preset}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <textarea
+                                rows={3}
+                                value={form.pendingReason}
+                                onChange={(e) => setForm(prev => ({ ...prev, pendingReason: e.target.value }))}
+                                placeholder="Tuliskan catatan alasan secara lengkap mengapa permasalahan ini belum selesai..."
+                                className="w-full px-3 py-2 bg-white border border-rose-300 rounded-xl text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 outline-none resize-y"
+                            />
+                        </div>
+                    )}
+
+                    {/* Form Dinamis: Jika CLOSED */}
+                    {form.status === 'closed' && (
+                        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5 sm:p-4 space-y-2.5">
+                            <label className="block text-xs font-bold text-emerald-900">
+                                Catatan Penyelesaian / Solved (Opsional)
+                            </label>
+                            <p className="text-[11px] text-emerald-700">
+                                Tuliskan catatan perbaikan atau kondisi pengetesan akhir unit.
+                            </p>
+
+                            {/* Preset Tags Cepat */}
+                            <div>
+                                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide block mb-1.5">
+                                    Preset Catatan Cepat (Klik untuk memilih):
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {CLOSED_NOTES_PRESETS.map((preset, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => handleAddPreset(preset, 'completionNotes')}
+                                            className="px-2 py-1 text-[11px] font-medium bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg shadow-2xs transition cursor-pointer"
+                                        >
+                                            + {preset}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <textarea
+                                rows={2}
+                                value={form.completionNotes}
+                                onChange={(e) => setForm(prev => ({ ...prev, completionNotes: e.target.value }))}
+                                placeholder="Contoh: Unit telah diuji coba running test 1 jam dengan hasil normal tanpa indikasi alarm..."
+                                className="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-y"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 sm:p-5 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50/80">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-200/70 rounded-xl transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSave}
+                        disabled={loading}
+                        className={`px-5 py-2 text-xs sm:text-sm font-bold text-white rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer ${
+                            form.status === 'closed'
+                                ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
+                                : 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20'
+                        } ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        <span>{form.status === 'closed' ? 'Simpan Status Solved' : 'Simpan Status Open'}</span>
+                    </button>
+                </div>
+            </motion.div>
         </div>
     );
 }

@@ -32,7 +32,8 @@ import {
   ClipboardList,
   Lightbulb,
   Package,
-  Sparkles
+  Sparkles,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -154,6 +155,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     repairTimeStart: '',
     repairTimeEnd: '',
     result: '',
+    troubleStatus: 'closed',
+    troublePendingReason: '',
+    troubleCompletionNotes: '',
 
     visualInspectionChecking: '',
     cleaningPreventiveMethod: '',
@@ -245,7 +249,10 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               reviewedBySign: revSign,
               spareparts: loadedSpareparts,
               requestSpareparts: initialRequestSpareparts,
-              photos: data.photos || (data.photoBase64 ? [{ photoBase64: data.photoBase64 }] : [])
+              photos: data.photos || (data.photoBase64 ? [{ photoBase64: data.photoBase64 }] : []),
+              troubleStatus: data.troubleStatus || (data.status === 'Open' ? 'open' : 'closed'),
+              troublePendingReason: data.troublePendingReason || '',
+              troubleCompletionNotes: data.troubleCompletionNotes || ''
             });
           }
         } catch (err) {
@@ -638,6 +645,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           issue: formattedData.incidentName || formattedData.summaryProblemAnalysis || 'Laporan Issue CM',
           actionTaken: formattedData.correctiveAction || '-',
           category: 'CM',
+          troubleStatus: formData.troubleStatus || 'closed',
+          troublePendingReason: formData.troubleStatus === 'open' ? (formData.troublePendingReason || '') : '',
+          status: formData.troubleStatus === 'open' ? 'Open' : 'Resolved',
           reportedBy: user.uid,
           reportedByEmail: user.email,
           reportedAt: serverTimestamp(),
@@ -739,6 +749,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         issue: formData.incidentName || formData.summaryProblemAnalysis || formData.visualInspectionChecking || 'Laporan Issue CM',
         actionTaken: formData.correctiveAction || '-',
         category: 'CM',
+        troubleStatus: formData.troubleStatus || 'closed',
+        troublePendingReason: formData.troubleStatus === 'open' ? (formData.troublePendingReason || '') : '',
+        status: formData.troubleStatus === 'open' ? 'Open' : 'Resolved',
         reportedBy: user.uid,
         reportedByEmail: user.email,
         reportedAt: serverTimestamp(),
@@ -1333,6 +1346,76 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   placeholder="e.g. Status error berhasil terhapus, komunikasi antar unit kembali normal..."
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none resize-none"
                 />
+              </div>
+
+              {/* STATUS PENYELESAIAN TROUBLE / MASALAH */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <label className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>STATUS PENYELESAIAN TROUBLE / MASALAH</span>
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Tentukan apakah masalah sudah solved atau masih open
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, troubleStatus: 'closed' })}
+                    className={`p-3 rounded-xl border-2 text-left transition flex items-center gap-2.5 cursor-pointer ${
+                      formData.troubleStatus !== 'open'
+                        ? 'border-emerald-500 bg-emerald-50/70 shadow-2xs'
+                        : 'border-slate-200 bg-white hover:border-emerald-300'
+                    }`}
+                  >
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      formData.troubleStatus !== 'open' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">Close / Solved (Selesai)</div>
+                      <div className="text-[10px] text-slate-500">Masalah telah tuntas diperbaiki</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, troubleStatus: 'open' })}
+                    className={`p-3 rounded-xl border-2 text-left transition flex items-center gap-2.5 cursor-pointer ${
+                      formData.troubleStatus === 'open'
+                        ? 'border-rose-500 bg-rose-50/80 shadow-2xs'
+                        : 'border-slate-200 bg-white hover:border-rose-300'
+                    }`}
+                  >
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      formData.troubleStatus === 'open' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <AlertTriangle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">Open (Belum Selesai)</div>
+                      <div className="text-[10px] text-slate-500">Ada kendala / butuh tindak lanjut</div>
+                    </div>
+                  </button>
+                </div>
+
+                {formData.troubleStatus === 'open' && (
+                  <div className="mt-2 space-y-1.5 pt-2 border-t border-rose-200">
+                    <label className="block text-xs font-bold text-rose-900">
+                      Catatan Alasan Trouble Belum Selesai <span className="text-red-600">*</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData.troublePendingReason || ''}
+                      onChange={e => setFormData({ ...formData, troublePendingReason: e.target.value })}
+                      placeholder="Tuliskan alasan mengapa trouble belum selesai (contoh: Masih menunggu pengadaan sparepart dari vendor, perlu jadwal pemadaman, dll)..."
+                      className="w-full px-3 py-2 bg-white border border-rose-300 rounded-xl text-slate-900 text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-y"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

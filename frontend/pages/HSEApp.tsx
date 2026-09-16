@@ -36,6 +36,8 @@ export function HSEApp() {
     
     // State tab aktif ('inspection' untuk buat laporan HSE, 'findings' untuk input temuan K3, 'findings_archive' arsip temuan, 'iso' untuk arsip dokumen, 'management_files' untuk Management File)
     const [activeTab, setActiveTab] = useState<'inspection' | 'findings' | 'findings_archive' | 'iso' | 'management_files'>('inspection');
+    // State tipe temuan K3 yang dipilih ('negative' atau 'positive')
+    const [findingsTypeSelection, setFindingsTypeSelection] = useState<'negative' | 'positive'>('negative');
     const [editingData, setEditingData] = useState<any>(null); // Data laporan yang sedang di-edit
     const [sidebarOpen, setSidebarOpen] = useState(false);     // State drawer navigasi HP (Mobile)
 
@@ -65,13 +67,15 @@ export function HSEApp() {
                 };
             case 'findings':
                 return {
-                    title: 'Input Temuan K3 / HSE',
-                    subtitle: 'Pencatatan & Pelaporan Temuan Unsafe Action & Unsafe Condition di Lapangan',
-                    icon: AlertTriangle,
-                    badge: 'Temuan K3',
-                    color: 'text-rose-600',
-                    bg: 'bg-rose-50',
-                    border: 'border-rose-200'
+                    title: findingsTypeSelection === 'positive' ? 'Input Temuan Positif K3' : 'Input Temuan Negatif K3',
+                    subtitle: findingsTypeSelection === 'positive'
+                        ? 'Pencatatan & Apresiasi Tindakan Aman (Safe Behavior) & Kepatuhan K3 Teladan'
+                        : 'Pencatatan & Pelaporan Temuan Unsafe Action & Unsafe Condition di Lapangan',
+                    icon: findingsTypeSelection === 'positive' ? ShieldCheck : AlertTriangle,
+                    badge: findingsTypeSelection === 'positive' ? 'Temuan Positif' : 'Temuan Negatif',
+                    color: findingsTypeSelection === 'positive' ? 'text-emerald-600' : 'text-rose-600',
+                    bg: findingsTypeSelection === 'positive' ? 'bg-emerald-50' : 'bg-rose-50',
+                    border: findingsTypeSelection === 'positive' ? 'border-emerald-200' : 'border-rose-200'
                 };
             case 'findings_archive':
                 return {
@@ -201,24 +205,65 @@ export function HSEApp() {
                             <div className="flex-1 overflow-y-auto p-4 space-y-2">
                                 <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Navigasi Utama</p>
                                 {navigationItems.map((item) => (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => {
-                                            setActiveTab(item.id as any);
-                                            setSidebarOpen(false);
-                                        }}
-                                        className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 cursor-pointer ${
-                                            activeTab === item.id 
-                                            ? `${item.mobileColor} text-white shadow-lg ${item.mobileShadow}` 
-                                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-white' : 'text-slate-500'}`} />
-                                            <span className="font-bold text-sm">{item.label}</span>
-                                        </div>
-                                        <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === item.id ? 'translate-x-1' : 'opacity-0'}`} />
-                                    </button>
+                                    <div key={item.id} className="space-y-1">
+                                        <button
+                                            onClick={() => {
+                                                setActiveTab(item.id as any);
+                                                setSidebarOpen(false);
+                                            }}
+                                            className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 cursor-pointer ${
+                                                activeTab === item.id 
+                                                ? (item.id === 'findings' && findingsTypeSelection === 'positive'
+                                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                                                    : `${item.mobileColor} text-white shadow-lg ${item.mobileShadow}`)
+                                                : 'bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-white' : 'text-slate-500'}`} />
+                                                <span className="font-bold text-sm">{item.label}</span>
+                                            </div>
+                                            <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === item.id ? 'translate-x-1' : 'opacity-0'}`} />
+                                        </button>
+
+                                        {/* Pilihan Cepat Jenis Temuan di Mobile Drawer */}
+                                        {item.id === 'findings' && (
+                                            <div className="pl-4 pr-1 py-1 grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFindingsTypeSelection('negative');
+                                                        setActiveTab('findings');
+                                                        setSidebarOpen(false);
+                                                    }}
+                                                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                                        activeTab === 'findings' && findingsTypeSelection === 'negative'
+                                                            ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-2xs'
+                                                            : 'bg-white/80 text-slate-600 border-slate-200 hover:bg-rose-50/50'
+                                                    }`}
+                                                >
+                                                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                                                    <span>🔴 Negatif</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFindingsTypeSelection('positive');
+                                                        setActiveTab('findings');
+                                                        setSidebarOpen(false);
+                                                    }}
+                                                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                                        activeTab === 'findings' && findingsTypeSelection === 'positive'
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs'
+                                                            : 'bg-white/80 text-slate-600 border-slate-200 hover:bg-emerald-50/50'
+                                                    }`}
+                                                >
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                                                    <span>🟢 Positif</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
 
@@ -316,7 +361,9 @@ export function HSEApp() {
                                     onClick={() => setActiveTab(item.id as any)}
                                     className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border cursor-pointer ${
                                         activeTab === item.id
-                                            ? item.activeClass
+                                            ? (item.id === 'findings' && findingsTypeSelection === 'positive'
+                                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20 border-transparent'
+                                                : item.activeClass)
                                             : 'bg-white/90 text-slate-600 border-slate-200/90 hover:bg-white hover:text-slate-900 hover:border-slate-300 shadow-2xs'
                                     }`}
                                 >
@@ -352,11 +399,41 @@ export function HSEApp() {
                             </div>
                         </div>
 
-                        <div className="hidden lg:flex items-center gap-2 text-xs font-semibold text-slate-400">
-                            <span>Sistem Manajemen K3</span>
-                            <span>•</span>
-                            <span className="text-slate-600 font-bold">UTT Maintenance</span>
-                        </div>
+                        {/* Switcher Cepat Positif / Negatif di Subheader (Khusus Tab Input Temuan K3) */}
+                        {activeTab === 'findings' ? (
+                            <div className="flex items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200 self-start sm:self-auto shadow-2xs">
+                                <button
+                                    type="button"
+                                    onClick={() => setFindingsTypeSelection('negative')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        findingsTypeSelection === 'negative'
+                                            ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                                    <span>🔴 Negatif</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFindingsTypeSelection('positive')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        findingsTypeSelection === 'positive'
+                                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                                    <span>🟢 Positif</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="hidden lg:flex items-center gap-2 text-xs font-semibold text-slate-400">
+                                <span>Sistem Manajemen K3</span>
+                                <span>•</span>
+                                <span className="text-slate-600 font-bold">UTT Maintenance</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -373,7 +450,11 @@ export function HSEApp() {
                         onEdit={handleEditReport} 
                     />
                 ) : activeTab === 'findings' ? (
-                    <HSEFindings onSuccess={() => setActiveTab('findings_archive')} />
+                    <HSEFindings 
+                        initialType={findingsTypeSelection}
+                        onTypeChange={setFindingsTypeSelection}
+                        onSuccess={() => setActiveTab('findings_archive')} 
+                    />
                 ) : activeTab === 'findings_archive' ? (
                     <HSEFindingsArchive />
                 ) : (

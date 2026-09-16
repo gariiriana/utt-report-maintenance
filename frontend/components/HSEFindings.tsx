@@ -9,6 +9,8 @@ import {
   Calendar,
   UserCheck,
   ShieldAlert,
+  ShieldCheck,
+  AlertTriangle,
   Check,
   Clock,
   FileDown,
@@ -25,19 +27,35 @@ import { compressImage } from '@/utils/imageCompression';
 import { safeStorage } from '@/utils/safeStorage';
 import {
   HSEFindingItem,
-  HSEFindingSeverity
+  HSEFindingSeverity,
+  HSEFindingType
 } from '@/types/hseFinding';
 import { exportSingleHSEFindingPDF } from '@/utils/HSEFindingPdfExport';
 import { CameraModal } from '@/components/CameraModal';
 
 interface HSEFindingsProps {
   onSuccess?: () => void;
+  initialType?: HSEFindingType;
+  onTypeChange?: (type: HSEFindingType) => void;
 }
 
 const DRAFT_STORAGE_KEY = 'hse_finding_form_draft_v1';
 
-export function HSEFindings({ onSuccess }: HSEFindingsProps) {
+export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange }: HSEFindingsProps) {
   const { user } = useAuth();
+
+  // State tipe temuan aktif ('negative' atau 'positive')
+  const [findingType, setFindingType] = useState<HSEFindingType>(() => {
+    if (initialType) return initialType;
+    try {
+      const saved = safeStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.formData?.findingType) return parsed.formData.findingType;
+      }
+    } catch (e) {}
+    return 'negative';
+  });
 
   // Helper untuk mendapatkan nama personil/orang default
   const getDefaultInspectorName = () => {
@@ -49,6 +67,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
 
   // Form State: Input Temuan K3 Baru (dengan auto-restore draft jika halaman di-refresh)
   const [formData, setFormData] = useState<{
+    findingType?: HSEFindingType;
     title: string;
     description: string;
     location: string;
@@ -72,6 +91,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
             : (parsed.formData.beforePhoto ? [parsed.formData.beforePhoto] : []);
           return {
             ...parsed.formData,
+            findingType: parsed.formData.findingType || 'negative',
             beforePhotos: rawPhotos,
             beforePhoto: rawPhotos[0] || parsed.formData.beforePhoto || ''
           };
@@ -81,6 +101,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       console.warn('Gagal memulihkan draft temuan HSE:', e);
     }
     return {
+      findingType: 'negative',
       title: '',
       description: '',
       location: '',
@@ -95,6 +116,38 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       beforeNotes: ''
     };
   });
+
+  // Handler beralih antara Temuan Negatif & Temuan Positif
+  const handleSwitchFindingType = (newType: HSEFindingType, notifyParent = true) => {
+    setFindingType(newType);
+    setFormData(prev => {
+      let newSeverity = prev.severity;
+      if (newType === 'positive') {
+        if (newSeverity === 'unsafe_condition' || newSeverity === 'unsafe_action') {
+          newSeverity = 'safe_behavior';
+        }
+      } else {
+        if (newSeverity === 'safe_behavior' || newSeverity === 'safe_condition' || newSeverity === 'compliance' || newSeverity === 'best_practice') {
+          newSeverity = 'unsafe_condition';
+        }
+      }
+      return {
+        ...prev,
+        findingType: newType,
+        severity: newSeverity
+      };
+    });
+    if (notifyParent && onTypeChange) {
+      onTypeChange(newType);
+    }
+  };
+
+  // Sinkronisasi dengan initialType dari props navbar
+  useEffect(() => {
+    if (initialType && initialType !== findingType) {
+      handleSwitchFindingType(initialType, false);
+    }
+  }, [initialType]);
 
   const [savedDocId, setSavedDocId] = useState<string | null>(() => {
     try {
@@ -136,19 +189,22 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         formData.beforeNotes.trim();
 
       if (hasContent || savedDocId) {
-        safeStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ formData, savedDocId }));
+        safeStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+          formData: { ...formData, findingType },
+          savedDocId
+        }));
       }
     } catch (e) {
       console.warn('Gagal menyimpan draft form temuan HSE:', e);
     }
-  }, [formData, savedDocId]);
+  }, [formData, savedDocId, findingType]);
 
   // --------------------------------------------------------------------------
   // Unified Save / Update to Firestore (Arsip Temuan HSE - Anti Duplikasi)
   // --------------------------------------------------------------------------
   const saveFindingToFirestore = async (): Promise<string | null> => {
     if (!formData.title.trim()) {
-      toast.error('Judul temuan wajib diisi');
+      toast.error(findingType === 'positive' ? 'Judul temuan positif wajib diisi' : 'Judul temuan wajib diisi');
       return null;
     }
     if (!formData.location.trim()) {
@@ -165,19 +221,25 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       : (formData.beforePhoto ? [formData.beforePhoto] : []);
 
     if (photos.length === 0) {
-      toast.error('Foto bukti temuan (Before) wajib diunggah (minimal 1 foto)');
+      toast.error(
+        findingType === 'positive'
+          ? 'Foto dokumentasi temuan positif wajib diunggah (minimal 1 foto)'
+          : 'Foto bukti temuan (Before) wajib diunggah (minimal 1 foto)'
+      );
       return null;
     }
 
     try {
+      const isPositive = findingType === 'positive';
       const payload: any = {
+        findingType: findingType,
         title: formData.title.trim(),
         description: formData.description.trim(),
         location: formData.location.trim(),
         inspectorName: formData.inspectorName.trim() || getDefaultInspectorName(),
         category: formData.category?.trim() || '',
         severity: formData.severity,
-        status: 'open',
+        status: isPositive ? 'close' : 'open',
         reportedBy: user?.email || 'hse@dwimitra.com',
         targetPerson: formData.targetPerson.trim() || '-',
         findingDate: formData.findingDate,
@@ -187,6 +249,13 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         beforeNotes: formData.beforeNotes.trim(),
         updatedAt: serverTimestamp(),
       };
+
+      // Untuk temuan positif, secara default langsung berstatus close (apresiasi tercatat)
+      if (isPositive) {
+        payload.resolvedAt = formData.findingDate;
+        payload.resolvedBy = user?.email || 'HSE Officer';
+        payload.afterNotes = formData.beforeNotes.trim() || 'Temuan positif K3 — apresiasi tindakan aman & kepatuhan K3 teladan.';
+      }
 
       if (savedDocId) {
         await setDoc(doc(db, 'hse_findings', savedDocId), payload, { merge: true });
@@ -223,14 +292,16 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         ? formData.beforePhotos
         : (formData.beforePhoto ? [formData.beforePhoto] : []);
 
+      const isPositive = findingType === 'positive';
       const findingItem: HSEFindingItem = {
         id: docId,
-        title: formData.title.trim() || 'Temuan K3 Tanpa Judul',
+        findingType: findingType,
+        title: formData.title.trim() || (isPositive ? 'Temuan Positif K3' : 'Temuan K3 Tanpa Judul'),
         description: formData.description.trim(),
         location: formData.location.trim() || '-',
         category: formData.category?.trim() || '',
         severity: formData.severity,
-        status: 'open',
+        status: isPositive ? 'close' : 'open',
         reportedBy: user?.email || 'hse@dwimitra.com',
         inspectorName: formData.inspectorName.trim() || getDefaultInspectorName(),
         targetPerson: formData.targetPerson.trim() || '-',
@@ -239,6 +310,11 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         beforePhoto: photos[0] || '',
         beforePhotos: photos,
         beforeNotes: formData.beforeNotes.trim(),
+        ...(isPositive ? {
+          resolvedAt: formData.findingDate,
+          resolvedBy: user?.email || 'HSE Officer',
+          afterNotes: formData.beforeNotes.trim() || 'Temuan positif K3 — apresiasi tindakan aman & kepatuhan K3 teladan.'
+        } : {})
       };
 
       await exportSingleHSEFindingPDF(findingItem, { companyVariant });
@@ -333,12 +409,13 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       beforeFileInputRef.current.value = '';
     }
     setFormData({
+      findingType,
       title: '',
       description: '',
       location: '',
       inspectorName: getDefaultInspectorName(),
       category: '',
-      severity: 'unsafe_condition',
+      severity: findingType === 'positive' ? 'safe_behavior' : 'unsafe_condition',
       targetPerson: '',
       findingDate: new Date().toISOString().split('T')[0],
       findingTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
@@ -348,17 +425,25 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
     });
 
     if (showToast) {
-      toast.success('Form temuan K3 berhasil di-reset! Siap untuk input baru.');
+      toast.success(
+        findingType === 'positive'
+          ? 'Form temuan positif berhasil di-reset! Siap untuk input baru.'
+          : 'Form temuan K3 berhasil di-reset! Siap untuk input baru.'
+      );
     }
   };
 
   // --------------------------------------------------------------------------
-  // Submit New / Update Finding (Status 'open')
+  // Submit New / Update Finding
   // --------------------------------------------------------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const toastId = toast.loading(savedDocId ? 'Memperbarui data temuan di arsip...' : 'Menyimpan data temuan K3...');
+    const toastId = toast.loading(
+      savedDocId 
+        ? 'Memperbarui data temuan di arsip...' 
+        : (findingType === 'positive' ? 'Menyimpan data temuan positif...' : 'Menyimpan data temuan K3...')
+    );
 
     try {
       const docId = await saveFindingToFirestore();
@@ -370,7 +455,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       toast.success(
         savedDocId
           ? 'Data temuan berhasil diperbarui di arsip!'
-          : 'Temuan K3 berhasil dicatat & masuk ke arsip!',
+          : (findingType === 'positive' ? 'Temuan positif berhasil dicatat & masuk ke arsip!' : 'Temuan K3 berhasil dicatat & masuk ke arsip!'),
         { id: toastId }
       );
 
@@ -381,12 +466,13 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         beforeFileInputRef.current.value = '';
       }
       setFormData({
+        findingType,
         title: '',
         description: '',
         location: '',
         inspectorName: getDefaultInspectorName(),
         category: '',
-        severity: 'unsafe_condition',
+        severity: findingType === 'positive' ? 'safe_behavior' : 'unsafe_condition',
         targetPerson: '',
         findingDate: new Date().toISOString().split('T')[0],
         findingTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
@@ -414,49 +500,118 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
   // RENDER
   // --------------------------------------------------------------------------
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
+    <div className="space-y-6 pb-6">
+      {/* Selector 2 Tombol Pemilihan Report (Temuan Negatif vs Temuan Positif) */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-red-900/15 relative overflow-hidden"
+        className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/80 shadow-sm p-4 sm:p-6"
       >
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-white/15 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner">
-              <ShieldAlert className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-md text-white text-[11px] font-bold rounded-full uppercase tracking-wider">
-                  Eksklusif HSE
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                findingType === 'positive'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}>
+                {findingType === 'positive' ? '🟢 Mode Temuan Positif' : '🔴 Mode Temuan Negatif'}
+              </span>
+              {savedDocId && (
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold rounded-full border border-amber-300 animate-pulse">
+                  Draft Tersimpan di Arsip
                 </span>
-                {savedDocId && (
-                  <span className="px-2.5 py-0.5 bg-amber-400 text-slate-900 text-[11px] font-extrabold rounded-full animate-pulse">
-                    Mode Edit Draft (Tersimpan di Arsip)
-                  </span>
-                )}
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-1">Form Pelaporan Temuan K3</h1>
-              <p className="text-xs sm:text-sm text-red-100 mt-0.5">
-                Dokumentasi temuan keselamatan kerja langsung ke database sistem arsip HSE
-              </p>
+              )}
             </div>
+            <h2 className="text-base sm:text-lg font-black text-slate-800 mt-1">
+              Pilih Jenis Laporan Temuan K3
+            </h2>
+            <p className="text-xs text-slate-500">
+              Pilih apakah ingin mencatat kondisi/tindakan tidak aman atau mendokumentasikan tindakan aman & apresiasi K3.
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-center">
             <button
               type="button"
               onClick={() => handleResetForm(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-sm border border-white/30 transition cursor-pointer shadow-sm active:scale-95"
-              title="Reset seluruh isian dan buat form temuan K3 baru"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold border border-slate-200 transition cursor-pointer active:scale-95 shadow-2xs"
+              title="Reset seluruh isian dan mulai form baru"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
               <span>Reset / Form Baru</span>
             </button>
           </div>
+        </div>
+
+        {/* 2 Buttons Pemilihan Report: Temuan Negatif & Temuan Positif */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          {/* Button 1: Temuan Negatif */}
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleSwitchFindingType('negative')}
+            className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3.5 ${
+              findingType === 'negative'
+                ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white border-transparent shadow-lg shadow-red-600/20 ring-2 ring-red-500 ring-offset-2'
+                : 'bg-slate-50/70 hover:bg-red-50/40 text-slate-700 border-slate-200 hover:border-red-200'
+            }`}
+          >
+            <div className={`p-2.5 rounded-xl shrink-0 ${
+              findingType === 'negative' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'
+            }`}>
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className={`text-sm font-black tracking-tight ${findingType === 'negative' ? 'text-white' : 'text-slate-900'}`}>
+                  Temuan Negatif
+                </span>
+                {findingType === 'negative' && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/20 text-white uppercase tracking-wider">
+                    Aktif
+                  </span>
+                )}
+              </div>
+              <p className={`text-xs mt-1 leading-snug font-medium ${findingType === 'negative' ? 'text-red-100' : 'text-slate-500'}`}>
+                Unsafe Action, Unsafe Condition & Pelanggaran K3
+              </p>
+            </div>
+          </motion.button>
+
+          {/* Button 2: Temuan Positif */}
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleSwitchFindingType('positive')}
+            className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3.5 ${
+              findingType === 'positive'
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white border-transparent shadow-lg shadow-emerald-600/20 ring-2 ring-emerald-500 ring-offset-2'
+                : 'bg-slate-50/70 hover:bg-emerald-50/40 text-slate-700 border-slate-200 hover:border-emerald-200'
+            }`}
+          >
+            <div className={`p-2.5 rounded-xl shrink-0 ${
+              findingType === 'positive' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-600'
+            }`}>
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <span className={`text-sm font-black tracking-tight ${findingType === 'positive' ? 'text-white' : 'text-slate-900'}`}>
+                  Temuan Positif
+                </span>
+                {findingType === 'positive' && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/20 text-white uppercase tracking-wider">
+                    Aktif
+                  </span>
+                )}
+              </div>
+              <p className={`text-xs mt-1 leading-snug font-medium ${findingType === 'positive' ? 'text-emerald-100' : 'text-slate-500'}`}>
+                Safe Behavior, Kepatuhan APD & Best Practice K3
+              </p>
+            </div>
+          </motion.button>
         </div>
       </motion.div>
 
@@ -469,7 +624,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
             </div>
             <div>
               <p className="font-bold text-sm text-amber-900">Mode Edit Temuan (Tersimpan di Arsip)</p>
-              <p className="text-amber-700 text-xs mt-0.5">Perubahan yang disimpan akan memperbarui data temuan ini. Ingin membuat temuan lain?</p>
+              <p className="text-amber-700 text-xs mt-0.5">Perubahan yang disimpan akan memperbarui data temuan ini. Ingin membuat temuan baru?</p>
             </div>
           </div>
           <button
@@ -489,36 +644,52 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
         onSubmit={handleSubmit}
-        className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 space-y-6"
+        className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-5 sm:p-8 space-y-6"
       >
         {/* Section 1: Informasi Temuan */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 pb-2">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              1. Informasi & Lokasi Temuan
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${findingType === 'positive' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              <span>1. Informasi & Lokasi Temuan</span>
             </h3>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+              findingType === 'positive'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
+            }`}>
+              {findingType === 'positive' ? 'Temuan Positif' : 'Temuan Negatif'}
+            </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Judul Temuan */}
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Judul Temuan <span className="text-red-500">*</span>
+                {findingType === 'positive' ? 'Judul Temuan Positif / Apresiasi K3' : 'Judul Temuan K3'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Contoh: Engineer bekerja tanpa menggunakan Full Body Harness di ketinggian"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                placeholder={
+                  findingType === 'positive'
+                    ? 'Contoh: Teknisi selalu memasang LOTO & memakai full body harness saat bekerja di ketinggian'
+                    : 'Contoh: Engineer bekerja tanpa menggunakan Full Body Harness di ketinggian'
+                }
+                className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition ${
+                  findingType === 'positive'
+                    ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                    : 'focus:ring-red-500/20 focus:border-red-500'
+                }`}
               />
             </div>
 
             {/* Lokasi Temuan */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-red-500" />
+                <MapPin className={`w-3.5 h-3.5 ${findingType === 'positive' ? 'text-emerald-500' : 'text-red-500'}`} />
                 <span>Lokasi Temuan</span>
                 <span className="text-red-500">*</span>
               </label>
@@ -528,14 +699,18 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="Contoh: Genset Room Lantai 1 / Cooling Tower Rooftop"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition ${
+                  findingType === 'positive'
+                    ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                    : 'focus:ring-red-500/20 focus:border-red-500'
+                }`}
               />
             </div>
 
             {/* Petugas Inspeksi */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-red-500" />
+                <UserCheck className={`w-3.5 h-3.5 ${findingType === 'positive' ? 'text-emerald-500' : 'text-red-500'}`} />
                 <span>Petugas Inspeksi / Pengawas K3</span>
                 <span className="text-red-500">*</span>
               </label>
@@ -545,7 +720,11 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
                 value={formData.inspectorName}
                 onChange={(e) => setFormData({ ...formData, inspectorName: e.target.value })}
                 placeholder="Nama Pengawas HSE"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition ${
+                  findingType === 'positive'
+                    ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                    : 'focus:ring-red-500/20 focus:border-red-500'
+                }`}
               />
             </div>
 
@@ -558,37 +737,68 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
                 type="text"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="Contoh: APD / Housekeeping / Elektrikal / Fire Safety"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                placeholder={
+                  findingType === 'positive'
+                    ? 'Contoh: Kepatuhan APD / Safe Behavior / Housekeeping Rapi / Fire Safety'
+                    : 'Contoh: APD / Housekeeping / Elektrikal / Fire Safety'
+                }
+                className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition ${
+                  findingType === 'positive'
+                    ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                    : 'focus:ring-red-500/20 focus:border-red-500'
+                }`}
               />
             </div>
 
-            {/* Tingkat Risiko */}
+            {/* Tingkat Risiko / Kategori Apresiasi */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Tingkat Bahaya / Risiko <span className="text-red-500">*</span>
+                {findingType === 'positive' ? 'Kategori Apresiasi / Tindakan Aman' : 'Tingkat Bahaya / Risiko'} <span className="text-red-500">*</span>
               </label>
               <select
                 value={formData.severity}
                 onChange={(e) => setFormData({ ...formData, severity: e.target.value as any })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition cursor-pointer"
+                className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 transition cursor-pointer ${
+                  findingType === 'positive'
+                    ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                    : 'focus:ring-red-500/20 focus:border-red-500'
+                }`}
               >
-                <option value="unsafe_condition">Unsafe Condition (Kondisi Tidak Aman)</option>
-                <option value="unsafe_action">Unsafe Action (Tindakan Tidak Aman)</option>
+                {findingType === 'positive' ? (
+                  <>
+                    <option value="safe_behavior">Safe Behavior (Tindakan Aman)</option>
+                    <option value="safe_condition">Safe Condition (Kondisi Aman)</option>
+                    <option value="compliance">Kepatuhan K3 & APD Lengkap</option>
+                    <option value="best_practice">Best Practice / Inovasi K3</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="unsafe_condition">Unsafe Condition (Kondisi Tidak Aman)</option>
+                    <option value="unsafe_action">Unsafe Action (Tindakan Tidak Aman)</option>
+                  </>
+                )}
               </select>
             </div>
 
             {/* Pihak Terkait / Subkon */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Pihak Terkait / Vendor / Subkon
+                {findingType === 'positive' ? 'Penerima Apresiasi / Teknisi / Vendor' : 'Pihak Terkait / Vendor / Subkon'}
               </label>
               <input
                 type="text"
                 value={formData.targetPerson}
                 onChange={(e) => setFormData({ ...formData, targetPerson: e.target.value })}
-                placeholder="Contoh: Teknisi Elektrikal / Vendor HVAC"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                placeholder={
+                  findingType === 'positive'
+                    ? 'Contoh: Tim Maintenance Elektrikal / Vendor HVAC'
+                    : 'Contoh: Teknisi Elektrikal / Vendor HVAC'
+                }
+                className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition ${
+                  findingType === 'positive'
+                    ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                    : 'focus:ring-red-500/20 focus:border-red-500'
+                }`}
               />
             </div>
 
@@ -596,7 +806,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1 cursor-pointer">
-                  <Calendar className="w-3.5 h-3.5 text-red-500" />
+                  <Calendar className={`w-3.5 h-3.5 ${findingType === 'positive' ? 'text-emerald-500' : 'text-red-500'}`} />
                   <span>Tanggal</span>
                 </label>
                 <input
@@ -604,12 +814,16 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
                   value={formData.findingDate}
                   onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch (err) {} }}
                   onChange={(e) => setFormData({ ...formData, findingDate: e.target.value })}
-                  className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition cursor-pointer"
+                  className={`w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition cursor-pointer ${
+                    findingType === 'positive'
+                      ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                      : 'focus:ring-red-500/20 focus:border-red-500'
+                  }`}
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1 cursor-pointer">
-                  <Clock className="w-3.5 h-3.5 text-red-500" />
+                  <Clock className={`w-3.5 h-3.5 ${findingType === 'positive' ? 'text-emerald-500' : 'text-red-500'}`} />
                   <span>Jam</span>
                 </label>
                 <input
@@ -617,7 +831,11 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
                   value={formData.findingTime}
                   onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch (err) {} }}
                   onChange={(e) => setFormData({ ...formData, findingTime: e.target.value })}
-                  className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition cursor-pointer"
+                  className={`w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition cursor-pointer ${
+                    findingType === 'positive'
+                      ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                      : 'focus:ring-red-500/20 focus:border-red-500'
+                  }`}
                 />
               </div>
             </div>
@@ -628,7 +846,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         <div className="space-y-4 pt-4 border-t border-slate-100">
           <div className="flex items-center gap-2 pb-2">
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              2. Kronologi & Uraian Temuan
+              {findingType === 'positive' ? '2. Uraian Tindakan Aman & Best Practice' : '2. Kronologi & Uraian Temuan'}
             </h3>
           </div>
           <div>
@@ -636,27 +854,41 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
               rows={4}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Jelaskan detail kronologi, potensi bahaya, atau pelanggaran yang terjadi di lapangan..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition leading-relaxed"
+              placeholder={
+                findingType === 'positive'
+                  ? 'Jelaskan tindakan aman, kepatuhan K3 teladan, atau praktik keselamatan kerja yang diterapkan dengan baik di lapangan...'
+                  : 'Jelaskan detail kronologi, potensi bahaya, atau pelanggaran yang terjadi di lapangan...'
+              }
+              className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 transition leading-relaxed ${
+                findingType === 'positive'
+                  ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                  : 'focus:ring-red-500/20 focus:border-red-500'
+              }`}
             />
           </div>
         </div>
 
-        {/* Section 3: Foto Bukti Before (Live Camera dengan Watermark & Upload Galeri) */}
+        {/* Section 3: Foto Bukti (Live Camera dengan Watermark & Upload Galeri) */}
         <div className="space-y-4 pt-4 border-t border-slate-100">
           <div className="flex items-center justify-between pb-2 flex-wrap gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <span>3. Dokumentasi Foto Kondisi Awal (Before)</span>
+                <span>
+                  {findingType === 'positive'
+                    ? '3. Dokumentasi Foto Tindakan / Kondisi Aman'
+                    : '3. Dokumentasi Foto Kondisi Awal (Before)'}
+                </span>
                 <span className="text-red-500">*</span>
                 {currentBeforePhotos.length > 0 && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 bg-red-100 text-red-700 rounded-full normal-case">
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full normal-case ${
+                    findingType === 'positive' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                  }`}>
                     {currentBeforePhotos.length} Foto Terlampir
                   </span>
                 )}
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Pilih live camera dengan watermark otomatis atau unggah dari galeri (bisa lebih dari 1 foto).
+                Ambil foto via live camera dengan watermark otomatis atau unggah dari galeri (bisa multi-foto).
               </p>
             </div>
             {currentBeforePhotos.length > 0 && (
@@ -671,84 +903,56 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
             )}
           </div>
 
-          {/* 2 Kotak Pilihan: Kiri Live Camera (Watermark) | Kanan Upload Galeri */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Kotak Kiri: Live Camera dengan Watermark */}
+          {/* Action Buttons: Camera & Upload */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setIsCameraOpen(true)}
-              className="group relative flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl border-2 border-dashed border-red-300 hover:border-red-500 bg-red-50/40 hover:bg-red-50/80 transition-all duration-200 cursor-pointer text-center"
+              className={`flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-2xl font-bold text-sm transition shadow-xs cursor-pointer border ${
+                findingType === 'positive'
+                  ? 'bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200'
+                  : 'bg-red-50 hover:bg-red-100/80 text-red-800 border-red-200'
+              }`}
             >
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center shadow-md shadow-red-500/20 group-hover:scale-110 transition-transform mb-2.5">
-                <Camera className="w-6 h-6" />
-              </div>
-              <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-red-700 transition-colors">
-                Ambil Foto (Live Camera)
-              </span>
-              <span className="text-[11px] text-red-600 font-semibold mt-0.5">
-                Otomatis Watermark GPS & Waktu
-              </span>
-              <span className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1 bg-red-600 text-white rounded-full group-hover:bg-red-700 transition-colors shadow-xs">
-                <Camera className="w-3 h-3" /> Buka Kamera
-              </span>
+              <Camera className={`w-5 h-5 ${findingType === 'positive' ? 'text-emerald-600' : 'text-red-600'}`} />
+              <span>Buka Live Camera (Watermark)</span>
             </button>
 
-            {/* Kotak Kanan: Upload Foto dari Galeri */}
             <button
               type="button"
               onClick={() => beforeFileInputRef.current?.click()}
-              className="group relative flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 bg-white hover:bg-slate-50 transition-all duration-200 cursor-pointer text-center"
+              className="flex items-center justify-center gap-2.5 px-4 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl font-bold text-sm border border-slate-200 transition shadow-xs cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 group-hover:bg-red-50 text-slate-700 group-hover:text-red-600 flex items-center justify-center border border-slate-200 group-hover:border-red-200 group-hover:scale-110 transition-all mb-2.5">
-                <Upload className="w-6 h-6" />
-              </div>
-              <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-red-700 transition-colors">
-                Upload Foto dari Galeri
-              </span>
-              <span className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Pilih dari perangkat (Bisa banyak)
-              </span>
-              <span className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1 bg-slate-800 text-white rounded-full group-hover:bg-red-600 transition-colors shadow-xs">
-                <Upload className="w-3 h-3" /> Pilih File Galeri
-              </span>
+              <Upload className="w-5 h-5 text-slate-500" />
+              <span>Unggah dari Galeri (Multi-Foto)</span>
             </button>
+            <input
+              ref={beforeFileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleBeforePhotoChange}
+              className="hidden"
+            />
           </div>
 
-          <input
-            ref={beforeFileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleBeforePhotoChange}
-            className="hidden"
-          />
-
-          {/* Photo Grid Preview (Jika sudah ada foto) */}
+          {/* Preview Multi-Photos Grid */}
           {currentBeforePhotos.length > 0 && (
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">
-                  Daftar Foto Temuan ({currentBeforePhotos.length} foto):
-                </span>
-                <span className="text-[11px] text-slate-400">Klik foto untuk memperbesar</span>
-              </div>
+            <div className="space-y-2 pt-2">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {currentBeforePhotos.map((photo, idx) => (
                   <div
                     key={idx}
-                    className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border-2 border-slate-200 hover:border-red-400 shadow-xs transition-all"
+                    className="relative group rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video shadow-xs cursor-pointer"
+                    onClick={() => setPreviewImage({ url: photo, title: `Foto Temuan ${idx + 1}` })}
                   >
                     <img
                       src={photo}
-                      alt={`Foto Before ${idx + 1}`}
-                      className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => setPreviewImage({ url: photo, title: `Foto Temuan (Before) #${idx + 1}` })}
+                      alt={`Foto Temuan ${idx + 1}`}
+                      className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
                     />
-                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold rounded-lg pointer-events-none">
-                      {idx === 0 ? 'Utama' : `Foto ${idx + 1}`}
-                    </div>
-                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <span className="px-1.5 py-0.5 bg-black/60 text-white text-[9px] rounded flex items-center gap-1">
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <span className="text-[11px] font-bold text-white bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm flex items-center gap-1">
                         <Maximize2 className="w-2.5 h-2.5" /> Perbesar
                       </span>
                     </div>
@@ -769,7 +973,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
             </div>
           )}
 
-          {/* Catatan Tambahan Foto Before */}
+          {/* Catatan Tambahan Foto */}
           <div>
             <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
               Catatan Kondisi Foto (Opsional)
@@ -778,20 +982,29 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
               type="text"
               value={formData.beforeNotes}
               onChange={(e) => setFormData({ ...formData, beforeNotes: e.target.value })}
-              placeholder="Contoh: Kondisi diambil saat inspeksi shift pagi, area belum dipasang barikade"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+              placeholder={
+                findingType === 'positive'
+                  ? 'Contoh: Dokumentasi pekerja disiplin memakai APD lengkap dan tali pengaman terpasang kuat'
+                  : 'Contoh: Kondisi diambil saat inspeksi shift pagi, area belum dipasang barikade'
+              }
+              className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 transition ${
+                findingType === 'positive'
+                  ? 'focus:ring-emerald-500/20 focus:border-emerald-500'
+                  : 'focus:ring-red-500/20 focus:border-red-500'
+              }`}
             />
           </div>
         </div>
 
-        {/* Section 4: Action Buttons */}
-        <div className="pt-6 border-t border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+        {/* Section 4: Action Buttons (Responsif Mobile & Desktop) */}
+        <div className="pt-6 border-t border-slate-100 flex flex-col gap-3.5 pb-10">
+          {/* Sub-tombol: Export PDF & Reset (Grid responsif: 2 kolom di HP, flex di tablet/desktop) */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full">
             <button
               type="button"
               onClick={() => handleResetForm(true)}
               disabled={isSubmitting}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 shadow-xs transition cursor-pointer disabled:opacity-50"
+              className="col-span-2 sm:col-auto sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 shadow-2xs transition cursor-pointer disabled:opacity-50 active:scale-95"
               title="Kosongkan seluruh isian dan mulai form temuan baru"
             >
               <RotateCcw className="w-4 h-4 text-slate-500" />
@@ -801,7 +1014,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
               type="button"
               onClick={() => handleExportPDF('neutradc')}
               disabled={exportingVariant !== null || isSubmitting}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-red-50 text-slate-700 hover:text-red-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 hover:border-red-300 shadow-xs transition disabled:opacity-50 cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 bg-white hover:bg-red-50 text-slate-700 hover:text-red-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 hover:border-red-300 shadow-2xs transition disabled:opacity-50 cursor-pointer active:scale-95"
               title="Export PDF Laporan Temuan K3 (Logo Dwimitra & NeutraDC)"
             >
               {exportingVariant === 'neutradc' ? (
@@ -820,37 +1033,46 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
               type="button"
               onClick={() => handleExportPDF('utt')}
               disabled={exportingVariant !== null || isSubmitting}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 hover:border-blue-300 shadow-xs transition disabled:opacity-50 cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 hover:border-teal-300 shadow-2xs transition disabled:opacity-50 cursor-pointer active:scale-95"
               title="Export PDF Laporan Temuan K3 (Logo UTT & NeutraDC)"
             >
               {exportingVariant === 'utt' ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-teal-600" />
                   <span>Membuat PDF...</span>
                 </>
               ) : (
                 <>
-                  <FileDown className="w-4 h-4 text-blue-600" />
+                  <FileDown className="w-4 h-4 text-teal-600" />
                   <span>Export PDF UTT</span>
                 </>
               )}
             </button>
           </div>
 
+          {/* Tombol Simpan Utama (Lebar Penuh, Elegan, Nyaman Disentuh) */}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-2xl text-sm font-bold shadow-lg shadow-red-600/25 transition disabled:opacity-50 cursor-pointer"
+            className={`w-full flex items-center justify-center gap-2.5 px-6 py-3.5 text-white rounded-2xl text-sm sm:text-base font-bold shadow-lg transition disabled:opacity-50 cursor-pointer active:scale-98 ${
+              findingType === 'positive'
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-600/25'
+                : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-700 shadow-red-600/25'
+            }`}
           >
             {isSubmitting ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Menyimpan Temuan...</span>
+                <span>Menyimpan Data...</span>
               </>
             ) : (
               <>
-                <Check className="w-4 h-4" />
-                <span>{savedDocId ? 'Perbarui Data di Arsip' : 'Simpan & Laporkan Temuan K3'}</span>
+                <Check className="w-5 h-5" />
+                <span>
+                  {savedDocId
+                    ? 'Perbarui Data di Arsip'
+                    : (findingType === 'positive' ? 'Simpan & Laporkan Temuan Positif' : 'Simpan & Laporkan Temuan K3')}
+                </span>
               </>
             )}
           </button>
