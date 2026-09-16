@@ -1499,9 +1499,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(
     createBilingualFieldParagraph(
       'Document Purpose',
-      data.documentPurposeEn || 'Guide for actions that need to be taken when all operating TRAFO trip or stop due to fault.',
+      data.documentPurposeEn || '-',
       'Tujuan Dokumen',
-      data.documentPurposeId || 'Panduan tindakan yang perlu diambil saat seluruh TRAFO yang beroperasi trip atau padam karena gangguan.'
+      data.documentPurposeId || (data.documentPurposeEn ? ensureBilingualTranslation(data.documentPurposeEn) : '-')
     )
   );
 

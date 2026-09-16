@@ -196,10 +196,14 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
       /(?:Date\s*Revision|Next\s*Date\s*Revision)\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Revision\s*Number|Nomor\s*Revisi|Tanggal\s*Revisi|\n|$)/i
     ) || 'N/A';
 
+  const isTrafoDoc = /trafo|transformer/i.test(title) || /trafo|transformer/i.test(fileName);
+  const fallbackPurposeEn = isTrafoDoc ? (isEop ? DEFAULT_EOP_DATA.documentPurposeEn : DEFAULT_SOP_DATA.documentPurposeEn) : '';
+  const fallbackPurposeId = isTrafoDoc ? (isEop ? DEFAULT_EOP_DATA.documentPurposeId : DEFAULT_SOP_DATA.documentPurposeId) : '';
+
   return {
     title,
-    purposeEn: purposeEn || (isEop ? DEFAULT_EOP_DATA.documentPurposeEn : DEFAULT_SOP_DATA.documentPurposeEn),
-    purposeId: purposeId || (isEop ? DEFAULT_EOP_DATA.documentPurposeId : DEFAULT_SOP_DATA.documentPurposeId),
+    purposeEn: purposeEn || fallbackPurposeEn,
+    purposeId: purposeId || (purposeEn ? '' : fallbackPurposeId),
     locationEn,
     locationId,
     author,

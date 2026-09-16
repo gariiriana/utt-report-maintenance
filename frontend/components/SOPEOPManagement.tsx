@@ -57,7 +57,7 @@ import {
   DEFAULT_EOP_DATA
 } from '@/types/sopEopTypes';
 import { exportSOPToDocx, exportEOPToDocx } from '@/utils/sopEopDocxExport';
-import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI, isStillMostlyEnglish } from '@/utils/sopEopBilingualAI';
+import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI } from '@/utils/sopEopBilingualAI';
 import { importSopEopFromDocx } from '@/utils/sopEopDocxImport';
 
 type SubTab = 'sop' | 'eop' | 'archive';
@@ -112,7 +112,7 @@ export function SOPEOPManagement() {
     target: 'sop',
   });
 
-  // Handle File Import (.docx)
+  // Handle File Import (.docx) - Murni parser DOCX lokal tanpa AI otomatis
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -125,64 +125,20 @@ export function SOPEOPManagement() {
       toast.dismiss(loadingToast);
 
       if (result.type === 'SOP' && result.sopData) {
-        const needsBilingual = result.sopData.workSteps.some(
-          (s) =>
-            !s.actionId ||
-            !s.expectedOutcomeId ||
-            s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase() ||
-            s.expectedOutcomeId.trim().toLowerCase() === (s.expectedOutcomeEn || '').trim().toLowerCase() ||
-            (s.actionEn && isStillMostlyEnglish(s.actionId, s.actionEn)) ||
-            (s.expectedOutcomeEn && isStillMostlyEnglish(s.expectedOutcomeId, s.expectedOutcomeEn))
-        );
-
-        let finalSopData = result.sopData;
-        if (needsBilingual) {
-          const aiToast = toast.loading('🤖 Menyelaraskan format bilingual (EN + ID) otomatis...');
-          try {
-            finalSopData = await convertSOPToBilingualWithAI(result.sopData, (m) =>
-              toast.loading(`🤖 ${m}`, { id: aiToast })
-            );
-            toast.success('🎉 Format Bilingual (EN + ID) berhasil diselaraskan!', { id: aiToast });
-          } catch (e) {
-            toast.dismiss(aiToast);
-          }
-        }
-
-        setSopData(finalSopData);
+        setSopData(result.sopData);
         setCurrentSopDocId(null);
         setActiveSubTab('sop');
         toast.success(
-          `Berkas SOP "${file.name}" berhasil diimpor! Terisi otomatis: 14 Seksi, ${result.summary.stepCount} Langkah Kerja, ${result.summary.equipmentCount || 0} Peralatan CI.`
+          `Berkas SOP "${file.name}" berhasil diimpor! (${result.summary.stepCount} Langkah Kerja). Klik "Bilingual (EN + ID)" jika ingin menerjemahkan.`,
+          { duration: 5000 }
         );
       } else if (result.type === 'EOP' && result.eopData) {
-        const needsBilingual = result.eopData.workSteps.some(
-          (s) =>
-            !s.actionId ||
-            !s.expectedOutcomeId ||
-            s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase() ||
-            s.expectedOutcomeId.trim().toLowerCase() === (s.expectedOutcomeEn || '').trim().toLowerCase() ||
-            (s.actionEn && isStillMostlyEnglish(s.actionId, s.actionEn)) ||
-            (s.expectedOutcomeEn && isStillMostlyEnglish(s.expectedOutcomeId, s.expectedOutcomeEn))
-        );
-
-        let finalEopData = result.eopData;
-        if (needsBilingual) {
-          const aiToast = toast.loading('🤖 Menyelaraskan format bilingual (EN + ID) otomatis...');
-          try {
-            finalEopData = await convertEOPToBilingualWithAI(result.eopData, (m) =>
-              toast.loading(`🤖 ${m}`, { id: aiToast })
-            );
-            toast.success('🎉 Format Bilingual (EN + ID) berhasil diselaraskan!', { id: aiToast });
-          } catch (e) {
-            toast.dismiss(aiToast);
-          }
-        }
-
-        setEopData(finalEopData);
+        setEopData(result.eopData);
         setCurrentEopDocId(null);
         setActiveSubTab('eop');
         toast.success(
-          `Berkas EOP "${file.name}" berhasil diimpor! Terisi otomatis: 8 Seksi, ${result.summary.stepCount} Langkah Kedaruratan.`
+          `Berkas EOP "${file.name}" berhasil diimpor! (${result.summary.stepCount} Langkah Kedaruratan). Klik "Bilingual (EN + ID)" jika ingin menerjemahkan.`,
+          { duration: 5000 }
         );
       }
     } catch (err: any) {

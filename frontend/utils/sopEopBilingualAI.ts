@@ -491,17 +491,53 @@ async function callGeminiDirectWithFailover(prompt: string): Promise<string> {
     throw new Error('Tidak ada Google Gemini API key yang terkonfigurasi pada sistem.');
   }
 
-  const models = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash'];
+  const model = import.meta.env.VITE_NVIDIA_NIM_REASONING_MODEL || 'gemini-1.5-flash';
   let lastError: Error | null = null;
 
-  // Coba semua key dalam pool (2 siklus penuh untuk toleransi rotasi)
+  // Coba semua key dalam pool
   for (let attempt = 0; attempt < totalKeys * 2; attempt++) {
     const key = getNextAPIKey();
     if (!key) continue;
 
-    for (const model of models) {
+    // 1. Coba endpoint OpenAI-compatible standar yang digunakan konsisten di sistem
+    try {
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1,
+          max_tokens: 4096
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } else {
+        const status = res.status;
+        const errText = await res.text();
+        lastError = new Error(`AI API HTTP ${status}: ${errText.slice(0, 100)}`);
+        if (status === 401 || status === 403 || status === 429) {
+          console.warn(`[BilingualAI] API Key limit/gagal (HTTP ${status}), rotasi ke key berikutnya...`);
+          continue;
+        }
+      }
+    } catch (e: any) {
+      lastError = e;
+    }
+
+    // 2. Fallback ke endpoint native generateContent Google Gemini dengan model resmi
+    const officialModels = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+    for (const m of officialModels) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -520,11 +556,7 @@ async function callGeminiDirectWithFailover(prompt: string): Promise<string> {
           if (candidate) return candidate;
         } else {
           const status = res.status;
-          const errText = await res.text();
-          lastError = new Error(`AI API HTTP ${status}: ${errText.slice(0, 100)}`);
-          // Jika 401 (auth failed/disabled) atau 429 (rate limit), lewati key ini langsung ke key berikutnya
           if (status === 401 || status === 403 || status === 429) {
-            console.warn(`[BilingualAI] API Key limit/gagal (HTTP ${status}), rotasi ke key berikutnya...`);
             break;
           }
         }
@@ -627,7 +659,20 @@ export async function convertSOPToBilingualWithAI(
   const needsTranslateToId = (en?: string, id?: string) => {
     if (!en || !en.trim()) return false;
     if (!id || !id.trim()) return true;
-    return isHybridOrEnglish(id, en);
+    if (isHybridOrEnglish(id, en)) return true;
+    const idLower = id.toLowerCase();
+    const enLower = en.toLowerCase();
+    const titleLower = (updated.documentTitle || '').toLowerCase();
+    if (
+      (idLower.includes('trafo') || idLower.includes('transformator')) &&
+      !enLower.includes('trafo') &&
+      !enLower.includes('transformer') &&
+      !titleLower.includes('trafo') &&
+      !titleLower.includes('transformer')
+    ) {
+      return true;
+    }
+    return false;
   };
 
   // 1. Overview Purpose
@@ -754,7 +799,20 @@ export async function convertEOPToBilingualWithAI(
   const needsTranslateToId = (en?: string, id?: string) => {
     if (!en || !en.trim()) return false;
     if (!id || !id.trim()) return true;
-    return isHybridOrEnglish(id, en);
+    if (isHybridOrEnglish(id, en)) return true;
+    const idLower = id.toLowerCase();
+    const enLower = en.toLowerCase();
+    const titleLower = (updated.documentTitle || '').toLowerCase();
+    if (
+      (idLower.includes('trafo') || idLower.includes('transformator')) &&
+      !enLower.includes('trafo') &&
+      !enLower.includes('transformer') &&
+      !titleLower.includes('trafo') &&
+      !titleLower.includes('transformer')
+    ) {
+      return true;
+    }
+    return false;
   };
 
   // 1. Overview Purpose
