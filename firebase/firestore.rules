@@ -585,6 +585,19 @@ service cloud.firestore {
     }
 
     // ============================================================================
+    // Koleksi: sop_eop_documents — Arsip Dokumen SOP & EOP Standar Corporate
+    // Akses: Admin, DME, Site Manager, Engineer, Standby dapat CRUD. Auth users read.
+    // ============================================================================
+    match /sop_eop_documents/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null 
+                    && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail() || request.resource.data.createdBy == getEmail());
+      allow delete: if request.auth != null 
+                    && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole() || resource.data.createdBy == getEmail());
+    }
+
+    // ============================================================================
     // Koleksi: registered_faces — Data Biometrik Wajah untuk Autentikasi Login Face ID
     // Akses: Publik dapat read (untuk pencocokan wajah di layar login),
     //        Admin, QC DME, Engineer, Standby Engineer dapat Create, Update, Delete.

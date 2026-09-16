@@ -22,7 +22,8 @@ import {
   ArrowDown,
   CheckSquare,
   Square,
-  Globe
+  Globe,
+  CheckCircle2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -100,13 +101,17 @@ export function SOPEOPManagement() {
           docs2.push({ id: d.id, ...d.data() } as any);
         });
         setArchiveList(docs2);
-      } catch (e2) {
-        toast.error('Gagal memuat arsip SOP & EOP dari Firestore');
+      } catch (e2: any) {
+        console.warn('Fallback fetch SOP/EOP archive note:', e2);
       }
     } finally {
       setIsLoadingArchive(false);
     }
   };
+
+  useEffect(() => {
+    fetchArchive();
+  }, []);
 
   useEffect(() => {
     if (activeSubTab === 'archive') {
@@ -538,71 +543,105 @@ export function SOPEOPManagement() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* ─── HEADER UTAMA ─────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center text-white shadow-md shadow-red-500/20">
-            <BookOpen className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">
-                NeutraDC & DME Cikarang
-              </span>
-              <span className="text-xs font-medium text-slate-400">Word 1:1 Corporate Standard</span>
+      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-red-500/20 shrink-0">
+              <BookOpen className="w-7 h-7" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-              SOP & EOP Management Center
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Penyusunan, pengelolaan arsip, dan ekspor instan Dokumen Prosedur Standar (SOP) & Darurat (EOP).
-            </p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                  NeutraDC & DME Cikarang
+                </span>
+                <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                  Format Word 1:1 Corporate Standard
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+                SOP & EOP Management Center
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Pusat penyusunan, pengelolaan arsip Cloud, dan ekspor instan Dokumen Prosedur Standar (SOP) & Prosedur Darurat (EOP).
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+            <div className="px-4 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-right shadow-2xs">
+              <div className="text-[10px] uppercase font-bold text-slate-400">Total Arsip Cloud</div>
+              <div className="text-sm font-black text-slate-800">{archiveList.length} Dokumen</div>
+            </div>
           </div>
         </div>
 
-        {/* ─── TAB NAVIGATION SWITCHER ─────────────────────────────────────── */}
-        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full md:w-auto self-stretch md:self-auto">
-          <button
-            onClick={() => setActiveSubTab('sop')}
-            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-              activeSubTab === 'sop'
-                ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Form SOP</span>
-            {currentSopDocId && <span className="w-2 h-2 rounded-full bg-amber-300" title="Dokumen Tersimpan"></span>}
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('eop')}
-            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-              activeSubTab === 'eop'
-                ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-600/30'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            <span>Form EOP</span>
-            {currentEopDocId && <span className="w-2 h-2 rounded-full bg-amber-300" title="Dokumen Tersimpan"></span>}
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('archive')}
-            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-              activeSubTab === 'archive'
-                ? 'bg-slate-900 text-white shadow-md shadow-slate-900/30'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <FolderOpen className="w-4 h-4" />
-            <span>Arsip Dokumen</span>
-            {archiveList.length > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-slate-700 text-slate-200">
-                {archiveList.length}
+        {/* ─── TAB NAVIGATION SWITCHER (SEGMENTED CONTROL PILL BAR) ─── */}
+        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="inline-flex items-center p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 gap-1.5 overflow-x-auto max-w-full scrollbar-thin">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('sop')}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                activeSubTab === 'sop'
+                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/25'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              <span>Form SOP</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                activeSubTab === 'sop' ? 'bg-red-900/60 text-white' : 'bg-slate-200 text-slate-600'
+              }`}>
+                14 Seksi
               </span>
-            )}
-          </button>
+              {currentSopDocId && <span className="w-2 h-2 rounded-full bg-amber-300 ml-0.5" title="Dokumen Tersimpan"></span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('eop')}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                activeSubTab === 'eop'
+                  ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-md shadow-fuchsia-600/25'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+            >
+              <Zap className="w-4 h-4 shrink-0" />
+              <span>Form EOP</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                activeSubTab === 'eop' ? 'bg-fuchsia-900/60 text-white' : 'bg-slate-200 text-slate-600'
+              }`}>
+                8 Seksi
+              </span>
+              {currentEopDocId && <span className="w-2 h-2 rounded-full bg-amber-300 ml-0.5" title="Dokumen Tersimpan"></span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('archive')}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                activeSubTab === 'archive'
+                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/25'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+            >
+              <FolderOpen className="w-4 h-4 shrink-0" />
+              <span>Arsip Dokumen</span>
+              {archiveList.length > 0 && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                  activeSubTab === 'archive' ? 'bg-slate-700 text-slate-100' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {archiveList.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="text-[11px] text-slate-400 italic hidden lg:block">
+            {activeSubTab === 'sop' && 'Mode penyusunan Standard Operating Procedure (14 Seksi Lengkap)'}
+            {activeSubTab === 'eop' && 'Mode penyusunan Emergency Operating Procedure (8 Seksi Kedaruratan)'}
+            {activeSubTab === 'archive' && 'Daftar arsip dokumen SOP & EOP tersimpan di Cloud Firestore'}
+          </div>
         </div>
       </div>
 
@@ -612,61 +651,43 @@ export function SOPEOPManagement() {
       {activeSubTab === 'sop' && (
         <div className="space-y-6">
           {/* Action Bar Sticky / Top */}
-          <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-red-200/80 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 rounded-lg bg-red-600 text-white font-bold text-xs uppercase tracking-wider shadow-xs">
+          <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="px-3 py-1 rounded-xl bg-red-600 text-white font-black text-xs uppercase tracking-wider shadow-xs shrink-0">
                 SOP Editor
               </span>
-              <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate max-w-[280px] sm:max-w-md">
-                {sopData.documentTitle || 'Form SOP Baru'}
-              </span>
-              {currentSopDocId && (
-                <span className="text-[11px] bg-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded-full border border-amber-300">
-                  ID: {currentSopDocId.slice(0, 8)}...
+              <div className="min-w-0">
+                <span className="text-xs sm:text-sm font-bold text-slate-800 truncate block">
+                  {sopData.documentTitle || 'Form SOP Baru'}
                 </span>
-              )}
+                {currentSopDocId && (
+                  <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 font-semibold inline-block mt-0.5">
+                    Tersimpan di Cloud • ID: {currentSopDocId.slice(0, 8)}...
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 overflow-x-auto pb-1 sm:pb-0">
               <button
                 type="button"
                 onClick={handleBilingualSop}
                 disabled={isBilingualSop}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 shadow-sm shadow-teal-500/20 transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 shadow-sm shadow-teal-500/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
                 title="Otomatis terjemahkan & selaraskan Bahasa Inggris dan Bahasa Indonesia pada dokumen SOP"
               >
                 <Globe className={`w-3.5 h-3.5 ${isBilingualSop ? 'animate-spin' : ''}`} />
-                <span>{isBilingualSop ? 'Menerjemahkan...' : 'Format Bilingual (EN + ID)'}</span>
+                <span>{isBilingualSop ? 'Menerjemahkan...' : 'Bilingual (EN + ID)'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleResetSop}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all whitespace-nowrap cursor-pointer"
                 title="Muat Ulang Template Standar Trafindo"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Template Trafindo</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveSop}
-                disabled={isSavingSop}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 border border-slate-700 shadow-sm transition-all disabled:opacity-50"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSavingSop ? 'Menyimpan...' : 'Simpan Arsip Cloud'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportSop}
-                disabled={isExportingSop}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-sm shadow-red-600/20 transition-all disabled:opacity-50"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{isExportingSop ? 'Mengekspor Word...' : 'Ekspor Word (.docx)'}</span>
               </button>
             </div>
           </div>
@@ -1587,6 +1608,35 @@ export function SOPEOPManagement() {
               placeholder="Catatan tambahan, instruksi khusus atau lampiran..."
             />
           </div>
+
+          {/* ─── BOTTOM ACTION BAR (PALING BAWAH DI KANAN) ─── */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Pastikan seluruh data SOP telah terisi lengkap sebelum menyimpan ke Cloud atau mengekspor.</span>
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end shrink-0">
+              <button
+                type="button"
+                onClick={handleSaveSop}
+                disabled={isSavingSop}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-slate-900 hover:bg-black border border-slate-800 shadow-sm transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSavingSop ? 'Menyimpan...' : 'Simpan Cloud'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportSop}
+                disabled={isExportingSop}
+                className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md shadow-red-600/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isExportingSop ? 'Mengekspor Word...' : 'Ekspor Word (.docx)'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1596,61 +1646,43 @@ export function SOPEOPManagement() {
       {activeSubTab === 'eop' && (
         <div className="space-y-6">
           {/* Action Bar Sticky / Top */}
-          <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-fuchsia-200/80 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 rounded-lg bg-fuchsia-600 text-white font-bold text-xs uppercase tracking-wider shadow-xs">
+          <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="px-3 py-1 rounded-xl bg-fuchsia-600 text-white font-black text-xs uppercase tracking-wider shadow-xs shrink-0">
                 EOP Editor
               </span>
-              <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate max-w-[280px] sm:max-w-md">
-                {eopData.documentTitle || 'Form EOP Baru'}
-              </span>
-              {currentEopDocId && (
-                <span className="text-[11px] bg-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded-full border border-amber-300">
-                  ID: {currentEopDocId.slice(0, 8)}...
+              <div className="min-w-0">
+                <span className="text-xs sm:text-sm font-bold text-slate-800 truncate block">
+                  {eopData.documentTitle || 'Form EOP Baru'}
                 </span>
-              )}
+                {currentEopDocId && (
+                  <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 font-semibold inline-block mt-0.5">
+                    Tersimpan di Cloud • ID: {currentEopDocId.slice(0, 8)}...
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 overflow-x-auto pb-1 sm:pb-0">
               <button
                 type="button"
                 onClick={handleBilingualEop}
                 disabled={isBilingualEop}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 shadow-sm shadow-teal-500/20 transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 shadow-sm shadow-teal-500/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
                 title="Otomatis terjemahkan & selaraskan Bahasa Inggris dan Bahasa Indonesia pada dokumen EOP"
               >
                 <Globe className={`w-3.5 h-3.5 ${isBilingualEop ? 'animate-spin' : ''}`} />
-                <span>{isBilingualEop ? 'Menerjemahkan...' : 'Format Bilingual (EN + ID)'}</span>
+                <span>{isBilingualEop ? 'Menerjemahkan...' : 'Bilingual (EN + ID)'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleResetEop}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all whitespace-nowrap cursor-pointer"
                 title="Muat Ulang Template Standar Trafindo"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Template Trafindo</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveEop}
-                disabled={isSavingEop}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 border border-slate-700 shadow-sm transition-all disabled:opacity-50"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSavingEop ? 'Menyimpan...' : 'Simpan Arsip Cloud'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportEop}
-                disabled={isExportingEop}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700 shadow-sm shadow-fuchsia-600/20 transition-all disabled:opacity-50"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{isExportingEop ? 'Mengekspor Word...' : 'Ekspor Word (.docx)'}</span>
               </button>
             </div>
           </div>
@@ -2168,6 +2200,35 @@ export function SOPEOPManagement() {
               onChange={(e) => setEopData({ ...eopData, additionalInformation: e.target.value })}
               className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300"
             />
+          </div>
+
+          {/* ─── BOTTOM ACTION BAR (PALING BAWAH DI KANAN) ─── */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <CheckCircle2 className="w-4 h-4 text-fuchsia-500 shrink-0" />
+              <span>Pastikan seluruh data EOP telah terisi lengkap sebelum menyimpan ke Cloud atau mengekspor.</span>
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end shrink-0">
+              <button
+                type="button"
+                onClick={handleSaveEop}
+                disabled={isSavingEop}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-slate-900 hover:bg-black border border-slate-800 shadow-sm transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSavingEop ? 'Menyimpan...' : 'Simpan Cloud'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportEop}
+                disabled={isExportingEop}
+                className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700 shadow-md shadow-fuchsia-600/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isExportingEop ? 'Mengekspor Word...' : 'Ekspor Word (.docx)'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
