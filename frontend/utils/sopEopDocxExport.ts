@@ -24,6 +24,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { SOPDocumentData, EOPDocumentData } from '@/types/sopEopTypes';
+import { ensureBilingualTranslation } from '@/utils/sopEopBilingualAI';
 import logoDMEOriginal from '@/assets/sop_eop_logo2.jpeg';
 import logoNDCOriginal from '@/assets/sop_eop_logo1.jpeg';
 
@@ -138,6 +139,8 @@ function createBilingualRuns(
   }
 ): TextRun[] {
   const fontToUse = opts?.isHeader ? FONT_HEADING : FONT_BODY;
+  const effectiveId = opts?.isHeader ? textId : ensureBilingualTranslation(textEn, textId);
+
   const runs: TextRun[] = [
     new TextRun({
       text: textEn,
@@ -152,7 +155,7 @@ function createBilingualRuns(
       break: 1, // Move to next line in the exact same paragraph
     }),
     new TextRun({
-      text: textId,
+      text: effectiveId,
       bold: opts?.boldId ?? false,
       italics: true,
       color: COLOR_GREY_ID,
@@ -181,6 +184,9 @@ function createBilingualFieldParagraph(
   const tabSeparatorsEn = isShortLabel ? '\t\t' : '\t';
   const isShortLabelId = labelId.length <= 14;
   const tabSeparatorsId = isShortLabelId ? '\t\t' : '\t';
+
+  const resolvedValId =
+    valEn && valEn !== '-' ? ensureBilingualTranslation(valEn, valId) : valId;
 
   return new Paragraph({
     spacing: { after: spacingAfter, line: 240 },
@@ -211,7 +217,7 @@ function createBilingualFieldParagraph(
         font: FONT_BODY,
       }),
       new TextRun({
-        text: `${tabSeparatorsId}: ${valId || '-'}`,
+        text: `${tabSeparatorsId}: ${resolvedValId || '-'}`,
         italics: true,
         color: COLOR_GREY_ID,
         size: 18,
@@ -839,8 +845,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
         { requirementEn: '5. Ensure personnel involving in this work are trained and competent to perform this procedure.', requirementId: '5. Pastikan personel yang terlibat dalam pekerjaan ini telah terlatih dan kompeten untuk melaksanakan prosedur ini.', time: '', initial: '' },
       ];
 
-  const prereqRows = prereqs.map((pr) =>
-    new TableRow({
+  const prereqRows = prereqs.map((pr) => {
+    const requirementEn = pr.requirementEn || '-';
+    const requirementId = ensureBilingualTranslation(requirementEn, pr.requirementId);
+
+    return new TableRow({
       children: [
         new TableCell({
           width: { size: 6091, type: WidthType.DXA },
@@ -849,9 +858,9 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: pr.requirementEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: requirementEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: pr.requirementId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: requirementId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -869,8 +878,8 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [new Paragraph({ children: [new TextRun({ text: pr.initial || '', size: 18, font: FONT_BODY })] })],
         }),
       ],
-    })
-  );
+    });
+  });
 
   children.push(
     new Table({
@@ -1069,6 +1078,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   const sopStepRows = (data.workSteps || []).map((st, i) => {
     const stepNo = st.no || i + 1;
+    const actionEn = st.actionEn || '-';
+    const actionId = ensureBilingualTranslation(actionEn, st.actionId);
+    const expectedOutcomeEn = st.expectedOutcomeEn || '-';
+    const expectedOutcomeId = ensureBilingualTranslation(expectedOutcomeEn, st.expectedOutcomeId);
+
     return new TableRow({
       children: [
         new TableCell({
@@ -1079,10 +1093,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
             new Paragraph({
               children: [
                 new TextRun({ text: `${stepNo}. `, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: st.actionEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: actionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
                 new TextRun({ text: `${stepNo}. `, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                new TextRun({ text: st.actionId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: actionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -1094,9 +1108,9 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: st.expectedOutcomeEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: expectedOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: st.expectedOutcomeId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: expectedOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -1576,6 +1590,11 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
 
   const eopStepRows = (data.workSteps || []).map((st, i) => {
     const stepNo = st.no || i + 1;
+    const actionEn = st.actionEn || '-';
+    const actionId = ensureBilingualTranslation(actionEn, st.actionId);
+    const expectedOutcomeEn = st.expectedOutcomeEn || '-';
+    const expectedOutcomeId = ensureBilingualTranslation(expectedOutcomeEn, st.expectedOutcomeId);
+
     return new TableRow({
       children: [
         new TableCell({
@@ -1591,9 +1610,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: st.actionEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: actionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: st.actionId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: actionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],
@@ -1605,9 +1624,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: st.expectedOutcomeEn || '-', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                new TextRun({ text: expectedOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                 new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: st.expectedOutcomeId || '-', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                new TextRun({ text: expectedOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
               ],
             }),
           ],

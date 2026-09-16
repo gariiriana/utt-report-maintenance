@@ -62,6 +62,42 @@ function cleanText(raw: string): string {
 }
 
 /**
+ * Deteksi apakah sebuah teks lebih cenderung Bahasa Indonesia atau Bahasa Inggris
+ */
+function detectLanguage(text: string): 'id' | 'en' {
+  if (!text) return 'en';
+  const lower = text.toLowerCase();
+
+  const idWords = [
+    'dan', 'yang', 'di', 'ke', 'dari', 'pada', 'untuk', 'dengan', 'atau', 'ini',
+    'itu', 'periksa', 'lakukan', 'pastikan', 'bersihkan', 'ukur', 'pasang', 'jika',
+    'tidak', 'telah', 'oleh', 'pemeliharaan', 'kondisi', 'peralatan', 'hasil',
+    'gangguan', 'kabel', 'sumber', 'ruang', 'daya', 'tegangan', 'arus', 'sirkuit',
+    'titik', 'penerangan', 'lampu', 'cegah', 'bahaya', 'keselamatan', 'aman'
+  ];
+
+  const enWords = [
+    'the', 'and', 'of', 'to', 'in', 'for', 'on', 'with', 'at', 'by', 'from',
+    'check', 'inspect', 'verify', 'ensure', 'disconnect', 'isolate', 'measure',
+    'clean', 'test', 'if', 'do', 'not', 'been', 'be', 'or', 'are', 'is', 'this',
+    'that', 'breaker', 'power', 'source', 'condition', 'fault', 'prevented',
+    'restored', 'confirmed', 'damage', 'wiring', 'failure', 'identified'
+  ];
+
+  let idScore = 0;
+  let enScore = 0;
+
+  for (const w of idWords) {
+    if (new RegExp(`\\b${w}\\b`, 'i').test(lower)) idScore++;
+  }
+  for (const w of enWords) {
+    if (new RegExp(`\\b${w}\\b`, 'i').test(lower)) enScore++;
+  }
+
+  return idScore > enScore ? 'id' : 'en';
+}
+
+/**
  * Mengekstrak teks dwibahasa (English + Indonesian) dari elemen XML (<w:tc> atau <w:p>).
  * Di berkas DOCX master, teks English dan Indonesian dipisahkan oleh <w:br/> atau </w:p>.
  */
@@ -79,7 +115,24 @@ function extractBilingualFromXml(elementXml: string): { en: string; id: string }
     .filter(Boolean);
 
   if (lines.length === 0) return { en: '', id: '' };
-  if (lines.length === 1) return { en: lines[0], id: lines[0] };
+
+  // Jika hanya 1 baris, tentukan bahasanya agar tidak menaruh teks Inggris ke field Indonesia
+  if (lines.length === 1) {
+    const lang = detectLanguage(lines[0]);
+    if (lang === 'id') {
+      return { en: '', id: lines[0] };
+    }
+    return { en: lines[0], id: '' };
+  }
+
+  // Jika baris pertama dan kedua sama persis (data duplikat/kembar), pisahkan bahasanya
+  if (lines[0].trim().toLowerCase() === lines[1].trim().toLowerCase()) {
+    const lang = detectLanguage(lines[0]);
+    if (lang === 'id') {
+      return { en: '', id: lines[0] };
+    }
+    return { en: lines[0], id: '' };
+  }
 
   // Baris pertama English, baris kedua Indonesian
   return {

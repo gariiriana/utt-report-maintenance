@@ -124,14 +124,48 @@ export function SOPEOPManagement() {
       toast.dismiss(loadingToast);
 
       if (result.type === 'SOP' && result.sopData) {
-        setSopData(result.sopData);
+        const needsBilingual = result.sopData.workSteps.some(
+          (s) => !s.actionId || s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase()
+        );
+
+        let finalSopData = result.sopData;
+        if (needsBilingual) {
+          const aiToast = toast.loading('🤖 Menyelaraskan format bilingual (EN + ID) otomatis...');
+          try {
+            finalSopData = await convertSOPToBilingualWithAI(result.sopData, (m) =>
+              toast.loading(`🤖 ${m}`, { id: aiToast })
+            );
+            toast.success('🎉 Format Bilingual (EN + ID) berhasil diselaraskan!', { id: aiToast });
+          } catch (e) {
+            toast.dismiss(aiToast);
+          }
+        }
+
+        setSopData(finalSopData);
         setCurrentSopDocId(null);
         setActiveSubTab('sop');
         toast.success(
           `Berkas SOP "${file.name}" berhasil diimpor! Terisi otomatis: 14 Seksi, ${result.summary.stepCount} Langkah Kerja, ${result.summary.equipmentCount || 0} Peralatan CI.`
         );
       } else if (result.type === 'EOP' && result.eopData) {
-        setEopData(result.eopData);
+        const needsBilingual = result.eopData.workSteps.some(
+          (s) => !s.actionId || s.actionId.trim().toLowerCase() === (s.actionEn || '').trim().toLowerCase()
+        );
+
+        let finalEopData = result.eopData;
+        if (needsBilingual) {
+          const aiToast = toast.loading('🤖 Menyelaraskan format bilingual (EN + ID) otomatis...');
+          try {
+            finalEopData = await convertEOPToBilingualWithAI(result.eopData, (m) =>
+              toast.loading(`🤖 ${m}`, { id: aiToast })
+            );
+            toast.success('🎉 Format Bilingual (EN + ID) berhasil diselaraskan!', { id: aiToast });
+          } catch (e) {
+            toast.dismiss(aiToast);
+          }
+        }
+
+        setEopData(finalEopData);
         setCurrentEopDocId(null);
         setActiveSubTab('eop');
         toast.success(
