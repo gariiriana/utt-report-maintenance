@@ -15,10 +15,7 @@ import {
   SOPPrerequisiteItem,
   SOPReferencedDocItem,
   DocumentSigner,
-  DEFAULT_SOP_DATA,
-  DEFAULT_EOP_DATA,
   DEFAULT_AFFECTED_SYSTEMS,
-  DEFAULT_PREREQUISITES,
   DEFAULT_DEFAULT_APPROVERS
 } from '@/types/sopEopTypes';
 
@@ -437,8 +434,8 @@ function parseReferencedDocuments(xml: string): SOPReferencedDocItem[] {
   for (const tr of dataRows) {
     const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
     if (tcs.length < 2) continue;
-    const name = cleanText(tcs[0]);
-    const number = cleanText(tcs[1]);
+    const name = cleanText(tcs[0] || '');
+    const number = cleanText(tcs[1] || '');
     // Hanya simpan jika nama atau nomor terisi dan bukan tanda '-'
     if ((name && name !== '-') || (number && number !== '-')) {
       docs.push({ name, number });
