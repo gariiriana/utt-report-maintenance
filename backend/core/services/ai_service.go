@@ -924,13 +924,14 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 			}
 
 			lastErr = fmt.Errorf("AI API error (%d): %s", resp.StatusCode, bodyStr)
-			if resp.StatusCode >= 500 {
-				slog.Warn("AI API returned server error status, retrying", 
+			if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden || resp.StatusCode >= 500 {
+				slog.Warn("AI API key invalid or server error, switching to next key in pool", 
 					slog.Int("status_code", resp.StatusCode), 
 					slog.Int("attempt", attempt+1),
+					slog.String("error", bodyStr),
 				)
 				currentKey = s.getNextAPIKey()
-				time.Sleep(1500 * time.Millisecond)
+				time.Sleep(500 * time.Millisecond)
 				continue
 			}
 			return "", lastErr

@@ -71,6 +71,8 @@ export async function exportSingleHSEFindingPDF(
       loadLogoBase64(logoNeutra),
     ]);
 
+    const isPositive = finding.findingType === 'positive';
+
     const allBeforePhotos = Array.isArray(finding.beforePhotos) && finding.beforePhotos.length > 0
       ? finding.beforePhotos
       : (finding.beforePhoto ? [finding.beforePhoto] : []);
@@ -88,8 +90,20 @@ export async function exportSingleHSEFindingPDF(
       }
     }
 
+    let photo2Base64: string | null = null;
+    if (isPositive && allBeforePhotos.length >= 2) {
+      photo2Base64 = allBeforePhotos[1];
+      if (photo2Base64) {
+        try {
+          photo2Base64 = await compressBase64Image(photo2Base64, { maxWidth: 800, maxHeight: 800, quality: 0.65 });
+        } catch (e) {
+          console.error('Error compressing second positive photo:', e);
+        }
+      }
+    }
+
     let afterBase64 = allAfterPhotos[0] || finding.afterPhoto;
-    if (afterBase64) {
+    if (!isPositive && afterBase64) {
       try {
         afterBase64 = await compressBase64Image(afterBase64, { maxWidth: 800, maxHeight: 800, quality: 0.65 });
       } catch (e) {
@@ -120,7 +134,6 @@ export async function exportSingleHSEFindingPDF(
       doc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerY + 4, col3W - 5, 14, 'logo_neutra', 'FAST');
     }
 
-    const isPositive = finding.findingType === 'positive';
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
     doc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
     doc.text(
@@ -143,29 +156,33 @@ export async function exportSingleHSEFindingPDF(
 
     let curY = headerY + headerH + 5;
 
-    // Status Banner
-    const statusInfo = HSE_STATUS_CONFIG[finding.status] || HSE_STATUS_CONFIG.open;
-    let statusBg = [254, 226, 226]; // red for open
-    let statusTextColor = [185, 28, 28];
-    if (finding.status === 'close') {
-      statusBg = [209, 250, 229]; // emerald for close
-      statusTextColor = [4, 120, 87];
-    }
-
-    doc.setFillColor(statusBg[0], statusBg[1], statusBg[2]);
-    doc.roundedRect(margin, curY, contentW, 8, 1, 1, 'F');
-    doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(statusTextColor[0], statusTextColor[1], statusTextColor[2]);
-    doc.text(
-      isPositive ? `STATUS: ${statusInfo.label.toUpperCase()} — APRESIASI K3` : `STATUS TEMUAN: ${statusInfo.label.toUpperCase()}`,
-      margin + 4,
-      curY + 5.5
-    );
-
     const dateStr = finding.findingDate || new Date().toISOString().split('T')[0];
-    doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
-    doc.text(`Tgl Lapor: ${dateStr} ${finding.findingTime ? `| ${finding.findingTime} WIB` : ''}`, pageWidth - margin - 4, curY + 5.5, { align: 'right' });
+    const timeStr = finding.findingTime ? ` | ${finding.findingTime} WIB` : '';
 
-    curY += 12;
+    // Status Banner (Hanya untuk Temuan Negatif)
+    if (!isPositive) {
+      const statusInfo = HSE_STATUS_CONFIG[finding.status] || HSE_STATUS_CONFIG.open;
+      let statusBg = [254, 226, 226]; // red for open
+      let statusTextColor = [185, 28, 28];
+      if (finding.status === 'close') {
+        statusBg = [209, 250, 229]; // emerald for close
+        statusTextColor = [4, 120, 87];
+      }
+
+      doc.setFillColor(statusBg[0], statusBg[1], statusBg[2]);
+      doc.roundedRect(margin, curY, contentW, 8, 1, 1, 'F');
+      doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(statusTextColor[0], statusTextColor[1], statusTextColor[2]);
+      doc.text(
+        `STATUS TEMUAN: ${statusInfo.label.toUpperCase()}`,
+        margin + 4,
+        curY + 5.5
+      );
+
+      doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
+      doc.text(`Tgl Lapor: ${dateStr}${timeStr}`, pageWidth - margin - 4, curY + 5.5, { align: 'right' });
+
+      curY += 12;
+    }
 
     // Info Table (2 Columns Grid)
     const severityInfo = HSE_SEVERITY_CONFIG[finding.severity]?.label || finding.severity || (isPositive ? 'Safe Condition' : 'Unsafe Condition');
@@ -181,18 +198,27 @@ export async function exportSingleHSEFindingPDF(
       infoBody.push(['Kategori K3', categoryInfo]);
     }
 
-    const resolvedDateText = finding.status === 'close'
-      ? (finding.resolvedAt
-          ? (typeof finding.resolvedAt === 'string' ? finding.resolvedAt : new Date(finding.resolvedAt).toLocaleDateString('id-ID'))
-          : (isPositive ? 'Tercatat Selesai (Apresiasi Langsung)' : 'Selesai (Close)'))
-      : 'Belum Selesai (Status: OPEN — Menunggu Tindak Lanjut)';
+    if (isPositive) {
+      infoBody.push(
+        ['Kategori Tindakan / Kondisi', severityInfo],
+        ['Penerima Apresiasi / Pihak Terkait', finding.targetPerson || '-'],
+        ['Petugas Pengawas / Inspeksi', finding.inspectorName || finding.reportedBy || '-'],
+        ['Waktu Pelaporan', `${dateStr}${timeStr}`]
+      );
+    } else {
+      const resolvedDateText = finding.status === 'close'
+        ? (finding.resolvedAt
+            ? (typeof finding.resolvedAt === 'string' ? finding.resolvedAt : new Date(finding.resolvedAt).toLocaleDateString('id-ID'))
+            : 'Selesai (Close)')
+        : 'Belum Selesai (Status: OPEN — Menunggu Tindak Lanjut)';
 
-    infoBody.push(
-      [isPositive ? 'Kategori Tindakan / Kondisi' : 'Tingkat Bahaya / Risiko', severityInfo],
-      ['Pihak Terkait / Subkon', finding.targetPerson || '-'],
-      ['Petugas Inspeksi', finding.inspectorName || finding.reportedBy || '-'],
-      ['Tgl Diselesaikan', resolvedDateText]
-    );
+      infoBody.push(
+        ['Tingkat Bahaya / Risiko', severityInfo],
+        ['Pihak Terkait / Subkon', finding.targetPerson || '-'],
+        ['Petugas Inspeksi', finding.inspectorName || finding.reportedBy || '-'],
+        ['Tgl Diselesaikan', resolvedDateText]
+      );
+    }
 
     autoTable(doc, {
       startY: curY,
@@ -224,13 +250,17 @@ export async function exportSingleHSEFindingPDF(
 
     // Kronologi / Uraian Temuan Box
     doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
-    doc.text('I. Uraian & Kronologi Temuan:', margin, curY);
+    doc.text(
+      isPositive ? 'I. Uraian Tindakan Aman & Best Practice:' : 'I. Uraian & Kronologi Temuan:',
+      margin,
+      curY
+    );
     curY += 2;
 
     autoTable(doc, {
       startY: curY,
       theme: 'grid',
-      body: [[finding.description || 'Tidak ada deskripsi detail.']],
+      body: [[finding.description || (isPositive ? 'Tindakan aman dan kepatuhan K3 teladan tercatat dengan baik di lapangan.' : 'Tidak ada deskripsi detail.')]],
       margin: { left: margin, right: margin },
       styles: {
         fontSize: 7.5,
@@ -244,171 +274,267 @@ export async function exportSingleHSEFindingPDF(
 
     curY = (doc as any).lastAutoTable.finalY + 5;
 
-    // Photo Box Section: Side by Side BEFORE vs AFTER (or Positive Documentation)
-    doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
-    const beforePhotoCountLabel = allBeforePhotos.length > 1 ? ` (${allBeforePhotos.length} foto)` : '';
-    const afterPhotoCountLabel = allAfterPhotos.length > 1 ? ` (${allAfterPhotos.length} foto)` : '';
-    doc.text(
-      isPositive ? 'II. Dokumentasi Foto Temuan Positif (Safe Practice):' : 'II. Dokumentasi Foto Utama (Before vs After):',
-      margin,
-      curY
-    );
-    curY += 3;
+    // Photo Box Section
+    if (isPositive) {
+      // Temuan Positif: Foto dokumentasi tindakan aman (tanpa kotak dummy status apresiasi)
+      doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
+      const photoCountLabel = allBeforePhotos.length > 0 ? ` (${allBeforePhotos.length} foto terlampir)` : '';
+      doc.text(`II. Dokumentasi Foto Temuan Positif (Safe Practice)${photoCountLabel}:`, margin, curY);
+      curY += 3;
 
-    const photoBoxW = (contentW - 6) / 2;
-    const photoBoxH = 65;
+      if (allBeforePhotos.length >= 2) {
+        // Tampilkan 2 foto pertama berdampingan
+        const photoBoxW = (contentW - 6) / 2;
+        const photoBoxH = 80;
 
-    // --- BEFORE BOX ---
-    doc.setDrawColor(isPositive ? 16 : 245, isPositive ? 185 : 158, isPositive ? 129 : 11);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, curY, photoBoxW, photoBoxH, 1, 1, 'D');
+        for (let idx = 0; idx < 2; idx++) {
+          const boxX = margin + idx * (photoBoxW + 6);
+          const photoBase64 = idx === 0 ? beforeBase64 : photo2Base64;
 
-    doc.setFillColor(isPositive ? 209 : 254, isPositive ? 250 : 243, isPositive ? 229 : 199);
-    doc.rect(margin, curY, photoBoxW, 6, 'F');
-    doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(isPositive ? 4 : 180, isPositive ? 120 : 83, isPositive ? 87 : 9);
-    doc.text(
-      isPositive ? `FOTO DOKUMENTASI POSITIF${beforePhotoCountLabel}` : `KONDISI TEMUAN (BEFORE)${beforePhotoCountLabel}`,
-      margin + 3,
-      curY + 4.2
-    );
+          doc.setDrawColor(16, 185, 129);
+          doc.setLineWidth(0.3);
+          doc.roundedRect(boxX, curY, photoBoxW, photoBoxH, 1, 1, 'D');
 
-    if (beforeBase64) {
-      try {
-        const dims = await getImageDimensions(beforeBase64);
-        const maxImgW = photoBoxW - 6;
-        const maxImgH = photoBoxH - 18;
-        let imgW = maxImgW;
-        let imgH = maxImgH;
-        if (dims.width > 0 && dims.height > 0) {
-          const ratio = dims.width / dims.height;
-          if (ratio > maxImgW / maxImgH) {
-            imgW = maxImgW;
-            imgH = imgW / ratio;
-          } else {
-            imgH = maxImgH;
-            imgW = imgH * ratio;
+          doc.setFillColor(209, 250, 229);
+          doc.rect(boxX, curY, photoBoxW, 6, 'F');
+          doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(4, 120, 87);
+          doc.text(`FOTO DOKUMENTASI #${idx + 1}`, boxX + 3, curY + 4.2);
+
+          if (photoBase64) {
+            try {
+              const dims = await getImageDimensions(photoBase64);
+              const maxImgW = photoBoxW - 6;
+              const maxImgH = photoBoxH - 18;
+              let imgW = maxImgW;
+              let imgH = maxImgH;
+              if (dims.width > 0 && dims.height > 0) {
+                const ratio = dims.width / dims.height;
+                if (ratio > maxImgW / maxImgH) {
+                  imgW = maxImgW;
+                  imgH = imgW / ratio;
+                } else {
+                  imgH = maxImgH;
+                  imgW = imgH * ratio;
+                }
+              }
+              const imgX = boxX + (photoBoxW - imgW) / 2;
+              const imgY = curY + 7 + (maxImgH - imgH) / 2;
+              doc.addImage(photoBase64, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+            } catch (err) {
+              console.error(`Error drawing positive photo ${idx + 1}:`, err);
+            }
           }
+
+          doc.setFontSize(6.5).setFont('helvetica', 'normal').setTextColor(GRAY);
+          const noteText = idx === 0 ? (finding.beforeNotes || `Dicatat: ${finding.findingDate || '-'}`) : `Dicatat: ${finding.findingDate || '-'}`;
+          doc.text(noteText, boxX + 3, curY + photoBoxH - 2.5);
         }
-        const imgX = margin + (photoBoxW - imgW) / 2;
-        const imgY = curY + 7 + (maxImgH - imgH) / 2;
-        doc.addImage(beforeBase64, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
-      } catch (err) {
-        console.error('Error drawing before photo:', err);
+
+        curY += photoBoxH + 5;
+      } else {
+        // Tampilkan 1 foto (single photo card lebar penuh)
+        const photoBoxW = contentW;
+        const photoBoxH = 85;
+
+        doc.setDrawColor(16, 185, 129);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, curY, photoBoxW, photoBoxH, 1, 1, 'D');
+
+        doc.setFillColor(209, 250, 229);
+        doc.rect(margin, curY, photoBoxW, 6, 'F');
+        doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(4, 120, 87);
+        doc.text('FOTO DOKUMENTASI TINDAKAN / KONDISI AMAN', margin + 4, curY + 4.2);
+
+        if (beforeBase64) {
+          try {
+            const dims = await getImageDimensions(beforeBase64);
+            const maxImgW = photoBoxW - 10;
+            const maxImgH = photoBoxH - 18;
+            let imgW = maxImgW;
+            let imgH = maxImgH;
+            if (dims.width > 0 && dims.height > 0) {
+              const ratio = dims.width / dims.height;
+              if (ratio > maxImgW / maxImgH) {
+                imgW = maxImgW;
+                imgH = imgW / ratio;
+              } else {
+                imgH = maxImgH;
+                imgW = imgH * ratio;
+              }
+            }
+            const imgX = margin + (photoBoxW - imgW) / 2;
+            const imgY = curY + 7 + (maxImgH - imgH) / 2;
+            doc.addImage(beforeBase64, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+          } catch (err) {
+            console.error('Error drawing single positive photo:', err);
+          }
+        } else {
+          doc.setFontSize(8).setFont('helvetica', 'italic').setTextColor(GRAY);
+          doc.text('(Tidak ada foto dokumentasi terlampir)', margin + photoBoxW / 2, curY + photoBoxH / 2, { align: 'center' });
+        }
+
+        doc.setFontSize(6.5).setFont('helvetica', 'normal').setTextColor(GRAY);
+        doc.text(finding.beforeNotes || `Dicatat: ${finding.findingDate || '-'}`, margin + 4, curY + photoBoxH - 2.5);
+
+        curY += photoBoxH + 5;
       }
     } else {
-      doc.setFontSize(7.5).setFont('helvetica', 'italic').setTextColor(GRAY);
-      doc.text('(Tidak ada foto temuan)', margin + photoBoxW / 2, curY + photoBoxH / 2, { align: 'center' });
-    }
+      // Temuan Negatif: Format Side-by-Side BEFORE vs AFTER
+      const statusInfo = HSE_STATUS_CONFIG[finding.status] || HSE_STATUS_CONFIG.open;
+      doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
+      const beforePhotoCountLabel = allBeforePhotos.length > 1 ? ` (${allBeforePhotos.length} foto)` : '';
+      const afterPhotoCountLabel = allAfterPhotos.length > 1 ? ` (${allAfterPhotos.length} foto)` : '';
+      doc.text('II. Dokumentasi Foto Utama (Before vs After):', margin, curY);
+      curY += 3;
 
-    doc.setFontSize(6.5).setFont('helvetica', 'normal').setTextColor(GRAY);
-    doc.text(finding.beforeNotes || `Dicatat: ${finding.findingDate || '-'}`, margin + 3, curY + photoBoxH - 2.5);
+      const photoBoxW = (contentW - 6) / 2;
+      const photoBoxH = 65;
 
-    // --- AFTER BOX ---
-    const afterBoxX = margin + photoBoxW + 6;
-    doc.setDrawColor(
-      (finding.status === 'close' || isPositive) ? 16 : 226,
-      (finding.status === 'close' || isPositive) ? 185 : 232,
-      (finding.status === 'close' || isPositive) ? 129 : 240
-    );
-    doc.setLineWidth(0.3);
-    doc.roundedRect(afterBoxX, curY, photoBoxW, photoBoxH, 1, 1, 'D');
+      // --- BEFORE BOX ---
+      doc.setDrawColor(245, 158, 11);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(margin, curY, photoBoxW, photoBoxH, 1, 1, 'D');
 
-    doc.setFillColor(
-      (finding.status === 'close' || isPositive) ? 209 : 241,
-      (finding.status === 'close' || isPositive) ? 250 : 245,
-      (finding.status === 'close' || isPositive) ? 229 : 249
-    );
-    doc.rect(afterBoxX, curY, photoBoxW, 6, 'F');
-    doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(
-      (finding.status === 'close' || isPositive) ? 4 : 100,
-      (finding.status === 'close' || isPositive) ? 120 : 116,
-      (finding.status === 'close' || isPositive) ? 87 : 139
-    );
-    doc.text(
-      isPositive
-        ? (afterBase64 ? `DOKUMENTASI TAMBAHAN${afterPhotoCountLabel}` : 'STATUS APRESIASI K3')
-        : (finding.status === 'close' ? `BUKTI PENYELESAIAN (AFTER)${afterPhotoCountLabel}` : 'TINDAK LANJUT / AFTER'),
-      afterBoxX + 3,
-      curY + 4.2
-    );
+      doc.setFillColor(254, 243, 199);
+      doc.rect(margin, curY, photoBoxW, 6, 'F');
+      doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(180, 83, 9);
+      doc.text(`KONDISI TEMUAN (BEFORE)${beforePhotoCountLabel}`, margin + 3, curY + 4.2);
 
-    if (afterBase64 && (finding.status === 'close' || isPositive)) {
-      try {
-        const dims = await getImageDimensions(afterBase64);
-        const maxImgW = photoBoxW - 6;
-        const maxImgH = photoBoxH - 18;
-        let imgW = maxImgW;
-        let imgH = maxImgH;
-        if (dims.width > 0 && dims.height > 0) {
-          const ratio = dims.width / dims.height;
-          if (ratio > maxImgW / maxImgH) {
-            imgW = maxImgW;
-            imgH = imgW / ratio;
-          } else {
-            imgH = maxImgH;
-            imgW = imgH * ratio;
+      if (beforeBase64) {
+        try {
+          const dims = await getImageDimensions(beforeBase64);
+          const maxImgW = photoBoxW - 6;
+          const maxImgH = photoBoxH - 18;
+          let imgW = maxImgW;
+          let imgH = maxImgH;
+          if (dims.width > 0 && dims.height > 0) {
+            const ratio = dims.width / dims.height;
+            if (ratio > maxImgW / maxImgH) {
+              imgW = maxImgW;
+              imgH = imgW / ratio;
+            } else {
+              imgH = maxImgH;
+              imgW = imgH * ratio;
+            }
           }
+          const imgX = margin + (photoBoxW - imgW) / 2;
+          const imgY = curY + 7 + (maxImgH - imgH) / 2;
+          doc.addImage(beforeBase64, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+        } catch (err) {
+          console.error('Error drawing before photo:', err);
         }
-        const imgX = afterBoxX + (photoBoxW - imgW) / 2;
-        const imgY = curY + 7 + (maxImgH - imgH) / 2;
-        doc.addImage(afterBase64, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
-      } catch (err) {
-        console.error('Error drawing after photo:', err);
+      } else {
+        doc.setFontSize(7.5).setFont('helvetica', 'italic').setTextColor(GRAY);
+        doc.text('(Tidak ada foto temuan)', margin + photoBoxW / 2, curY + photoBoxH / 2, { align: 'center' });
       }
-    } else {
-      doc.setFontSize(7.5).setFont('helvetica', 'italic').setTextColor(GRAY);
-      const afterText = isPositive
-        ? '(Temuan Positif: Sesuai Standar & Budaya Aman)'
-        : '(Menunggu Bukti Foto Penyelesaian / Closing)';
-      doc.text(afterText, afterBoxX + photoBoxW / 2, curY + photoBoxH / 2, { align: 'center' });
+
+      doc.setFontSize(6.5).setFont('helvetica', 'normal').setTextColor(GRAY);
+      doc.text(finding.beforeNotes || `Dicatat: ${finding.findingDate || '-'}`, margin + 3, curY + photoBoxH - 2.5);
+
+      // --- AFTER BOX ---
+      const afterBoxX = margin + photoBoxW + 6;
+      doc.setDrawColor(
+        finding.status === 'close' ? 16 : 226,
+        finding.status === 'close' ? 185 : 232,
+        finding.status === 'close' ? 129 : 240
+      );
+      doc.setLineWidth(0.3);
+      doc.roundedRect(afterBoxX, curY, photoBoxW, photoBoxH, 1, 1, 'D');
+
+      doc.setFillColor(
+        finding.status === 'close' ? 209 : 241,
+        finding.status === 'close' ? 250 : 245,
+        finding.status === 'close' ? 229 : 249
+      );
+      doc.rect(afterBoxX, curY, photoBoxW, 6, 'F');
+      doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(
+        finding.status === 'close' ? 4 : 100,
+        finding.status === 'close' ? 120 : 116,
+        finding.status === 'close' ? 87 : 139
+      );
+      doc.text(
+        finding.status === 'close' ? `BUKTI PENYELESAIAN (AFTER)${afterPhotoCountLabel}` : 'TINDAK LANJUT / AFTER',
+        afterBoxX + 3,
+        curY + 4.2
+      );
+
+      if (afterBase64 && finding.status === 'close') {
+        try {
+          const dims = await getImageDimensions(afterBase64);
+          const maxImgW = photoBoxW - 6;
+          const maxImgH = photoBoxH - 18;
+          let imgW = maxImgW;
+          let imgH = maxImgH;
+          if (dims.width > 0 && dims.height > 0) {
+            const ratio = dims.width / dims.height;
+            if (ratio > maxImgW / maxImgH) {
+              imgW = maxImgW;
+              imgH = imgW / ratio;
+            } else {
+              imgH = maxImgH;
+              imgW = imgH * ratio;
+            }
+          }
+          const imgX = afterBoxX + (photoBoxW - imgW) / 2;
+          const imgY = curY + 7 + (maxImgH - imgH) / 2;
+          doc.addImage(afterBase64, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+        } catch (err) {
+          console.error('Error drawing after photo:', err);
+        }
+      } else {
+        doc.setFontSize(7.5).setFont('helvetica', 'italic').setTextColor(GRAY);
+        doc.text('(Menunggu Bukti Foto Penyelesaian / Closing)', afterBoxX + photoBoxW / 2, curY + photoBoxH / 2, { align: 'center' });
+      }
+
+      doc.setFontSize(6.5).setFont('helvetica', 'normal').setTextColor(GRAY);
+      doc.text(finding.afterNotes ? `Catatan: ${finding.afterNotes}` : 'Status: ' + statusInfo.label, afterBoxX + 3, curY + photoBoxH - 2.5);
+
+      curY += photoBoxH + 5;
+
+      // Section III: Tindakan Korektif & Catatan Penutupan (Hanya untuk Temuan Negatif)
+      doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
+      doc.text('III. Tindakan Korektif / Catatan Penutupan:', margin, curY);
+      curY += 2;
+
+      const resolutionText = finding.status === 'close' 
+        ? (finding.afterNotes || finding.closingNotes || 'Tindakan perbaikan telah diselesaikan dan diverifikasi sesuai standar K3.')
+        : 'Temuan dalam status OPEN menunggu perbaikan dan pengunggahan bukti After.';
+
+      autoTable(doc, {
+        startY: curY,
+        theme: 'grid',
+        body: [[resolutionText]],
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 7.5,
+          cellPadding: 2.5,
+          lineColor: [226, 232, 240],
+          lineWidth: 0.15,
+          textColor: [30, 41, 59],
+          fillColor: [255, 255, 255],
+        }
+      });
     }
-
-    doc.setFontSize(6.5).setFont('helvetica', 'normal').setTextColor(GRAY);
-    doc.text(finding.afterNotes ? `Catatan: ${finding.afterNotes}` : 'Status: ' + statusInfo.label, afterBoxX + 3, curY + photoBoxH - 2.5);
-
-    curY += photoBoxH + 5;
-
-    // Tindakan Korektif & Catatan Penutupan / Apresiasi
-    doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
-    doc.text(
-      isPositive ? 'III. Apresiasi & Catatan Budaya K3:' : 'III. Tindakan Korektif / Catatan Penutupan:',
-      margin,
-      curY
-    );
-    curY += 2;
-
-    const resolutionText = isPositive
-      ? (finding.afterNotes || finding.closingNotes || 'Apresiasi atas kepatuhan standar keselamatan kerja dan penerapan tindakan aman di lingkungan kerja NeutraDC.')
-      : (finding.status === 'close' 
-          ? (finding.afterNotes || finding.closingNotes || 'Tindakan perbaikan telah diselesaikan dan diverifikasi sesuai standar K3.')
-          : 'Temuan dalam status OPEN menunggu perbaikan dan pengunggahan bukti After.');
-
-    autoTable(doc, {
-      startY: curY,
-      theme: 'grid',
-      body: [[resolutionText]],
-      margin: { left: margin, right: margin },
-      styles: {
-        fontSize: 7.5,
-        cellPadding: 2.5,
-        lineColor: [226, 232, 240],
-        lineWidth: 0.15,
-        textColor: [30, 41, 59],
-        fillColor: [255, 255, 255],
-      }
-    });
 
     // --- APPENDIX PAGE FOR EXTRA PHOTOS (If any) ---
-    const extraBeforePhotos = allBeforePhotos.slice(1);
-    const extraAfterPhotos = allAfterPhotos.slice(1);
     const extraPhotos: { type: 'before' | 'after'; index: number; url: string }[] = [];
 
-    extraBeforePhotos.forEach((url, i) => {
-      extraPhotos.push({ type: 'before', index: i + 2, url });
-    });
-    extraAfterPhotos.forEach((url, i) => {
-      extraPhotos.push({ type: 'after', index: i + 2, url });
-    });
+    if (isPositive) {
+      const displayedCount = allBeforePhotos.length >= 2 ? 2 : (allBeforePhotos.length === 1 ? 1 : 0);
+      const extraPositivePhotos = allBeforePhotos.slice(displayedCount);
+      extraPositivePhotos.forEach((url, i) => {
+        extraPhotos.push({ type: 'before', index: displayedCount + i + 1, url });
+      });
+    } else {
+      const extraBeforePhotos = allBeforePhotos.slice(1);
+      const extraAfterPhotos = allAfterPhotos.slice(1);
+      extraBeforePhotos.forEach((url, i) => {
+        extraPhotos.push({ type: 'before', index: i + 2, url });
+      });
+      extraAfterPhotos.forEach((url, i) => {
+        extraPhotos.push({ type: 'after', index: i + 2, url });
+      });
+    }
 
     if (extraPhotos.length > 0) {
       // Create appendix pages
@@ -434,7 +560,12 @@ export async function exportSingleHSEFindingPDF(
         }
 
         doc.setFontSize(9.5).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
-        doc.text('LAMPIRAN DOKUMENTASI FOTO TAMBAHAN TEMUAN K3', pageWidth / 2, appHeaderY + 6.5, { align: 'center' });
+        doc.text(
+          isPositive ? 'LAMPIRAN DOKUMENTASI FOTO TAMBAHAN TEMUAN POSITIF' : 'LAMPIRAN DOKUMENTASI FOTO TAMBAHAN TEMUAN K3',
+          pageWidth / 2,
+          appHeaderY + 6.5,
+          { align: 'center' }
+        );
 
         doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
         doc.text(`Temuan: ${finding.title || '-'} | Lokasi: ${finding.location || '-'}`, pageWidth / 2, appHeaderY + 11.5, { align: 'center' });
@@ -452,12 +583,14 @@ export async function exportSingleHSEFindingPDF(
           const cardY = startCardY + row * (cardH + 6);
 
           const isBefore = item.type === 'before';
-          const borderColor = isBefore ? [245, 158, 11] : [16, 185, 129];
-          const headerBg = isBefore ? [254, 243, 199] : [209, 250, 229];
-          const headerTextColor = isBefore ? [180, 83, 9] : [4, 120, 87];
-          const label = isBefore
-            ? `FOTO TEMUAN (BEFORE) #${item.index}`
-            : `FOTO BUKTI PERBAIKAN (AFTER) #${item.index}`;
+          const borderColor = (isPositive || !isBefore) ? [16, 185, 129] : [245, 158, 11];
+          const headerBg = (isPositive || !isBefore) ? [209, 250, 229] : [254, 243, 199];
+          const headerTextColor = (isPositive || !isBefore) ? [4, 120, 87] : [180, 83, 9];
+          const label = isPositive
+            ? `FOTO DOKUMENTASI TAMBAHAN #${item.index}`
+            : (isBefore
+                ? `FOTO TEMUAN (BEFORE) #${item.index}`
+                : `FOTO BUKTI PERBAIKAN (AFTER) #${item.index}`);
 
           doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
           doc.setLineWidth(0.25);

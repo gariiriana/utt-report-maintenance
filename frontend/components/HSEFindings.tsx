@@ -648,12 +648,12 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
       >
         {/* Section 1: Informasi Temuan */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${findingType === 'positive' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 flex-wrap">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2 leading-snug">
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${findingType === 'positive' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
               <span>1. Informasi & Lokasi Temuan</span>
             </h3>
-            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
               findingType === 'positive'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -845,7 +845,7 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
         {/* Section 2: Kronologi & Uraian */}
         <div className="space-y-4 pt-4 border-t border-slate-100">
           <div className="flex items-center gap-2 pb-2">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider leading-snug">
               {findingType === 'positive' ? '2. Uraian Tindakan Aman & Best Practice' : '2. Kronologi & Uraian Temuan'}
             </h3>
           </div>
@@ -870,24 +870,26 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
 
         {/* Section 3: Foto Bukti (Live Camera dengan Watermark & Upload Galeri) */}
         <div className="space-y-4 pt-4 border-t border-slate-100">
-          <div className="flex items-center justify-between pb-2 flex-wrap gap-2">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <span>
-                  {findingType === 'positive'
-                    ? '3. Dokumentasi Foto Tindakan / Kondisi Aman'
-                    : '3. Dokumentasi Foto Kondisi Awal (Before)'}
-                </span>
-                <span className="text-red-500">*</span>
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-2 gap-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider leading-snug">
+                  <span>
+                    {findingType === 'positive'
+                      ? '3. Dokumentasi Foto Tindakan / Kondisi Aman'
+                      : '3. Dokumentasi Foto Kondisi Awal (Before)'}
+                  </span>
+                  <span className="text-red-500 ml-1 font-black">*</span>
+                </h3>
                 {currentBeforePhotos.length > 0 && (
-                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full normal-case ${
-                    findingType === 'positive' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                  <span className={`inline-flex items-center text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full normal-case shrink-0 ${
+                    findingType === 'positive' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200/60' : 'bg-red-100 text-red-700 border border-red-200/60'
                   }`}>
                     {currentBeforePhotos.length} Foto Terlampir
                   </span>
                 )}
-              </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                 Ambil foto via live camera dengan watermark otomatis atau unggah dari galeri (bisa multi-foto).
               </p>
             </div>
@@ -895,7 +897,7 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, beforePhoto: '', beforePhotos: [] }))}
-                className="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 cursor-pointer"
+                className="self-start sm:self-center shrink-0 text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Hapus Semua Foto</span>
