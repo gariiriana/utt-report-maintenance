@@ -54,7 +54,7 @@ export function MainApp() {
 
   // Flag evaluasi hak akses peranan user
   const userEmailLower = (user?.email || '').toLowerCase();
-  const isDwimitra = userEmailLower === 'dwimitra@co.id';
+  const isDwimitra = userEmailLower === 'dwimitra@co.id' || userEmailLower === 'qcdme@dme.com' || isQcDme;
   const canViewAbnormal = isQcDme || isDwimitra;
   const isAdmin = userRole === 'admin' || isQcDme;
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';

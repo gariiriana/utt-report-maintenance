@@ -46,9 +46,9 @@ const TAB_ITEMS: { id: DMETab; label: string; icon: typeof FileText; color: stri
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export function DMEDashboard() {
-  const { user, logout } = useAuth();
+  const { user, isQcDme, logout } = useAuth();
   const userEmailLower = (user?.email || '').toLowerCase();
-  const isDwimitra = userEmailLower === 'dwimitra@co.id';
+  const isDwimitra = userEmailLower === 'dwimitra@co.id' || userEmailLower === 'qcdme@dme.com' || isQcDme;
   const visibleTabs = TAB_ITEMS.filter(tab => tab.id !== 'sop_eop' || isDwimitra);
   const [activeTab, setActiveTab] = useState<DMETab>('workflow');
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);

@@ -223,7 +223,9 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
  */
 function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
-  const ciTbl = tbls.find(
+
+  // Cari SEMUA tabel yang mengandung kata kunci CI Equipment
+  const ciCandidates = tbls.filter(
     (t) =>
       t.includes('CI Name') ||
       t.includes('Nama CI') ||
@@ -232,9 +234,23 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
       t.includes('Equipment Information') ||
       t.includes('Informasi Peralatan')
   );
-  if (!ciTbl) return [];
+
+  // Dari semua kandidat, pilih tabel yang punya baris terbanyak (skip banner 1-2 baris)
+  let ciTbl: string | undefined;
+  let maxRows = 0;
+  for (const candidate of ciCandidates) {
+    const rowCount = (candidate.match(/<w:tr[\s\S]*?<\/w:tr>/g) || []).length;
+    if (rowCount > maxRows) {
+      maxRows = rowCount;
+      ciTbl = candidate;
+    }
+  }
+
+  // Tabel data asli minimal harus punya 2 baris (1 header + 1 data)
+  if (!ciTbl || maxRows < 2) return [];
 
   const trs = ciTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+
   const headerIdx = trs.findIndex(
     (tr) =>
       tr.includes('CI Name') ||
@@ -309,7 +325,6 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   // Fallback pemetaan kolom jika baris header tidak memiliki kata kunci standar
   if (colMap.ciName === -1 && colMap.classId === -1 && colMap.capacity === -1) {
     if (colCount === 7) {
-      // Format 7 Kolom (seperti SOP Lighting Point): No | Class Id | CI Name | Capacity | Production Year | Product Name | Model/Version
       colMap.no = 0;
       colMap.classId = 1;
       colMap.ciName = 2;
@@ -337,7 +352,6 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
       colMap.productName = 7;
       colMap.model = 8;
     } else if (colCount >= 10) {
-      // Format 10 Kolom (Master Trafo NeutraDC)
       colMap.no = 0;
       colMap.classId = 1;
       colMap.ciName = 2;

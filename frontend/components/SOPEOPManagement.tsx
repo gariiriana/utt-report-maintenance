@@ -706,7 +706,7 @@ export function SOPEOPManagement() {
   });
 
   const userEmail = (user?.email || '').trim().toLowerCase();
-  const isAuthorized = userEmail === 'dwimitra@co.id';
+  const isAuthorized = userEmail === 'dwimitra@co.id' || userEmail === 'qcdme@dme.com' || isQcDme;
 
   if (!isAuthorized) {
     return (
@@ -716,7 +716,7 @@ export function SOPEOPManagement() {
         </div>
         <h2 className="text-lg font-bold text-slate-900 mb-2">Akses Terbatas</h2>
         <p className="text-sm text-slate-600 leading-relaxed">
-          Modul <strong>SOP & EOP Master Management</strong> ini hanya dapat diakses oleh akun resmi <strong>dwimitra@co.id</strong>.
+          Modul <strong>SOP & EOP Master Management</strong> ini hanya dapat diakses oleh akun resmi <strong>dwimitra@co.id</strong> dan <strong>qcdme@dme.com</strong>.
         </p>
       </div>
     );

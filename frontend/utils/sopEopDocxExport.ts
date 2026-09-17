@@ -24,7 +24,7 @@ import {
   PageBreak,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { SOPDocumentData, EOPDocumentData } from '@/types/sopEopTypes';
+import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem } from '@/types/sopEopTypes';
 import { ensureBilingualTranslation } from '@/utils/sopEopBilingualAI';
 import logoDMEOriginal from '@/assets/sop_eop_logo2.jpeg';
 import logoNDCOriginal from '@/assets/sop_eop_logo1.jpeg';
@@ -465,27 +465,60 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 2 – Equipment Information', 'Seksi 2 – Informasi Peralatan', false));
   children.push(createSpacer(40));
 
-  // 10 exact column widths from master: [480, 771, 907, 1326, 1041, 1198, 642, 1143, 1152, 356] = 9016
-  const equipColWidths = [480, 771, 907, 1326, 1041, 1198, 642, 1143, 1152, 356];
-
-  const equipHeaderLabels: [string, string][] = [
-    ['No', 'No'],
-    ['Class id', 'ID Kelas'],
-    ['CI Name*', 'Nama CI*'],
-    ['CI Description*', 'Deskripsi CI*'],
-    ['Capacity', 'Kapasitas'],
-    ['Serial Number', 'Nomor Seri'],
-    ['MFD', 'Tahun Pembuatan (MFD)'],
-    ['Product Name', 'Nama Produk'],
-    ['Model', 'Model'],
-    ['Room', 'Ruangan'],
+  // 10 master column definitions: [width, headerEn, headerId, dataKey]
+  const allEquipCols: { width: number; en: string; id: string; key: keyof SOPCIEquipmentItem }[] = [
+    { width: 480, en: 'No', id: 'No', key: 'no' },
+    { width: 771, en: 'Class id', id: 'ID Kelas', key: 'classId' },
+    { width: 907, en: 'CI Name*', id: 'Nama CI*', key: 'ciName' },
+    { width: 1326, en: 'CI Description*', id: 'Deskripsi CI*', key: 'ciDescription' },
+    { width: 1041, en: 'Capacity', id: 'Kapasitas', key: 'capacity' },
+    { width: 1198, en: 'Serial Number', id: 'Nomor Seri', key: 'serialNumber' },
+    { width: 642, en: 'MFD', id: 'Tahun Pembuatan (MFD)', key: 'mfd' },
+    { width: 1143, en: 'Product Name', id: 'Nama Produk', key: 'productName' },
+    { width: 1152, en: 'Model', id: 'Model', key: 'model' },
+    { width: 356, en: 'Room', id: 'Ruangan', key: 'room' },
   ];
+
+  // Tentukan kolom mana yang punya data (skip kolom opsional jika semua itemnya kosong/"-")
+  const eqList = data.equipmentList || [];
+  const optionalKeys: (keyof SOPCIEquipmentItem)[] = [
+    'ciDescription',
+    'serialNumber',
+    'room',
+    'capacity',
+    'mfd',
+    'productName',
+    'model',
+  ];
+
+  const hasEquipmentData = eqList.length > 0;
+  const activeEquipCols = allEquipCols.filter((col) => {
+    // Jika tidak ada data equipment sama sekali, pertahankan semua kolom template standar
+    if (!hasEquipmentData) return true;
+    // Kolom inti (no, classId, ciName) selalu ditampilkan
+    if (!optionalKeys.includes(col.key)) return true;
+    // Kolom opsional hanya ditampilkan jika minimal ada 1 baris yang terisi data bermakna
+    return eqList.some((eq) => {
+      const rawVal = eq[col.key as keyof SOPCIEquipmentItem];
+      const val = rawVal !== undefined && rawVal !== null ? String(rawVal).trim() : '';
+      return val !== '' && val !== '-' && val !== 'N/A' && val !== 'n/a';
+    });
+  });
+
+  // Redistribusi lebar kolom agar total tetap pas = CONTENT_WIDTH_DXA (15.9 cm)
+  const totalActiveWidth = activeEquipCols.reduce((sum, c) => sum + c.width, 0);
+  const scaleFactor = CONTENT_WIDTH_DXA / totalActiveWidth;
+  const equipColWidths = activeEquipCols.map((c) => Math.round(c.width * scaleFactor));
+  const widthDiff = CONTENT_WIDTH_DXA - equipColWidths.reduce((sum, w) => sum + w, 0);
+  if (widthDiff !== 0 && equipColWidths.length > 0) {
+    equipColWidths[equipColWidths.length - 1] += widthDiff;
+  }
 
   const equipHeaderRow = new TableRow({
     tableHeader: true,
     cantSplit: true,
-    children: equipHeaderLabels.map(
-      ([en, id], idx) =>
+    children: activeEquipCols.map(
+      (col, idx) =>
         new TableCell({
           width: { size: equipColWidths[idx], type: WidthType.DXA },
           borders: CELL_BORDERS_BOX,
@@ -494,50 +527,44 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
-              children: createBilingualRuns(en, id, { sizeEn: 18, sizeId: 16, boldEn: true, isHeader: true }),
+              children: createBilingualRuns(col.en, col.id, { sizeEn: 18, sizeId: 16, boldEn: true, isHeader: true }),
             }),
           ],
         })
     ),
   });
 
-  const equipDataRows = (data.equipmentList || []).map((eq, i) => {
-    const vals = [
-      String(eq.no || i + 1),
-      eq.classId || 'TR',
-      eq.ciName || '-',
-      eq.ciDescription || '-',
-      eq.capacity || '-',
-      eq.serialNumber || '-',
-      eq.mfd || '-',
-      eq.productName || '-',
-      eq.model || '-',
-      eq.room || '-',
-    ];
-
+  const equipDataRows = eqList.map((eq, i) => {
     return new TableRow({
       cantSplit: true,
-      children: vals.map(
-        (val, colIdx) =>
-          new TableCell({
-            width: { size: equipColWidths[colIdx], type: WidthType.DXA },
-            borders: CELL_BORDERS_BOX,
-            margins: { top: 40, bottom: 40, left: 40, right: 40 },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: val,
-                    size: 18, // 9pt
-                    color: COLOR_BLACK,
-                    font: FONT_BODY,
-                  }),
-                ],
-              }),
-            ],
-          })
-      ),
+      children: activeEquipCols.map((col, colIdx) => {
+        let cellText = '-';
+        if (col.key === 'no') {
+          cellText = String(eq.no || i + 1);
+        } else {
+          const rawVal = eq[col.key as keyof SOPCIEquipmentItem];
+          cellText = rawVal !== undefined && rawVal !== null && String(rawVal).trim() !== '' ? String(rawVal).trim() : '-';
+        }
+
+        return new TableCell({
+          width: { size: equipColWidths[colIdx], type: WidthType.DXA },
+          borders: CELL_BORDERS_BOX,
+          margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: cellText,
+                  size: 18, // 9pt
+                  color: COLOR_BLACK,
+                  font: FONT_BODY,
+                }),
+              ],
+            }),
+          ],
+        });
+      }),
     });
   });
 
