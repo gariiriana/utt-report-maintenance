@@ -615,7 +615,10 @@ export async function exportHSEInspectionRecapPDF(
 
     const safeVariant = isNeutra ? 'NeutraDC' : 'UTT';
     const dateStamp = new Date().toISOString().split('T')[0];
-    const fileName = `Rekap_Inspeksi_HSE_${safeVariant}_${dateStamp}.pdf`;
+    const safePeriodStr = options.periodLabel
+      ? `_${options.periodLabel.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').substring(0, 35)}`
+      : '';
+    const fileName = `Rekap_Inspeksi_HSE_${safeVariant}${safePeriodStr}_${dateStamp}.pdf`;
 
     pdfDoc.save(fileName);
     toast.success(`Rekapitulasi PDF HSE (${safeVariant}) berhasil diekspor!`, { id: toastId });

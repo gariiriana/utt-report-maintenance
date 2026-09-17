@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw } from 'lucide-react';
 import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -278,6 +278,58 @@ export const getWeekOfMonth = (date: Date) => {
   return Math.ceil((dayOfMonth + firstDayOfMonth.getDay()) / 7);
 };
 
+// Helper: Format tanggal dokumen ke string YYYY-MM-DD
+export const getDocDateString = (doc: ExcelDocument): string => {
+  const d = getDocumentDate(doc);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper: Format tanggal Indonesia (e.g. 15 Sep 2026)
+const formatIndonesianDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const dateObj = new Date(y, m, d);
+    return dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+};
+
+// Helper: Rentang tanggal preset (Bulan Ini, Bulan Lalu, Tahun Ini, dll)
+const getPresetRange = (preset: 'this_month' | 'last_month' | 'this_year' | 'all') => {
+  const now = new Date();
+  const curY = now.getFullYear();
+  const curM = now.getMonth(); // 0-indexed
+
+  if (preset === 'this_month') {
+    const start = `${curY}-${String(curM + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(curY, curM + 1, 0).getDate();
+    const end = `${curY}-${String(curM + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { start, end };
+  }
+  if (preset === 'last_month') {
+    const prevDate = new Date(curY, curM - 1, 1);
+    const prevY = prevDate.getFullYear();
+    const prevM = prevDate.getMonth();
+    const start = `${prevY}-${String(prevM + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(prevY, prevM + 1, 0).getDate();
+    const end = `${prevY}-${String(prevM + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { start, end };
+  }
+  if (preset === 'this_year') {
+    return { start: `${curY}-01-01`, end: `${curY}-12-31` };
+  }
+  return { start: '', end: '' };
+};
+
 // ============================================================================
 // MODULE-LEVEL IN-MEMORY CACHE (Mencegah lonjakan Firestore reads saat ganti tab)
 // ============================================================================
@@ -317,6 +369,13 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
+
+  // HSE Inspection Export Recap Modal State (Filter tgl & opsi rekap PDF)
+  const [isHseRecapModalOpen, setIsHseRecapModalOpen] = useState(false);
+  const [hseRecapVariant, setHseRecapVariant] = useState<'neutradc' | 'utt'>('neutradc');
+  const [hseRecapStartDate, setHseRecapStartDate] = useState('');
+  const [hseRecapEndDate, setHseRecapEndDate] = useState('');
+  const [isExportingHseRecap, setIsExportingHseRecap] = useState(false);
 
   useEffect(() => {
     if (initialSearchQuery !== undefined) {
@@ -1697,6 +1756,82 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       window.removeEventListener('ai-agent-command', handleAgentCommand);
     };
   }, [documents, filteredDocuments]);
+
+  // --------------------------------------------------------------------------
+  // HSE Inspection Recap Computed & Handlers
+  // --------------------------------------------------------------------------
+  const hseInspectionDocs = useMemo(() => {
+    return documents.filter(d => d.documentType === 'hse' || d.hseType === 'inspection');
+  }, [documents]);
+
+  const docsForHseRecap = useMemo(() => {
+    let result = [...hseInspectionDocs];
+    if (hseRecapStartDate) {
+      result = result.filter(d => {
+        const dStr = getDocDateString(d);
+        return dStr >= hseRecapStartDate;
+      });
+    }
+    if (hseRecapEndDate) {
+      result = result.filter(d => {
+        const dStr = getDocDateString(d);
+        return dStr <= hseRecapEndDate;
+      });
+    }
+    result.sort((a, b) => getDocumentDate(a).getTime() - getDocumentDate(b).getTime());
+    return result;
+  }, [hseInspectionDocs, hseRecapStartDate, hseRecapEndDate]);
+
+  const computeHseRecapPeriodLabel = (): string => {
+    if (hseRecapStartDate && hseRecapEndDate) {
+      if (hseRecapStartDate === hseRecapEndDate) {
+        return formatIndonesianDate(hseRecapStartDate);
+      }
+      return `${formatIndonesianDate(hseRecapStartDate)} s/d ${formatIndonesianDate(hseRecapEndDate)}`;
+    } else if (hseRecapStartDate) {
+      return `Sejak ${formatIndonesianDate(hseRecapStartDate)}`;
+    } else if (hseRecapEndDate) {
+      return `Sampai ${formatIndonesianDate(hseRecapEndDate)}`;
+    }
+    return 'Semua Periode';
+  };
+
+  const handleOpenHseRecapModal = (variant: 'neutradc' | 'utt') => {
+    setHseRecapVariant(variant);
+    if (startDate || endDate) {
+      setHseRecapStartDate(startDate);
+      setHseRecapEndDate(endDate);
+    } else {
+      const { start, end } = getPresetRange('this_month');
+      setHseRecapStartDate(start);
+      setHseRecapEndDate(end);
+    }
+    setIsHseRecapModalOpen(true);
+  };
+
+  const handleDownloadHseInspectionRecap = async () => {
+    if (docsForHseRecap.length === 0) {
+      toast.error('Tidak ada laporan inspeksi HSE pada rentang tanggal ini');
+      return;
+    }
+    setIsExportingHseRecap(true);
+    const variantLabel = hseRecapVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
+    const periodLabel = computeHseRecapPeriodLabel();
+    try {
+      toast.loading(`Menyiapkan Rekapitulasi PDF HSE (${variantLabel})...`, { id: 'export-hse-recap' });
+      await exportHSEInspectionRecapPDF(docsForHseRecap, {
+        companyVariant: hseRecapVariant,
+        periodLabel: periodLabel
+      });
+      toast.success(`Rekapitulasi PDF HSE (${variantLabel}) berhasil diunduh!`, { id: 'export-hse-recap' });
+      setIsHseRecapModalOpen(false);
+    } catch (err) {
+      console.error('Export HSE inspection recap PDF error:', err);
+      toast.error('Gagal mengunduh Rekapitulasi PDF HSE.', { id: 'export-hse-recap' });
+    } finally {
+      setIsExportingHseRecap(false);
+    }
+  };
 
   const renderDmeContent = () => {
     // 1. Jika sedang berada di folder Manajemen File (JSEA, MOP, Layout, dll), prioritaskan tampilkan FileManagement
@@ -3370,7 +3505,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0"
+                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0 cursor-pointer"
                   title="Dari tanggal"
                 />
               </div>
@@ -3382,10 +3517,43 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0"
+                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0 cursor-pointer"
                   title="Sampai tanggal"
                 />
               </div>
+            </div>
+            <div className="sm:col-span-2 flex flex-wrap items-center gap-1 pt-0.5">
+              <span className="text-[10px] text-slate-400 font-medium mr-0.5">Preset:</span>
+              {[
+                { label: 'Bulan Ini', preset: 'this_month' as const },
+                { label: 'Bulan Lalu', preset: 'last_month' as const },
+                { label: 'Tahun Ini', preset: 'this_year' as const },
+              ].map((p) => (
+                <button
+                  key={p.preset}
+                  type="button"
+                  onClick={() => {
+                    const { start, end } = getPresetRange(p.preset);
+                    setStartDate(start);
+                    setEndDate(end);
+                  }}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[10px] font-medium transition cursor-pointer"
+                >
+                  {p.label}
+                </button>
+              ))}
+              {(startDate || endDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  className="px-2 py-0.5 text-rose-600 hover:text-rose-800 text-[10px] font-bold transition cursor-pointer"
+                >
+                  Reset ✕
+                </button>
+              )}
             </div>
           </div>
 
@@ -3607,7 +3775,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
             <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap shrink-0">
               <button
                 type="button"
-                onClick={() => exportHSEInspectionRecapPDF(filteredDocuments, { companyVariant: 'neutradc' })}
+                onClick={() => handleOpenHseRecapModal('neutradc')}
                 className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 transition cursor-pointer shrink-0 whitespace-nowrap"
                 title="Export PDF Rekapitulasi Inspeksi HSE (Header Logo Dwimitra & NeutraDC)"
               >
@@ -3617,7 +3785,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
 
               <button
                 type="button"
-                onClick={() => exportHSEInspectionRecapPDF(filteredDocuments, { companyVariant: 'utt' })}
+                onClick={() => handleOpenHseRecapModal('utt')}
                 className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-teal-600 to-cyan-700 hover:from-teal-700 hover:to-cyan-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-teal-500/20 transition cursor-pointer shrink-0 whitespace-nowrap"
                 title="Export PDF Rekapitulasi Inspeksi HSE (Header Logo UTT & NeutraDC)"
               >
@@ -3851,6 +4019,195 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           setAbnormalModalDoc(null);
         }}
       />
+
+      {/* ===== Modal Export Rekapitulasi Laporan Inspeksi HSE ===== */}
+      <AnimatePresence>
+        {isHseRecapModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-100 my-auto text-slate-800"
+            >
+              {/* Header Modal */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3 sm:pb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 sm:p-3 rounded-2xl ${hseRecapVariant === 'neutradc' ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-600'}`}>
+                    <FileDown className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                      Export Rekapitulasi Laporan Inspeksi HSE
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Pilih rentang tanggal pelaksanaan & format rekap PDF Landscape A4
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsHseRecapModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Company Variant Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Format Kop & Logo Dokumen
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHseRecapVariant('neutradc')}
+                    className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                      hseRecapVariant === 'neutradc'
+                        ? 'bg-blue-50 border-blue-400 text-blue-700 shadow-xs ring-1 ring-blue-400'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-blue-600" />
+                    <span>PDF NeutraDC (DME)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHseRecapVariant('utt')}
+                    className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                      hseRecapVariant === 'utt'
+                        ? 'bg-teal-50 border-teal-400 text-teal-700 shadow-xs ring-1 ring-teal-400'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-teal-500" />
+                    <span>PDF UTT</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Range Selection */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Rentang Tanggal Pelaksanaan</span>
+                  </label>
+                  {(hseRecapStartDate || hseRecapEndDate) && (
+                    <button
+                      type="button"
+                      onClick={() => { setHseRecapStartDate(''); setHseRecapEndDate(''); }}
+                      className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                    >
+                      Reset Tanggal
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <span className="text-[11px] text-slate-500 block mb-1 font-medium">Dari Tanggal (Mulai):</span>
+                    <input
+                      type="date"
+                      value={hseRecapStartDate}
+                      onChange={(e) => setHseRecapStartDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-500 block mb-1 font-medium">Sampai Tanggal (Selesai):</span>
+                    <input
+                      type="date"
+                      value={hseRecapEndDate}
+                      onChange={(e) => setHseRecapEndDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Preset Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 font-medium mr-1">Preset:</span>
+                  {[
+                    { label: 'Bulan Ini', preset: 'this_month' as const },
+                    { label: 'Bulan Lalu', preset: 'last_month' as const },
+                    { label: 'Tahun Ini', preset: 'this_year' as const },
+                    { label: 'Semua Data', preset: 'all' as const },
+                  ].map((chip) => (
+                    <button
+                      key={chip.preset}
+                      type="button"
+                      onClick={() => {
+                        const { start, end } = getPresetRange(chip.preset);
+                        setHseRecapStartDate(start);
+                        setHseRecapEndDate(end);
+                      }}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-medium transition cursor-pointer border border-transparent hover:border-blue-200"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Live Preview Summary Card */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-600 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Laporan yang akan direkap:</span>
+                  </span>
+                  <span className="font-bold text-slate-900 text-sm">
+                    {docsForHseRecap.length} Dokumen
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 pt-1 border-t border-slate-200/60">
+                  <span className="font-medium text-slate-700">Label Header PDF:</span>
+                  <span className="truncate italic text-slate-600">
+                    Periode: {computeHseRecapPeriodLabel()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsHseRecapModalOpen(false)}
+                  disabled={isExportingHseRecap}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadHseInspectionRecap}
+                  disabled={isExportingHseRecap || docsForHseRecap.length === 0}
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                    hseRecapVariant === 'neutradc'
+                      ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25'
+                      : 'bg-teal-600 hover:bg-teal-700 shadow-teal-500/25'
+                  }`}
+                >
+                  {isExportingHseRecap ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                      <span>Menyusun Rekap PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 shrink-0" />
+                      <span>Unduh PDF Rekap ({docsForHseRecap.length} Dokumen)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Lightbox Modal Preview Foto Bukti Abnormal */}
       <AnimatePresence>
