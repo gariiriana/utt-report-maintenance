@@ -1820,7 +1820,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             </div>
 
             {/* Folder Switcher Tabs in Arsip Standby */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3 mb-6 border-b border-slate-200 pb-4 w-full">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mb-6 border-b border-slate-200/80 pb-4 w-full">
                 <button
                     type="button"
                     onClick={() => {
@@ -1830,14 +1830,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                         setPrefillSlaData(null);
                     }}
-                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'cm_pdf'
-                        ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                    className={`h-10 sm:h-11 px-3.5 sm:px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer border whitespace-nowrap shadow-2xs ${archiveFolder === 'cm_pdf'
+                        ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-transparent shadow-md shadow-red-500/20'
+                        : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                 >
-                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    <span className="sm:hidden">CM ({allCMReports.length})</span>
-                    <span className="hidden sm:inline">Report CM ({allCMReports.length})</span>
+                    <FileText className="w-4 h-4 shrink-0" />
+                    <span>Report CM</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${archiveFolder === 'cm_pdf' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                        {allCMReports.length}
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -1848,29 +1850,27 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                         setPrefillSlaData(null);
                     }}
-                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'sla'
-                        ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                    className={`h-10 sm:h-11 px-3.5 sm:px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer border whitespace-nowrap shadow-2xs ${archiveFolder === 'sla'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-md shadow-blue-500/20'
+                        : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                 >
-                    <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    <span className="sm:hidden flex items-center gap-1">
-                        SLA ({allSLAReports.length})
-                        {unlinkedCMReports.length > 0 && (
-                            <span className="px-1.5 py-0.2 text-[9px] font-black bg-amber-500 text-white rounded-full">
-                                {unlinkedCMReports.length}
-                            </span>
-                        )}
+                    <Clock className="w-4 h-4 shrink-0" />
+                    <span>Form SLA / SLG</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${archiveFolder === 'sla' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                        {allSLAReports.length}
                     </span>
-                    <span className="hidden sm:inline-flex items-center gap-1.5">
-                        Form SLA / SLG ({allSLAReports.length})
-                        {unlinkedCMReports.length > 0 && (
-                            <span className={`px-2 py-0.5 text-[10px] font-black rounded-full shadow-xs transition ${archiveFolder === 'sla' ? 'bg-amber-400 text-slate-950 animate-pulse' : 'bg-amber-500 text-white'
-                                }`}>
-                                {unlinkedCMReports.length} Belum Ada SLA ⚠️
-                            </span>
-                        )}
-                    </span>
+                    {unlinkedCMReports.length > 0 && (
+                        <span className={`ml-1 px-2 py-0.5 text-[10px] font-extrabold rounded-full flex items-center gap-1 shadow-2xs ${archiveFolder === 'sla'
+                            ? 'bg-amber-300 text-slate-950 font-black'
+                            : 'bg-amber-500 text-white animate-pulse'
+                            }`}
+                            title={`${unlinkedCMReports.length} Laporan CM Belum Ada SLA`}
+                        >
+                            <span>{unlinkedCMReports.length} Belum SLA</span>
+                            <span>⚠️</span>
+                        </span>
+                    )}
                 </button>
                 <button
                     type="button"
@@ -1881,14 +1881,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                         setPrefillSlaData(null);
                     }}
-                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'pir'
-                        ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                    className={`h-10 sm:h-11 px-3.5 sm:px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer border whitespace-nowrap shadow-2xs ${archiveFolder === 'pir'
+                        ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white border-transparent shadow-md shadow-amber-500/20'
+                        : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                 >
-                    <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    <span className="sm:hidden">PIR ({allPIRReports.length})</span>
-                    <span className="hidden sm:inline">Report PIR ({allPIRReports.length})</span>
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>Report PIR</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${archiveFolder === 'pir' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                        {allPIRReports.length}
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -1899,14 +1901,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                         setPrefillSlaData(null);
                     }}
-                    className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'predictive'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                    className={`h-10 sm:h-11 px-3.5 sm:px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer border whitespace-nowrap shadow-2xs ${archiveFolder === 'predictive'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-md shadow-purple-500/20'
+                        : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                 >
-                    <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-inherit" />
-                    <span className="sm:hidden">PdM ({predictiveReports.length})</span>
-                    <span className="hidden sm:inline">Predictive Report ({predictiveReports.length})</span>
+                    <Brain className="w-4 h-4 shrink-0" />
+                    <span>Predictive Report</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${archiveFolder === 'predictive' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                        {predictiveReports.length}
+                    </span>
                 </button>
             </div>
 

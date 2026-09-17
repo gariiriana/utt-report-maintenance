@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, ScanFace, Trash2, BookOpen } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, ScanFace, Trash2, BookOpen, HardHat } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -41,12 +41,13 @@ import { FaceRegistrationManagement } from '@/components/FaceRegistrationManagem
 import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
 import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
 import { SOPEOPManagement } from '@/components/SOPEOPManagement';
+import { HSEArchiveHub } from '@/components/HSEArchiveHub';
+import { AppSidebar } from '@/components/AppSidebar';
 import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/api/firebase';
-import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings' | 'sop_eop';
+type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings' | 'sop_eop' | 'hse_archive';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -54,7 +55,8 @@ export function MainApp() {
 
   // Flag evaluasi hak akses peranan user
   const userEmailLower = (user?.email || '').toLowerCase();
-  const isDwimitra = userEmailLower === 'dwimitra@co.id' || userEmailLower === 'qcdme@dme.com' || isQcDme;
+  const isTargetQcDme = userEmailLower === 'qcdme@dme.com';
+  const isDwimitra = userEmailLower === 'dwimitra@co.id' || isTargetQcDme || isQcDme;
   const canViewAbnormal = isQcDme || isDwimitra;
   const isAdmin = userRole === 'admin' || isQcDme;
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
@@ -122,6 +124,7 @@ export function MainApp() {
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: false },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
     { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: (userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer) || isDwimitra || userEmailLower === 'dwimitra@co.id' },
+    { id: 'hse_archive', label: 'Arsip K3 & HSE', icon: HardHat, color: 'from-emerald-600 to-teal-600', show: isDwimitra || userRole === 'admin' || userRole === 'hse' },
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: !isAdmin && userRole !== 'DME' && !isK2Engineer && !isStandby },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: !isAdmin && userRole !== 'DME' && !isK2Engineer },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isAdmin && !isStandby && (userRole !== 'DME' || !!editingData) },
@@ -145,6 +148,7 @@ export function MainApp() {
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [navSearchQuery, setNavSearchQuery] = useState('');
   const [navTargetFolder, setNavTargetFolder] = useState<string | null>(null);
@@ -229,253 +233,153 @@ export function MainApp() {
     setActiveTab(isEngineerRole ? 'arsip_dokumen' : 'documents');
   };
 
-  return (
-    <div className="flex-1 flex flex-col w-full">
-      {/* Navbar Top Bar Desktop & Mobile */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between">
-            {/* Logo Perusahaan & Sub-Header */}
-            <div className="flex items-center gap-3 min-w-0">
-              <img
-                src={logoDwimitra}
-                alt="PT Dwimitra Ekatama Mandiri"
-                className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 object-contain"
-              />
-              <div className="min-w-0">
-                <h1 className="text-sm sm:text-lg font-bold text-slate-900 truncate">
-                  PT Dwimitra Ekatama Mandiri
-                </h1>
-                <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Sistem Pemeliharaan Data Center</p>
-              </div>
-            </div>
-
-            {/* Aksi Navbar Desktop (Pusat Notifikasi, Email User, Log Out) */}
-            <div className="hidden md:flex items-center gap-4">
-              {userRole !== 'engineer' && !isStandby && userRole !== 'admin' && (
-                <NotificationCenter
-                  onSelectNotification={handleSelectNotification}
-                  onOpenNotificationPage={() => setActiveTab('notifications')}
-                />
-              )}
-              <div className="text-right">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
-                <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setLogoutModalOpen(true)}
-                className="p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
-                title="Keluar Sesi"
-              >
-                <LogOut className="w-5 h-5" />
-              </motion.button>
-            </div>
-
-            {/* Aksi Navbar Mobile (Tombol Hamburger Menu & Notifikasi) */}
-            <div className="flex items-center gap-2 md:hidden">
-              {userRole !== 'engineer' && !isStandby && userRole !== 'admin' && (
-                <NotificationCenter
-                  onSelectNotification={handleSelectNotification}
-                  onOpenNotificationPage={() => setActiveTab('notifications')}
-                />
-              )}
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setMobileMenuOpen(true)}
-                className="p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shadow-sm cursor-pointer"
-              >
-                <Menu className="w-6 h-6" />
-              </motion.button>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Navigasi Sekunder Tampilan Desktop */}
-        <div className="hidden md:block bg-sky-50/60 backdrop-blur-md border-t border-sky-100/80">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-            <div className="flex items-center justify-center gap-1 xl:gap-1.5">
-              {navItems.filter(i => i.show).map((item) => (
-                <motion.button
-                  key={item.id}
-                  whileHover={{ y: -1, scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setActiveTab(item.id as Tab)}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] xl:text-xs font-bold transition-all whitespace-nowrap border rounded-xl cursor-pointer ${activeTab === item.id
-                    ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
-                    : 'bg-white/80 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900 shadow-sm'
-                    }`}
-                >
-                  <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{item.label}</span>
-                  {item.id === 'delete_requests' && pendingDeleteCount > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 bg-rose-500 text-white rounded-full text-[10px] font-black animate-pulse shadow-xs">
-                      {pendingDeleteCount}
-                    </span>
-                  )}
-                  {item.id === 'abnormal_findings' && totalAbnormalCount > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 bg-amber-400 text-rose-950 rounded-full text-[10px] font-black animate-pulse shadow-xs">
-                      {totalAbnormalCount}
-                    </span>
-                  )}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Drawer Menu Navigasi Layar Mobile (Samping Kanan) */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] md:hidden"
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-[280px] bg-white/95 backdrop-blur-xl border-l border-sky-100 z-[70] md:hidden flex flex-col shadow-2xl"
-            >
-              <div className="p-6 flex items-center justify-between border-b border-slate-200">
-                <span className="font-bold text-slate-900">Menu Navigasi</span>
-                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-500 hover:text-slate-900" title="Tutup Menu">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                <div className="mb-6 p-4 bg-sky-50/80 rounded-2xl border border-sky-100">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Terhubung sebagai</p>
-                  <p className="text-sm font-semibold text-slate-800 truncate">{user?.email}</p>
-                </div>
-
-                {navItems.filter(i => i.show).map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id as Tab);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-4 py-4 rounded-2xl font-bold transition-all border ${activeTab === item.id
-                      ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
-                      : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-white hover:text-slate-900'
-                      }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.id === 'delete_requests' && pendingDeleteCount > 0 && (
-                      <span className="px-2 py-0.5 bg-rose-500 text-white rounded-full text-xs font-bold shadow-xs">
-                        {pendingDeleteCount}
-                      </span>
-                    )}
-                    {item.id === 'abnormal_findings' && totalAbnormalCount > 0 && (
-                      <span className="px-2 py-0.5 bg-amber-400 text-rose-950 rounded-full text-xs font-black shadow-xs">
-                        {totalAbnormalCount}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-4 border-t border-slate-800">
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setLogoutModalOpen(true);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl border border-red-500/20 font-bold transition-all"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>Keluar Sesi</span>
-                </button>
-              </div>
-            </motion.div>
-          </>
+  // Komponen pembantu untuk merender konten tab aktif
+  const renderTabContent = () => (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2 }}
+        className="flex-1 flex flex-col w-full min-w-0 max-w-full"
+      >
+        {activeTab === 'notifications' && userRole !== 'admin' ? (
+          <NotificationPage onSelectNotification={handleSelectNotification} />
+        ) : activeTab === 'admin' ? (
+          <AdminDashboard onEdit={handleEditReport} />
+        ) : activeTab === 'delete_requests' ? (
+          <DeleteRequestsManager />
+        ) : activeTab === 'abnormal_findings' ? (
+          <AbnormalFindingsCenter onNavigateToDocument={(query) => {
+            setNavSearchQuery(query);
+            setActiveTab('documents');
+          }} />
+        ) : activeTab === 'absen_tbm' ? (
+          <AbsenTBM />
+        ) : activeTab === 'absen_induction' ? (
+          <AbsenInduction />
+        ) : activeTab === 'ptw' ? (
+          <PTWManagement initialSearchQuery={navSearchQuery} />
+        ) : activeTab === 'files' ? (
+          <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
+        ) : activeTab === 'arsip_dokumen' ? (
+          <DocumentList viewMode="flat" onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
+        ) : activeTab === 'report' ? (
+          <ReportForm
+            editingData={editingData}
+            onClearEdit={clearEditingData}
+          />
+        ) : activeTab === 'pir' ? (
+          <PIRManagement />
+        ) : activeTab === 'corrective' ? (
+          <CorrectiveMaintenance readOnly={isTDEorCBRE} initialSearchQuery={navSearchQuery} />
+        ) : activeTab === 'corrective_archive' ? (
+          <CorrectiveMaintenance readOnly={true} initialSearchQuery={navSearchQuery} />
+        ) : activeTab === 'hse_archive' ? (
+          <HSEArchiveHub onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
+        ) : activeTab === 'findings' ? (
+          <FindingManagement />
+        ) : activeTab === 'finding_archive' ? (
+          <FindingArchive />
+        ) : activeTab === 'boq' ? (
+          <BOQMasterAsset />
+        ) : activeTab === 'monthly_report' ? (
+          <MonthlyReportGenerator />
+        ) : activeTab === 'sop_eop' ? (
+          isDwimitra ? (
+            <SOPEOPManagement />
+          ) : (
+            <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
+          )
+        ) : activeTab === 'pm_schedule' ? (
+          <PMSchedule />
+        ) : activeTab === 'berita_acara' ? (
+          <BeritaAcaraReport />
+        ) : activeTab === 'face_registration' ? (
+          <FaceRegistrationManagement />
+        ) : (
+          <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
         )}
-      </AnimatePresence>
+      </motion.div>
+    </AnimatePresence>
+  );
 
-      {/* Konten Utama Aplikasi (Render Dinamis Berdasarkan activeTab) */}
-      <main className="flex-1 flex flex-col relative w-full min-w-0 overflow-x-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="flex-1 flex flex-col w-full min-w-0 max-w-full"
-          >
-            {activeTab === 'notifications' && userRole !== 'admin' ? (
-              <NotificationPage onSelectNotification={handleSelectNotification} />
-            ) : activeTab === 'admin' ? (
-              <AdminDashboard onEdit={handleEditReport} />
-            ) : activeTab === 'delete_requests' ? (
-              <DeleteRequestsManager />
-            ) : activeTab === 'abnormal_findings' ? (
-              <AbnormalFindingsCenter onNavigateToDocument={(query) => {
-                setNavSearchQuery(query);
-                setActiveTab('documents');
-              }} />
-            ) : activeTab === 'absen_tbm' ? (
-              <AbsenTBM />
-            ) : activeTab === 'absen_induction' ? (
-              <AbsenInduction />
-            ) : activeTab === 'ptw' ? (
-              <PTWManagement initialSearchQuery={navSearchQuery} />
-            ) : activeTab === 'files' ? (
-              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
-            ) : activeTab === 'arsip_dokumen' ? (
-              <DocumentList viewMode="flat" onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
-            ) : activeTab === 'report' ? (
-              <ReportForm
-                editingData={editingData}
-                onClearEdit={clearEditingData}
+  // ─── TAMPILAN UNIVERSAL SEMUA ROLE: SIDEBAR DI SAMPING KIRI + TOP BAR BERSIH ──
+  const currentNavItem = navItems.find((i) => i.id === activeTab);
+
+  return (
+    <div className="flex flex-col w-full min-h-screen">
+      {/* Sidebar Navigasi Kiri Pinned Fixed (Desktop) & Drawer (Mobile) */}
+      <AppSidebar
+        user={user}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        navItems={navItems as any}
+        pendingDeleteCount={pendingDeleteCount}
+        totalAbnormalCount={totalAbnormalCount}
+        isCollapsed={sidebarCollapsed}
+        setIsCollapsed={setSidebarCollapsed}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        onLogoutClick={() => setLogoutModalOpen(true)}
+      />
+
+      {/* Area Konten Utama Kanan: Menyesuaikan padding-left dinamis sesuai lebar sidebar fixed */}
+      <div
+        className={`flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? 'md:pl-20' : 'md:pl-80'
+        }`}
+      >
+        {/* Top Bar Bersih & Konsisten untuk Semua Role */}
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-xs px-4 sm:px-6 py-3 shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 md:hidden bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shadow-sm cursor-pointer"
+              title="Buka Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+              {currentNavItem?.label || 'Dashboard'}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {userRole !== 'engineer' && !isStandby && userRole !== 'admin' && (
+              <NotificationCenter
+                onSelectNotification={handleSelectNotification}
+                onOpenNotificationPage={() => setActiveTab('notifications')}
               />
-            ) : activeTab === 'pir' ? (
-              <PIRManagement />
-            ) : activeTab === 'corrective' ? (
-              <CorrectiveMaintenance readOnly={isTDEorCBRE} initialSearchQuery={navSearchQuery} />
-            ) : activeTab === 'corrective_archive' ? (
-              <CorrectiveMaintenance readOnly={true} initialSearchQuery={navSearchQuery} />
-            ) : activeTab === 'findings' ? (
-              <FindingManagement />
-            ) : activeTab === 'finding_archive' ? (
-              <FindingArchive />
-            ) : activeTab === 'boq' ? (
-              <BOQMasterAsset />
-            ) : activeTab === 'monthly_report' ? (
-              <MonthlyReportGenerator />
-            ) : activeTab === 'sop_eop' ? (
-              isDwimitra ? (
-                <SOPEOPManagement />
-              ) : (
-                <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
-              )
-            ) : activeTab === 'pm_schedule' ? (
-              <PMSchedule />
-            ) : activeTab === 'berita_acara' ? (
-              <BeritaAcaraReport />
-            ) : activeTab === 'face_registration' ? (
-              <FaceRegistrationManagement />
-            ) : (
-              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
             )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
 
-      {/* Footer Aplikasi */}
-      <Footer />
+            <div className="hidden sm:block text-right">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
+              <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setLogoutModalOpen(true)}
+              className="p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
+              title="Keluar Sesi"
+            >
+              <LogOut className="w-5 h-5" />
+            </motion.button>
+          </div>
+        </header>
+
+        {/* Konten Utama Aplikasi (Render Dinamis Berdasarkan activeTab) */}
+        <main className="flex-1 flex flex-col relative w-full min-w-0 overflow-x-hidden">
+          {renderTabContent()}
+        </main>
+
+        {/* Footer Aplikasi */}
+        <Footer />
+      </div>
 
       {/* Modal Konfirmasi Log Out Sesi */}
       <LogoutConfirmModal

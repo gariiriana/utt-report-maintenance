@@ -572,7 +572,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               : query(collection(db, 'pdf_documents'), where('createdBy', '==', userEmailClean)));
         }
 
-        const showHSE = (isAdmin || userRole === 'hse' || filterOverride === 'hse_utt') && !isDME;
+        const showHSE = (isAdmin || userRole === 'hse' || filterOverride === 'hse_utt') && (!isDME || filterOverride === 'hse_utt');
         if (showHSE) {
           if (filterOverride === 'hse_utt') {
             hseQuery = query(collection(db, 'hse'), where('reportType', '==', 'utt'));
@@ -3691,19 +3691,19 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Dokumen</p>
             <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
-              {isDME ? documents.length + managementFilesCount : documents.length}
+              {isDME && filterOverride !== 'hse_utt' ? documents.length + managementFilesCount : documents.length}
             </p>
           </div>
           <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Hasil Filter</p>
             <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
-              {isDME && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
+              {isDME && filterOverride !== 'hse_utt' && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
             </p>
           </div>
           <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Ukuran</p>
             <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
-              {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (isDME ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
+              {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (isDME && filterOverride !== 'hse_utt' ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
             </p>
           </div>
           <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
@@ -3717,7 +3717,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
         </div>
 
         {/* Toggle Mode Tampilan DME saat pencarian aktif (Struktur Folder vs File Langsung) */}
-        {isDME && searchQuery.trim() !== '' && (
+        {isDME && filterOverride !== 'hse_utt' && searchQuery.trim() !== '' && (
           <div className="mt-3.5 pt-3.5 border-t border-slate-200/80 flex items-center justify-between flex-wrap gap-2.5 bg-gradient-to-r from-amber-50/60 via-slate-50 to-blue-50/60 p-2.5 sm:p-3 rounded-2xl border border-slate-200/80">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-700 shrink-0">Tampilan Hasil:</span>
