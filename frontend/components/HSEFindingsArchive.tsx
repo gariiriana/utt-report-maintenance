@@ -83,6 +83,61 @@ const formatDateTime = (dateVal: any): string => {
   } catch { return '-'; }
 };
 
+// Helper: Ekstraksi string tanggal YYYY-MM-DD dari temuan K3
+const getFindingDateString = (finding: HSEFindingItem): string => {
+  if (finding.findingDate) {
+    return finding.findingDate.substring(0, 10);
+  }
+  if (finding.createdAt?.toDate) {
+    const d = finding.createdAt.toDate();
+    return d.toISOString().split('T')[0];
+  }
+  return '';
+};
+
+// Helper: Format tanggal Indonesia (e.g. 15 Sep 2026)
+const formatIndonesianDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const dateObj = new Date(y, m, d);
+    return dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+};
+
+// Helper: Rentang tanggal preset (Bulan Ini, Bulan Lalu, Tahun Ini, dll)
+const getPresetRange = (preset: 'this_month' | 'last_month' | 'this_year' | 'all') => {
+  const now = new Date();
+  const curY = now.getFullYear();
+  const curM = now.getMonth(); // 0-indexed
+
+  if (preset === 'this_month') {
+    const start = `${curY}-${String(curM + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(curY, curM + 1, 0).getDate();
+    const end = `${curY}-${String(curM + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { start, end };
+  }
+  if (preset === 'last_month') {
+    const prevDate = new Date(curY, curM - 1, 1);
+    const prevY = prevDate.getFullYear();
+    const prevM = prevDate.getMonth();
+    const start = `${prevY}-${String(prevM + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(prevY, prevM + 1, 0).getDate();
+    const end = `${prevY}-${String(prevM + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { start, end };
+  }
+  if (preset === 'this_year') {
+    return { start: `${curY}-01-01`, end: `${curY}-12-31` };
+  }
+  return { start: '', end: '' };
+};
+
 // Helper: Status icon
 const StatusIcon = ({ status }: { status: HSEFindingStatus }) => {
   switch (status) {
@@ -109,7 +164,18 @@ export function HSEFindingsArchive() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<'all' | HSEFindingSeverity>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all'); // Format: YYYY-MM or 'all'
+  const [startDateFilter, setStartDateFilter] = useState<string>(''); // YYYY-MM-DD
+  const [endDateFilter, setEndDateFilter] = useState<string>('');     // YYYY-MM-DD
   const [showFilters, setShowFilters] = useState(false);
+
+  // Export Recap Modal State (Filter tgl/bulan & opsi rekap PDF)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportCompanyVariant, setExportCompanyVariant] = useState<'neutradc' | 'utt'>('neutradc');
+  const [exportStartDate, setExportStartDate] = useState<string>('');
+  const [exportEndDate, setExportEndDate] = useState<string>('');
+  const [exportFindingType, setExportFindingType] = useState<'all' | 'negative' | 'positive'>('all');
+  const [exportStatus, setExportStatus] = useState<'all' | 'open' | 'close'>('all');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Detail Modal
   const [selectedFinding, setSelectedFinding] = useState<HSEFindingItem | null>(null);
@@ -293,13 +359,20 @@ export function HSEFindingsArchive() {
     }
     if (monthFilter !== 'all') {
       result = result.filter(f => {
-        if (f.findingDate) return f.findingDate.startsWith(monthFilter);
-        if (f.createdAt?.toDate) {
-          const d = f.createdAt.toDate();
-          const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-          return ym === monthFilter;
-        }
-        return false;
+        const dStr = getFindingDateString(f);
+        return dStr.startsWith(monthFilter);
+      });
+    }
+    if (startDateFilter) {
+      result = result.filter(f => {
+        const dStr = getFindingDateString(f);
+        return !dStr || dStr >= startDateFilter;
+      });
+    }
+    if (endDateFilter) {
+      result = result.filter(f => {
+        const dStr = getFindingDateString(f);
+        return !dStr || dStr <= endDateFilter;
       });
     }
     if (searchQuery.trim()) {
@@ -336,7 +409,61 @@ export function HSEFindingsArchive() {
     });
 
     return result;
-  }, [findings, statusFilter, categoryFilter, severityFilter, monthFilter, searchQuery, sortBy]);
+  }, [findings, findingTypeFilter, statusFilter, categoryFilter, severityFilter, monthFilter, startDateFilter, endDateFilter, searchQuery, sortBy]);
+
+  // --------------------------------------------------------------------------
+  // Computed: Data Temuan Siap Export Rekap PDF (dengan Filter Khusus Rekap)
+  // --------------------------------------------------------------------------
+  const findingsForExport = useMemo(() => {
+    let result = [...findings];
+    if (exportFindingType !== 'all') {
+      result = result.filter(f => (f.findingType || 'negative') === exportFindingType);
+    }
+    if (exportStatus !== 'all') {
+      result = result.filter(f => f.status === exportStatus);
+    }
+    if (exportStartDate) {
+      result = result.filter(f => {
+        const dStr = getFindingDateString(f);
+        return dStr ? dStr >= exportStartDate : false;
+      });
+    }
+    if (exportEndDate) {
+      result = result.filter(f => {
+        const dStr = getFindingDateString(f);
+        return dStr ? dStr <= exportEndDate : false;
+      });
+    }
+    result.sort((a, b) => {
+      const tA = a.createdAt?.toMillis?.() || new Date(a.findingDate || 0).getTime();
+      const tB = b.createdAt?.toMillis?.() || new Date(b.findingDate || 0).getTime();
+      return tA - tB; // Urutan kronologis dari tanggal terlama ke terbaru untuk rekap laporan resmi
+    });
+    return result;
+  }, [findings, exportFindingType, exportStatus, exportStartDate, exportEndDate]);
+
+  const exportStats = useMemo(() => {
+    const total = findingsForExport.length;
+    const open = findingsForExport.filter(f => f.status === 'open').length;
+    const close = findingsForExport.filter(f => f.status === 'close').length;
+    const neg = findingsForExport.filter(f => (f.findingType || 'negative') !== 'positive').length;
+    const pos = findingsForExport.filter(f => f.findingType === 'positive').length;
+    return { total, open, close, neg, pos };
+  }, [findingsForExport]);
+
+  const computeExportPeriodLabel = (): string => {
+    if (exportStartDate && exportEndDate) {
+      if (exportStartDate === exportEndDate) {
+        return formatIndonesianDate(exportStartDate);
+      }
+      return `${formatIndonesianDate(exportStartDate)} s/d ${formatIndonesianDate(exportEndDate)}`;
+    } else if (exportStartDate) {
+      return `Sejak ${formatIndonesianDate(exportStartDate)}`;
+    } else if (exportEndDate) {
+      return `Sampai ${formatIndonesianDate(exportEndDate)}`;
+    }
+    return 'Semua Periode';
+  };
 
   // --------------------------------------------------------------------------
   // Handlers: After Photo Upload & Resolve Finding (Live Camera + Gallery Multi)
@@ -729,15 +856,49 @@ export function HSEFindingsArchive() {
     }
   };
 
-  const handleExportRecap = async (companyVariant: 'neutradc' | 'utt' = 'neutradc') => {
-    const variantLabel = companyVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
+  const handleOpenExportModal = (variant: 'neutradc' | 'utt' = 'neutradc') => {
+    setExportCompanyVariant(variant);
+    if (startDateFilter || endDateFilter) {
+      setExportStartDate(startDateFilter);
+      setExportEndDate(endDateFilter);
+    } else if (monthFilter !== 'all') {
+      const [y, m] = monthFilter.split('-').map(Number);
+      const start = `${monthFilter}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const end = `${monthFilter}-${String(lastDay).padStart(2, '0')}`;
+      setExportStartDate(start);
+      setExportEndDate(end);
+    } else {
+      const { start, end } = getPresetRange('this_month');
+      setExportStartDate(start);
+      setExportEndDate(end);
+    }
+    setExportFindingType(findingTypeFilter);
+    setExportStatus(statusFilter === 'all' ? 'all' : statusFilter);
+    setIsExportModalOpen(true);
+  };
+
+  const handleDownloadExportRecap = async () => {
+    if (findingsForExport.length === 0) {
+      toast.error('Tidak ada data temuan pada filter & periode ini');
+      return;
+    }
+    setIsExporting(true);
+    const variantLabel = exportCompanyVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
+    const periodLabel = computeExportPeriodLabel();
     try {
       toast.loading(`Menyiapkan PDF Rekap (${variantLabel})...`, { id: 'export-recap' });
-      await exportHSEFindingsRecapPDF(filteredFindings, { companyVariant });
+      await exportHSEFindingsRecapPDF(findingsForExport, {
+        companyVariant: exportCompanyVariant,
+        periodLabel: periodLabel
+      });
       toast.success(`PDF Rekap (${variantLabel}) berhasil diunduh!`, { id: 'export-recap' });
+      setIsExportModalOpen(false);
     } catch (err) {
       console.error('Export recap PDF error:', err);
       toast.error('Gagal mengunduh PDF Rekap.', { id: 'export-recap' });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -771,12 +932,12 @@ export function HSEFindingsArchive() {
           </div>
 
           {/* Export Recap Buttons (NeutraDC & UTT) */}
-          {filteredFindings.length > 0 && (
+          {findings.length > 0 && (
             <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => handleExportRecap('neutradc')}
+                onClick={() => handleOpenExportModal('neutradc')}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl shadow-xs transition-colors cursor-pointer"
                 title="Export Rekap PDF (Logo Dwimitra & NeutraDC)"
               >
@@ -787,7 +948,7 @@ export function HSEFindingsArchive() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => handleExportRecap('utt')}
+                onClick={() => handleOpenExportModal('utt')}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl shadow-xs transition-colors cursor-pointer"
                 title="Export Rekap PDF (Logo UTT & NeutraDC)"
               >
@@ -942,7 +1103,7 @@ export function HSEFindingsArchive() {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-4 border-t border-slate-100 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-4 border-t border-slate-100 mt-3">
                 {/* Tipe Temuan Filter */}
                 <div>
                   <label className="text-xs font-medium text-slate-500 mb-1.5 block">Tipe Temuan</label>
@@ -988,7 +1149,7 @@ export function HSEFindingsArchive() {
 
                 {/* Severity Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-500 mb-1.5 block">Tingkat / Kategori Tindakan</label>
+                  <label className="text-xs font-medium text-slate-500 mb-1.5 block">Tingkat Tindakan</label>
                   <select
                     value={severityFilter}
                     onChange={(e) => setSeverityFilter(e.target.value as any)}
@@ -1006,10 +1167,16 @@ export function HSEFindingsArchive() {
 
                 {/* Month Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-500 mb-1.5 block">Bulan</label>
+                  <label className="text-xs font-medium text-slate-500 mb-1.5 block">Pilih Bulan</label>
                   <select
                     value={monthFilter}
-                    onChange={(e) => setMonthFilter(e.target.value)}
+                    onChange={(e) => {
+                      setMonthFilter(e.target.value);
+                      if (e.target.value !== 'all') {
+                        setStartDateFilter('');
+                        setEndDateFilter('');
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
                   >
                     <option value="all">Semua Bulan</option>
@@ -1018,10 +1185,71 @@ export function HSEFindingsArchive() {
                     ))}
                   </select>
                 </div>
+
+                {/* Rentang Tanggal Filter */}
+                <div>
+                  <label className="text-xs font-medium text-slate-500 mb-1.5 flex items-center justify-between">
+                    <span>Rentang Tanggal</span>
+                    {(startDateFilter || endDateFilter) && (
+                      <button
+                        type="button"
+                        onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+                        className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      type="date"
+                      value={startDateFilter}
+                      onChange={(e) => {
+                        setStartDateFilter(e.target.value);
+                        if (monthFilter !== 'all') setMonthFilter('all');
+                      }}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer font-sans"
+                      title="Dari Tanggal"
+                    />
+                    <input
+                      type="date"
+                      value={endDateFilter}
+                      onChange={(e) => {
+                        setEndDateFilter(e.target.value);
+                        if (monthFilter !== 'all') setMonthFilter('all');
+                      }}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer font-sans"
+                      title="Sampai Tanggal"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Clear Filters */}
-              <div className="flex justify-end mt-3">
+              {/* Quick Presets & Clear Filters */}
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400 font-medium mr-0.5">Preset Cepat:</span>
+                  {[
+                    { label: 'Bulan Ini', preset: 'this_month' as const },
+                    { label: 'Bulan Lalu', preset: 'last_month' as const },
+                    { label: 'Tahun Ini', preset: 'this_year' as const },
+                  ].map((p) => (
+                    <button
+                      key={p.preset}
+                      type="button"
+                      onClick={() => {
+                        const { start, end } = getPresetRange(p.preset);
+                        setStartDateFilter(start);
+                        setEndDateFilter(end);
+                        setMonthFilter('all');
+                      }}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 rounded-lg text-[10px] font-medium transition cursor-pointer"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   onClick={() => {
                     setFindingTypeFilter('all');
@@ -1029,6 +1257,8 @@ export function HSEFindingsArchive() {
                     setCategoryFilter('all');
                     setSeverityFilter('all');
                     setMonthFilter('all');
+                    setStartDateFilter('');
+                    setEndDateFilter('');
                     setSearchQuery('');
                   }}
                   className="text-xs text-teal-600 hover:text-teal-800 font-medium cursor-pointer"
@@ -1041,7 +1271,7 @@ export function HSEFindingsArchive() {
         </AnimatePresence>
 
         {/* Active Filter Tags */}
-        {(findingTypeFilter !== 'all' || statusFilter !== 'all' || categoryFilter !== 'all' || severityFilter !== 'all' || monthFilter !== 'all') && (
+        {(findingTypeFilter !== 'all' || statusFilter !== 'all' || categoryFilter !== 'all' || severityFilter !== 'all' || monthFilter !== 'all' || startDateFilter !== '' || endDateFilter !== '') && (
           <div className="flex flex-wrap gap-2 mt-3">
             {findingTypeFilter !== 'all' && (
               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border ${
@@ -1077,6 +1307,23 @@ export function HSEFindingsArchive() {
                 <Calendar className="w-3 h-3" />
                 {getMonthLabel(monthFilter)}
                 <button onClick={() => setMonthFilter('all')} className="ml-1 hover:opacity-70 cursor-pointer"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {(startDateFilter || endDateFilter) && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border bg-teal-50 text-teal-800 border-teal-300">
+                <Calendar className="w-3 h-3 text-teal-600" />
+                <span>
+                  {startDateFilter ? formatIndonesianDate(startDateFilter) : 'Awal'} s/d {endDateFilter ? formatIndonesianDate(endDateFilter) : 'Sekarang'}
+                </span>
+                <button
+                  onClick={() => {
+                    setStartDateFilter('');
+                    setEndDateFilter('');
+                  }}
+                  className="ml-1 hover:opacity-70 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </span>
             )}
           </div>
@@ -2437,6 +2684,238 @@ export function HSEFindingsArchive() {
                     <Trash2 className="w-3.5 h-3.5" />
                   )}
                   <span>{isQcDme ? 'Hapus Permanen' : 'Kirim Pengajuan Hapus'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== Export Recap PDF Modal with Date Range Filter ===== */}
+      <AnimatePresence>
+        {isExportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-100 my-auto"
+            >
+              {/* Header Modal */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3 sm:pb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 sm:p-3 rounded-2xl ${exportCompanyVariant === 'neutradc' ? 'bg-red-50 text-red-600' : 'bg-teal-50 text-teal-600'}`}>
+                    <FileDown className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                      Export Rekapitulasi Temuan HSE
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Pilih rentang tanggal & format rekap PDF Landscape A4
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsExportModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Company Variant Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Format Kop & Logo Dokumen
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExportCompanyVariant('neutradc')}
+                    className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                      exportCompanyVariant === 'neutradc'
+                        ? 'bg-red-50 border-red-400 text-red-700 shadow-xs ring-1 ring-red-400'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    <span>PDF NeutraDC (DME)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportCompanyVariant('utt')}
+                    className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                      exportCompanyVariant === 'utt'
+                        ? 'bg-teal-50 border-teal-400 text-teal-700 shadow-xs ring-1 ring-teal-400'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-teal-500" />
+                    <span>PDF UTT</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Range Selection (Dari Tanggal s/d Sampai Tanggal) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Filter Rentang Tanggal Data</span>
+                  </label>
+                  {(exportStartDate || exportEndDate) && (
+                    <button
+                      type="button"
+                      onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                      className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                    >
+                      Reset Tanggal
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <span className="text-[11px] text-slate-500 block mb-1 font-medium">Dari Tanggal (Mulai):</span>
+                    <input
+                      type="date"
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 font-medium cursor-pointer font-sans"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-500 block mb-1 font-medium">Sampai Tanggal (Selesai):</span>
+                    <input
+                      type="date"
+                      value={exportEndDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 font-medium cursor-pointer font-sans"
+                    />
+                  </div>
+                </div>
+
+                {/* Preset Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 font-medium mr-1">Preset:</span>
+                  {[
+                    { label: 'Bulan Ini', preset: 'this_month' as const },
+                    { label: 'Bulan Lalu', preset: 'last_month' as const },
+                    { label: 'Tahun Ini', preset: 'this_year' as const },
+                    { label: 'Semua Data', preset: 'all' as const },
+                  ].map((chip) => (
+                    <button
+                      key={chip.preset}
+                      type="button"
+                      onClick={() => {
+                        const { start, end } = getPresetRange(chip.preset);
+                        setExportStartDate(start);
+                        setExportEndDate(end);
+                      }}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 rounded-lg text-[11px] font-medium transition cursor-pointer border border-transparent hover:border-teal-200"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Extra Filters: Tipe & Status */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-slate-100">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 mb-1">Tipe Temuan</label>
+                  <select
+                    value={exportFindingType}
+                    onChange={(e) => setExportFindingType(e.target.value as any)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
+                  >
+                    <option value="all">Semua Tipe (Negatif & Positif)</option>
+                    <option value="negative">🔴 Hanya Negatif</option>
+                    <option value="positive">🟢 Hanya Positif</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 mb-1">Status Temuan</label>
+                  <select
+                    value={exportStatus}
+                    onChange={(e) => setExportStatus(e.target.value as any)}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
+                  >
+                    <option value="all">Semua Status (Open & Close)</option>
+                    <option value="open">⏳ Hanya Open</option>
+                    <option value="close">✅ Hanya Close</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Live Preview Summary Card */}
+              <div className="p-3 sm:p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-600 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Data yang akan direkap:</span>
+                  </span>
+                  <span className="font-bold text-slate-800 text-sm">
+                    {exportStats.total} Temuan
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px]">
+                  <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-medium">
+                    Negatif: {exportStats.neg}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+                    Positif: {exportStats.pos}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                    Open: {exportStats.open}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200 font-medium">
+                    Close: {exportStats.close}
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 pt-1 border-t border-slate-200/60">
+                  <span className="font-medium text-slate-700">Label Periode:</span>
+                  <span className="truncate italic text-slate-600">
+                    {computeExportPeriodLabel()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsExportModalOpen(false)}
+                  disabled={isExporting}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadExportRecap}
+                  disabled={isExporting || exportStats.total === 0}
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                    exportCompanyVariant === 'neutradc'
+                      ? 'bg-red-600 hover:bg-red-700 shadow-red-500/25'
+                      : 'bg-teal-600 hover:bg-teal-700 shadow-teal-500/25'
+                  }`}
+                >
+                  {isExporting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                      <span>Membuat Dokumen PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 shrink-0" />
+                      <span>Unduh PDF Rekap ({exportStats.total} Data)</span>
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>

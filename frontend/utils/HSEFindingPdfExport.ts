@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 
 export interface HSEFindingExportOptions {
   companyVariant?: 'neutradc' | 'utt';
+  periodLabel?: string;
 }
 
 /**
@@ -738,9 +739,10 @@ export async function exportHSEFindingsRecapPDF(
       const negativeCount = findings.filter(f => f.findingType !== 'positive').length;
       const todayPrint = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
+      const periodPrefix = options?.periodLabel ? `Periode: ${options.periodLabel}  |  ` : '';
       currentDoc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
       currentDoc.text(
-        `Total: ${findings.length}  |  Negatif: ${negativeCount}  |  Positif: ${positiveCount}  |  OPEN: ${openCount}  |  CLOSE: ${closeCount}  |  Cetak: ${todayPrint}`,
+        `${periodPrefix}Total: ${findings.length}  |  Negatif: ${negativeCount}  |  Positif: ${positiveCount}  |  OPEN: ${openCount}  |  CLOSE: ${closeCount}  |  Cetak: ${todayPrint}`,
         centerX,
         headerTopY + 16.8,
         { align: 'center' }
@@ -914,7 +916,10 @@ export async function exportHSEFindingsRecapPDF(
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-    doc.save(`Rekap_Temuan_HSE_${variantLabel}_${todayStr}.pdf`);
+    const safePeriodStr = options?.periodLabel
+      ? `_${options.periodLabel.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').substring(0, 35)}`
+      : '';
+    doc.save(`Rekap_Temuan_HSE_${variantLabel}${safePeriodStr}_${todayStr}.pdf`);
     toast.success(`Rekapitulasi Temuan K3 (${variantLabel}) berhasil diunduh!`, { id: toastId });
   } catch (error) {
     console.error('Error generating HSE Findings Recap PDF:', error);
