@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Send, Loader2, Mic, MicOff, Paperclip, Plus, MessageSquare, Trash2, Copy, Check, Menu, AudioLines } from 'lucide-react';
+import { X, Send, Loader2, Mic, MicOff, Paperclip, Plus, MessageSquare, Trash2, Copy, Check, Menu, AudioLines, ArrowDown } from 'lucide-react';
 import { auth } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
@@ -73,6 +73,8 @@ export function AIChatWidget() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   // Multimodal Vision Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,7 +226,34 @@ export function AIChatWidget() {
     }
   }, [activeRoomId, userEmail]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
+  const handleChatScroll = () => {
+    if (!chatScrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatScrollContainerRef.current;
+    // Show "scroll to bottom" button if user scrolled up more than 80px
+    setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 80);
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+  };
+
+  // Auto scroll to bottom when messages or loading changes
+  useEffect(() => {
+    scrollToBottom(true);
+  }, [messages, isLoading]);
+
+  // Scroll to bottom immediately when switching room or opening chat
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => scrollToBottom(false), 60);
+      return () => clearTimeout(timer);
+    }
+  }, [activeRoomId, isOpen]);
 
   const updateActiveRoomMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
     setRooms(prev => prev.map(room =>
@@ -395,7 +424,7 @@ export function AIChatWidget() {
                 }`}
               >
               {/* Sidebar Header */}
-              <div className="p-3 border-b border-slate-200 flex items-center justify-between gap-1">
+              <div className="p-3 border-b border-slate-200 flex items-center justify-between gap-1 shrink-0">
                 <button
                   onClick={handleNewChat}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all active:scale-[0.97] shadow-md shadow-blue-500/20"
@@ -414,7 +443,7 @@ export function AIChatWidget() {
               </div>
 
               {/* Room List */}
-              <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-none">
+              <div className="flex-1 min-h-0 overflow-y-auto py-2 px-2 space-y-0.5 chat-scroll-container">
                 {rooms.map(room => (
                   <div
                     key={room.id}
@@ -440,9 +469,9 @@ export function AIChatWidget() {
             </div>
 
             {/* ═══ RIGHT PANEL — Chat Area ═══ */}
-            <div className="flex-1 flex flex-col min-w-0 bg-white/50">
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full bg-white/50 relative">
               {/* Chat Header */}
-              <div className="p-3 border-b border-slate-200 flex items-center gap-2 bg-white/95">
+              <div className="p-3 border-b border-slate-200 flex items-center gap-2 bg-white/95 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsMobileSidebarOpen(true)}
@@ -471,7 +500,11 @@ export function AIChatWidget() {
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-none">
+              <div
+                ref={chatScrollContainerRef}
+                onScroll={handleChatScroll}
+                className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 chat-scroll-container overscroll-contain"
+              >
                 {messages.map((msg, idx) => (
                   <div
                     key={idx}
@@ -524,7 +557,7 @@ export function AIChatWidget() {
 
               {/* Image Preview */}
               {selectedImage && (
-                <div className="px-3 pt-2 bg-slate-50 border-t border-slate-200">
+                <div className="px-3 pt-2 bg-slate-50 border-t border-slate-200 shrink-0">
                   <div className="relative inline-block">
                     <img src={selectedImage} alt="Preview" className="h-16 w-auto rounded-xl border border-slate-200 object-cover" />
                     <button
@@ -539,10 +572,23 @@ export function AIChatWidget() {
                 </div>
               )}
 
+              {/* Scroll to bottom button */}
+              {showScrollBottom && (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom(true)}
+                  className="absolute bottom-16 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/90 hover:bg-blue-600 text-white text-[11px] font-semibold rounded-full shadow-lg backdrop-blur-sm transition-all animate-bounce"
+                  title="Ke pesan terbaru"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  <span>Pesan terbaru</span>
+                </button>
+              )}
+
               {/* Input Form */}
               <form
                 onSubmit={handleSend}
-                className="p-2.5 border-t border-slate-200 bg-white/90 flex gap-1 items-center"
+                className="p-2.5 border-t border-slate-200 bg-white/90 flex gap-1 items-center shrink-0"
               >
                 <input
                   ref={fileInputRef}

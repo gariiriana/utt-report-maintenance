@@ -206,6 +206,38 @@ input[type='number'] {
   }
 }
 
+/* Custom smooth scrollbar for AI chat message container */
+.chat-scroll-container {
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+}
+
+@supports (scrollbar-width: thin) {
+  .chat-scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+  }
+}
+
+.chat-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-scroll-container::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 9999px;
+}
+
+.chat-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 1px solid #f1f5f9;
+}
+
+.chat-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .justify-safe-center {
   justify-content: safe center !important;
 }
