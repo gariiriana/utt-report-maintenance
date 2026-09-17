@@ -255,6 +255,27 @@ export function AIChatWidget() {
     }
   }, [activeRoomId, isOpen]);
 
+  // Isolate wheel & touch gestures to chat scroll container so background modal locks do not block scrolling
+  useEffect(() => {
+    const el = chatScrollContainerRef.current;
+    if (!el || !isOpen) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.stopPropagation();
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      e.stopPropagation();
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchmove', onTouchMove);
+    };
+  }, [isOpen]);
+
   const updateActiveRoomMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
     setRooms(prev => prev.map(room =>
       room.id === activeRoomId ? { ...room, messages: updater(room.messages) } : room
@@ -400,10 +421,14 @@ export function AIChatWidget() {
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end" data-chat-widget="true">
         <AnimatePresence>
           {isOpen && (
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="AI Chat Assistant"
+              data-chat-widget="true"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -504,6 +529,7 @@ export function AIChatWidget() {
                 ref={chatScrollContainerRef}
                 onScroll={handleChatScroll}
                 className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 chat-scroll-container overscroll-contain"
+                style={{ touchAction: 'pan-y' }}
               >
                 {messages.map((msg, idx) => (
                   <div

@@ -220,7 +220,7 @@ export function unlockBackgroundScroll() {
  */
 export function initGlobalModalObserver(): () => void {
   if (observerInitialized || typeof window === 'undefined' || typeof document === 'undefined') {
-    return () => {};
+    return () => { };
   }
 
   observerInitialized = true;
