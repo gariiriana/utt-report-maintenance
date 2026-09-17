@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, Camera, SwitchCamera, RefreshCw, Check, AlertCircle, MapPin, Download, Zap, ZapOff, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, Camera, SwitchCamera, RefreshCw, Check, AlertCircle, MapPin, Download, Zap, ZapOff, ZoomIn, ZoomOut, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDebouncedCallback } from '@/hooks/useDebounce';
 import { Slider } from './ui/slider';
+import { compressImage } from '@/utils/imageCompression';
 
 interface CameraModalProps {
   onCapture: (base64: string) => void;
@@ -42,9 +43,10 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-
   const [torchSupported, setTorchSupported] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
+  const [isScreenFlashOn, setIsScreenFlashOn] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
   const [zoomSupported, setZoomSupported] = useState(false);
   const [zoomRange, setZoomRange] = useState({ min: 1, max: 1, step: 0.1 });
   const [zoom, setZoom] = useState(1);
@@ -186,15 +188,30 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
       if (videoTrack) {
         try {
-
-          const caps = videoTrack.getCapabilities() as any;
+          const caps = (videoTrack.getCapabilities ? videoTrack.getCapabilities() : {}) as any;
           console.log("Camera Capabilities:", caps);
 
-          if (caps.torch) {
+          const hasHardwareTorch = Boolean(
+            caps.torch ||
+            (Array.isArray(caps.fillLightMode) && caps.fillLightMode.includes('torch'))
+          );
+
+          if (hasHardwareTorch) {
             setTorchSupported(true);
             setIsTorchOn(false);
           } else {
-            setTorchSupported(false);
+            const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() as any;
+            if (supportedConstraints?.torch) {
+              try {
+                await (videoTrack as any).applyConstraints({ advanced: [{ torch: false }] });
+                setTorchSupported(true);
+                setIsTorchOn(false);
+              } catch {
+                setTorchSupported(false);
+              }
+            } else {
+              setTorchSupported(false);
+            }
           }
 
           if (caps.zoom) {
@@ -210,6 +227,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           }
         } catch (e) {
           console.warn("Failed to get camera capabilities:", e);
+          setTorchSupported(false);
         }
       }
 
@@ -324,7 +342,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     return () => {
       document.body.style.overflow = originalStyle;
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => {
+          try {
+            (track as any).applyConstraints({ advanced: [{ torch: false }] });
+          } catch {}
+          track.stop();
+        });
       }
     };
   }, [facingMode]);
@@ -377,6 +400,28 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     );
   };
 
+  const handleNativeCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      toast.loading('Memproses foto kamera HP...', { id: 'native-cam' });
+      const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.85, maxFileSizeMB: 10 });
+
+      capturedTimestampRef.current = new Date().toLocaleString('id-ID', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).replace(/\//g, '.').replace(' ', ', ');
+
+      setCapturedImage(compressed);
+      toast.success('Foto kamera HP berhasil dimuat!', { id: 'native-cam' });
+    } catch (err: any) {
+      console.error('Gagal memproses kamera HP:', err);
+      toast.error(err?.message || 'Gagal memproses foto dari kamera HP', { id: 'native-cam' });
+    }
+    e.target.value = '';
+  };
+
   const takePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
@@ -384,10 +429,14 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    if (isScreenFlashOn) {
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 300);
+    }
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
-
 
     capturedTimestampRef.current = new Date().toLocaleString('id-ID', {
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -536,19 +585,47 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {!capturedImage && (
               <>
-                {torchSupported && (
+                {torchSupported ? (
                   <button
+                    type="button"
                     onClick={toggleTorch}
-                    className={`p-2 rounded-xl transition ${isTorchOn ? 'bg-amber-100 text-amber-600' : 'text-slate-500 hover:bg-slate-100'}`}
-                    title="Toggle Flash"
+                    className={`p-2 rounded-xl transition ${isTorchOn ? 'bg-amber-100 text-amber-600 ring-2 ring-amber-400' : 'text-slate-500 hover:bg-slate-100'}`}
+                    title={isTorchOn ? "Matikan Lampu Flash LED" : "Nyalakan Lampu Flash LED"}
                   >
-                    {isTorchOn ? <Zap className="w-5 h-5 fill-amber-500" /> : <ZapOff className="w-5 h-5" />}
+                    {isTorchOn ? <Zap className="w-5 h-5 fill-amber-500 text-amber-600" /> : <ZapOff className="w-5 h-5" />}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsScreenFlashOn(prev => !prev)}
+                    className={`p-2 rounded-xl transition flex items-center gap-1 text-xs font-semibold ${isScreenFlashOn ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                    title={isScreenFlashOn ? "Matikan Flash Layar" : "Nyalakan Flash Layar (Penerang untuk iPhone / HP tanpa Flash WebRTC)"}
+                  >
+                    <Sun className={`w-5 h-5 ${isScreenFlashOn ? 'fill-amber-500 text-amber-600 animate-pulse' : ''}`} />
+                    <span className="text-[9px] hidden sm:inline">{isScreenFlashOn ? 'Layar ON' : 'Flash Layar'}</span>
                   </button>
                 )}
+
+                <label
+                  className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition cursor-pointer flex items-center gap-1"
+                  title="Gunakan Kamera Bawaan HP (Mendukung Flash Fisik HP)"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span className="text-[10px] font-bold hidden sm:inline">Kamera HP</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleNativeCameraCapture}
+                  />
+                </label>
+
                 <button
+                  type="button"
                   onClick={startCamera}
                   className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
                   title="Refresh Kamera"
@@ -556,6 +633,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                   <RefreshCw className="w-5 h-5" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
                   className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
                   title="Putar Kamera"
@@ -565,6 +643,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
               </>
             )}
             <button
+              type="button"
               onClick={onClose}
               className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
               title="Tutup"
@@ -576,6 +655,14 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
 
         <div className={`relative bg-slate-950 overflow-hidden flex items-center justify-center ${capturedImage ? '' : 'aspect-square'}`}>
+          {isFlashing && (
+            <div className="absolute inset-0 bg-white z-50 pointer-events-none transition-opacity duration-300" />
+          )}
+
+          {isScreenFlashOn && !capturedImage && (
+            <div className="absolute inset-0 border-[14px] sm:border-[22px] border-white/95 shadow-[inset_0_0_60px_rgba(255,255,255,0.9)] z-20 pointer-events-none transition-all" />
+          )}
+
           {capturedImage ? (
             <div className="relative w-full overflow-hidden">
               <img

@@ -60,6 +60,7 @@
     "express": "^5.2.1",
     "file-saver": "^2.0.5",
     "firebase": "^12.8.0",
+    "heic2any": "^0.0.4",
     "html2canvas": "^1.4.1",
     "input-otp": "1.4.2",
     "jspdf": "^2.5.2",

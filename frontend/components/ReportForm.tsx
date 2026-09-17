@@ -153,37 +153,24 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [editingFindingPhotoIdx, setEditingFindingPhotoIdx] = useState<number | null>(null);
   const abnormalSectionRef = useRef<HTMLDivElement>(null);
 
-  // Handler 4: Kompresi & penambahan foto lampiran temuan kerusakan (HTML5 Canvas 800px)
-  const handleAddFindingPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handler 4: Kompresi & penambahan foto lampiran temuan kerusakan (Maks 10MB)
+  const handleAddFindingPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error('Ukuran maksimal foto 20MB');
-        return;
+    for (const file of Array.from(files)) {
+      if (file.size > 10 * 1024 * 1024) {
+        const actualMb = (file.size / (1024 * 1024)).toFixed(1);
+        toast.error(`Foto "${file.name}" melebihi batas 10MB (${actualMb}MB).`);
+        continue;
       }
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          const MAX = 800;
-          let w = img.width;
-          let h = img.height;
-          if (w > h) { if (w > MAX) { h = (h * MAX) / w; w = MAX; } }
-          else { if (h > MAX) { w = (w * MAX) / h; h = MAX; } }
-          canvas.width = w;
-          canvas.height = h;
-          ctx?.drawImage(img, 0, 0, w, h);
-          const compressed = canvas.toDataURL('image/jpeg', 0.7);
-          setFindingPhotos((prev) => [...prev, { base64: compressed, description: '' }]);
-        };
-      };
-    });
+      try {
+        const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.65, maxFileSizeMB: 10 });
+        setFindingPhotos((prev) => [...prev, { base64: compressed, description: '' }]);
+      } catch (err: any) {
+        toast.error(err?.message || `Gagal memproses foto "${file.name}"`);
+      }
+    }
     e.target.value = '';
   };
 
@@ -678,14 +665,20 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
-      if (file.size > 60 * 1024 * 1024) return toast.error('Ukuran foto maksimal 60MB');
+      const maxMb = 10;
+      if (file.size > maxMb * 1024 * 1024) {
+        const actualMb = (file.size / (1024 * 1024)).toFixed(1);
+        return toast.error(`Ukuran foto terlalu besar (${actualMb} MB). Maksimal ukuran foto adalah ${maxMb} MB.`);
+      }
       try {
-        toast.loading('Processing...', { id: `compress-${id}` });
-        const base64 = await compressImage(file);
+        toast.loading('Memproses & mengompres foto...', { id: `compress-${id}` });
+        const base64 = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.6, maxFileSizeMB: 10 });
         setCards(prev => prev.map(c => c.id === id ? { ...c, photo: file, photoBase64: base64 } : c));
-        toast.success('Foto dimuat', { id: `compress-${id}` });
-      } catch {
-        toast.error('Gagal memuat foto', { id: `compress-${id}` });
+        toast.success('Foto berhasil dimuat', { id: `compress-${id}` });
+      } catch (err: any) {
+        console.error('Gagal memproses foto:', err);
+        const errMsg = err?.message || 'Gagal memuat foto';
+        toast.error(errMsg, { id: `compress-${id}` });
       }
     } else {
       setCards(prev => prev.map(c => c.id === id ? { ...c, photo: null, photoBase64: undefined } : c));
@@ -695,7 +688,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const handleCapture = async (id: string, base64: string) => {
     try {
       toast.loading('Compressing...', { id: `camera-${id}` });
-      const compressed = await compressBase64Image(base64, { maxWidth: 800, quality: 0.5 });
+      const compressed = await compressBase64Image(base64, { maxWidth: 1280, quality: 0.6 });
       setCards(prev => prev.map(c => c.id === id ? { ...c, photo: null, photoBase64: compressed } : c));
       toast.success('Foto ditangkap', { id: `camera-${id}` });
     } catch {
@@ -710,11 +703,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const toastId = toast.loading(`Memproses ${files.length} foto...`);
     let successCount = 0;
     let failCount = 0;
-    const MAX_SIZE = 20 * 1024 * 1024;
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit
 
     try {
       const results: { file: File; base64: string }[] = [];
-
 
       const batchSize = 3;
       for (let i = 0; i < files.length; i += batchSize) {
@@ -725,7 +717,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             return;
           }
           try {
-            const b64 = await compressImage(file);
+            const b64 = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.6, maxFileSizeMB: 10 });
             results.push({ file, base64: b64 });
             successCount++;
           } catch (err) {
@@ -736,6 +728,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
         const totalProcessed = successCount + failCount;
         toast.loading(`Memproses: ${totalProcessed} / ${files.length} foto...`, { id: toastId });
+      }
+
+      if (failCount > 0) {
+        toast.error(`${failCount} foto dilewati (melebihi batas 10MB atau format tidak didukung).`);
       }
 
       if (successCount > 0) {
