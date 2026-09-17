@@ -43,6 +43,7 @@ import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
 import { SOPEOPManagement } from '@/components/SOPEOPManagement';
 import { HSEArchiveHub } from '@/components/HSEArchiveHub';
 import { AppSidebar } from '@/components/AppSidebar';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 
@@ -333,21 +334,34 @@ export function MainApp() {
       >
         {/* Top Bar Bersih & Konsisten untuk Semua Role */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-xs px-4 sm:px-6 py-3 shrink-0 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="p-2 md:hidden bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shadow-sm cursor-pointer"
-              title="Buka Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+          {/* Sisi Kiri Header: Di Mobile tampilkan Logo Dwimitra + Tulisan Perusahaan, Di Desktop tampilkan Judul Halaman */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Khusus Layar Mobile (md:hidden): Logo Dwimitra + Nama & Subjudul Perusahaan */}
+            <div className="md:hidden flex items-center gap-2 min-w-0">
+              <img
+                src={logoDwimitra}
+                alt="PT Dwimitra Ekatama Mandiri"
+                className="w-7 h-7 object-contain shrink-0"
+              />
+              <div className="min-w-0">
+                <h2 className="text-[11.5px] font-bold text-slate-900 leading-tight whitespace-nowrap overflow-hidden text-ellipsis tracking-tight">
+                  PT Dwimitra Ekatama Mandiri
+                </h2>
+                <p className="text-[9.5px] text-slate-500 font-medium leading-tight whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
+                  Sistem Pemeliharaan Data Center
+                </p>
+              </div>
+            </div>
 
-            <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate">
-              {currentNavItem?.label || 'Dashboard'}
-            </h1>
+            {/* Khusus Layar Desktop (hidden md:block): Judul Halaman / Tab Aktif */}
+            <div className="hidden md:block">
+              <h1 className="text-base font-bold text-slate-900 truncate">
+                {currentNavItem?.label || 'Dashboard'}
+              </h1>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {userRole !== 'engineer' && !isStandby && userRole !== 'admin' && (
               <NotificationCenter
                 onSelectNotification={handleSelectNotification}
@@ -355,19 +369,31 @@ export function MainApp() {
               />
             )}
 
-            <div className="hidden sm:block text-right">
+            {/* Info user email hanya di desktop */}
+            <div className="hidden md:block text-right">
               <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
               <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
             </div>
 
+            {/* Tombol Logout hanya tampil di header Desktop (di Mobile tombol logout ada di dalam drawer sidebar) */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setLogoutModalOpen(true)}
-              className="p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
+              className="hidden md:flex p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
               title="Keluar Sesi"
             >
               <LogOut className="w-5 h-5" />
+            </motion.button>
+
+            {/* Tombol Hamburger Menu Mobile di Samping KANAN */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 md:hidden bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 rounded-xl border border-slate-200 shadow-sm cursor-pointer"
+              title="Buka Menu"
+            >
+              <Menu className="w-5 h-5" />
             </motion.button>
           </div>
         </header>

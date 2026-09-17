@@ -286,13 +286,13 @@ export function AppSidebar({
               className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] md:hidden"
             />
 
-            {/* Panel Drawer Samping Kiri */}
+            {/* Panel Drawer Samping Kanan (Mobile) */}
             <motion.div
-              initial={{ x: '-100%' }}
+              initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
+              exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed top-0 left-0 bottom-0 w-[300px] bg-white border-r border-slate-200 z-[80] md:hidden flex flex-col shadow-2xl"
+              className="fixed top-0 right-0 bottom-0 w-[290px] sm:w-[320px] bg-white border-l border-slate-200 z-[80] md:hidden flex flex-col shadow-2xl"
             >
               {/* Header Mobile Drawer */}
               <div className="px-4 py-3.5 border-b border-slate-200 flex items-center justify-between gap-2 bg-white">
@@ -310,7 +310,7 @@ export function AppSidebar({
 
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
+                  className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors shrink-0 cursor-pointer"
                   title="Tutup Menu"
                 >
                   <X className="w-4 h-4" />
@@ -320,24 +320,24 @@ export function AppSidebar({
               {/* Status Info User */}
               <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <div className="min-w-0">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Terhubung sebagai</p>
                   <p className="text-xs font-semibold text-slate-700 truncate">{user?.email}</p>
                 </div>
               </div>
 
               {/* Daftar Menu Terklasifikasi Scrollable */}
-              <div className="flex-1 overflow-y-auto p-3">
+              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
                 {renderNavSections(true)}
               </div>
 
-              {/* Tombol Logout Mobile */}
+              {/* Tombol Logout Mobile Di Dalam Sidebar */}
               <div className="p-4 border-t border-slate-200 bg-slate-50">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     onLogoutClick();
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl border border-slate-200 hover:border-rose-200 font-bold text-xs transition-all shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl border border-red-200 font-bold text-xs transition-all shadow-xs cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Keluar Sesi</span>
