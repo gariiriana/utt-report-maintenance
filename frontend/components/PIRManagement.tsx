@@ -33,7 +33,9 @@ import {
   orderBy,
   onSnapshot,
   deleteDoc,
-  doc
+  doc,
+  updateDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { PIRReportData } from '@/types/pirReportTypes';
@@ -59,7 +61,7 @@ const INDO_MONTHS = [
 ];
 
 export function PIRManagement() {
-  const { userRole, companyType: authCompanyType } = useAuth();
+  const { userRole, companyType: authCompanyType, isQcDme, user } = useAuth();
   const isK2User = userRole === 'Engineer_K2' || userRole === 'engineer_k2' || authCompanyType === 'k2';
 
   const [reports, setReports] = useState<PIRReportData[]>([]);
@@ -72,7 +74,13 @@ export function PIRManagement() {
   const [selectedSeverity, setSelectedSeverity] = useState('all');
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{
+    id: string;
+    name: string;
+    isRequested?: boolean;
+    requestedBy?: string;
+    deleteReason?: string;
+  } | null>(null);
 
   // Subscribe to PIR reports in Firestore
   useEffect(() => {
@@ -160,14 +168,45 @@ export function PIRManagement() {
     await exportPIRReportToDocx(report);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (reason?: string) => {
     if (!itemToDelete) return;
     try {
-      await deleteDoc(doc(db, 'corrective_reports', itemToDelete.id));
-      toast.success(`Laporan PIR "${itemToDelete.name}" berhasil dihapus`);
+      if (isQcDme) {
+        await deleteDoc(doc(db, 'corrective_reports', itemToDelete.id));
+        toast.success(`Laporan PIR "${itemToDelete.name}" berhasil dihapus secara permanen`);
+      } else {
+        await updateDoc(doc(db, 'corrective_reports', itemToDelete.id), {
+          deleteRequested: true,
+          deleteRequestedBy: user?.email || 'User',
+          deleteRequestedTo: 'qcdme@dme.com',
+          deleteReason: reason || 'Permohonan penghapusan PIR dari pengguna',
+          deleteRequestedAt: serverTimestamp(),
+        });
+        toast.success(`Pengajuan hapus laporan PIR "${itemToDelete.name}" berhasil dikirim ke QC DME (qcdme@dme.com)`);
+      }
     } catch (err) {
       console.error('Error deleting PIR report:', err);
-      toast.error('Gagal menghapus laporan PIR');
+      toast.error('Gagal memproses penghapusan laporan PIR');
+    } finally {
+      setItemToDelete(null);
+      setDeleteModalOpen(false);
+    }
+  };
+
+  const handleRejectDeleteRequest = async () => {
+    if (!itemToDelete) return;
+    try {
+      await updateDoc(doc(db, 'corrective_reports', itemToDelete.id), {
+        deleteRequested: false,
+        deleteRequestedBy: null,
+        deleteRequestedTo: null,
+        deleteReason: null,
+        deleteRequestedAt: null,
+      });
+      toast.success('Pengajuan hapus berhasil dibatalkan / ditolak');
+    } catch (err) {
+      console.error('Error rejecting delete request:', err);
+      toast.error('Gagal membatalkan pengajuan hapus');
     } finally {
       setItemToDelete(null);
       setDeleteModalOpen(false);
@@ -340,6 +379,14 @@ export function PIRManagement() {
                         {report.summary}
                       </p>
                     )}
+
+                    {/* Delete Requested Badge */}
+                    {(report as any).deleteRequested && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] font-semibold">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Menunggu Persetujuan Hapus QC DME</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions Footer */}
@@ -381,14 +428,30 @@ export function PIRManagement() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => {
-                        setItemToDelete({ id: report.id!, name: report.incidentName || 'Laporan PIR' });
+                        setItemToDelete({
+                          id: report.id!,
+                          name: report.incidentName || 'Laporan PIR',
+                          isRequested: (report as any).deleteRequested,
+                          requestedBy: (report as any).deleteRequestedBy,
+                          deleteReason: (report as any).deleteReason,
+                        });
                         setDeleteModalOpen(true);
                       }}
-                      className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-600 text-[10px] font-bold transition cursor-pointer"
-                      title="Hapus Laporan PIR"
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold transition cursor-pointer ${
+                        (report as any).deleteRequested
+                          ? isQcDme
+                            ? 'bg-red-100 hover:bg-red-200 text-red-700'
+                            : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
+                          : 'bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-600'
+                      }`}
+                      title={
+                        isQcDme
+                          ? ((report as any).deleteRequested ? 'Review Permohonan Hapus (QC DME)' : 'Hapus Laporan PIR Permanen')
+                          : ((report as any).deleteRequested ? 'Pengajuan Hapus Menunggu QC DME' : 'Ajukan Hapus ke QC DME (qcdme@dme.com)')
+                      }
                     >
                       <Trash2 className="w-4 h-4 mb-0.5" />
-                      <span>Hapus</span>
+                      <span>{(report as any).deleteRequested ? (isQcDme ? 'Review Hapus' : 'Diajukan') : (isQcDme ? 'Hapus' : 'Ajukan')}</span>
                     </motion.button>
                   </div>
                 </motion.div>
@@ -418,7 +481,13 @@ export function PIRManagement() {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
+        onRejectRequest={handleRejectDeleteRequest}
         documentName={itemToDelete?.name || 'Laporan PIR'}
+        isAdmin={isQcDme}
+        isRequested={itemToDelete?.isRequested}
+        requestedBy={itemToDelete?.requestedBy}
+        deleteReason={itemToDelete?.deleteReason}
+        requireReason={!isQcDme}
       />
     </div>
   );

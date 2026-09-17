@@ -21,6 +21,7 @@ import {
   Footer,
   PageNumber,
   UnderlineType,
+  PageBreak,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { SOPDocumentData, EOPDocumentData } from '@/types/sopEopTypes';
@@ -51,6 +52,15 @@ const CELL_NO_BORDER = {
   bottom: BORDER_NONE,
   left: BORDER_NONE,
   right: BORDER_NONE,
+};
+
+const TABLE_NO_BORDER = {
+  top: BORDER_NONE,
+  bottom: BORDER_NONE,
+  left: BORDER_NONE,
+  right: BORDER_NONE,
+  insideHorizontal: BORDER_NONE,
+  insideVertical: BORDER_NONE,
 };
 
 const CELL_BORDER_DIVIDER_TOP = {
@@ -252,7 +262,11 @@ function createSectionBanner(titleEn: string, titleId?: string, isEOP = false): 
   if (titleId) {
     textChildren.push(
       new TextRun({
-        text: `  ${titleId}`,
+        text: '',
+        break: 1,
+      }),
+      new TextRun({
+        text: titleId,
         bold: true,
         italics: true,
         color: COLOR_SUBTITLE_BANNER,
@@ -264,8 +278,10 @@ function createSectionBanner(titleEn: string, titleId?: string, isEOP = false): 
 
   return new Table({
     width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    borders: TABLE_NO_BORDER,
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
@@ -274,7 +290,8 @@ function createSectionBanner(titleEn: string, titleId?: string, isEOP = false): 
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
             children: [
               new Paragraph({
-                alignment: AlignmentType.LEFT,
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 20, after: 20, line: 240 },
                 children: textChildren,
               }),
             ],
@@ -303,7 +320,7 @@ function createDocumentHeader(
     children: [
       new Table({
         width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-        borders: CELL_NO_BORDER,
+        borders: TABLE_NO_BORDER,
         rows: [
           new TableRow({
             children: [
@@ -458,7 +475,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     ['CI Description*', 'Deskripsi CI*'],
     ['Capacity', 'Kapasitas'],
     ['Serial Number', 'Nomor Seri'],
-    ['MFD', 'Tahun MFD'],
+    ['MFD', 'Tahun Pembuatan (MFD)'],
     ['Product Name', 'Nama Produk'],
     ['Model', 'Model'],
     ['Room', 'Ruangan'],
@@ -466,6 +483,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   const equipHeaderRow = new TableRow({
     tableHeader: true,
+    cantSplit: true,
     children: equipHeaderLabels.map(
       ([en, id], idx) =>
         new TableCell({
@@ -498,6 +516,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     ];
 
     return new TableRow({
+      cantSplit: true,
       children: vals.map(
         (val, colIdx) =>
           new TableCell({
@@ -506,7 +525,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
             margins: { top: 40, bottom: 40, left: 40, right: 40 },
             children: [
               new Paragraph({
-                alignment: colIdx === 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
+                alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
                     text: val,
@@ -553,23 +572,52 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     })
   );
 
-  children.push(
-    new Paragraph({
-      spacing: { after: 20 },
-      children: [
-        new TextRun({ text: 'Executed by (Name)                    Job title', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Dilaksanakan oleh (Nama)              Jabatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
+  const executedByHeaderRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: [
+      new TableCell({
+        width: { size: 4395, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Executed by (Name)', size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Dilaksanakan oleh (Nama)', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 4626, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Job title', size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Jabatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
 
   // Table executor [4395, 4626]
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      borders: TABLE_NO_BORDER,
       rows: [
+        executedByHeaderRow,
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 4395, type: WidthType.DXA },
@@ -713,16 +761,42 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 5 – Referenced Documents / Attachments', 'Seksi 5 – Dokumen Referensi / Lampiran', false));
   children.push(createSpacer(40));
 
-  children.push(
-    new Paragraph({
-      spacing: { after: 20 },
-      children: [
-        new TextRun({ text: 'Document Name                                                           Document Number', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Nama Dokumen                                                            Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
+  const sopRefHeaderRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: [
+      new TableCell({
+        width: { size: 6374, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Document Name', size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Nama Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 2642, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Document Number', size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
 
   const refDocs = (data.referencedDocuments && data.referencedDocuments.length > 0)
     ? data.referencedDocuments
@@ -730,6 +804,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   const refRows = refDocs.map((rd) =>
     new TableRow({
+      cantSplit: true,
       children: [
         new TableCell({
           width: { size: 6374, type: WidthType.DXA },
@@ -750,7 +825,8 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      rows: refRows,
+      borders: TABLE_NO_BORDER,
+      rows: [sopRefHeaderRow, ...refRows],
     })
   );
   children.push(createSpacer(80));
@@ -816,7 +892,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ),
     })
   );
-  children.push(createSpacer(80));
+  children.push(createSpacer(60));
 
   // --------------------------------------------------------------------------
   // SECTION 7: Prerequisites
@@ -824,16 +900,57 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 7 – Prerequisites', 'Seksi 7 – Prasyarat', false));
   children.push(createSpacer(40));
 
-  children.push(
-    new Paragraph({
-      spacing: { after: 20 },
-      children: [
-        new TextRun({ text: 'Requirements                                                  Time           Initial', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Persyaratan                                                   Waktu          Inisial', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
+  const prereqHeaderRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: [
+      new TableCell({
+        width: { size: 6091, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Requirements', bold: true, underline: {}, size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 1842, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Time', bold: true, underline: {}, size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Waktu', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 1083, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Intial', bold: true, underline: {}, size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Inisial', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
 
   const prereqs = (data.prerequisites && data.prerequisites.length > 0)
     ? data.prerequisites
@@ -850,10 +967,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     const requirementId = ensureBilingualTranslation(requirementEn, pr.requirementId);
 
     return new TableRow({
+      cantSplit: true,
       children: [
         new TableCell({
           width: { size: 6091, type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [
             new Paragraph({
@@ -867,14 +985,14 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
         }),
         new TableCell({
           width: { size: 1842, type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_BOTTOM,
-          margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          borders: CELL_BORDERS_BOX,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [new Paragraph({ children: [new TextRun({ text: pr.time || '', size: 18, font: FONT_BODY })] })],
         }),
         new TableCell({
           width: { size: 1083, type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_BOTTOM,
-          margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          borders: CELL_BORDERS_BOX,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [new Paragraph({ children: [new TextRun({ text: pr.initial || '', size: 18, font: FONT_BODY })] })],
         }),
       ],
@@ -884,10 +1002,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      rows: prereqRows,
+      borders: TABLE_NO_BORDER,
+      rows: [prereqHeaderRow, ...prereqRows],
     })
   );
-  children.push(createSpacer(80));
+  children.push(createSpacer(60));
 
   // --------------------------------------------------------------------------
   // SECTION 8: Dry Run
@@ -897,78 +1016,93 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   children.push(
     new Paragraph({
-      spacing: { after: 20 },
+      spacing: { after: 30 },
       children: [
-        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY }),
+        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY, bold: true, underline: {} }),
         new TextRun({ text: '', break: 1 }),
         new TextRun({ text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
       ],
     })
   );
 
-  const dryRunData = data.dryRun || { jobTitle: '-', name: '-', date: '-' };
+  const dryRun = data.dryRun;
+  const hasDryRunValues = !!(dryRun && ((dryRun.name && dryRun.name !== '-' && dryRun.name.trim() !== '') || (dryRun.date && dryRun.date !== '-' && dryRun.date.trim() !== '')));
+
+  const dryRunRows: TableRow[] = [
+    new TableRow({
+      cantSplit: true,
+      children: [
+        ['Job Title:', 'Jabatan:'],
+        ['Name:', 'Nama:'],
+        ['Signature:', 'Tanda Tangan:'],
+        ['Date:', 'Tanggal:'],
+      ].map(([en, id]) =>
+        new TableCell({
+          width: { size: 2254, type: WidthType.DXA },
+          borders: CELL_NO_BORDER,
+          margins: { top: 30, bottom: 30, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              spacing: { after: 0, line: 240 },
+              children: [
+                new TextRun({ text: en, size: 20, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ],
+            }),
+          ],
+        })
+      ),
+    }),
+  ];
+
+  if (hasDryRunValues && dryRun) {
+    dryRunRows.push(
+      new TableRow({
+        cantSplit: true,
+        children: [
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 30, bottom: 30, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: (dryRun.jobTitle && dryRun.jobTitle !== '-') ? dryRun.jobTitle : '', size: 18, font: FONT_BODY })] })],
+          }),
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 30, bottom: 30, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: (dryRun.name && dryRun.name !== '-') ? dryRun.name : '', size: 18, font: FONT_BODY })] })],
+          }),
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 30, bottom: 30, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
+          }),
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 30, bottom: 30, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: (dryRun.date && dryRun.date !== '-') ? dryRun.date : '', size: 18, font: FONT_BODY })] })],
+          }),
+        ],
+      })
+    );
+  }
 
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      rows: [
-        new TableRow({
-          tableHeader: true,
-          children: [
-            ['Job Title:', 'Jabatan:'],
-            ['Name:', 'Nama:'],
-            ['Signature:', 'Tanda Tangan:'],
-            ['Date:', 'Tanggal:'],
-          ].map(([en, id]) =>
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_BORDER_DIVIDER_BOTTOM,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: createBilingualRuns(en, id, { sizeEn: 20, sizeId: 18, isHeader: true }),
-                }),
-              ],
-            })
-          ),
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: dryRunData.jobTitle || '-', size: 18, font: FONT_BODY })] })],
-            }),
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: dryRunData.name || '-', size: 18, font: FONT_BODY })] })],
-            }),
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
-            }),
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: dryRunData.date || '-', size: 18, font: FONT_BODY })] })],
-            }),
-          ],
-        }),
-      ],
+      borders: TABLE_NO_BORDER,
+      rows: dryRunRows,
     })
   );
-  children.push(createSpacer(80));
+  children.push(createSpacer(60));
 
   // --------------------------------------------------------------------------
-  // SECTION 9: Maintenance Period
+  // SECTION 9: Maintenance Periode
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 9 – Maintenance Period', 'Seksi 9 – Periode Pemeliharaan', false));
+  children.push(createSectionBanner('Section 9 – Maintenance Periode', 'Seksi 9 – Periode Pemeliharaan', false));
   children.push(createSpacer(40));
 
   const is6Months = data.maintenancePeriod === '6_months';
@@ -977,17 +1111,20 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      borders: TABLE_NO_BORDER,
       rows: [
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 4508, type: WidthType.DXA },
-              borders: CELL_BORDER_DIVIDER_BOTTOM,
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              borders: CELL_NO_BORDER,
+              margins: { top: 40, bottom: 40, left: 100, right: 80 },
               children: [
                 new Paragraph({
+                  spacing: { after: 0, line: 240 },
                   children: [
-                    new TextRun({ text: `${is6Months ? '☒ ' : '☐ '}6 Months`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
+                    new TextRun({ text: `${isAnnual ? '☐ ' : '■ '} 6 Months`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
                     new TextRun({ text: '', break: 1 }),
                     new TextRun({ text: '    6 Bulan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                   ],
@@ -996,12 +1133,13 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
             }),
             new TableCell({
               width: { size: 4508, type: WidthType.DXA },
-              borders: CELL_BORDER_DIVIDER_BOTTOM,
-              margins: { top: 40, bottom: 40, left: 80, right: 80 },
+              borders: CELL_NO_BORDER,
+              margins: { top: 40, bottom: 40, left: 100, right: 80 },
               children: [
                 new Paragraph({
+                  spacing: { after: 0, line: 240 },
                   children: [
-                    new TextRun({ text: `${isAnnual ? '☒ ' : '☐ '}Annual`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
+                    new TextRun({ text: `${is6Months ? '☐ ' : '■ '} Annual`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
                     new TextRun({ text: '', break: 1 }),
                     new TextRun({ text: '    Tahunan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                   ],
@@ -1013,11 +1151,12 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ],
     })
   );
-  children.push(createSpacer(80));
+  children.push(createSpacer(60));
 
   // --------------------------------------------------------------------------
-  // SECTION 10: Work Instruction / Procedures
+  // SECTION 10: Work Instruction / Procedures (Starts on a new page matching Master SOP)
   // --------------------------------------------------------------------------
+  children.push(new Paragraph({ children: [new PageBreak()] }));
   children.push(createSectionBanner('Section 10 – Work Instruction / Procedures', 'Seksi 10 – Instruksi / Prosedur Kerja', false));
   children.push(createSpacer(40));
 
@@ -1324,21 +1463,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(createSpacer(60));
 
   // --------------------------------------------------------------------------
-  // SECTION 13: Approval
+  // SECTION 13: Approval (Starts on a new page matching Master SOP)
   // --------------------------------------------------------------------------
+  children.push(new Paragraph({ children: [new PageBreak()] }));
   children.push(createSectionBanner('Section 13 – Approval', 'Seksi 13 – Persetujuan', false));
   children.push(createSpacer(40));
-
-  children.push(
-    new Paragraph({
-      spacing: { after: 20 },
-      children: [
-        new TextRun({ text: 'Job Title                      Name                           Signature                     Date', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Jabatan                        Nama                           Tanda Tangan                  Tanggal', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
 
   const defaultApprovals = [
     { roleEn: 'Project Manager', roleId: 'Manajer Proyek', name: 'Dwi Tasmiyadi' },
@@ -1349,29 +1478,109 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
 
   const approvalList = (data.approvals && data.approvals.length > 0) ? data.approvals : defaultApprovals;
 
-  children.push(
-    new Table({
-      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      rows: approvalList.map((app) =>
-        new TableRow({
+  const sopColWidths = [2700, 2700, 2000, 1616];
+
+  const sopApprovalHeaderRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: [
+      { en: 'Job Title', id: 'Jabatan' },
+      { en: 'Name', id: 'Nama' },
+      { en: 'Signature', id: 'Tanda Tangan' },
+      { en: 'Date', id: 'Tanggal' },
+    ].map((col, idx) =>
+      new TableCell({
+        width: { size: sopColWidths[idx], type: WidthType.DXA },
+        borders: {
+          top: BORDER_NONE,
+          bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+          left: BORDER_NONE,
+          right: BORDER_NONE,
+        },
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({ text: col.en, bold: true, underline: {}, size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: col.id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      })
+    ),
+  });
+
+  const sopApprovalDataRows = approvalList.map((app) =>
+    new TableRow({
+      cantSplit: true,
+      children: [
+        new TableCell({
+          width: { size: sopColWidths[0], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            right: BORDER_NONE,
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [
-            new TableCell({
-              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-              borders: CELL_BORDER_DIVIDER_BOTTOM,
-              margins: { top: 50, bottom: 50, left: 60, right: 60 },
+            new Paragraph({
               children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: `${app.roleEn}          ${app.name}`, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                    new TextRun({ text: '', break: 1 }),
-                    new TextRun({ text: `${app.roleId}          ${app.name}`, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                  ],
-                }),
+                new TextRun({ text: app.roleEn || '', size: 19, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: app.roleId || '', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
               ],
             }),
           ],
-        })
-      ),
+        }),
+        new TableCell({
+          width: { size: sopColWidths[1], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: BORDER_NONE,
+            right: BORDER_NONE,
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: app.name || '', size: 19, font: FONT_BODY }),
+              ],
+            }),
+          ],
+        }),
+        new TableCell({
+          width: { size: sopColWidths[2], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: BORDER_NONE,
+            right: BORDER_NONE,
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
+          children: [new Paragraph({ children: [] })],
+        }),
+        new TableCell({
+          width: { size: sopColWidths[3], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: BORDER_NONE,
+            right: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
+          children: [new Paragraph({ children: [] })],
+        }),
+      ],
+    })
+  );
+
+  children.push(
+    new Table({
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: [sopApprovalHeaderRow, ...sopApprovalDataRows],
     })
   );
   children.push(createSpacer(80));
@@ -1521,24 +1730,51 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 2 – Referenced Document / Attachments', undefined, true));
   children.push(createSpacer(40));
 
-  children.push(
-    new Paragraph({
-      spacing: { after: 20 },
-      children: [
-        new TextRun({ text: 'Document Name                                                           Document Number', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Nama Dokumen                                                            Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
-
   // EOP master column widths: [6516, 2500] = 9016
+  const eopRefDocHeaderRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: [
+      new TableCell({
+        width: { size: 6516, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Document Name', size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Nama Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 2500, type: WidthType.DXA },
+        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: 'Document Number', size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: 'Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
   const refDocs = (data.referencedDocuments && data.referencedDocuments.length > 0)
     ? data.referencedDocuments
     : [{ name: '-', number: '-' }];
 
   const refDocRows = refDocs.map((docItem) =>
     new TableRow({
+      cantSplit: true,
       children: [
         new TableCell({
           width: { size: 6516, type: WidthType.DXA },
@@ -1559,7 +1795,8 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      rows: refDocRows,
+      borders: TABLE_NO_BORDER,
+      rows: [eopRefDocHeaderRow, ...refDocRows],
     })
   );
   children.push(createSpacer(80));
@@ -1903,70 +2140,82 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
 
   children.push(
     new Paragraph({
-      spacing: { after: 20 },
+      spacing: { after: 40 },
       children: [
-        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY }),
+        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY, bold: true, underline: {} }),
         new TextRun({ text: '', break: 1 }),
         new TextRun({ text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
       ],
     })
   );
 
-  const eopDryRun = data.dryRun || { jobTitle: '-', name: '-', date: '-' };
+  const eopDryRun = data.dryRun;
+  const hasDryRunValues = !!(eopDryRun && ((eopDryRun.name && eopDryRun.name !== '-' && eopDryRun.name.trim() !== '') || (eopDryRun.date && eopDryRun.date !== '-' && eopDryRun.date.trim() !== '')));
+
+  const eopDryRunRows: TableRow[] = [
+    new TableRow({
+      children: [
+        ['Job Title:', 'Jabatan:'],
+        ['Name:', 'Nama:'],
+        ['Signature:', 'Tanda Tangan:'],
+        ['Date:', 'Tanggal:'],
+      ].map(([en, id]) =>
+        new TableCell({
+          width: { size: 2254, type: WidthType.DXA },
+          borders: CELL_NO_BORDER,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: en, size: 20, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ],
+            }),
+          ],
+        })
+      ),
+    }),
+  ];
+
+  if (hasDryRunValues && eopDryRun) {
+    eopDryRunRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 40, bottom: 40, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: (eopDryRun.jobTitle && eopDryRun.jobTitle !== '-') ? eopDryRun.jobTitle : '', size: 18, font: FONT_BODY })] })],
+          }),
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 40, bottom: 40, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: (eopDryRun.name && eopDryRun.name !== '-') ? eopDryRun.name : '', size: 18, font: FONT_BODY })] })],
+          }),
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 40, bottom: 40, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
+          }),
+          new TableCell({
+            width: { size: 2254, type: WidthType.DXA },
+            borders: CELL_NO_BORDER,
+            margins: { top: 40, bottom: 40, left: 60, right: 60 },
+            children: [new Paragraph({ children: [new TextRun({ text: (eopDryRun.date && eopDryRun.date !== '-') ? eopDryRun.date : '', size: 18, font: FONT_BODY })] })],
+          }),
+        ],
+      })
+    );
+  }
 
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      rows: [
-        new TableRow({
-          tableHeader: true,
-          children: [
-            ['Job Title:', 'Jabatan:'],
-            ['Name:', 'Nama:'],
-            ['Signature:', 'Tanda Tangan:'],
-            ['Date:', 'Tanggal:'],
-          ].map(([en, id]) =>
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_BORDER_DIVIDER_BOTTOM,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: createBilingualRuns(en, id, { sizeEn: 20, sizeId: 18, isHeader: true }),
-                }),
-              ],
-            })
-          ),
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: eopDryRun.jobTitle || '-', size: 18, font: FONT_BODY })] })],
-            }),
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: eopDryRun.name || '-', size: 18, font: FONT_BODY })] })],
-            }),
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
-            }),
-            new TableCell({
-              width: { size: 2254, type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
-              margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: eopDryRun.date || '-', size: 18, font: FONT_BODY })] })],
-            }),
-          ],
-        }),
-      ],
+      borders: TABLE_NO_BORDER,
+      rows: eopDryRunRows,
     })
   );
   children.push(createSpacer(80));
@@ -1974,19 +2223,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 7: Approval
   // --------------------------------------------------------------------------
+  children.push(new Paragraph({ children: [new PageBreak()] }));
   children.push(createSectionBanner('Section 7 – Approval', undefined, true));
   children.push(createSpacer(40));
-
-  children.push(
-    new Paragraph({
-      spacing: { after: 20 },
-      children: [
-        new TextRun({ text: 'Job Title                      Name                           Signature                     Date', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Jabatan                        Nama                           Tanda Tangan                  Tanggal', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
-    })
-  );
 
   const eopDefaultApprovals = [
     { roleEn: 'Project Manager', roleId: 'Manajer Proyek', name: 'Dwi Tasmiyadi' },
@@ -1997,29 +2236,113 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
 
   const eopApprovalList = (data.approvals && data.approvals.length > 0) ? data.approvals : eopDefaultApprovals;
 
-  children.push(
-    new Table({
-      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      rows: eopApprovalList.map((app) =>
-        new TableRow({
+  const eopColWidths = [2700, 2700, 2000, 1616];
+
+  const eopApprovalHeaderRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: [
+      { en: 'Job Title', id: 'Jabatan' },
+      { en: 'Name', id: 'Nama' },
+      { en: 'Signature', id: 'Tanda Tangan' },
+      { en: 'Date', id: 'Tanggal' },
+    ].map((col, idx) =>
+      new TableCell({
+        width: { size: eopColWidths[idx], type: WidthType.DXA },
+        borders: {
+          top: BORDER_NONE,
+          bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+          left: BORDER_NONE,
+          right: BORDER_NONE,
+        },
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({ text: col.en, bold: true, underline: {}, size: 20, font: FONT_BODY }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: col.id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
+          }),
+        ],
+      })
+    ),
+  });
+
+  const eopApprovalDataRows = eopApprovalList.map((app) =>
+    new TableRow({
+      cantSplit: true,
+      children: [
+        // Col 1: Job Title
+        new TableCell({
+          width: { size: eopColWidths[0], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            right: BORDER_NONE,
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [
-            new TableCell({
-              width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-              borders: CELL_BORDER_DIVIDER_BOTTOM,
-              margins: { top: 50, bottom: 50, left: 60, right: 60 },
+            new Paragraph({
               children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: `${app.roleEn}          ${app.name}`, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                    new TextRun({ text: '', break: 1 }),
-                    new TextRun({ text: `${app.roleId}          ${app.name}`, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                  ],
-                }),
+                new TextRun({ text: app.roleEn || '', size: 19, font: FONT_BODY }),
+                new TextRun({ text: '', break: 1 }),
+                new TextRun({ text: app.roleId || '', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
               ],
             }),
           ],
-        })
-      ),
+        }),
+        // Col 2: Name (NOT repeated!)
+        new TableCell({
+          width: { size: eopColWidths[1], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: BORDER_NONE,
+            right: BORDER_NONE,
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: app.name || '', size: 19, font: FONT_BODY }),
+              ],
+            }),
+          ],
+        }),
+        // Col 3: Signature
+        new TableCell({
+          width: { size: eopColWidths[2], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: BORDER_NONE,
+            right: BORDER_NONE,
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
+          children: [new Paragraph({ children: [] })],
+        }),
+        // Col 4: Date
+        new TableCell({
+          width: { size: eopColWidths[3], type: WidthType.DXA },
+          borders: {
+            top: BORDER_NONE,
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+            left: BORDER_NONE,
+            right: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
+          },
+          margins: { top: 50, bottom: 50, left: 60, right: 60 },
+          children: [new Paragraph({ children: [] })],
+        }),
+      ],
+    })
+  );
+
+  children.push(
+    new Table({
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      rows: [eopApprovalHeaderRow, ...eopApprovalDataRows],
     })
   );
   children.push(createSpacer(80));

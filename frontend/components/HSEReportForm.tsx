@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-    Camera, Upload, Edit2, FileDown,
+    Camera, Upload, Edit2, FileDown, FileText,
     CheckSquare, Square, User, MapPin, Users, Briefcase,
     Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2, ShieldCheck
 } from 'lucide-react';
@@ -54,6 +54,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     const [sioPhotos, setSioPhotos] = useState<PhotoItem[]>([]);
     const [siloFile, setSiloFile] = useState<File | null>(null);
     const [siloPdfUrl, setSiloPdfUrl] = useState('');
+    const [msdsFile, setMsdsFile] = useState<File | null>(null);
+    const [msdsPdfUrl, setMsdsPdfUrl] = useState('');
 
     const [editingPhoto, setEditingPhoto] = useState<PhotoItem | null>(null);
 
@@ -103,6 +105,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             }
                         }
                         if (data.siloPdfUrl) setSiloPdfUrl(data.siloPdfUrl);
+                        if (data.msdsPdfUrl) setMsdsPdfUrl(data.msdsPdfUrl);
 
                         const photosSnap = await getDocs(collection(db, `hse/${editingData.id}/photos`));
                         const fetchedPhotos: PhotoItem[] = photosSnap.docs
@@ -165,6 +168,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     if (saved.sioExpiryDate) setSioExpiryDate(saved.sioExpiryDate);
                     if (saved.sioPhotos) setSioPhotos(saved.sioPhotos);
                     if (saved.siloPdfUrl) setSiloPdfUrl(saved.siloPdfUrl);
+                    if (saved.msdsPdfUrl) setMsdsPdfUrl(saved.msdsPdfUrl);
+                    if (saved.msdsFile) setMsdsFile(saved.msdsFile);
                 } catch (err) {
                     console.error('Failed to load HSE draft:', err);
                 }
@@ -208,6 +213,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     label: p.label
                 })),
                 siloPdfUrl,
+                msdsPdfUrl,
+                msdsFile,
                 timestamp: new Date().getTime()
             };
             try {
@@ -221,7 +228,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         return () => clearTimeout(timeoutId);
     }, [
         aktivitas, lokasi, personil, pic, anggota, inspectorK3, maintenanceCategory, checklist, photos,
-        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloPdfUrl,
+        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloPdfUrl, msdsPdfUrl, msdsFile,
         user?.email, editingData, isDraftLoading, isExporting, mode
     ]);
 
@@ -238,7 +245,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         }
     }, [
         aktivitas, lokasi, personil, pic, anggota, inspectorK3, maintenanceCategory, checklist, photos,
-        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloFile
+        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloFile, msdsFile
     ]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -279,6 +286,11 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             return next;
         });
+
+        if ((key === 'dokumen' && checklist.dokumen) || (key === 'msds' && checklist.msds)) {
+            setMsdsFile(null);
+            setMsdsPdfUrl('');
+        }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, label?: string) => {
@@ -379,7 +391,9 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 }))
             },
             siloFile: siloFile || undefined,
-            siloPdfUrl: siloPdfUrl || undefined
+            siloPdfUrl: siloPdfUrl || undefined,
+            msdsFile: (checklist.msds && msdsFile) ? msdsFile : undefined,
+            msdsPdfUrl: (checklist.msds && msdsPdfUrl) ? msdsPdfUrl : undefined
         };
     };
 
@@ -562,6 +576,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 setSioPhotos([]);
                 setSiloFile(null);
                 setSiloPdfUrl('');
+                setMsdsFile(null);
+                setMsdsPdfUrl('');
                 
                 setIsExported(false);
 
@@ -595,6 +611,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             setSioPhotos([]);
             setSiloFile(null);
             setSiloPdfUrl('');
+            setMsdsFile(null);
+            setMsdsPdfUrl('');
             
             if (user?.email) {
                 draftStorage.remove(`hse_draft_${mode}_${user.email}`).catch(console.error);
@@ -788,16 +806,109 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                             className="ml-8 space-y-2 border-l-2 border-emerald-200 pl-4 py-1 overflow-hidden"
                                                         >
                                                             {item.subItems.map(sub => (
-                                                                <button 
-                                                                    key={sub.key} 
-                                                                    onClick={() => toggleCheck(sub.key)}
-                                                                    className={`flex items-center gap-3 text-left group transition-all cursor-pointer ${checklist[sub.key] ? 'text-emerald-800 font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-                                                                >
-                                                                    <div className={`w-4 h-4 rounded-full flex items-center justify-center border transition-all ${checklist[sub.key] ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-300 group-hover:border-slate-400'}`}>
-                                                                        {checklist[sub.key] && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                                                                    </div>
-                                                                    <span className="text-[11px] font-semibold">{sub.label}</span>
-                                                                </button>
+                                                                <div key={sub.key} className="space-y-1.5">
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => toggleCheck(sub.key)}
+                                                                        className={`flex items-center gap-3 text-left group transition-all cursor-pointer ${checklist[sub.key] ? 'text-emerald-800 font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                                                                    >
+                                                                        <div className={`w-4 h-4 rounded-full flex items-center justify-center border transition-all ${checklist[sub.key] ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-300 group-hover:border-slate-400'}`}>
+                                                                            {checklist[sub.key] && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                                                        </div>
+                                                                        <span className="text-[11px] font-semibold">{sub.label}</span>
+                                                                    </button>
+
+                                                                    {sub.key === 'msds' && checklist.msds && (
+                                                                        <AnimatePresence>
+                                                                            <motion.div
+                                                                                initial={{ opacity: 0, height: 0 }}
+                                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                                exit={{ opacity: 0, height: 0 }}
+                                                                                className="ml-7 pt-1 pb-1 overflow-hidden"
+                                                                            >
+                                                                                {msdsFile || msdsPdfUrl ? (
+                                                                                    <div className="p-3 bg-emerald-50/90 border border-emerald-200 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+                                                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                                                            <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg shrink-0">
+                                                                                                <FileText className="w-4 h-4" />
+                                                                                            </div>
+                                                                                            <div className="min-w-0">
+                                                                                                <p className="text-[11px] font-bold text-slate-900 truncate max-w-[170px] sm:max-w-[240px]">
+                                                                                                    {msdsFile ? msdsFile.name : 'DOKUMEN MSDS TERSEDIA'}
+                                                                                                </p>
+                                                                                                <p className="text-[9px] text-emerald-700 font-medium">
+                                                                                                    {msdsFile ? `${(msdsFile.size / (1024 * 1024)).toFixed(2)} MB • PDF siap digabung` : 'PDF siap digabung'}
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                                                            <label className="text-[10px] font-bold text-emerald-800 hover:text-emerald-900 bg-white border border-emerald-200 hover:border-emerald-300 px-2 py-1 rounded-md cursor-pointer transition shadow-2xs">
+                                                                                                Ganti
+                                                                                                <input
+                                                                                                    type="file"
+                                                                                                    accept="application/pdf"
+                                                                                                    className="hidden"
+                                                                                                    onChange={(e) => {
+                                                                                                        const file = e.target.files?.[0];
+                                                                                                        if (file) {
+                                                                                                            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                                                                                                                toast.error('File harus berformat PDF');
+                                                                                                                return;
+                                                                                                            }
+                                                                                                            setMsdsFile(file);
+                                                                                                            toast.success(`File MSDS dipilih: ${file.name}`);
+                                                                                                        }
+                                                                                                    }}
+                                                                                                />
+                                                                                            </label>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={(e) => {
+                                                                                                    e.stopPropagation();
+                                                                                                    setMsdsFile(null);
+                                                                                                    setMsdsPdfUrl('');
+                                                                                                }}
+                                                                                                className="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-white border border-rose-200 hover:border-rose-300 px-2 py-1 rounded-md cursor-pointer transition shadow-2xs"
+                                                                                            >
+                                                                                                Hapus
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <label className="flex items-center gap-2.5 p-2.5 bg-slate-50/90 border border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition group">
+                                                                                        <div className="p-1.5 bg-white border border-slate-200 group-hover:border-emerald-300 rounded-lg text-slate-500 group-hover:text-emerald-600 transition shrink-0">
+                                                                                            <Upload className="w-3.5 h-3.5" />
+                                                                                        </div>
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            <p className="text-[10px] font-bold text-slate-700 group-hover:text-emerald-800 uppercase tracking-tight">
+                                                                                                Unggah File MSDS (PDF) <span className="text-[9px] font-normal lowercase text-slate-500">(opsional)</span>
+                                                                                            </p>
+                                                                                            <p className="text-[9px] text-slate-500 group-hover:text-emerald-600">
+                                                                                                Lampiran PDF akan digabung di akhir laporan inspeksi
+                                                                                            </p>
+                                                                                        </div>
+                                                                                        <input
+                                                                                            type="file"
+                                                                                            accept="application/pdf"
+                                                                                            className="hidden"
+                                                                                            onChange={(e) => {
+                                                                                                const file = e.target.files?.[0];
+                                                                                                if (file) {
+                                                                                                    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                                                                                                        toast.error('File harus berformat PDF');
+                                                                                                        return;
+                                                                                                    }
+                                                                                                    setMsdsFile(file);
+                                                                                                    toast.success(`File MSDS dipilih: ${file.name}`);
+                                                                                                }
+                                                                                            }}
+                                                                                        />
+                                                                                    </label>
+                                                                                )}
+                                                                            </motion.div>
+                                                                        </AnimatePresence>
+                                                                    )}
+                                                                </div>
                                                             ))}
                                                         </motion.div>
                                                     )}

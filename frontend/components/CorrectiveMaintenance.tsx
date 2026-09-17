@@ -216,8 +216,7 @@ const INDO_MONTHS = [
 ];
 
 export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: CorrectiveMaintenanceProps) {
-    const { user, userRole } = useAuth();
-    const isQcDme = userRole === 'qc_dme';
+    const { user, userRole, isQcDme } = useAuth();
     const isAdmin = userRole === 'admin' || isQcDme;
     const isAuthorizedRole = isAdmin || userRole === 'engineer' || userRole === 'standby_engineer';
 
@@ -536,9 +535,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         };
     }, [user]);
 
-    // Handler Hapus Dokumen Predictive Report
+    // Handler Hapus Dokumen Predictive Report (Khusus QC DME qcdme@dme.com)
     const handleDeletePredictiveReport = async (predId: string, sourceDocId?: string) => {
-        if (!window.confirm('Yakin ingin menghapus dokumen Laporan Predictive Maintenance ini?')) return;
+        if (!isQcDme) {
+            toast.error('Hanya akun QC DME (qcdme@dme.com) yang berwenang menghapus Laporan Predictive secara permanen.');
+            return;
+        }
+        if (!window.confirm('Yakin ingin menghapus dokumen Laporan Predictive Maintenance ini secara permanen?')) return;
         const toastId = toast.loading('Menghapus Laporan Predictive...');
         try {
             await deleteDoc(doc(db, 'predictive_reports', predId));
@@ -2440,16 +2443,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         >
                                                             <Download className="w-3.5 h-3.5" />
                                                         </button>
-                                                        {isAuthorizedRole && (
+                                                        {isQcDme && (
                                                             <button
                                                                 type="button"
                                                                 onClick={async () => {
-                                                                    if (!window.confirm('Hapus laporan periodik ini?')) return;
+                                                                    if (!window.confirm('Hapus laporan periodik ini secara permanen?')) return;
                                                                     await deleteDoc(doc(db, 'periodic_predictive_reports', prep.id));
-                                                                    toast.success('Laporan periodik berhasil dihapus');
+                                                                    toast.success('Laporan periodik berhasil dihapus permanen');
                                                                 }}
                                                                 className="p-1 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 rounded transition cursor-pointer"
-                                                                title="Hapus"
+                                                                title="Hapus Permanen (QC DME)"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </button>

@@ -34,7 +34,7 @@ import { useAuth } from '@/components/AuthContext';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 import { generateBeritaAcaraDOCX, BeritaAcaraConfig, BeritaAcaraEquipmentData } from '@/utils/generateBeritaAcaraDOCX';
 import { getBOQItemIdentifier } from '@/utils/monthlyReportData';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const MAINTENANCE_CATEGORIES = BOQ_CATEGORIES_DATA.filter(cat => !cat.isSparepar
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function BeritaAcaraReport() {
-  const { user } = useAuth();
+  const { user, isQcDme } = useAuth();
 
   // ─── Form State ──────────────────────────────────────────────────
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -338,16 +338,42 @@ export function BeritaAcaraReport() {
   }, []);
 
   // ─── Delete Archive Handler ──────────────────────────────────────
-  const handleDeleteArchive = useCallback(async (archiveId: string) => {
-    if (!confirm('Hapus arsip berita acara ini?')) return;
-    try {
-      await deleteDoc(doc(db, 'berita_acara', archiveId));
-      toast.success('Arsip berhasil dihapus.');
-    } catch (err) {
-      toast.error('Gagal menghapus arsip.');
-      console.error(err);
+  const handleDeleteArchive = useCallback(async (archiveId: string, isRequested?: boolean) => {
+    if (isQcDme) {
+      if (!confirm('Hapus arsip berita acara ini secara permanen?')) return;
+      try {
+        await deleteDoc(doc(db, 'berita_acara', archiveId));
+        toast.success('Arsip berhasil dihapus secara permanen.');
+      } catch (err) {
+        toast.error('Gagal menghapus arsip.');
+        console.error(err);
+      }
+    } else {
+      if (isRequested) {
+        toast.info('Arsip ini sudah dalam status pengajuan hapus ke QC DME.');
+        return;
+      }
+      const reason = window.prompt('Masukkan alasan/remark pengajuan hapus arsip ke QC DME (qcdme@dme.com):');
+      if (reason === null) return;
+      if (!reason.trim()) {
+        toast.error('Wajib mengisi alasan/remark pengajuan hapus ke QC DME!');
+        return;
+      }
+      try {
+        await updateDoc(doc(db, 'berita_acara', archiveId), {
+          deleteRequested: true,
+          deleteRequestedBy: user?.email || 'User',
+          deleteRequestedTo: 'qcdme@dme.com',
+          deleteReason: reason.trim(),
+          deleteRequestedAt: serverTimestamp(),
+        });
+        toast.success('Pengajuan hapus arsip berita acara berhasil dikirim ke QC DME (qcdme@dme.com).');
+      } catch (err) {
+        toast.error('Gagal mengajukan hapus arsip.');
+        console.error(err);
+      }
     }
-  }, []);
+  }, [isQcDme, user]);
 
   // ─── Count total selected ────────────────────────────────────────
   const totalSelectedCI = useMemo(() => {
@@ -840,6 +866,11 @@ export function BeritaAcaraReport() {
                           <span className="text-slate-400">oleh {archive.createdByName}</span>
                         </>
                       )}
+                      {archive.deleteRequested && (
+                        <span className="bg-amber-100 text-amber-800 border border-amber-300/60 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                          Menunggu Persetujuan Hapus QC DME
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -854,9 +885,19 @@ export function BeritaAcaraReport() {
                       </button>
                     )}
                     <button
-                      onClick={() => handleDeleteArchive(archive.id)}
-                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                      title="Hapus arsip"
+                      onClick={() => handleDeleteArchive(archive.id, archive.deleteRequested)}
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        archive.deleteRequested
+                          ? isQcDme
+                            ? 'text-red-600 bg-red-100 hover:bg-red-200'
+                            : 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                          : 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                      }`}
+                      title={
+                        isQcDme
+                          ? (archive.deleteRequested ? 'Hapus permanen (Pengajuan dari User)' : 'Hapus permanen arsip')
+                          : (archive.deleteRequested ? 'Pengajuan hapus sedang diproses QC DME' : 'Ajukan hapus ke QC DME (qcdme@dme.com)')
+                      }
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

@@ -299,10 +299,8 @@ interface DocumentListProps {
 }
 
 export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initialFolder, viewMode = 'folder' }: DocumentListProps) {
-  const { user, userRole, companyType } = useAuth();
-  const userEmailLower = (user?.email || '').toLowerCase();
+  const { user, userRole, companyType, isQcDme } = useAuth();
   const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
-  const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
   const isAdmin = userRole === 'admin' || isQcDme;
   const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
     userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';
@@ -1363,7 +1361,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       date: hseData.date,
       reportType: hseData.reportType,
       hseType: hseData.hseType || 'inspection',
-      maintenanceType: hseData.maintenanceType || 'OTHER'
+      maintenanceType: hseData.maintenanceType || 'OTHER',
+      msdsPdfUrl: hseData.msdsPdfUrl,
+      siloPdfUrl: hseData.siloPdfUrl,
     };
 
     const blob = await generateHSEPdfBlob(formData, userRole || undefined);

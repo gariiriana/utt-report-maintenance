@@ -64,6 +64,13 @@ export interface HSEFindingItem {
   
   // Catatan Tambahan Penutupan
   closingNotes?: string;                 // Catatan saat temuan ditutup (opsional)
+
+  // Pengajuan Hapus ke QC DME
+  deleteRequested?: boolean;
+  deleteRequestedBy?: string;
+  deleteRequestedTo?: string;
+  deleteReason?: string;
+  deleteRequestedAt?: any;
   
   // Meta Firestore
   createdAt?: any;

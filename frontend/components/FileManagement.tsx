@@ -488,9 +488,7 @@ export function FileManagement({
     deleteRequestMode = false,
     readOnly = false,
 }: FileManagementProps = {}) {
-    const { user, userRole } = useAuth();
-    const userEmailLower = (user?.email || '').toLowerCase();
-    const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower.includes('qc_dme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
+    const { user, userRole, isQcDme } = useAuth();
     const isAdmin = userRole === 'admin' || isQcDme;
     const isStandby = userRole === 'standby_engineer';
     const isReadOnly = Boolean(readOnly || isStandby);

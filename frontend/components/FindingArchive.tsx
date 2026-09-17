@@ -33,6 +33,8 @@ import {
   deleteDoc,
   doc,
   where,
+  updateDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { exportFindingsToPDF } from '../utils/FindingPdfExport';
@@ -65,14 +67,15 @@ const QUARTER_INFO = [
 ] as const;
 
 export function FindingArchive() {
-  const { user, userRole } = useAuth();
-  const canDelete = userRole === 'admin' || userRole === 'qc_dme' || userRole === 'engineer' || userRole === 'standby_engineer';
+  const { user, userRole, isQcDme } = useAuth();
+  const canDelete = isQcDme || userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer';
 
   const [findings, setFindings] = useState<FindingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [findingToDelete, setFindingToDelete] = useState<FindingRecord | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
 
   // Folder navigation state
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
@@ -161,14 +164,30 @@ export function FindingArchive() {
   }, [user, userRole]);
 
   const confirmDelete = async () => {
-    if (!deleteId) return;
+    if (!findingToDelete) return;
     try {
-      await deleteDoc(doc(db, 'findings', deleteId));
-      toast.success('Temuan berhasil dihapus dari arsip');
+      if (isQcDme) {
+        await deleteDoc(doc(db, 'findings', findingToDelete.id));
+        toast.success('Temuan berhasil dihapus secara permanen dari arsip');
+      } else {
+        if (!deleteReason.trim()) {
+          toast.error('Wajib mengisi alasan/remark pengajuan hapus!');
+          return;
+        }
+        await updateDoc(doc(db, 'findings', findingToDelete.id), {
+          deleteRequested: true,
+          deleteRequestedBy: user?.email || 'Engineer',
+          deleteRequestedTo: 'qcdme@dme.com',
+          deleteReason: deleteReason.trim(),
+          deleteRequestedAt: serverTimestamp(),
+        });
+        toast.success('Pengajuan hapus temuan berhasil dikirim ke QC DME (qcdme@dme.com)');
+      }
     } catch {
-      toast.error('Gagal menghapus temuan');
+      toast.error('Gagal memproses penghapusan temuan');
     } finally {
-      setDeleteId(null);
+      setFindingToDelete(null);
+      setDeleteReason('');
     }
   };
 
@@ -597,18 +616,39 @@ export function FindingArchive() {
                                   <span>DOCX</span>
                                 </button>
 
-                                {canDelete && (finding.createdBy === user?.uid || userRole === 'admin' || userRole === 'qc_dme') && (
+                                {canDelete && (isQcDme || finding.createdBy === user?.uid || userRole === 'admin') && (
                                   <button
                                     type="button"
-                                    onClick={() => setDeleteId(finding.id)}
-                                    className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg transition border border-slate-200 shadow-xs cursor-pointer"
-                                    title="Hapus Temuan"
+                                    onClick={() => {
+                                      setFindingToDelete(finding);
+                                      setDeleteReason('');
+                                    }}
+                                    className={`p-1.5 rounded-lg transition border shadow-xs cursor-pointer ${
+                                      (finding as any).deleteRequested
+                                        ? isQcDme
+                                          ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200'
+                                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                                        : 'bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 border-slate-200'
+                                    }`}
+                                    title={
+                                      isQcDme
+                                        ? ((finding as any).deleteRequested ? 'Hapus permanen (Pengajuan User)' : 'Hapus Temuan Permanen')
+                                        : ((finding as any).deleteRequested ? 'Pengajuan Hapus Menunggu QC DME' : 'Ajukan Hapus ke QC DME (qcdme@dme.com)')
+                                    }
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                               </div>
                             </div>
+
+                            {(finding as any).deleteRequested && (
+                              <div className="mb-2">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                  Menunggu Persetujuan Hapus QC DME
+                                </span>
+                              </div>
+                            )}
 
                             {finding.remark && (
                               <div className="mt-2 px-3 py-2 bg-slate-50 rounded-lg border-l-2 border-teal-500">
@@ -642,7 +682,7 @@ export function FindingArchive() {
 
       {/* Confirm Delete Modal */}
       <AnimatePresence>
-        {deleteId && (
+        {findingToDelete && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -650,14 +690,44 @@ export function FindingArchive() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white rounded-2xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4"
             >
-              <h3 className="text-lg font-bold text-slate-900">Hapus Data Temuan?</h3>
+              <h3 className="text-lg font-bold text-slate-900">
+                {isQcDme ? 'Hapus Data Temuan Permanen?' : 'Ajukan Hapus Temuan ke QC DME?'}
+              </h3>
               <p className="text-sm text-slate-500">
-                Apakah Anda yakin ingin menghapus data temuan ini dari arsip? Tindakan ini tidak dapat dibatalkan.
+                {isQcDme
+                  ? `Apakah Anda yakin ingin menghapus data temuan "${findingToDelete.partName}" secara permanen? Tindakan ini tidak dapat dibatalkan.`
+                  : `Pengajuan hapus untuk temuan "${findingToDelete.partName}" akan diteruskan ke akun QC DME (qcdme@dme.com).`}
               </p>
+
+              {(findingToDelete as any)?.deleteReason && isQcDme && (
+                <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs text-amber-900">
+                  <p className="font-bold">Alasan Pengajuan:</p>
+                  <p className="italic">"{(findingToDelete as any).deleteReason}"</p>
+                </div>
+              )}
+
+              {!isQcDme && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Alasan / Remark Hapus <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    placeholder="Contoh: Salah input part number, duplikat, dll..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  />
+                </div>
+              )}
+
               <div className="flex gap-3 justify-end pt-2">
                 <button
                   type="button"
-                  onClick={() => setDeleteId(null)}
+                  onClick={() => {
+                    setFindingToDelete(null);
+                    setDeleteReason('');
+                  }}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
                 >
                   Batal
@@ -665,9 +735,13 @@ export function FindingArchive() {
                 <button
                   type="button"
                   onClick={confirmDelete}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition shadow-md shadow-red-500/20 cursor-pointer"
+                  className={`px-4 py-2 text-white font-bold text-xs rounded-xl transition shadow-md cursor-pointer ${
+                    isQcDme
+                      ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
+                      : 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
+                  }`}
                 >
-                  Ya, Hapus
+                  {isQcDme ? 'Ya, Hapus Permanen' : 'Kirim Pengajuan Hapus'}
                 </button>
               </div>
             </motion.div>

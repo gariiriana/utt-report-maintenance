@@ -157,6 +157,8 @@ export interface HSEFormData {
     sioData?: SIOData;
     siloPdfUrl?: string;
     siloFile?: File | Blob | ArrayBuffer; 
+    msdsPdfUrl?: string;
+    msdsFile?: File | Blob | ArrayBuffer;
 }
 
 function loadImageAsBase64(url: string): Promise<string> {
@@ -650,6 +652,33 @@ export async function generateHSEPdf(data: HSEFormData, _autoOpen = false, userR
         const jspdfBuffer = await jspdfBlob.arrayBuffer();
         const mainPdfDoc = await PDFDocument.load(jspdfBuffer);
 
+        // Append MSDS PDF if provided
+        let msdsBuffer: ArrayBuffer | null = null;
+        if (data.msdsFile) {
+            if (data.msdsFile instanceof ArrayBuffer) {
+                msdsBuffer = data.msdsFile;
+            } else {
+                msdsBuffer = await (data.msdsFile as Blob).arrayBuffer();
+            }
+        } else if (data.msdsPdfUrl) {
+            try {
+                const resp = await fetch(data.msdsPdfUrl);
+                msdsBuffer = await resp.arrayBuffer();
+            } catch (e) {
+                console.error("Failed to fetch MSDS PDF from URL:", e);
+            }
+        }
+
+        if (msdsBuffer) {
+            try {
+                const msdsPdfDoc = await PDFDocument.load(msdsBuffer);
+                const copiedPages = await mainPdfDoc.copyPages(msdsPdfDoc, msdsPdfDoc.getPageIndices());
+                copiedPages.forEach((page) => mainPdfDoc.addPage(page));
+            } catch (e) {
+                console.error("Failed to merge MSDS PDF:", e);
+            }
+        }
+
         let siloBuffer: ArrayBuffer | null = null;
         if (data.siloFile) {
             if (data.siloFile instanceof ArrayBuffer) {
@@ -754,6 +783,31 @@ export async function generateHSEPdfBlob(data: HSEFormData, userRole?: string): 
         const jspdfBlob = jspdfDoc.output('blob');
         const jspdfBuffer = await jspdfBlob.arrayBuffer();
         const mainPdfDoc = await PDFDocument.load(jspdfBuffer);
+
+        // Append MSDS PDF if provided
+        let msdsBuffer: ArrayBuffer | null = null;
+        if (data.msdsFile) {
+            msdsBuffer = data.msdsFile instanceof ArrayBuffer
+                ? data.msdsFile
+                : await (data.msdsFile as Blob).arrayBuffer();
+        } else if (data.msdsPdfUrl) {
+            try {
+                const resp = await fetch(data.msdsPdfUrl);
+                msdsBuffer = await resp.arrayBuffer();
+            } catch (e) {
+                console.error("Failed to fetch MSDS PDF from URL:", e);
+            }
+        }
+
+        if (msdsBuffer) {
+            try {
+                const msdsPdfDoc = await PDFDocument.load(msdsBuffer);
+                const copiedPages = await mainPdfDoc.copyPages(msdsPdfDoc, msdsPdfDoc.getPageIndices());
+                copiedPages.forEach((page) => mainPdfDoc.addPage(page));
+            } catch (e) {
+                console.error("Failed to merge MSDS PDF in Blob:", e);
+            }
+        }
 
         let siloBuffer: ArrayBuffer | null = null;
         if (data.siloFile) {

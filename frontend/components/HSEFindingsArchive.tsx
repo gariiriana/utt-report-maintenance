@@ -96,7 +96,7 @@ const StatusIcon = ({ status }: { status: HSEFindingStatus }) => {
 // Komponen Utama: HSEFindingsArchive
 // ============================================================================
 export function HSEFindingsArchive() {
-  const { user } = useAuth();
+  const { user, isQcDme } = useAuth();
 
   // Data & Loading
   const [findings, setFindings] = useState<HSEFindingItem[]>([]);
@@ -179,6 +179,7 @@ export function HSEFindingsArchive() {
   // Delete Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [findingToDelete, setFindingToDelete] = useState<HSEFindingItem | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
 
   // Lightbox State
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
@@ -676,20 +677,37 @@ export function HSEFindingsArchive() {
   const handleDeleteFinding = async () => {
     if (!findingToDelete?.id) return;
     setIsSubmitting(true);
-    const toastId = toast.loading('Menghapus data temuan...');
+    const toastId = toast.loading(isQcDme ? 'Menghapus data temuan...' : 'Mengajukan hapus temuan ke QC DME...');
 
     try {
-      await deleteDoc(doc(db, 'hse_findings', findingToDelete.id));
-      toast.success('Data temuan berhasil dihapus!', { id: toastId });
+      if (isQcDme) {
+        await deleteDoc(doc(db, 'hse_findings', findingToDelete.id));
+        toast.success('Data temuan berhasil dihapus permanen!', { id: toastId });
+      } else {
+        if (!deleteReason.trim()) {
+          toast.error('Wajib mengisi alasan/remark pengajuan hapus!', { id: toastId });
+          setIsSubmitting(false);
+          return;
+        }
+        await updateDoc(doc(db, 'hse_findings', findingToDelete.id), {
+          deleteRequested: true,
+          deleteRequestedBy: user?.email || 'HSE User',
+          deleteRequestedTo: 'qcdme@dme.com',
+          deleteReason: deleteReason.trim(),
+          deleteRequestedAt: serverTimestamp(),
+        });
+        toast.success('Pengajuan hapus temuan berhasil dikirim ke QC DME (qcdme@dme.com)!', { id: toastId });
+      }
       setIsDeleteModalOpen(false);
       setFindingToDelete(null);
+      setDeleteReason('');
       if (isDetailOpen && selectedFinding?.id === findingToDelete.id) {
         setIsDetailOpen(false);
         setSelectedFinding(null);
       }
     } catch (error) {
       console.error('Error deleting finding:', error);
-      toast.error('Gagal menghapus data temuan', { id: toastId });
+      toast.error('Gagal memproses penghapusan data temuan', { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
@@ -1199,9 +1217,23 @@ export function HSEFindingsArchive() {
                         <FileDown className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => { setFindingToDelete(finding); setIsDeleteModalOpen(true); }}
-                        className="p-2 rounded-xl bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
-                        title="Hapus Temuan"
+                        onClick={() => {
+                          setFindingToDelete(finding);
+                          setDeleteReason('');
+                          setIsDeleteModalOpen(true);
+                        }}
+                        className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                          finding.deleteRequested
+                            ? isQcDme
+                              ? 'bg-red-100 hover:bg-red-200 text-red-700'
+                              : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
+                            : 'bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600'
+                        }`}
+                        title={
+                          isQcDme
+                            ? (finding.deleteRequested ? 'Review & Hapus Permanen (Pengajuan User)' : 'Hapus Temuan Permanen')
+                            : (finding.deleteRequested ? 'Pengajuan Hapus Menunggu QC DME' : 'Ajukan Hapus ke QC DME (qcdme@dme.com)')
+                        }
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1210,6 +1242,11 @@ export function HSEFindingsArchive() {
 
                   {/* Row 2: Meta Info */}
                   <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-slate-500 my-2">
+                    {finding.deleteRequested && (
+                      <span className="inline-flex items-center gap-1 font-semibold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-lg text-xs">
+                        Menunggu Persetujuan Hapus QC DME
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-slate-400" />
                       {formatDate(finding.findingDate)}
@@ -1548,11 +1585,25 @@ export function HSEFindingsArchive() {
                 <div className="border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-400">
                   <span>Dibuat: {formatDateTime(selectedFinding.createdAt)}</span>
                   <button
-                    onClick={() => { setFindingToDelete(selectedFinding); setIsDeleteModalOpen(true); }}
-                    className="text-red-500 hover:text-red-700 font-medium flex items-center gap-1 cursor-pointer"
+                    onClick={() => {
+                      setFindingToDelete(selectedFinding);
+                      setDeleteReason('');
+                      setIsDeleteModalOpen(true);
+                    }}
+                    className={`font-medium flex items-center gap-1 cursor-pointer ${
+                      selectedFinding.deleteRequested
+                        ? isQcDme
+                          ? 'text-red-700 hover:text-red-800'
+                          : 'text-amber-700 hover:text-amber-800'
+                        : 'text-red-500 hover:text-red-700'
+                    }`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Hapus Temuan</span>
+                    <span>
+                      {isQcDme
+                        ? (selectedFinding.deleteRequested ? 'Hapus Permanen (Pengajuan User)' : 'Hapus Temuan Permanen')
+                        : (selectedFinding.deleteRequested ? 'Menunggu QC DME' : 'Ajukan Hapus ke QC DME')}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -2310,13 +2361,19 @@ export function HSEFindingsArchive() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4"
             >
-              <div className="flex items-center gap-3 text-red-600">
-                <div className="p-3 bg-red-100 rounded-2xl">
+              <div className={`flex items-center gap-3 ${isQcDme ? 'text-red-600' : 'text-amber-600'}`}>
+                <div className={`p-3 rounded-2xl ${isQcDme ? 'bg-red-100' : 'bg-amber-100'}`}>
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Hapus Data Temuan?</h3>
-                  <p className="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</p>
+                  <h3 className="text-base font-bold text-slate-900">
+                    {isQcDme ? 'Hapus Data Temuan Permanen?' : 'Ajukan Hapus Temuan ke QC DME?'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isQcDme
+                      ? 'Tindakan ini akan menghapus data temuan K3 secara permanen dari sistem.'
+                      : 'Permohonan penghapusan akan dikirim ke akun QC DME (qcdme@dme.com) untuk disetujui.'}
+                  </p>
                 </div>
               </div>
 
@@ -2324,10 +2381,36 @@ export function HSEFindingsArchive() {
                 Temuan: <strong>"{findingToDelete.title}"</strong>
               </p>
 
+              {findingToDelete.deleteReason && isQcDme && (
+                <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs text-amber-900">
+                  <p className="font-bold">Alasan Pengajuan User:</p>
+                  <p className="italic">"{findingToDelete.deleteReason}"</p>
+                </div>
+              )}
+
+              {!isQcDme && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Alasan / Remark Pengajuan Hapus <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    placeholder="Contoh: Salah dokumentasi foto, data duplikat, dll..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  />
+                </div>
+              )}
+
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsDeleteModalOpen(false)}
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeleteReason('');
+                  }}
                   disabled={isSubmitting}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
@@ -2337,10 +2420,18 @@ export function HSEFindingsArchive() {
                   type="button"
                   onClick={handleDeleteFinding}
                   disabled={isSubmitting}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                  className={`flex items-center gap-1.5 px-4 py-2 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md ${
+                    isQcDme
+                      ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
+                      : 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
+                  }`}
                 >
-                  {isSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  <span>Hapus</span>
+                  {isSubmitting ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isQcDme ? 'Hapus Permanen' : 'Kirim Pengajuan Hapus'}</span>
                 </button>
               </div>
             </motion.div>

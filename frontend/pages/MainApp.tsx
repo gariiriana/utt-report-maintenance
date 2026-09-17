@@ -50,12 +50,11 @@ type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
-  const { user, userRole, logout } = useAuth();
+  const { user, userRole, isQcDme, logout } = useAuth();
 
   // Flag evaluasi hak akses peranan user
   const userEmailLower = (user?.email || '').toLowerCase();
   const isDwimitra = userEmailLower === 'dwimitra@co.id';
-  const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
   const canViewAbnormal = isQcDme || isDwimitra;
   const isAdmin = userRole === 'admin' || isQcDme;
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';

@@ -166,7 +166,7 @@ export function DeleteConfirmModal({
                     ? '⚠️ Menyetujui tindakan ini akan menghapus dokumen secara permanen' 
                     : isRequesterReviewing
                       ? 'ℹ️ Klik "Batalkan Pengajuan" untuk mengembalikan status dokumen menjadi normal'
-                      : '⚠️ Tindakan ini akan mengirim permohonan ke Admin'}
+                      : '⚠️ Tindakan ini akan mengirim permohonan hapus ke QC DME (qcdme@dme.com)'}
                 </p>
               </div>
 

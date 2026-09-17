@@ -64,9 +64,7 @@ export interface UnifiedDeleteRequest {
 }
 
 export function DeleteRequestsManager() {
-  const { user, userRole } = useAuth();
-  const userEmailLower = (user?.email || '').toLowerCase();
-  const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
+  const { isQcDme } = useAuth();
 
   const [requests, setRequests] = useState<UnifiedDeleteRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,13 +198,18 @@ export function DeleteRequestsManager() {
       syncAll();
     });
 
-    // 3. Technical Documents & HSE collections
+    // 3. Technical Documents, HSE, SOP/EOP, Monthly Reports, Berita Acara, & Findings
     const techCollections = [
       'electrical_documents',
       'mechanical_documents',
       'civil_documents',
       'electronic_documents',
-      'hse'
+      'hse',
+      'sop_eop_documents',
+      'monthly_reports',
+      'berita_acara',
+      'hse_findings',
+      'findings'
     ];
 
     const techUnsubs: (() => void)[] = [];
@@ -217,18 +220,41 @@ export function DeleteRequestsManager() {
       const un = onSnapshot(qCol, (snapshot) => {
         techDataMap[colName] = snapshot.docs.map((d) => {
           const data = d.data();
-          const title = data.fileName || data.title || `${colName.replace('_documents', '')} #${d.id.slice(0, 6)}`;
+          const title = data.fileName || data.title || data.documentTitle || data.name || data.partName || `${colName.replace('_documents', '')} #${d.id.slice(0, 6)}`;
+          
+          let sourceLabel = `Dokumen ${colName.replace('_documents', '').toUpperCase()}`;
+          let sourceBadgeColor = 'bg-blue-100 text-blue-700 border-blue-200';
+          if (colName === 'hse') {
+            sourceLabel = 'Dokumen HSE';
+            sourceBadgeColor = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+          } else if (colName === 'sop_eop_documents') {
+            sourceLabel = 'SOP / EOP';
+            sourceBadgeColor = 'bg-purple-100 text-purple-700 border-purple-200';
+          } else if (colName === 'monthly_reports') {
+            sourceLabel = 'Laporan Bulanan';
+            sourceBadgeColor = 'bg-indigo-100 text-indigo-700 border-indigo-200';
+          } else if (colName === 'berita_acara') {
+            sourceLabel = 'Berita Acara';
+            sourceBadgeColor = 'bg-teal-100 text-teal-700 border-teal-200';
+          } else if (colName === 'hse_findings') {
+            sourceLabel = 'Temuan HSE';
+            sourceBadgeColor = 'bg-rose-100 text-rose-700 border-rose-200';
+          } else if (colName === 'findings') {
+            sourceLabel = 'Temuan Engineer';
+            sourceBadgeColor = 'bg-teal-100 text-teal-700 border-teal-200';
+          }
+
           return {
             id: `${colName}_${d.id}`,
             realDocId: d.id,
             collectionName: colName,
             sourceType: 'technical',
-            sourceLabel: colName === 'hse' ? 'Dokumen HSE' : `Dokumen ${colName.replace('_documents', '').toUpperCase()}`,
-            sourceBadgeColor: colName === 'hse' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-blue-100 text-blue-700 border-blue-200',
+            sourceLabel,
+            sourceBadgeColor,
             fileName: title,
-            fileType: data.documentType || 'Dokumen',
+            fileType: data.documentType || data.type || 'Dokumen',
             category: data.category || colName,
-            uploadedBy: data.authorEmail || data.author || data.uploadedBy || '-',
+            uploadedBy: data.authorEmail || data.author || data.uploadedBy || data.createdBy || '-',
             uploadedAt: data.createdAt || data.date,
             deleteRequested: true,
             deleteRequestedBy: data.deleteRequestedBy || 'Engineer',

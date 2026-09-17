@@ -47,11 +47,20 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'qc_dme' | 'engineer'
   return 'engineer';
 };
 
+/**
+ * Helper pemeriksaan resmi wewenang penghapusan permanen:
+ * Hanya akun resmi qcdme@dme.com yang berwenang menghapus berkas secara permanen.
+ */
+export const isQcDmeEmail = (email?: string | null): boolean => {
+  return (email || '').toLowerCase().trim() === 'qcdme@dme.com';
+};
+
 // Interface konteks autentikasi React
 interface AuthContextType {
   user: User | null;
   userRole: 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null;
   companyType: 'neutra' | 'bri' | 'k2' | null;
+  isQcDme: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithFaceVerified: (face: RegisteredFace) => Promise<void>;
@@ -396,6 +405,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     userRole,
     companyType,
+    isQcDme: isQcDmeEmail(user?.email),
     loading,
     login,
     loginWithFaceVerified,

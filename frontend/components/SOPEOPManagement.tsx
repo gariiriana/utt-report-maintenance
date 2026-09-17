@@ -37,6 +37,7 @@ import {
   updateDoc,
   doc,
   deleteDoc,
+  deleteField,
   getDocs,
   query,
   orderBy,
@@ -63,7 +64,7 @@ import { importSopEopFromDocx } from '@/utils/sopEopDocxImport';
 type SubTab = 'sop' | 'eop' | 'archive';
 
 export function SOPEOPManagement() {
-  const { user } = useAuth();
+  const { user, isQcDme } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('sop');
 
   // File import ref & state
@@ -85,7 +86,13 @@ export function SOPEOPManagement() {
   const [isBilingualEop, setIsBilingualEop] = useState(false);
 
   // State Arsip
-  const [archiveList, setArchiveList] = useState<Array<(SOPDocumentData | EOPDocumentData) & { id: string }>>([]);
+  const [archiveList, setArchiveList] = useState<Array<(SOPDocumentData | EOPDocumentData) & {
+    id: string;
+    deleteRequested?: boolean;
+    deleteRequestedBy?: string;
+    deleteReason?: string;
+    deleteRequestedAt?: any;
+  }>>([]);
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveFilterType, setArchiveFilterType] = useState<'ALL' | 'SOP' | 'EOP'>('ALL');
@@ -96,12 +103,17 @@ export function SOPEOPManagement() {
     id: string;
     title: string;
     type?: string;
+    deleteRequested?: boolean;
+    deleteRequestedBy?: string;
+    deleteReason?: string;
   }>({
     isOpen: false,
     id: '',
     title: '',
     type: 'SOP',
+    deleteRequested: false,
   });
+  const [deleteReasonInput, setDeleteReasonInput] = useState('');
   const [isDeletingArchiveDoc, setIsDeletingArchiveDoc] = useState(false);
 
   const [resetModal, setResetModal] = useState<{
@@ -590,12 +602,21 @@ export function SOPEOPManagement() {
     }
   };
 
-  const promptDeleteArchiveDoc = (item: (SOPDocumentData | EOPDocumentData) & { id: string }) => {
+  const promptDeleteArchiveDoc = (item: (SOPDocumentData | EOPDocumentData) & {
+    id: string;
+    deleteRequested?: boolean;
+    deleteRequestedBy?: string;
+    deleteReason?: string;
+  }) => {
+    setDeleteReasonInput(item.deleteReason || '');
     setDeleteModal({
       isOpen: true,
       id: item.id,
       title: item.documentTitle || 'Dokumen Tanpa Judul',
       type: item.type || 'SOP',
+      deleteRequested: item.deleteRequested || false,
+      deleteRequestedBy: item.deleteRequestedBy,
+      deleteReason: item.deleteReason,
     });
   };
 
@@ -603,14 +624,71 @@ export function SOPEOPManagement() {
     if (!deleteModal.id) return;
     setIsDeletingArchiveDoc(true);
     try {
-      await deleteDoc(doc(db, 'sop_eop_documents', deleteModal.id));
-      setArchiveList((prev) => prev.filter((d) => d.id !== deleteModal.id));
-      if (currentSopDocId === deleteModal.id) setCurrentSopDocId(null);
-      if (currentEopDocId === deleteModal.id) setCurrentEopDocId(null);
-      toast.success(`Dokumen "${deleteModal.title}" berhasil dihapus dari arsip Cloud`);
+      if (isQcDme) {
+        // QC DME (qcdme@dme.com) deletes permanently
+        await deleteDoc(doc(db, 'sop_eop_documents', deleteModal.id));
+        setArchiveList((prev) => prev.filter((d) => d.id !== deleteModal.id));
+        if (currentSopDocId === deleteModal.id) setCurrentSopDocId(null);
+        if (currentEopDocId === deleteModal.id) setCurrentEopDocId(null);
+        toast.success(`Dokumen "${deleteModal.title}" berhasil dihapus secara permanen`);
+      } else {
+        // Non-QC DME submits delete request with mandatory reason
+        if (!deleteReasonInput.trim()) {
+          toast.error('Wajib mengisi alasan/remark pengajuan hapus ke QC DME!');
+          setIsDeletingArchiveDoc(false);
+          return;
+        }
+        await updateDoc(doc(db, 'sop_eop_documents', deleteModal.id), {
+          deleteRequested: true,
+          deleteRequestedBy: user?.email || 'User',
+          deleteRequestedTo: 'qcdme@dme.com',
+          deleteReason: deleteReasonInput.trim(),
+          deleteRequestedAt: serverTimestamp(),
+        });
+        setArchiveList((prev) =>
+          prev.map((d) =>
+            d.id === deleteModal.id
+              ? {
+                  ...d,
+                  deleteRequested: true,
+                  deleteRequestedBy: user?.email || 'User',
+                  deleteReason: deleteReasonInput.trim(),
+                }
+              : d
+          )
+        );
+        toast.success(`Permohonan hapus dokumen "${deleteModal.title}" telah dikirim ke QC DME (qcdme@dme.com)`);
+      }
       setDeleteModal((prev) => ({ ...prev, isOpen: false }));
     } catch (err: any) {
-      toast.error(`Gagal menghapus: ${err?.message || err}`);
+      toast.error(`Gagal memproses: ${err?.message || err}`);
+    } finally {
+      setIsDeletingArchiveDoc(false);
+    }
+  };
+
+  const rejectDeleteArchiveDoc = async () => {
+    if (!deleteModal.id || !isQcDme) return;
+    setIsDeletingArchiveDoc(true);
+    try {
+      await updateDoc(doc(db, 'sop_eop_documents', deleteModal.id), {
+        deleteRequested: deleteField(),
+        deleteRequestedBy: deleteField(),
+        deleteRequestedTo: deleteField(),
+        deleteReason: deleteField(),
+        deleteRequestedAt: deleteField(),
+      });
+      setArchiveList((prev) =>
+        prev.map((d) =>
+          d.id === deleteModal.id
+            ? { ...d, deleteRequested: false, deleteRequestedBy: undefined, deleteReason: undefined }
+            : d
+        )
+      );
+      toast.success('Pengajuan hapus ditolak. Dokumen tetap tersimpan di arsip.');
+      setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+    } catch (err: any) {
+      toast.error(`Gagal menolak pengajuan: ${err?.message || err}`);
     } finally {
       setIsDeletingArchiveDoc(false);
     }
@@ -2491,6 +2569,13 @@ export function SOPEOPManagement() {
                       {item.documentPurposeId || item.documentPurposeEn || '-'}
                     </p>
 
+                    {item.deleteRequested && (
+                      <div className="mb-2 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 font-semibold flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Menunggu Persetujuan Hapus QC DME</span>
+                      </div>
+                    )}
+
                     <div className="pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100">
                       <span>Penyusun: <strong className="text-slate-700">{item.author || '-'}</strong></span>
                       <span>Revisi: <strong className="text-slate-700">{item.revisionNumber || '00'}</strong></span>
@@ -2521,8 +2606,22 @@ export function SOPEOPManagement() {
                       <button
                         type="button"
                         onClick={() => promptDeleteArchiveDoc(item)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
-                        title="Hapus Dokumen"
+                        className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                          item.deleteRequested
+                            ? isQcDme
+                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300'
+                              : 'bg-amber-50 text-amber-500 cursor-not-allowed opacity-75'
+                            : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        title={
+                          item.deleteRequested
+                            ? isQcDme
+                              ? 'Tinjau Pengajuan Hapus'
+                              : 'Menunggu Persetujuan Hapus QC DME'
+                            : isQcDme
+                              ? 'Hapus Dokumen Permanen'
+                              : 'Ajukan Hapus ke QC DME'
+                        }
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -2575,10 +2674,22 @@ export function SOPEOPManagement() {
 
               <div className="text-center mb-6">
                 <h3 className="text-xl font-black text-slate-900 mb-2">
-                  Hapus Dokumen Arsip?
+                  {deleteModal.deleteRequested
+                    ? isQcDme
+                      ? 'Persetujuan Hapus Dokumen'
+                      : 'Batalkan Pengajuan Hapus?'
+                    : isQcDme
+                      ? 'Hapus Dokumen Arsip Permanen?'
+                      : 'Ajukan Hapus Dokumen ke QC DME'}
                 </h3>
                 <p className="text-slate-600 text-sm">
-                  Yakin ingin menghapus dokumen ini dari arsip Cloud?
+                  {deleteModal.deleteRequested
+                    ? isQcDme
+                      ? 'Dokumen ini diajukan untuk dihapus oleh teknisi/engineer:'
+                      : 'Dokumen ini sedang menunggu persetujuan penghapusan oleh QC DME (qcdme@dme.com).'
+                    : isQcDme
+                      ? 'Yakin ingin menghapus dokumen ini secara permanen dari arsip Cloud?'
+                      : 'Permohonan hapus akan diteruskan ke akun QC DME (qcdme@dme.com) untuk ditinjau dan disetujui.'}
                 </p>
 
                 <div className="bg-slate-50 rounded-2xl p-3.5 my-3.5 border border-slate-200/80 text-left flex items-start gap-2.5">
@@ -2596,40 +2707,104 @@ export function SOPEOPManagement() {
                   </p>
                 </div>
 
-                <p className="text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 bg-rose-50/80 border border-rose-200/60 rounded-xl py-2 px-3">
+                {deleteModal.deleteRequested && deleteModal.deleteReason && (
+                  <div className="my-3 text-left bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">
+                      Diajukan oleh: {deleteModal.deleteRequestedBy || 'User'}
+                    </p>
+                    <p className="text-slate-700 text-xs font-medium italic">
+                      "{deleteModal.deleteReason}"
+                    </p>
+                  </div>
+                )}
+
+                {!isQcDme && !deleteModal.deleteRequested && (
+                  <div className="mt-3 text-left">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                      <span>Alasan / Remark Hapus</span>
+                      <span className="text-rose-600 font-bold lowercase text-[11px]">* (wajib diisi)</span>
+                    </label>
+                    <textarea
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-amber-500 rounded-xl p-2.5 text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20 text-xs h-20 resize-none placeholder-slate-400 transition-all"
+                      placeholder="Wajib menyertakan alasan penghapusan (misal: Dokumen SOP versi lama, salah upload, revisi, dll)..."
+                      value={deleteReasonInput}
+                      onChange={(e) => setDeleteReasonInput(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <p className="text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 bg-rose-50/80 border border-rose-200/60 rounded-xl py-2 px-3 mt-3">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>Tindakan ini permanen dan tidak dapat dibatalkan</span>
+                  <span>
+                    {isQcDme
+                      ? 'Tindakan persetujuan hapus bersifat permanen dan tidak dapat dibatalkan'
+                      : 'Hanya akun QC DME (qcdme@dme.com) yang berwenang mengeksekusi hapus permanen'}
+                  </span>
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
-                  disabled={isDeletingArchiveDoc}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition border border-slate-200 shadow-xs disabled:opacity-50 cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeleteArchiveDoc}
-                  disabled={isDeletingArchiveDoc}
-                  className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
-                >
-                  {isDeletingArchiveDoc ? (
-                    <>
-                      <RotateCcw className="w-4 h-4 animate-spin" />
-                      <span>Menghapus...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4" />
-                      <span>Hapus Arsip</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              {deleteModal.deleteRequested && isQcDme ? (
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    type="button"
+                    onClick={confirmDeleteArchiveDoc}
+                    disabled={isDeletingArchiveDoc}
+                    className="w-full py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                  >
+                    {isDeletingArchiveDoc ? <RotateCcw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    <span>Setujui Hapus (Hapus Permanen)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={rejectDeleteArchiveDoc}
+                    disabled={isDeletingArchiveDoc}
+                    className="w-full py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Tolak Pengajuan Hapus</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
+                    disabled={isDeletingArchiveDoc}
+                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition border border-slate-200 shadow-xs cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
+                    disabled={isDeletingArchiveDoc}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition border border-slate-200 shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteArchiveDoc}
+                    disabled={isDeletingArchiveDoc}
+                    className={`px-5 py-2.5 bg-gradient-to-r ${
+                      isQcDme
+                        ? 'from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-rose-500/25'
+                        : 'from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/20'
+                    } text-white rounded-xl font-bold text-sm transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer`}
+                  >
+                    {isDeletingArchiveDoc ? (
+                      <>
+                        <RotateCcw className="w-4 h-4 animate-spin" />
+                        <span>{isQcDme ? 'Menghapus...' : 'Mengajukan...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        <span>{isQcDme ? 'Hapus Arsip' : 'Kirim Pengajuan'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

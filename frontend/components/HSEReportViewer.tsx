@@ -57,6 +57,8 @@ interface ReportData {
     date?: string;
     reportType?: 'utt' | 'neutradc';
     photos?: { id: string; dataUrl: string; description: string; index: number }[];
+    msdsPdfUrl?: string;
+    siloPdfUrl?: string;
 }
 
 export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
@@ -103,6 +105,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                     photos: (fullReport.photos || []).map(p => ({ base64: p.dataUrl, description: p.description || '' })),
                     date: fullReport.date,
                     reportType: fullReport.reportType,
+                    msdsPdfUrl: fullReport.msdsPdfUrl,
+                    siloPdfUrl: fullReport.siloPdfUrl,
                 };
                 const blob = await generateHSEPdfBlob(formData, userRole || undefined);
                 const url = URL.createObjectURL(blob);
@@ -136,6 +140,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 photos: (report.photos || []).map(p => ({ base64: p.dataUrl, description: p.description || '' })),
                 date: report.date,
                 reportType: report.reportType,
+                msdsPdfUrl: report.msdsPdfUrl,
+                siloPdfUrl: report.siloPdfUrl,
             };
             const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
             await generateHSEPdf(formData, shouldAutoOpen, userRole || undefined);

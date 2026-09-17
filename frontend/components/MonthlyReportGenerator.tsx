@@ -53,7 +53,7 @@ import { toast } from 'sonner';
 import { draftStorage } from '@/utils/draftStorage';
 import { useAuth } from '@/components/AuthContext';
 import { db } from '@/api/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, Timestamp, serverTimestamp, deleteField } from 'firebase/firestore';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 
 import {
@@ -280,7 +280,7 @@ export const BilingualBulletsEditor: React.FC<{
 };
 
 export function MonthlyReportGenerator() {
-  const { user, userRole } = useAuth();
+  const { user, userRole, isQcDme } = useAuth();
 
   // ─── Main Navigation Tab: 'editor' | 'archives' ───────────────────
   const [activeMainTab, setActiveMainTab] = useState<'editor' | 'archives'>('editor');
@@ -288,7 +288,8 @@ export function MonthlyReportGenerator() {
   // ─── Firestore Archives State ─────────────────────────────────────
   const [archives, setArchives] = useState<any[]>([]);
   const [loadingArchives, setLoadingArchives] = useState<boolean>(true);
-  const [archiveToDelete, setArchiveToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [archiveToDelete, setArchiveToDelete] = useState<{ id: string; title: string; deleteRequested?: boolean; deleteRequestedBy?: string; deleteReason?: string } | null>(null);
+  const [archiveDeleteReason, setArchiveDeleteReason] = useState<string>('');
   const [isDeletingArchive, setIsDeletingArchive] = useState<boolean>(false);
 
   // ─── BOQ Equipment & CI Name Selector Modal State ─────────────────
@@ -1318,16 +1319,73 @@ export function MonthlyReportGenerator() {
     if (!archiveToDelete) return;
     setIsDeletingArchive(true);
     try {
-      await deleteDoc(doc(db, 'monthly_reports', archiveToDelete.id));
-      toast.success('Arsip dokumen berhasil dihapus dari cloud.');
+      if (isQcDme) {
+        await deleteDoc(doc(db, 'monthly_reports', archiveToDelete.id));
+        setArchives((prev) => prev.filter((a) => a.id !== archiveToDelete.id));
+        toast.success('Arsip dokumen berhasil dihapus permanen dari cloud.');
+      } else {
+        if (!archiveDeleteReason.trim()) {
+          toast.error('Wajib mengisi alasan/remark pengajuan hapus ke QC DME!');
+          setIsDeletingArchive(false);
+          return;
+        }
+        await updateDoc(doc(db, 'monthly_reports', archiveToDelete.id), {
+          deleteRequested: true,
+          deleteRequestedBy: user?.email || 'User',
+          deleteRequestedTo: 'qcdme@dme.com',
+          deleteReason: archiveDeleteReason.trim(),
+          deleteRequestedAt: serverTimestamp(),
+        });
+        setArchives((prev) =>
+          prev.map((a) =>
+            a.id === archiveToDelete.id
+              ? {
+                  ...a,
+                  deleteRequested: true,
+                  deleteRequestedBy: user?.email || 'User',
+                  deleteReason: archiveDeleteReason.trim(),
+                }
+              : a
+          )
+        );
+        toast.success('Pengajuan hapus arsip laporan bulanan berhasil dikirim ke QC DME (qcdme@dme.com).');
+      }
       setArchiveToDelete(null);
     } catch (err: any) {
-      console.error('Gagal menghapus arsip:', err);
-      toast.error('Gagal menghapus arsip: ' + (err?.message || 'Terjadi kesalahan'));
+      console.error('Gagal memproses arsip:', err);
+      toast.error('Gagal memproses arsip: ' + (err?.message || 'Terjadi kesalahan'));
     } finally {
       setIsDeletingArchive(false);
     }
-  }, [archiveToDelete]);
+  }, [archiveToDelete, isQcDme, user, archiveDeleteReason]);
+
+  const handleRejectDeleteArchive = useCallback(async () => {
+    if (!archiveToDelete || !isQcDme) return;
+    setIsDeletingArchive(true);
+    try {
+      await updateDoc(doc(db, 'monthly_reports', archiveToDelete.id), {
+        deleteRequested: deleteField(),
+        deleteRequestedBy: deleteField(),
+        deleteRequestedTo: deleteField(),
+        deleteReason: deleteField(),
+        deleteRequestedAt: deleteField(),
+      });
+      setArchives((prev) =>
+        prev.map((a) =>
+          a.id === archiveToDelete.id
+            ? { ...a, deleteRequested: false, deleteRequestedBy: undefined, deleteReason: undefined }
+            : a
+        )
+      );
+      toast.success('Pengajuan hapus ditolak. Dokumen arsip tetap aman tersimpan.');
+      setArchiveToDelete(null);
+    } catch (err: any) {
+      console.error('Gagal menolak pengajuan:', err);
+      toast.error('Gagal menolak pengajuan: ' + (err?.message || 'Terjadi kesalahan'));
+    } finally {
+      setIsDeletingArchive(false);
+    }
+  }, [archiveToDelete, isQcDme]);
 
   // Handler Simpan Perubahan Nama File Arsip Dokumen
   const handleSaveArchiveTitle = async () => {
@@ -6869,9 +6927,32 @@ export function MonthlyReportGenerator() {
                       </button>
 
                       <button
-                        onClick={() => setArchiveToDelete({ id: archive.id, title: archive.title || 'Laporan Bulanan' })}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl border border-transparent hover:border-red-200 transition-all cursor-pointer"
-                        title="Hapus arsip ini"
+                        onClick={() => {
+                          setArchiveDeleteReason(archive.deleteReason || '');
+                          setArchiveToDelete({
+                            id: archive.id,
+                            title: archive.title || 'Laporan Bulanan',
+                            deleteRequested: archive.deleteRequested,
+                            deleteRequestedBy: archive.deleteRequestedBy,
+                            deleteReason: archive.deleteReason,
+                          });
+                        }}
+                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                          archive.deleteRequested
+                            ? isQcDme
+                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300'
+                              : 'bg-amber-50 text-amber-500 border-amber-200 cursor-not-allowed opacity-75'
+                            : 'text-slate-400 hover:text-red-600 hover:bg-red-50 border-transparent hover:border-red-200'
+                        }`}
+                        title={
+                          archive.deleteRequested
+                            ? isQcDme
+                              ? 'Tinjau Pengajuan Hapus Arsip'
+                              : 'Menunggu Persetujuan Hapus QC DME'
+                            : isQcDme
+                              ? 'Hapus arsip ini permanen'
+                              : 'Ajukan Hapus ke QC DME'
+                        }
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -7186,54 +7267,126 @@ export function MonthlyReportGenerator() {
 
               <div className="relative z-10">
                 {/* Warning Icon */}
-                <div className="w-16 h-16 bg-red-50 border border-red-200/80 rounded-2xl flex items-center justify-center mx-auto mb-4 text-red-600 shadow-xs">
+                <div className={`w-16 h-16 ${archiveToDelete.deleteRequested ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-red-50 border-red-200/80 text-red-600'} border rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xs`}>
                   <Trash2 className="w-8 h-8" />
                 </div>
 
                 <h3 className="text-xl font-black text-slate-900 mb-2">
-                  Hapus Arsip Laporan?
+                  {archiveToDelete.deleteRequested
+                    ? isQcDme
+                      ? 'Persetujuan Hapus Arsip'
+                      : 'Batalkan Pengajuan Hapus Arsip?'
+                    : isQcDme
+                      ? 'Hapus Arsip Laporan Permanen?'
+                      : 'Ajukan Hapus Arsip ke QC DME'}
                 </h3>
-                <p className="text-slate-600 text-sm mb-4 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus arsip dokumen laporan bulanan ini?
+                <p className="text-slate-600 text-sm mb-3 leading-relaxed">
+                  {archiveToDelete.deleteRequested
+                    ? isQcDme
+                      ? 'Arsip ini diajukan untuk dihapus oleh teknisi/engineer:'
+                      : 'Arsip ini sedang menunggu persetujuan penghapusan oleh QC DME (qcdme@dme.com).'
+                    : isQcDme
+                      ? 'Apakah Anda yakin ingin menghapus arsip dokumen laporan bulanan ini secara permanen?'
+                      : 'Permohonan hapus akan diteruskan ke akun QC DME (qcdme@dme.com) untuk ditinjau dan disetujui.'}
                 </p>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-5 text-left">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 text-left">
                   <span className="text-xs font-bold text-slate-900 block truncate">
                     {archiveToDelete.title}
                   </span>
                   <span className="text-[11px] text-red-600 font-semibold block mt-0.5">
-                    ⚠️ Tindakan ini permanen dan berkas akan dihapus dari Cloud Firestore.
+                    {isQcDme
+                      ? '⚠️ Tindakan ini permanen dan berkas akan dihapus dari Cloud Firestore.'
+                      : 'ℹ️ Berkas akan tetap tersimpan sampai disetujui oleh QC DME.'}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setArchiveToDelete(null)}
-                    disabled={isDeletingArchive}
-                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeleteArchive}
-                    disabled={isDeletingArchive}
-                    className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-red-500/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {isDeletingArchive ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Menghapus...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="w-4 h-4" />
-                        <span>Ya, Hapus Arsip</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                {archiveToDelete.deleteRequested && archiveToDelete.deleteReason && (
+                  <div className="my-3 text-left bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">
+                      Diajukan oleh: {archiveToDelete.deleteRequestedBy || 'User'}
+                    </p>
+                    <p className="text-slate-700 text-xs font-medium italic">
+                      "{archiveToDelete.deleteReason}"
+                    </p>
+                  </div>
+                )}
+
+                {!isQcDme && !archiveToDelete.deleteRequested && (
+                  <div className="mt-3 mb-4 text-left">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                      <span>Alasan / Remark Hapus</span>
+                      <span className="text-rose-600 font-bold lowercase text-[11px]">* (wajib diisi)</span>
+                    </label>
+                    <textarea
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-amber-500 rounded-xl p-2.5 text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20 text-xs h-20 resize-none placeholder-slate-400 transition-all"
+                      placeholder="Wajib menyertakan alasan penghapusan (misal: Laporan bulanan revisi lama, salah tanggal, dll)..."
+                      value={archiveDeleteReason}
+                      onChange={(e) => setArchiveDeleteReason(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {archiveToDelete.deleteRequested && isQcDme ? (
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDeleteArchive}
+                      disabled={isDeletingArchive}
+                      className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-red-500/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isDeletingArchive && <RotateCcw className="w-4 h-4 animate-spin" />}
+                      <span>Setujui Hapus (Hapus Permanen)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRejectDeleteArchive}
+                      disabled={isDeletingArchive}
+                      className="w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 font-bold rounded-xl text-sm transition-all cursor-pointer"
+                    >
+                      <span>Tolak Pengajuan Hapus</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setArchiveToDelete(null)}
+                      disabled={isDeletingArchive}
+                      className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setArchiveToDelete(null)}
+                      disabled={isDeletingArchive}
+                      className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteArchive}
+                      disabled={isDeletingArchive}
+                      className={`flex-1 py-3 px-4 ${
+                        isQcDme ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
+                      } text-white font-bold rounded-xl text-sm transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50`}
+                    >
+                      {isDeletingArchive ? (
+                        <>
+                          <RotateCcw className="w-4 h-4 animate-spin" />
+                          <span>{isQcDme ? 'Menghapus...' : 'Mengajukan...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4" />
+                          <span>{isQcDme ? 'Ya, Hapus Arsip' : 'Kirim Pengajuan'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
