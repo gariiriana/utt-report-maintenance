@@ -154,9 +154,19 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
     return m && m[1] ? decodeEntities(m[1].trim()) : '';
   };
 
-  let title = getMatch(/Document\s*Title\s*:\s*([\s\S]*?)(?:Judul\s*Dokumen|Document\s*Purpose)/i);
+  let rawTitle = getMatch(/Document\s*Title\s*:\s*([\s\S]*?)(?:Judul\s*Dokumen|Document\s*Purpose)/i)
+    .replace(/^[\s\-:]+/, '')
+    .trim();
+
+  let title = rawTitle;
   if (title === '-' || !title) {
-    const cleanFn = fileName.replace(/\.docx$/i, '').replace(/[-_]/g, ' ').toUpperCase();
+    const cleanFn = fileName
+      .replace(/\.docx$/i, '')
+      .replace(/\s*\(\d+\)\s*$/g, '') // Bersihkan suffix copy seperti (1), (2)
+      .replace(/[-_]/g, ' ')
+      .trim()
+      .toUpperCase();
+
     if (/trafo|transformer/i.test(fileName) || /transformer/i.test(xml)) {
       title = isEop
         ? 'EOP GANGGUAN / PADAM TRANSFORMATOR (TRAFO)'
@@ -208,56 +218,205 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
 }
 
 /**
- * Mengekstrak tabel CI Equipment (SOP Seksi 2) dengan penanganan bilingual
- * Jika tabel tidak ada atau kosong, kembalikan array kosong []
+ * Mengekstrak tabel CI Equipment (SOP Seksi 2) dengan mapping kolom dinamis.
+ * Mampu membaca tabel 7 kolom (Lighting Point), 10 kolom (Trafo), maupun variasi jumlah/urutan kolom lainnya.
  */
 function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
-  const ciTbl = tbls.find((t) => t.includes('CI Name') || t.includes('Nama CI'));
+  const ciTbl = tbls.find(
+    (t) =>
+      t.includes('CI Name') ||
+      t.includes('Nama CI') ||
+      t.includes('Class Id') ||
+      t.includes('ID Kelas') ||
+      t.includes('Equipment Information') ||
+      t.includes('Informasi Peralatan')
+  );
   if (!ciTbl) return [];
 
   const trs = ciTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
-  const headerIdx = trs.findIndex((tr) => tr.includes('CI Name') || tr.includes('Nama CI'));
-  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+  const headerIdx = trs.findIndex(
+    (tr) =>
+      tr.includes('CI Name') ||
+      tr.includes('Nama CI') ||
+      tr.includes('Class Id') ||
+      tr.includes('ID Kelas') ||
+      tr.includes('Capacity') ||
+      tr.includes('Kapasitas')
+  );
+
+  const getLines = (cellXml?: string): string[] => {
+    if (!cellXml) return [];
+    return cellXml
+      .replace(/<w:br\/>/g, '[[BR]]')
+      .replace(/<\/w:p>/g, '[[BR]]')
+      .replace(/<[^>]+>/g, '')
+      .split('[[BR]]')
+      .map((l) => decodeEntities(l).replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  };
+
+  // 1. Petakan indeks kolom secara dinamis berdasarkan isi teks pada baris header
+  const colMap = {
+    no: -1,
+    classId: -1,
+    ciName: -1,
+    ciDescription: -1,
+    capacity: -1,
+    serialNumber: -1,
+    mfd: -1,
+    productName: -1,
+    model: -1,
+    room: -1
+  };
+
+  if (headerIdx >= 0) {
+    const headerTcs = trs[headerIdx].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    headerTcs.forEach((tc, idx) => {
+      const text = getLines(tc).join(' ').toLowerCase();
+
+      // Prioritaskan pengecekan spesifik agar tidak salah mapping
+      if (/(?:serial\s*num|nomor\s*seri|no\s*seri|\bs[\.\/]?n\b)/i.test(text)) {
+        colMap.serialNumber = idx;
+      } else if (/(?:class\s*id|id\s*kelas|\bkelas\b)/i.test(text)) {
+        colMap.classId = idx;
+      } else if (/(?:ci\s*desc|deskripsi\s*ci|\bdeskripsi\b|\bdescription\b)/i.test(text)) {
+        colMap.ciDescription = idx;
+      } else if (/(?:ci\s*name|nama\s*ci|asset\s*name|equipment\s*name|nama\s*alat|nama\s*peralatan)/i.test(text)) {
+        colMap.ciName = idx;
+      } else if (/(?:production\s*year|tahun\s*(?:pembuatan|produksi)|mfd|manufacturing|year\s*of\s*prod)/i.test(text)) {
+        colMap.mfd = idx;
+      } else if (/(?:product\s*name|nama\s*produk|\bmerk\b|\bbrand\b|pabrikan|manufacturer)/i.test(text)) {
+        colMap.productName = idx;
+      } else if (/(?:model\s*[\/\-]?\s*version|model|version|versi|\btipe\b|\btype\b)/i.test(text)) {
+        colMap.model = idx;
+      } else if (/(?:capacity|kapasitas|\brating\b)/i.test(text)) {
+        colMap.capacity = idx;
+      } else if (/(?:ruang(?:an)?|\broom\b|lokasi|location)/i.test(text)) {
+        colMap.room = idx;
+      } else if (/(?:^no\b|^nomor\b|^#)/i.test(text)) {
+        colMap.no = idx;
+      }
+    });
+  }
+
+  const rawDataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+  if (rawDataRows.length === 0) return [];
+
+  const sampleTcs = rawDataRows[0].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+  const colCount = sampleTcs.length;
+
+  // Fallback pemetaan kolom jika baris header tidak memiliki kata kunci standar
+  if (colMap.ciName === -1 && colMap.classId === -1 && colMap.capacity === -1) {
+    if (colCount === 7) {
+      // Format 7 Kolom (seperti SOP Lighting Point): No | Class Id | CI Name | Capacity | Production Year | Product Name | Model/Version
+      colMap.no = 0;
+      colMap.classId = 1;
+      colMap.ciName = 2;
+      colMap.capacity = 3;
+      colMap.mfd = 4;
+      colMap.productName = 5;
+      colMap.model = 6;
+    } else if (colCount === 8) {
+      colMap.no = 0;
+      colMap.classId = 1;
+      colMap.ciName = 2;
+      colMap.ciDescription = 3;
+      colMap.capacity = 4;
+      colMap.mfd = 5;
+      colMap.productName = 6;
+      colMap.model = 7;
+    } else if (colCount === 9) {
+      colMap.no = 0;
+      colMap.classId = 1;
+      colMap.ciName = 2;
+      colMap.ciDescription = 3;
+      colMap.capacity = 4;
+      colMap.serialNumber = 5;
+      colMap.mfd = 6;
+      colMap.productName = 7;
+      colMap.model = 8;
+    } else if (colCount >= 10) {
+      // Format 10 Kolom (Master Trafo NeutraDC)
+      colMap.no = 0;
+      colMap.classId = 1;
+      colMap.ciName = 2;
+      colMap.ciDescription = 3;
+      colMap.capacity = 4;
+      colMap.serialNumber = 5;
+      colMap.mfd = 6;
+      colMap.productName = 7;
+      colMap.model = 8;
+      colMap.room = 9;
+    }
+  }
+
+  if (colMap.no === -1 && colMap.classId === 1) {
+    colMap.no = 0;
+  }
+
+  // Fungsi deteksi untuk membuang baris subheader bilingual (misal baris kedua yang berisi teks bahasa Indonesia)
+  const isSubheaderRow = (tcs: string[]): boolean => {
+    if (tcs.length === 0) return false;
+    const firstCol = cleanText(tcs[0] || '').replace(/\.$/, '');
+    if (/^\d+$/.test(firstCol)) return false;
+
+    const rowText = tcs.map((c) => cleanText(c)).join(' ').toLowerCase();
+    const headerKeywords = [
+      'id kelas', 'class id', 'nama ci', 'ci name', 'deskripsi', 'description',
+      'kapasitas', 'capacity', 'nomor seri', 'serial number', 'tahun pembuatan',
+      'production year', 'nama produk', 'product name', 'model', 'ruangan', 'room'
+    ];
+    let matches = 0;
+    for (const kw of headerKeywords) {
+      if (rowText.includes(kw)) matches++;
+    }
+    return matches >= 2;
+  };
+
+  const dataRows = rawDataRows.filter((tr) => {
+    const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    return !isSubheaderRow(tcs);
+  });
+
+  const isTrafoDoc = /trafo|transformer/i.test(xml);
 
   const items = dataRows
     .map((tr, idx) => {
       const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length < 3) return null;
 
-      const getLines = (cellXml?: string): string[] => {
-        if (!cellXml) return [];
-        return cellXml
-          .replace(/<w:br\/>/g, '[[BR]]')
-          .replace(/<\/w:p>/g, '[[BR]]')
-          .replace(/<[^>]+>/g, '')
-          .split('[[BR]]')
-          .map((l) => decodeEntities(l).replace(/\s+/g, ' ').trim())
-          .filter(Boolean);
+      const getColVal = (colIndex: number): string => {
+        if (colIndex < 0 || colIndex >= tcs.length) return '';
+        return cleanText(tcs[colIndex]);
       };
 
-      const no = parseInt(getLines(tcs[0])[0], 10) || idx + 1;
-      const classId = getLines(tcs[1])[0] || 'TR';
-      const ciName = getLines(tcs[2])[0] || '';
-      const ciDescription = getLines(tcs[3])[0] || '';
-      const capacity = getLines(tcs[4])[0] || '';
-      const serialNumber = getLines(tcs[5])[0] || '';
-      const mfd = getLines(tcs[6])[0] || '';
-      const productName = getLines(tcs[7])[0] || '';
+      let no = idx + 1;
+      if (colMap.no >= 0 && colMap.no < tcs.length) {
+        const parsedNo = parseInt(cleanText(tcs[colMap.no]).replace(/\.$/, ''), 10);
+        if (!isNaN(parsedNo) && parsedNo > 0) {
+          no = parsedNo;
+        }
+      }
 
-      const modelLines = getLines(tcs[8]);
-      const model =
-        modelLines.length > 1
-          ? `${modelLines[0]} (${modelLines[1]})`
-          : modelLines[0] || '';
+      let classId = getColVal(colMap.classId);
+      if (!classId && isTrafoDoc) {
+        classId = 'TR';
+      }
 
-      const roomLines = getLines(tcs[9]);
-      const room =
-        roomLines.length > 1
-          ? `${roomLines[0]} (${roomLines[1]})`
-          : roomLines[0] || '';
+      const ciName = getColVal(colMap.ciName);
+      const ciDescription = getColVal(colMap.ciDescription);
+      const capacity = getColVal(colMap.capacity);
+      const serialNumber = getColVal(colMap.serialNumber);
+      const mfd = getColVal(colMap.mfd);
+      const productName = getColVal(colMap.productName);
+      const model = getColVal(colMap.model);
+      const room = getColVal(colMap.room);
 
-      if (!ciName && !ciDescription && !capacity && !serialNumber) return null;
+      // Baris kosong diabaikan
+      if (!ciName && !classId && !capacity && !serialNumber && !productName && !model) {
+        return null;
+      }
 
       return {
         no,
@@ -278,31 +437,63 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
 }
 
 /**
- * Mengekstrak Prasyarat / Prerequisites (SOP Seksi 7) secara dwibahasa
- * Jika tabel tidak ada atau kosong, kembalikan array kosong []
+ * Mengekstrak Prasyarat / Prerequisites (SOP Seksi 7) secara dwibahasa presisi.
+ * Mendukung tabel dengan atau tanpa kolom nomor (No).
  */
 function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
   const prereqTbl = tbls.find(
-    (t) => t.includes('Check PTW is approved') || t.includes('Periksa bahwa PTW')
+    (t) =>
+      t.includes('Check PTW') ||
+      t.includes('Periksa bahwa PTW') ||
+      ((t.includes('Requirement') || t.includes('Persyaratan') || t.includes('Prerequisite') || t.includes('Prasyarat')) &&
+        (t.includes('Time') || t.includes('Waktu') || t.includes('Intial') || t.includes('Initial') || t.includes('Inisial')))
   );
   if (!prereqTbl) return [];
 
   const trs = prereqTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
-  const items = trs
+  const headerIdx = trs.findIndex(
+    (tr) =>
+      (tr.includes('Requirement') || tr.includes('Persyaratan')) &&
+      (tr.includes('Time') || tr.includes('Waktu') || tr.includes('Intial') || tr.includes('Initial') || tr.includes('Inisial'))
+  );
+  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 0);
+
+  const items = dataRows
     .map((tr, idx) => {
       const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length === 0) return null;
 
-      const bilingual = extractBilingualFromXml(tcs[0] || '');
+      // Abaikan jika baris ini adalah baris header
+      const rowText = tcs.map((c) => cleanText(c)).join(' ').toLowerCase();
+      if (
+        (rowText.includes('requirement') || rowText.includes('persyaratan')) &&
+        (rowText.includes('time') || rowText.includes('waktu') || rowText.includes('initial') || rowText.includes('inisial'))
+      ) {
+        return null;
+      }
+
+      // Deteksi dinamis posisi kolom Requirement, Time, dan Initial
+      let reqCell = tcs[0];
+      let timeCell = tcs[1];
+      let initialCell = tcs[2];
+
+      const firstCellText = cleanText(tcs[0] || '').replace(/\.$/, '');
+      if (tcs.length >= 4 || (/^\d+$/.test(firstCellText) && tcs.length >= 3)) {
+        reqCell = tcs[1];
+        timeCell = tcs[2];
+        initialCell = tcs[3];
+      }
+
+      const bilingual = extractBilingualFromXml(reqCell || '');
       if (!bilingual.en && !bilingual.id) return null;
 
       return {
         no: idx + 1,
         requirementEn: bilingual.en,
         requirementId: bilingual.id,
-        time: tcs[1] ? cleanText(tcs[1]) : '',
-        initial: tcs[2] ? cleanText(tcs[2]) : ''
+        time: timeCell ? cleanText(timeCell) : '',
+        initial: initialCell ? cleanText(initialCell) : ''
       };
     })
     .filter(Boolean) as SOPPrerequisiteItem[];
@@ -311,8 +502,8 @@ function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
 }
 
 /**
- * Mengekstrak Langkah Kerja SOP (Seksi 10) secara dwibahasa presisi
- * Jika tabel tidak ada atau kosong, kembalikan array kosong []
+ * Mengekstrak Langkah Kerja SOP (Seksi 10) secara dwibahasa presisi.
+ * Mendukung tabel baik yang memiliki kolom No terpisah maupun tanpa kolom No.
  */
 function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
@@ -327,15 +518,45 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
   const headerIdx = trs.findIndex(
     (tr) => tr.includes('Expected Outcome') || tr.includes('Hasil yang Diharapkan')
   );
-  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 2);
+  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+
+  // Deteksi apakah header memiliki kolom No di kolom pertama
+  let hasNoCol = false;
+  if (headerIdx >= 0) {
+    const headerTcs = trs[headerIdx].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    if (headerTcs.length >= 4) {
+      const firstColText = cleanText(headerTcs[0] || '').toLowerCase();
+      if (/^no\b|^nomor\b|^#/.test(firstColText)) {
+        hasNoCol = true;
+      }
+    }
+  }
 
   const steps = dataRows
     .map((tr, idx) => {
       const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length < 2) return null;
 
-      const action = extractBilingualFromXml(tcs[0] || '');
-      const outcome = extractBilingualFromXml(tcs[1] || '');
+      const firstColText = cleanText(tcs[0] || '').replace(/\.$/, '');
+      const isFirstColNumber = /^\d+$/.test(firstColText);
+      const isRowWithNoCol = hasNoCol || (isFirstColNumber && tcs.length >= 4);
+
+      let stepNo = idx + 1;
+      let actionCell = tcs[0];
+      let outcomeCell = tcs[1];
+      let timeCell = tcs[2];
+      let initialCell = tcs[3];
+
+      if (isRowWithNoCol) {
+        stepNo = parseInt(firstColText, 10) || idx + 1;
+        actionCell = tcs[1];
+        outcomeCell = tcs[2];
+        timeCell = tcs[3];
+        initialCell = tcs[4];
+      }
+
+      const action = extractBilingualFromXml(actionCell || '');
+      const outcome = extractBilingualFromXml(outcomeCell || '');
       if (!action.en && !action.id) return null;
 
       const cleanActionEn = (action.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
@@ -344,13 +565,13 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
       const cleanOutcomeId = (outcome.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
 
       return {
-        no: idx + 1,
+        no: stepNo,
         actionEn: cleanActionEn,
         actionId: cleanActionId,
         expectedOutcomeEn: cleanOutcomeEn,
         expectedOutcomeId: cleanOutcomeId,
-        time: tcs[2] ? cleanText(tcs[2]) : '',
-        initial: tcs[3] ? cleanText(tcs[3]) : ''
+        time: timeCell ? cleanText(timeCell) : '',
+        initial: initialCell ? cleanText(initialCell) : ''
       };
     })
     .filter(Boolean) as SOPWorkStepItem[];
@@ -359,8 +580,8 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
 }
 
 /**
- * Mengekstrak Langkah Kedaruratan EOP (Seksi 4) secara dwibahasa presisi
- * Jika tabel tidak ada atau kosong, kembalikan array kosong []
+ * Mengekstrak Langkah Kedaruratan EOP (Seksi 4) secara dwibahasa presisi.
+ * Mendukung format tabel dengan atau tanpa kolom nomor (No).
  */
 function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
@@ -377,16 +598,42 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
   );
   const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
 
+  let hasNoCol = false;
+  if (headerIdx >= 0) {
+    const headerTcs = trs[headerIdx].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    if (headerTcs.length >= 4) {
+      const firstColText = cleanText(headerTcs[0] || '').toLowerCase();
+      if (/^no\b|^nomor\b|^#/.test(firstColText)) {
+        hasNoCol = true;
+      }
+    }
+  }
+
   const steps = dataRows
     .map((tr, idx) => {
       const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
-      if (tcs.length < 3) return null;
+      if (tcs.length < 2) return null;
 
-      // Kolom: [No, Action, Expected Outcome, Time, Name]
-      const noStr = cleanText(tcs[0] || '').replace(/\.$/, '');
-      const no = parseInt(noStr, 10) || idx + 1;
-      const action = extractBilingualFromXml(tcs[1] || '');
-      const outcome = extractBilingualFromXml(tcs[2] || '');
+      const firstColText = cleanText(tcs[0] || '').replace(/\.$/, '');
+      const isFirstColNumber = /^\d+$/.test(firstColText);
+      const isRowWithNoCol = hasNoCol || (isFirstColNumber && tcs.length >= 4);
+
+      let stepNo = idx + 1;
+      let actionCell = tcs[0];
+      let outcomeCell = tcs[1];
+      let timeCell = tcs[2];
+      let nameCell = tcs[3];
+
+      if (isRowWithNoCol) {
+        stepNo = parseInt(firstColText, 10) || idx + 1;
+        actionCell = tcs[1];
+        outcomeCell = tcs[2];
+        timeCell = tcs[3];
+        nameCell = tcs[4];
+      }
+
+      const action = extractBilingualFromXml(actionCell || '');
+      const outcome = extractBilingualFromXml(outcomeCell || '');
       if (!action.en && !action.id) return null;
 
       const cleanActionEn = (action.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
@@ -395,13 +642,13 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
       const cleanOutcomeId = (outcome.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
 
       return {
-        no,
+        no: stepNo,
         actionEn: cleanActionEn,
         actionId: cleanActionId,
         expectedOutcomeEn: cleanOutcomeEn,
         expectedOutcomeId: cleanOutcomeId,
-        time: tcs[3] ? cleanText(tcs[3]) : '',
-        name: tcs[4] ? cleanText(tcs[4]) : ''
+        time: timeCell ? cleanText(timeCell) : '',
+        name: nameCell ? cleanText(nameCell) : ''
       };
     })
     .filter(Boolean) as EOPWorkStepItem[];
@@ -411,7 +658,7 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
 
 /**
  * Mengekstrak tabel Dokumen Referensi (SOP Seksi 5 / EOP Seksi 2).
- * Jika tabel di Word kosong (hanya baris-baris kosong tanpa teks), kembalikan array kosong []
+ * Mendukung tabel 2 kolom [Name, Number] maupun 3 kolom [No, Name, Number].
  */
 function parseReferencedDocuments(xml: string): SOPReferencedDocItem[] {
   const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
@@ -434,9 +681,16 @@ function parseReferencedDocuments(xml: string): SOPReferencedDocItem[] {
   for (const tr of dataRows) {
     const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
     if (tcs.length < 2) continue;
-    const name = cleanText(tcs[0] || '');
-    const number = cleanText(tcs[1] || '');
-    // Hanya simpan jika nama atau nomor terisi dan bukan tanda '-'
+
+    let name = cleanText(tcs[0] || '');
+    let number = cleanText(tcs[1] || '');
+
+    // Jika kolom pertama adalah nomor urut (angka) dan tabel memiliki 3 kolom
+    if (tcs.length >= 3 && /^\d+$/.test(name.replace(/\.$/, ''))) {
+      name = cleanText(tcs[1] || '');
+      number = cleanText(tcs[2] || '');
+    }
+
     if ((name && name !== '-') || (number && number !== '-')) {
       docs.push({ name, number });
     }
@@ -572,6 +826,58 @@ function parseApprovals(xml: string): DocumentSigner[] {
 }
 
 /**
+ * Mengekstrak Persyaratan K3 / EHS SOP (Seksi 6)
+ */
+function parseSOPEHSRequirements(xml: string): {
+  ppeEn: string;
+  ppeId: string;
+  jewelryEn: string;
+  jewelryId: string;
+  commsEn: string;
+  commsId: string;
+  lotoEn: string;
+  lotoId: string;
+} {
+  const match = xml.match(
+    /(?:Section\s*6|Seksi\s*6)[\s\S]*?(?:Enviro?nmental|K3|Lingkungan)[\s\S]*?(?=(?:Section\s*7|Seksi\s*7))/i
+  );
+  if (!match) {
+    return {
+      ppeEn: '',
+      ppeId: '',
+      jewelryEn: '',
+      jewelryId: '',
+      commsEn: '',
+      commsId: '',
+      lotoEn: '',
+      lotoId: ''
+    };
+  }
+
+  const trs = match[0].match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const items = trs
+    .map((tr) => {
+      const bilingual = extractBilingualFromXml(tr);
+      return {
+        en: (bilingual.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim(),
+        id: (bilingual.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim()
+      };
+    })
+    .filter((item) => item.en || item.id);
+
+  return {
+    ppeEn: items[0]?.en || '',
+    ppeId: items[0]?.id || '',
+    jewelryEn: items[1]?.en || '',
+    jewelryId: items[1]?.id || '',
+    commsEn: items[2]?.en || '',
+    commsId: items[2]?.id || '',
+    lotoEn: items[3]?.en || '',
+    lotoId: items[3]?.id || ''
+  };
+}
+
+/**
  * Parsing berkas Word SOP (14 Seksi) secara komprehensif
  */
 function parseSOPData(xml: string, fileName: string): SOPDocumentData {
@@ -580,6 +886,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   const prerequisites = parsePrerequisites(xml);
   const workSteps = parseSOPWorkSteps(xml);
   const approvals = parseApprovals(xml);
+  const ehsRequirements = parseSOPEHSRequirements(xml);
 
   // Seksi 3: Schedule / Work Information
   const norm = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -606,6 +913,10 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
       affectedSystemsDetails = rawDetails;
     }
   }
+
+  // Seksi 9: Maintenance Period
+  const is6Months = /■\s*6\s*Months|☑\s*6\s*Months|\[x\]\s*6\s*Months/i.test(xml);
+  const maintenancePeriod = is6Months ? '6_months' : 'annual';
 
   // Seksi 11: Back Out Procedure
   let backOutProcedure = 'N/A T/A';
@@ -636,16 +947,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     affectedSystems,
     affectedSystemsDetails,
     referencedDocuments: parseReferencedDocuments(xml),
-    ehsRequirements: {
-      ppeEn: '',
-      ppeId: '',
-      jewelryEn: '',
-      jewelryId: '',
-      commsEn: '',
-      commsId: '',
-      lotoEn: '',
-      lotoId: ''
-    },
+    ehsRequirements,
     prerequisites,
     dryRun: {
       jobTitle: 'Teknisi Data Center',
@@ -653,7 +955,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
       date: '',
       signatureBase64: ''
     },
-    maintenancePeriod: 'annual',
+    maintenancePeriod,
     conditionsPriorToExecutionEn: '',
     conditionsPriorToExecutionId: '',
     workSteps,
