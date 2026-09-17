@@ -751,59 +751,59 @@ export function HSEFindingsArchive() {
   // RENDER
   // --------------------------------------------------------------------------
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5 sm:space-y-6">
       {/* ===== Header Section ===== */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-sm p-5 sm:p-6"
+        className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-sm p-3.5 sm:p-6"
       >
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-teal-100 rounded-2xl">
-              <Archive className="w-6 h-6 text-teal-700" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="p-2 sm:p-3 bg-teal-100 rounded-xl sm:rounded-2xl shrink-0">
+              <Archive className="w-5 h-5 sm:w-6 sm:h-6 text-teal-700" />
             </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-800">Arsip Dokumen Temuan HSE</h2>
-              <p className="text-xs sm:text-sm text-slate-500">Seluruh data temuan keselamatan kerja — Open (Terbuka) & Close (Ditutup)</p>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold text-slate-800 leading-tight">Arsip Dokumen Temuan HSE</h2>
+              <p className="text-[11px] sm:text-sm text-slate-500 leading-tight mt-0.5">Seluruh data temuan keselamatan kerja — Open & Close</p>
             </div>
           </div>
 
           {/* Export Recap Buttons (NeutraDC & UTT) */}
           {filteredFindings.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleExportRecap('neutradc')}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-xs transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl shadow-xs transition-colors cursor-pointer"
                 title="Export Rekap PDF (Logo Dwimitra & NeutraDC)"
               >
-                <Download className="w-4 h-4" />
-                <span>Export PDF NeutraDC</span>
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">PDF NeutraDC</span>
               </motion.button>
 
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleExportRecap('utt')}
-                className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-xs transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl shadow-xs transition-colors cursor-pointer"
                 title="Export Rekap PDF (Logo UTT & NeutraDC)"
               >
-                <Download className="w-4 h-4" />
-                <span>Export PDF UTT</span>
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">PDF UTT</span>
               </motion.button>
             </div>
           )}
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+        {/* Stats Cards — Compact 3 Columns on Mobile */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-3 sm:mt-5">
           {[
-            { label: 'Total Temuan', value: stats.total, icon: Layers, color: 'text-slate-700', bg: 'bg-slate-50 border-slate-200', filter: 'all' as const },
-            { label: 'Open (Terbuka)', value: stats.open, icon: Clock, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', filter: 'open' as const },
-            { label: 'Close (Ditutup)', value: stats.close, icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', filter: 'close' as const },
+            { label: 'Total', fullLabel: 'Total Temuan', value: stats.total, icon: Layers, color: 'text-slate-700', bg: 'bg-slate-50 border-slate-200', filter: 'all' as const },
+            { label: 'Open', fullLabel: 'Open (Terbuka)', value: stats.open, icon: Clock, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', filter: 'open' as const },
+            { label: 'Close', fullLabel: 'Close (Ditutup)', value: stats.close, icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', filter: 'close' as const },
           ].map((s, i) => (
             <motion.button
               key={i}
@@ -818,33 +818,36 @@ export function HSEFindingsArchive() {
                   setSeverityFilter('all');
                 }
               }}
-              className={`text-left p-3.5 rounded-2xl border ${s.bg} transition-all cursor-pointer ${
+              className={`text-left p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border ${s.bg} transition-all cursor-pointer ${
                 statusFilter === s.filter && severityFilter === 'all' ? 'ring-2 ring-offset-1 ring-teal-400' : ''
               }`}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <s.icon className={`w-4 h-4 ${s.color}`} />
-                <span className="text-xs text-slate-500 font-medium">{s.label}</span>
+              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                <s.icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${s.color}`} />
+                <span className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
+                  <span className="inline sm:hidden">{s.label}</span>
+                  <span className="hidden sm:inline">{s.fullLabel}</span>
+                </span>
               </div>
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <p className={`text-base sm:text-2xl font-bold ${s.color}`}>{s.value}</p>
             </motion.button>
           ))}
         </div>
       </motion.div>
 
       {/* ===== Tipe Temuan Quick Selector ===== */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-100/80 backdrop-blur-sm rounded-2xl border border-slate-200/80 shadow-xs overflow-x-auto">
+      <div className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-slate-100/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-xs overflow-x-auto scrollbar-none">
         <button
           type="button"
           onClick={() => setFindingTypeFilter('all')}
-          className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-w-[95px] sm:min-w-[120px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
             findingTypeFilter === 'all'
-              ? 'bg-white text-slate-800 shadow-sm border border-slate-200'
+              ? 'bg-white text-slate-800 shadow-xs border border-slate-200'
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
           <span>Semua Tipe</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+          <span className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
             findingTypeFilter === 'all' ? 'bg-slate-200 text-slate-800' : 'bg-slate-200/80 text-slate-600'
           }`}>{findings.length}</span>
         </button>
@@ -852,15 +855,15 @@ export function HSEFindingsArchive() {
         <button
           type="button"
           onClick={() => setFindingTypeFilter('negative')}
-          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-w-[115px] sm:min-w-[140px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
             findingTypeFilter === 'negative'
-              ? 'bg-rose-500 text-white shadow-sm shadow-rose-500/25'
+              ? 'bg-rose-500 text-white shadow-xs shadow-rose-500/25'
               : 'text-slate-600 hover:text-rose-700 hover:bg-white/60'
           }`}
         >
-          <span className={`w-2 h-2 rounded-full ${findingTypeFilter === 'negative' ? 'bg-white animate-pulse' : 'bg-rose-500'}`} />
+          <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${findingTypeFilter === 'negative' ? 'bg-white animate-pulse' : 'bg-rose-500'}`} />
           <span>Temuan Negatif</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+          <span className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
             findingTypeFilter === 'negative' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700'
           }`}>{stats.negative}</span>
         </button>
@@ -868,15 +871,15 @@ export function HSEFindingsArchive() {
         <button
           type="button"
           onClick={() => setFindingTypeFilter('positive')}
-          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 min-w-[115px] sm:min-w-[140px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
             findingTypeFilter === 'positive'
-              ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25'
+              ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/25'
               : 'text-slate-600 hover:text-emerald-700 hover:bg-white/60'
           }`}
         >
-          <span className={`w-2 h-2 rounded-full ${findingTypeFilter === 'positive' ? 'bg-white animate-pulse' : 'bg-emerald-500'}`} />
+          <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${findingTypeFilter === 'positive' ? 'bg-white animate-pulse' : 'bg-emerald-500'}`} />
           <span>Temuan Positif</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+          <span className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
             findingTypeFilter === 'positive' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
           }`}>{stats.positive}</span>
         </button>
@@ -887,9 +890,9 @@ export function HSEFindingsArchive() {
         initial={{ opacity: 0, y: -5 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-sm p-4 sm:p-5"
+        className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-sm p-3 sm:p-5"
       >
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           {/* Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -897,34 +900,36 @@ export function HSEFindingsArchive() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari judul, lokasi, pelapor, atau pihak terkait..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition"
+              placeholder="Cari judul, lokasi, pelapor..."
+              className="w-full pl-9 sm:pl-10 pr-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition"
             />
           </div>
 
-          {/* Sort Dropdown */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
-          >
-            <option value="date_desc">Terbaru</option>
-            <option value="date_asc">Terlama</option>
-            <option value="severity_desc">Risiko Tertinggi</option>
-            <option value="severity_asc">Risiko Terendah</option>
-          </select>
+          <div className="flex items-center gap-2">
+            {/* Sort Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="flex-1 sm:flex-none px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
+            >
+              <option value="date_desc">Terbaru</option>
+              <option value="date_asc">Terlama</option>
+              <option value="severity_desc">Risiko Tertinggi</option>
+              <option value="severity_asc">Risiko Terendah</option>
+            </select>
 
-          {/* Toggle Advanced Filters */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2.5 border rounded-2xl text-sm font-medium transition-colors cursor-pointer ${
-              showFilters ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            <span>Filter</span>
-            {showFilters ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
+            {/* Toggle Advanced Filters */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 border rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                showFilters ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>Filter</span>
+              {showFilters ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
         </div>
 
         {/* Advanced Filters */}
