@@ -106,12 +106,12 @@
     "firebase-admin": "^13.10.0",
     "tailwindcss": "4.1.12",
     "typescript": "^6.0.3",
-    "vite": "6.3.5",
+    "vite": "6.4.3",
     "vite-plugin-pwa": "^1.2.0"
   },
   "pnpm": {
     "overrides": {
-      "vite": "6.3.5"
+      "vite": "6.4.3"
     }
   }
 }
