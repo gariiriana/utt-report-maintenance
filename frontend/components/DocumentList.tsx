@@ -1483,7 +1483,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
 
     // Subkasus 2: Hanya ada Service Report (dokumen SR tanpa foto)
     if (srPdfBytes) {
-      const srBlob = new Blob([srPdfBytes], { type: 'application/pdf' });
+      const srBlob = new Blob([srPdfBytes as any], { type: 'application/pdf' });
       const fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
       if (saveToFile) {
         saveAs(srBlob, fileName);
