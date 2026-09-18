@@ -1856,7 +1856,7 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
             ]
             : []),
 
-          createSectionHeader('MATRIKS OTORISASI & TANDA TANGAN', false),
+          createSectionHeader('MATRIKS OTORISASI & TANDA TANGAN', true),
           pirSignatureTable,
         ],
       },
