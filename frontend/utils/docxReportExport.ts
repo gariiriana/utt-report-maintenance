@@ -131,7 +131,7 @@ const cellBorder = {
 function createSectionHeader(title: string, pageBreak = false): Paragraph {
   return new Paragraph({
     pageBreakBefore: pageBreak,
-    keepWithNext: true,
+    keepNext: true,
     alignment: AlignmentType.LEFT,
     spacing: { before: 180, after: 120 },
     children: [
