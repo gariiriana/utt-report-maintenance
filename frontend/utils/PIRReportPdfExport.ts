@@ -9,9 +9,11 @@ import { toast } from 'sonner';
 import {
   PREPARED_BY_SIGNATURES,
   ARIF_BUDIMAN_SIGNATURE_BASE64,
+  DWI_TASMIYADI_SIGNATURE_BASE64,
   normalizeEngineerName,
   getEngineerSignature,
-  cleanSignature
+  cleanSignature,
+  getReviewedBy2Signature
 } from '@/utils/engineerSignatures';
 
 /** Helper to convert image URL to base64 */
@@ -478,6 +480,9 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       ((data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('budiman')
         ? ARIF_BUDIMAN_SIGNATURE_BASE64
         : '');
+    const rev2Sign = cleanSignature((data as any).reviewedBy2Sign) ||
+      getReviewedBy2Signature(data.reviewedBy2Name || 'Dwi Tasmiyadi') ||
+      DWI_TASMIYADI_SIGNATURE_BASE64;
 
     autoTable(doc, {
       startY: y,
@@ -509,6 +514,10 @@ export async function generatePIRReportPDF(data: PIRReportData) {
             try {
               doc.addImage(rev1Sign, 'PNG', cellData.cell.x + (cellData.cell.width - 32) / 2, cellData.cell.y + 1, 32, 11);
             } catch { /* ignore */ }
+          } else if (cellData.column.index === 2 && rev2Sign) {
+            try {
+              doc.addImage(rev2Sign, 'PNG', cellData.cell.x + (cellData.cell.width - 32) / 2, cellData.cell.y + 1, 32, 11);
+            } catch { /* ignore */ }
           }
         }
       }
@@ -521,7 +530,7 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       margin: { left: margin, right: margin },
       head: [[{ content: 'ACKNOWLEDGED BY,', colSpan: 2 }]],
       body: [
-        ['\n\n\n', '\n\n\n'],
+        ['\n\n\n\n\n', '\n\n\n\n\n'],
         [
           `${(!data.acknowledgedBy1Name || data.acknowledgedBy1Name === 'Andrean Bima Pratama') ? 'Habib Mulyana' : data.acknowledgedBy1Name}\n(${data.acknowledgedBy1Title || 'Chief Engineer'})`,
           `${data.acknowledgedBy2Name || 'Supriyatno'}\n(${data.acknowledgedBy2Title || 'Facility manager'})`
@@ -539,7 +548,7 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       margin: { left: margin, right: margin },
       head: [[{ content: 'APPROVED BY,', colSpan: 2 }]],
       body: [
-        ['\n\n\n', '\n\n\n'],
+        ['\n\n\n\n\n', '\n\n\n\n\n'],
         [
           `${data.approvedBy1Name || 'Budi Susanto'}\n(${data.approvedBy1Title || 'Assistant manager HDC Facility Management'})`,
           `${data.approvedBy2Name || 'Rezki Rahman Daulay'}\n(${data.approvedBy2Title || 'Manager HDC Operation'})`
@@ -557,7 +566,7 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       margin: { left: margin, right: margin },
       head: [[{ content: 'APPROVED BY,', colSpan: 1 }]],
       body: [
-        ['\n\n\n'],
+        ['\n\n\n\n\n'],
         [`${data.approvedBy3Name || 'Muryani'}\n(${data.approvedBy3Title || 'EGM DC Operation'})`]
       ],
       headStyles: { fillColor: HEADER_FILL, textColor: [40, 40, 40], fontStyle: 'bold', fontSize: 9, lineWidth: 0.2, lineColor: TABLE_BORDER },

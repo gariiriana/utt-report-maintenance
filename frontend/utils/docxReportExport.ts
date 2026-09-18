@@ -30,9 +30,11 @@ import { CMReportData, CMSparepartItem } from '@/types/correctiveReportTypes';
 import {
   PREPARED_BY_SIGNATURES,
   ARIF_BUDIMAN_SIGNATURE_BASE64,
+  DWI_TASMIYADI_SIGNATURE_BASE64,
   normalizeEngineerName,
   getEngineerSignature,
-  cleanSignature
+  cleanSignature,
+  getReviewedBy2Signature
 } from '@/utils/engineerSignatures';
 import { PIRReportData } from '@/types/pirReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
@@ -705,7 +707,13 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
         })
       );
     } else {
-      children.push(new Paragraph({ spacing: { before: 300 } }));
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 950, after: 20 },
+          children: [new TextRun({ text: '' })],
+        })
+      );
     }
 
     children.push(
@@ -1280,15 +1288,19 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
     ((data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('budiman')
       ? ARIF_BUDIMAN_SIGNATURE_BASE64
       : '');
+  const resolvedRev2Sign = cleanSignature((data as any).reviewedBy2Sign) ||
+    getReviewedBy2Signature(data.reviewedBy2Name || 'Dwi Tasmiyadi') ||
+    DWI_TASMIYADI_SIGNATURE_BASE64;
   const resolvedPrepSign = cleanSignature((data as any).preparedBySign) ||
     getEngineerSignature(normalizedPrepName) ||
     cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) || '';
 
-  const [logoLeftBytes, logoRightBytes, prepSignBytes, revSignBytes, ack1SignBytes, ack2SignBytes, app1SignBytes, app2SignBytes, app3SignBytes] = await Promise.all([
+  const [logoLeftBytes, logoRightBytes, prepSignBytes, revSignBytes, rev2SignBytes, ack1SignBytes, ack2SignBytes, app1SignBytes, app2SignBytes, app3SignBytes] = await Promise.all([
     loadImageAsUint8Array(logoDwimitra),
     loadImageAsUint8Array(data.companyType === 'k2' ? logoK2 : logoNeutraDC),
     loadImageAsUint8Array(resolvedPrepSign),
     loadImageAsUint8Array(resolvedRevSign),
+    loadImageAsUint8Array(resolvedRev2Sign),
     loadImageAsUint8Array((data as any).acknowledgedBy1Sign || ''),
     loadImageAsUint8Array((data as any).acknowledgedBy2Sign || ''),
     loadImageAsUint8Array((data as any).approvedBy1Sign || ''),
@@ -1576,7 +1588,13 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
         })
       );
     } else {
-      children.push(new Paragraph({ spacing: { before: 180 } }));
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 950, after: 20 },
+          children: [new TextRun({ text: '' })],
+        })
+      );
     }
     children.push(
       new Paragraph({
@@ -1640,7 +1658,7 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           new TableCell({
             width: { size: 33, type: WidthType.PERCENTAGE },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
-            children: buildPirSigCell(new Uint8Array(), data.reviewedBy2Name || 'Dwi Tasmiyadi', data.reviewedBy2Title || '(Project manager)'),
+            children: buildPirSigCell(rev2SignBytes, data.reviewedBy2Name || 'Dwi Tasmiyadi', data.reviewedBy2Title || '(Project manager)'),
           }),
         ],
       }),
