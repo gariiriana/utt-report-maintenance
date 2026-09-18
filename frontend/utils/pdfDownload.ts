@@ -17,29 +17,29 @@ export function downloadPDFBlob(blob: Blob, fileName: string): void {
 
   let downloadInitiated = false;
 
-  // 1. Primary: file-saver saveAs
+  // 1. Primary: Direct standard HTML5 anchor click (direct download to browser default folder)
   try {
-    saveAs(pdfBlob, safeName);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = safeName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      if (document.body.contains(link)) document.body.removeChild(link);
+    }, 1500);
     downloadInitiated = true;
   } catch (err) {
-    console.warn('[pdfDownload] saveAs failed, trying DOM link fallback:', err);
+    console.warn('[pdfDownload] DOM link download failed, trying saveAs fallback:', err);
   }
 
-  // 2. Direct DOM anchor fallback
+  // 2. Secondary fallback: file-saver saveAs
   if (!downloadInitiated) {
     try {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = safeName;
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        if (document.body.contains(link)) document.body.removeChild(link);
-      }, 1500);
+      saveAs(pdfBlob, safeName);
       downloadInitiated = true;
     } catch (err) {
-      console.warn('[pdfDownload] DOM link fallback failed:', err);
+      console.warn('[pdfDownload] saveAs fallback failed:', err);
     }
   }
 

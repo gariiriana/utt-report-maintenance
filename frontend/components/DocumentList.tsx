@@ -646,7 +646,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           fcuReportData: data.fcuReportData,
           fcuTimeSpent: data.fcuTimeSpent,
           serviceReportPayload: data.serviceReportPayload || null,
-          hasServiceReport: Boolean(data.attachedSrFile || data.attachedSrBase64),
+          hasServiceReport: Boolean(data.hasServiceReport || data.attachedSrFile || data.attachedSrBase64 || data.serviceReportPayload),
           attachedSrFile: data.attachedSrFile || null,
           attachedSrBase64: data.attachedSrBase64 || null,
           deleteRequested: data.deleteRequested || false,
@@ -1193,6 +1193,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   const buildPDFBlob = async (docData: ExcelDocument, saveToFile: boolean = false, photosOnly: boolean = false): Promise<{ blob: Blob; fileName: string }[]> => {
     let finalPhotosData = docData.photosData || [];
 
+    if (finalPhotosData.length === 0 && Array.isArray((docData as any).photos) && (docData as any).photos.length > 0) {
+      finalPhotosData = (docData as any).photos;
+    }
+
     if (finalPhotosData.length === 0) {
       // 1. Prioritaskan pembacaan dari IndexedDB lokal (offlineReportStorage)
       try {
@@ -1210,15 +1214,19 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       }
     }
 
+    const colName = docData.collectionName || (docData.documentType === 'excel' ? 'excel_documents' : (docData.documentType === 'hse' ? 'hse' : 'pdf_documents'));
+
     if (finalPhotosData.length === 0) {
-      // 2. Fallback ke Firestore subcollection (Online atau Cache)
+      // 2. Fallback ke Firestore subcollection (Online dengan timeout 3.5s atau Cache)
       try {
-        const colPath = `pdf_documents/${docData.id}/photos`;
+        const colPath = `${colName}/${docData.id}/photos`;
         let photosSnap: any = null;
         if (navigator.onLine) {
           try {
-            photosSnap = await getDocs(collection(db, colPath));
-          } catch (netErr) {
+            const fetchPromise = getDocs(collection(db, colPath));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500));
+            photosSnap = await Promise.race([fetchPromise, timeoutPromise]);
+          } catch {
             photosSnap = await getDocsFromCache(collection(db, colPath)).catch(() => null);
           }
         } else {
@@ -1227,11 +1235,40 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
 
         if (photosSnap && !photosSnap.empty) {
           finalPhotosData = photosSnap.docs
-            .map((d: any) => d.data() as PhotoData)
+            .map((d: any) => {
+              const p = d.data();
+              return {
+                index: p.index ?? 0,
+                description: p.description || p.caption || '',
+                photoBase64: p.photoBase64 || p.base64 || p.url || '',
+                hasPhoto: p.hasPhoto ?? Boolean(p.photoBase64 || p.base64 || p.url)
+              };
+            })
             .sort((a: any, b: any) => a.index - b.index);
         }
       } catch (err) {
         console.error('Failed to fetch subcollection photos (PDF):', err);
+      }
+    }
+
+    // 3. Fallback: Cek jika foto tersimpan di dokumen utama Firestore
+    if (finalPhotosData.length === 0) {
+      try {
+        const docSnap = await getDoc(doc(db, colName, docData.id));
+        if (docSnap.exists()) {
+          const d = docSnap.data();
+          const rawPhotos = d.photos || d.photosData || d.cards;
+          if (Array.isArray(rawPhotos) && rawPhotos.length > 0) {
+            finalPhotosData = rawPhotos.map((p: any, i: number) => ({
+              index: p.index ?? i + 1,
+              description: p.description || p.caption || '',
+              photoBase64: p.photoBase64 || p.base64 || p.url || '',
+              hasPhoto: p.hasPhoto ?? Boolean(p.photoBase64 || p.base64 || p.url)
+            }));
+          }
+        }
+      } catch (docErr) {
+        console.warn('Failed to check root doc photos:', docErr);
       }
     }
 
@@ -1242,48 +1279,55 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       description: p.description || '',
     }));
 
-    // 1. Selalu generate PDF Dokumentasi Foto terlebih dahulu (layout resmi ReportPdfExport)
-    const effectiveCompanyType = docData.companyType || companyType || 'neutra';
-    const leftLogo = effectiveCompanyType === 'bri' ? logoBRILeft : logoDwimitra;
-    const rightLogo = effectiveCompanyType === 'bri' ? logoBRI : effectiveCompanyType === 'k2' ? logoK2 : logoNeutraDC;
-    const [logoLeftB64, logoRightB64] = await Promise.all([
-      loadLogoBase64(leftLogo),
-      loadLogoBase64(rightLogo),
-    ]);
+    const hasFilledPhotos = cards.some(c => c.photoBase64 || c.description);
 
-    const docResult = await generateReportPDF({
-      maintenanceName: docData.maintenanceName,
-      maintenanceTime: docData.maintenanceTime,
-      specificDetail: docData.specificDetail || '',
-      vrvUnitDetail: '',
-      cards,
-      companyType: effectiveCompanyType as 'neutra' | 'bri' | 'k2',
-      userEmail: docData.createdBy,
-      logos: { left: logoLeftB64, right: logoRightB64 },
-      abnormalFinding: docData.hasAbnormal && docData.abnormalFinding ? {
-        partName: (docData.abnormalFinding as any).partName || docData.abnormalFinding.unitName || docData.specificDetail || docData.maintenanceName,
-        partNumber: (docData.abnormalFinding as any).partNumber || '-',
-        brandName: (docData.abnormalFinding as any).brandName || '-',
-        quantity: (docData.abnormalFinding as any).quantity ? `${(docData.abnormalFinding as any).quantity}` : '1 Unit',
-        findingDate: (docData.abnormalFinding as any).findingDate || (docData.abnormalFinding.reportedAt
-          ? (typeof docData.abnormalFinding.reportedAt === 'string'
-              ? docData.abnormalFinding.reportedAt.split('T')[0]
-              : new Date(docData.abnormalFinding.reportedAt).toLocaleDateString('id-ID'))
-          : docData.maintenanceTime),
-        remark: docData.abnormalFinding.description || 'Temuan abnormal tercatat pada dokumen ini.',
-        actionRecommendation: docData.abnormalFinding.actionRecommendation || undefined,
-        photos: ((docData.abnormalFinding as any).photos && (docData.abnormalFinding as any).photos.length > 0)
-          ? (docData.abnormalFinding as any).photos
-          : (docData.abnormalFinding.photoBase64 ? [{ base64: docData.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : [])
-      } : null,
-    });
-
-    if (!docResult) {
-      throw new Error('Gagal membuat PDF dokumentasi foto');
-    }
-
-    // Jika user memilih hanya Dokumentasi Foto, langsung kembalikan docResult
+    // Kasus A: User memilih HANYA Dokumentasi Foto
     if (photosOnly) {
+      if (!hasFilledPhotos) {
+        toast.error('Laporan ini tidak memiliki dokumentasi foto.', { id: 'download-photos' });
+        return [];
+      }
+
+      const effectiveCompanyType = docData.companyType || companyType || 'neutra';
+      const leftLogo = effectiveCompanyType === 'bri' ? logoBRILeft : logoDwimitra;
+      const rightLogo = effectiveCompanyType === 'bri' ? logoBRI : effectiveCompanyType === 'k2' ? logoK2 : logoNeutraDC;
+      const [logoLeftB64, logoRightB64] = await Promise.all([
+        loadLogoBase64(leftLogo),
+        loadLogoBase64(rightLogo),
+      ]);
+
+      const docResult = await generateReportPDF({
+        maintenanceName: docData.maintenanceName,
+        maintenanceTime: docData.maintenanceTime,
+        specificDetail: docData.specificDetail || '',
+        vrvUnitDetail: '',
+        cards,
+        companyType: effectiveCompanyType as 'neutra' | 'bri' | 'k2',
+        userEmail: docData.createdBy,
+        logos: { left: logoLeftB64, right: logoRightB64 },
+        abnormalFinding: docData.hasAbnormal && docData.abnormalFinding ? {
+          partName: (docData.abnormalFinding as any).partName || docData.abnormalFinding.unitName || docData.specificDetail || docData.maintenanceName,
+          partNumber: (docData.abnormalFinding as any).partNumber || '-',
+          brandName: (docData.abnormalFinding as any).brandName || '-',
+          quantity: (docData.abnormalFinding as any).quantity ? `${(docData.abnormalFinding as any).quantity}` : '1 Unit',
+          findingDate: (docData.abnormalFinding as any).findingDate || (docData.abnormalFinding.reportedAt
+            ? (typeof docData.abnormalFinding.reportedAt === 'string'
+                ? docData.abnormalFinding.reportedAt.split('T')[0]
+                : new Date(docData.abnormalFinding.reportedAt).toLocaleDateString('id-ID'))
+            : docData.maintenanceTime),
+          remark: docData.abnormalFinding.description || 'Temuan abnormal tercatat pada dokumen ini.',
+          actionRecommendation: docData.abnormalFinding.actionRecommendation || undefined,
+          photos: ((docData.abnormalFinding as any).photos && (docData.abnormalFinding as any).photos.length > 0)
+            ? (docData.abnormalFinding as any).photos
+            : (docData.abnormalFinding.photoBase64 ? [{ base64: docData.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : [])
+        } : null,
+      });
+
+      if (!docResult) {
+        toast.error('Gagal membuat PDF dokumentasi foto', { id: 'download-photos' });
+        return [];
+      }
+
       const pdfBlob = docResult.doc.output('blob');
       let fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
       fileName = fileName.replace(/\.pdf$/i, '') + '_Dokumentasi_Foto.pdf';
@@ -1293,7 +1337,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       return [{ fileName, blob: pdfBlob }];
     }
 
-    // 2. Jika photosOnly === false ("Lengkap: Foto + Service Report"), siapkan Halaman 1 Service Report
+    // Kasus B: photosOnly === false ("Lengkap: Foto + Service Report" atau download default)
+    // Siapkan Halaman 1 Service Report terlebih dahulu jika ada
     let srBase64 = docData.attachedSrBase64;
     let srFileName = docData.attachedSrFile?.name;
 
@@ -1306,6 +1351,21 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
         }
       } catch (e) {
         console.warn('Could not read attachedSrBase64 from offline storage:', e);
+      }
+    }
+
+    let servicePayload = docData.serviceReportPayload;
+    if (!srBase64 && !servicePayload) {
+      try {
+        const docSnap = await getDoc(doc(db, colName, docData.id));
+        if (docSnap.exists()) {
+          const d = docSnap.data();
+          if (d.attachedSrBase64) srBase64 = d.attachedSrBase64;
+          if (d.attachedSrFile?.name && !srFileName) srFileName = d.attachedSrFile.name;
+          if (d.serviceReportPayload) servicePayload = d.serviceReportPayload;
+        }
+      } catch (e) {
+        console.warn('Could not fetch doc from Firestore for SR:', e);
       }
     }
 
@@ -1337,12 +1397,12 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       }
     }
 
-    // Prioritas 2: Fallback jika tidak ada berkas fisik mentah, render formulir Page 1 dari serviceReportPayload
-    if (!srPdfBytes && docData.serviceReportPayload && Object.keys(docData.serviceReportPayload).length > 0) {
+    // Prioritas 2: Fallback render formulir Service Report dari serviceReportPayload
+    if (!srPdfBytes && servicePayload && Object.keys(servicePayload).length > 0) {
       try {
         const srDoc = await generateUniversalServiceReportPDF(
-          docData.serviceReportPayload,
-          [], // KOSONG agar hanya membuat Halaman 1 formulir Service Report (tanpa layout foto bawaan)
+          servicePayload,
+          [], // KOSONG agar hanya membuat Halaman 1 formulir Service Report
           false
         );
         srPdfBytes = srDoc.output('arraybuffer');
@@ -1351,8 +1411,47 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       }
     }
 
-    // 3. Gabungkan Halaman 1 (Service Report 1:1) + Halaman 2 dst (Dokumentasi Foto Ber-layout ISO)
-    if (srPdfBytes) {
+    // Sekarang siapkan Dokumentasi Foto jika ada kartu foto terisi
+    let docResult: any = null;
+    if (hasFilledPhotos) {
+      const effectiveCompanyType = docData.companyType || companyType || 'neutra';
+      const leftLogo = effectiveCompanyType === 'bri' ? logoBRILeft : logoDwimitra;
+      const rightLogo = effectiveCompanyType === 'bri' ? logoBRI : effectiveCompanyType === 'k2' ? logoK2 : logoNeutraDC;
+      const [logoLeftB64, logoRightB64] = await Promise.all([
+        loadLogoBase64(leftLogo),
+        loadLogoBase64(rightLogo),
+      ]);
+
+      docResult = await generateReportPDF({
+        maintenanceName: docData.maintenanceName,
+        maintenanceTime: docData.maintenanceTime,
+        specificDetail: docData.specificDetail || '',
+        vrvUnitDetail: '',
+        cards,
+        companyType: effectiveCompanyType as 'neutra' | 'bri' | 'k2',
+        userEmail: docData.createdBy,
+        logos: { left: logoLeftB64, right: logoRightB64 },
+        abnormalFinding: docData.hasAbnormal && docData.abnormalFinding ? {
+          partName: (docData.abnormalFinding as any).partName || docData.abnormalFinding.unitName || docData.specificDetail || docData.maintenanceName,
+          partNumber: (docData.abnormalFinding as any).partNumber || '-',
+          brandName: (docData.abnormalFinding as any).brandName || '-',
+          quantity: (docData.abnormalFinding as any).quantity ? `${(docData.abnormalFinding as any).quantity}` : '1 Unit',
+          findingDate: (docData.abnormalFinding as any).findingDate || (docData.abnormalFinding.reportedAt
+            ? (typeof docData.abnormalFinding.reportedAt === 'string'
+                ? docData.abnormalFinding.reportedAt.split('T')[0]
+                : new Date(docData.abnormalFinding.reportedAt).toLocaleDateString('id-ID'))
+            : docData.maintenanceTime),
+          remark: docData.abnormalFinding.description || 'Temuan abnormal tercatat pada dokumen ini.',
+          actionRecommendation: docData.abnormalFinding.actionRecommendation || undefined,
+          photos: ((docData.abnormalFinding as any).photos && (docData.abnormalFinding as any).photos.length > 0)
+            ? (docData.abnormalFinding as any).photos
+            : (docData.abnormalFinding.photoBase64 ? [{ base64: docData.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : [])
+        } : null,
+      });
+    }
+
+    // Subkasus 1: Kedua-duanya ada (Service Report + Foto) -> Gabungkan 1:1
+    if (srPdfBytes && docResult) {
       try {
         const mergedPdf = await PDFDocument.create();
         const srPdfDoc = await PDFDocument.load(srPdfBytes);
@@ -1364,7 +1463,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           mergedPdf.addPage(page);
         }
 
-        // Salin seluruh halaman Dokumentasi Foto (Halaman 2 dst, format sama persis seperti export dokumentasi)
+        // Salin seluruh halaman Dokumentasi Foto (Halaman 2 dst)
         const docPages = await mergedPdf.copyPages(docPdfDoc, docPdfDoc.getPageIndices());
         for (const page of docPages) {
           mergedPdf.addPage(page);
@@ -1382,13 +1481,29 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       }
     }
 
-    // 4. Jika tidak ada Service Report sama sekali, kembalikan dokumentasi foto saja
-    const pdfBlob = docResult.doc.output('blob');
-    let fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
-    if (saveToFile) {
-      docResult.doc.save(fileName);
+    // Subkasus 2: Hanya ada Service Report (dokumen SR tanpa foto)
+    if (srPdfBytes) {
+      const srBlob = new Blob([srPdfBytes], { type: 'application/pdf' });
+      const fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
+      if (saveToFile) {
+        saveAs(srBlob, fileName);
+      }
+      return [{ fileName, blob: srBlob }];
     }
-    return [{ fileName, blob: pdfBlob }];
+
+    // Subkasus 3: Hanya ada Dokumentasi Foto (tanpa Service Report)
+    if (docResult) {
+      const pdfBlob = docResult.doc.output('blob');
+      let fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
+      if (saveToFile) {
+        docResult.doc.save(fileName);
+      }
+      return [{ fileName, blob: pdfBlob }];
+    }
+
+    // Subkasus 4: Dokumen kosong (tidak ada foto terisi maupun Service Report)
+    toast.error('Dokumen ini tidak memiliki dokumentasi foto maupun Service Report.', { id: 'download-pdf' });
+    return [];
   };
 
   const buildHSEBlob = async (docData: ExcelDocument, saveToFile: boolean = false): Promise<{ blob: Blob; fileName: string }> => {
@@ -1465,12 +1580,14 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
     try {
       toast.loading('Menghasilkan PDF dari database...', { id: 'download-pdf' });
       const files = await buildPDFBlob(docData, false);
+      if (files.length === 0) {
+        toast.dismiss('download-pdf');
+        return;
+      }
       for (const file of files) {
         downloadPDFBlob(file.blob, file.fileName);
       }
-      if (files.length > 0) {
-        toast.success('PDF berhasil diunduh!', { id: 'download-pdf' });
-      }
+      toast.success('PDF berhasil diunduh!', { id: 'download-pdf' });
     } catch (error) {
       console.error('Download PDF error:', error);
       toast.error('Gagal mengunduh PDF', { id: 'download-pdf' });
@@ -1481,12 +1598,14 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
     try {
       toast.loading('Menghasilkan PDF Dokumentasi Foto...', { id: 'download-photos' });
       const files = await buildPDFBlob(docData, false, true);
+      if (files.length === 0) {
+        toast.dismiss('download-photos');
+        return;
+      }
       for (const file of files) {
         downloadPDFBlob(file.blob, file.fileName);
       }
-      if (files.length > 0) {
-        toast.success('Dokumentasi foto berhasil diunduh!', { id: 'download-photos' });
-      }
+      toast.success('Dokumentasi foto berhasil diunduh!', { id: 'download-photos' });
     } catch (error) {
       console.error('Download photos-only error:', error);
       toast.error('Gagal mengunduh dokumentasi foto', { id: 'download-photos' });
