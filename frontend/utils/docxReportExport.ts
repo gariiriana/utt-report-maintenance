@@ -1309,8 +1309,37 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
     loadImageAsUint8Array((data as any).approvedBy3Sign || ''),
   ]);
 
-  const resolvedIncidentName = data.incidentName || (data as any).issue || (data as any).ticketName || '-';
-  const resolvedOwner = data.postmortemOwner || (data as any).reportedByEmail || (data as any).reportedBy || '-';
+  const resolvedIncidentName = data.incidentName || (data as any).issue || (data as any).ticketName || '';
+  const resolvedOwner = data.postmortemOwner || (data as any).reportedByEmail || (data as any).reportedBy || '';
+
+  // Helper untuk memverifikasi apakah input benar-benar diisi di website (bukan kosong / '-' / 'N/A')
+  const hasPIRText = (val?: string): boolean => {
+    if (!val) return false;
+    const trimmed = val.trim();
+    return (
+      trimmed.length > 0 &&
+      trimmed !== '-' &&
+      trimmed !== '--' &&
+      trimmed.toUpperCase() !== 'N/A' &&
+      trimmed.toUpperCase() !== 'NONE'
+    );
+  };
+
+  // Header Table: Hanya tampilkan baris yang benar-benar di-input pada website
+  const rawHeaderRows: [string, string | undefined][] = [
+    ['Incident Name', resolvedIncidentName],
+    ['Incident Date', data.incidentDate],
+    ['Incident ID', data.incidentId || (data.id ? data.id.slice(0, 8) : undefined)],
+    ['Postmortem Owner', resolvedOwner],
+    ['Date Completed', data.dateCompleted],
+    ['Report Authors', data.reportAuthors],
+    ['Report ID', data.reportId],
+    ['Link to Incident Recording', data.linkToIncidentRecording],
+    ['Postmortem Meeting Date', data.postmortemMeetingDate],
+    ['Severity Level', data.severityLevel ? `${data.severityLevel} ${data.severityComments ? `(${data.severityComments})` : ''}`.trim() : undefined],
+  ];
+
+  const validHeaderRows = rawHeaderRows.filter(([_, val]) => hasPIRText(val));
 
   const pirHeaderTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -1321,136 +1350,154 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-            children: [new Paragraph({ children: [new TextRun({ text: 'FIELD', bold: true, size: 17 })] })],
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            children: [new Paragraph({ children: [new TextRun({ text: 'FIELD', bold: true, size: 20, font: 'Century Gothic', color: '000000' })] })],
           }),
           new TableCell({
             width: { size: 70, type: WidthType.PERCENTAGE },
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-            children: [new Paragraph({ children: [new TextRun({ text: 'DETAILS', bold: true, size: 17 })] })],
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            children: [new Paragraph({ children: [new TextRun({ text: 'DETAILS', bold: true, size: 20, font: 'Century Gothic', color: '000000' })] })],
           }),
         ],
       }),
-      [
-        ['Incident Name', resolvedIncidentName],
-        ['Incident Date', data.incidentDate || '-'],
-        ['Incident ID', data.incidentId || (data.id ? data.id.slice(0, 8) : '-')],
-        ['Postmortem Owner', resolvedOwner],
-        ['Date Completed', data.dateCompleted || '-'],
-        ['Report Authors', data.reportAuthors || '-'],
-        ['Report ID', data.reportId || '-'],
-        ['Postmortem Meeting Date', data.postmortemMeetingDate || '-'],
-        ['Severity Level', `${data.severityLevel || 'LOW'} ${data.severityComments ? `(${data.severityComments})` : ''}`],
-      ].map(
+      ...validHeaderRows.map(
         ([label, val]) =>
           new TableRow({
             children: [
               new TableCell({
                 margins: { top: 60, bottom: 60, left: 100, right: 100 },
-                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 16, color: '334155' })] })],
+                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20, color: '334155', font: 'Century Gothic' })] })],
               }),
               new TableCell({
                 margins: { top: 60, bottom: 60, left: 100, right: 100 },
-                children: [new Paragraph({ children: [new TextRun({ text: val, size: 16, color: '0F172A' })] })],
+                children: [new Paragraph({ children: [new TextRun({ text: val || '-', size: 20, color: '0F172A', font: 'Century Gothic' })] })],
               }),
             ],
           })
       ),
-    ].flat(),
-  });
-
-  // Attendees Table
-  const attendeesTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: cellBorder,
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ATTENDEES (TDE)', bold: true, size: 17 })] })],
-          }),
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ATTENDEES (DME)', bold: true, size: 17 })] })],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 100, right: 100 },
-            children: createBulletParagraphs(data.attendeesTDE && data.attendeesTDE.length > 0 ? data.attendeesTDE.join('\n') : '-', 16),
-          }),
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 100, right: 100 },
-            children: createBulletParagraphs(data.attendeesDME && data.attendeesDME.length > 0 ? data.attendeesDME.join('\n') : '-', 16),
-          }),
-        ],
-      }),
     ],
   });
 
-  // Corrective Actions Table
-  const correctiveActionRows =
-    data.correctiveActions && data.correctiveActions.length > 0
-      ? data.correctiveActions.map(
-        (ca) =>
-          new TableRow({
-            children: [
-              ca.actionItem || '-',
-              ca.typeOfAction || '-',
-              ca.assignedTo || '-',
-              ca.bug || '-',
-              ca.startDate || '-',
-              ca.endDate || '-',
-            ].map(
-              (cellText, idx) =>
-                new TableCell({
-                  width: { size: [30, 15, 15, 15, 12, 13][idx], type: WidthType.PERCENTAGE },
-                  margins: { top: 60, bottom: 60, left: 80, right: 80 },
-                  children: [new Paragraph({ children: [new TextRun({ text: cellText, size: 15 })] })],
-                })
-            ),
-          })
-      )
-      : [
+  // Attendees Table: Hanya dibuat bila minimal salah satu peserta (TDE / DME) diisi
+  const hasTDE = Array.isArray(data.attendeesTDE) && data.attendeesTDE.some((a) => hasPIRText(a));
+  const hasDME = Array.isArray(data.attendeesDME) && data.attendeesDME.some((a) => hasPIRText(a));
+  const hasAttendees = hasTDE || hasDME;
+
+  const attendeesTable = hasAttendees
+    ? new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorder,
+      rows: [
         new TableRow({
-          children: ['-', '-', '-', '-', '-', '-'].map(
-            (cellText, idx) =>
+          children: [
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ATTENDEES (TDE)', bold: true, size: 20, font: 'Century Gothic', color: '000000' })] })],
+            }),
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ATTENDEES (DME)', bold: true, size: 20, font: 'Century Gothic', color: '000000' })] })],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              margins: { top: 80, bottom: 80, left: 100, right: 100 },
+              children: createBulletParagraphs(hasTDE ? data.attendeesTDE.filter((a) => hasPIRText(a)).join('\n') : '-', 20),
+            }),
+            new TableCell({
+              margins: { top: 80, bottom: 80, left: 100, right: 100 },
+              children: createBulletParagraphs(hasDME ? data.attendeesDME.filter((a) => hasPIRText(a)).join('\n') : '-', 20),
+            }),
+          ],
+        }),
+      ],
+    })
+    : null;
+
+  // Corrective Actions Table: Century Gothic 10pt (size 20), multiline paragraph handling
+  const validCorrectiveActions = (data.correctiveActions || []).filter(
+    (ca) => hasPIRText(ca.actionItem) || hasPIRText(ca.typeOfAction) || hasPIRText(ca.assignedTo) || hasPIRText(ca.bug)
+  );
+
+  const correctiveActionRows = validCorrectiveActions.map((ca) =>
+    new TableRow({
+      cantSplit: true,
+      children: [
+        ca.actionItem || '-',
+        ca.typeOfAction || '-',
+        ca.assignedTo || '-',
+        ca.bug || '-',
+        ca.startDate || '-',
+        ca.endDate || '-',
+      ].map((cellText, idx) => {
+        // Pisahkan teks baris baru (\n) agar tersusun rapi per baris/paragraf di tabel Word
+        const rawLines = (cellText || '-').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const lines = rawLines.length > 0 ? rawLines : ['-'];
+
+        return new TableCell({
+          width: { size: [32, 14, 15, 15, 12, 12][idx], type: WidthType.PERCENTAGE },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+          children: lines.map(
+            (line) =>
+              new Paragraph({
+                spacing: { before: 20, after: 20 },
+                children: [
+                  new TextRun({
+                    text: line,
+                    size: 20, // 10pt Century Gothic (Word display)
+                    color: '1E293B',
+                    font: 'Century Gothic',
+                  }),
+                ],
+              })
+          ),
+        });
+      }),
+    })
+  );
+
+  const pirActionTable = validCorrectiveActions.length > 0
+    ? new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorder,
+      rows: [
+        new TableRow({
+          tableHeader: true,
+          cantSplit: true,
+          children: ['ACTION ITEM', 'TYPE', 'ASSIGNED TO', 'BUG / TICKET', 'START DATE', 'END DATE'].map(
+            (hText, idx) =>
               new TableCell({
-                width: { size: [30, 15, 15, 15, 12, 13][idx], type: WidthType.PERCENTAGE },
-                margins: { top: 60, bottom: 60, left: 80, right: 80 },
-                children: [new Paragraph({ children: [new TextRun({ text: cellText, size: 15 })] })],
+                width: { size: [32, 14, 15, 15, 12, 12][idx], type: WidthType.PERCENTAGE },
+                shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+                margins: { top: 80, bottom: 80, left: 80, right: 80 },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new TextRun({
+                        text: hText,
+                        bold: true,
+                        size: 20, // 10pt Header
+                        color: '000000',
+                        font: 'Century Gothic',
+                      }),
+                    ],
+                  }),
+                ],
               })
           ),
         }),
-      ];
-
-  const pirActionTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: cellBorder,
-    rows: [
-      new TableRow({
-        children: ['ACTION ITEM', 'TYPE', 'ASSIGNED TO', 'BUG / TICKET', 'START DATE', 'END DATE'].map(
-          (hText, idx) =>
-            new TableCell({
-              width: { size: [30, 15, 15, 15, 12, 13][idx], type: WidthType.PERCENTAGE },
-              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-              margins: { top: 80, bottom: 80, left: 80, right: 80 },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: hText, bold: true, size: 15, color: '000000' })],
-                }),
-              ],
-            })
-        ),
-      }),
-      ...correctiveActionRows,
-    ],
-  });
+        ...correctiveActionRows,
+      ],
+    })
+    : null;
 
   // Photo Documentation - 2-Column Table Grid (Compact & Space-Saving)
   const photoTableRows: TableRow[] = [];
@@ -1526,6 +1573,7 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
       // Add Header Row for Photo Documentation Pair
       photoTableRows.push(
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
@@ -1552,6 +1600,7 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           ],
         }),
         new TableRow({
+          cantSplit: true,
           children: [
             new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
@@ -1779,7 +1828,134 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
     ],
   });
 
+  // Susun elemen-elemen dokumen PIR secara dinamis (hanya mencantumkan yang di-input)
+  const docChildren: (Paragraph | Table)[] = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 180, after: 240 },
+      children: [
+        new TextRun({ text: 'POST INCIDENT REPORT (PIR)', bold: true, size: 28, color: '1E293B', font: 'Century Gothic' }),
+      ],
+    }),
+
+    pirHeaderTable,
+    new Paragraph({ spacing: { after: 180 } }),
+  ];
+
+  // Attendees (Hanya jika diisi)
+  if (attendeesTable) {
+    docChildren.push(
+      createSectionHeader('ATTENDEES'),
+      attendeesTable,
+      new Paragraph({ spacing: { after: 180 } })
+    );
+  }
+
+  // Executive Summary (Hanya jika diisi)
+  if (hasPIRText(data.summary)) {
+    docChildren.push(
+      createBoxSection('EXECUTIVE SUMMARY', data.summary),
+      new Paragraph({ spacing: { after: 180 } })
+    );
+  }
+
+  // Incident Overview (Hanya sub-bagian yang diisi, dan header hanya tampil jika minimal ada 1 sub-bagian)
+  const overviewBoxes: (Table | Paragraph)[] = [];
+  if (hasPIRText(data.impact)) {
+    overviewBoxes.push(createBoxSection('IMPACT', data.impact));
+    overviewBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.trigger)) {
+    overviewBoxes.push(createBoxSection('TRIGGER', data.trigger));
+    overviewBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.rootCause)) {
+    overviewBoxes.push(createBoxSection('ROOT CAUSE', data.rootCause));
+    overviewBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.detection)) {
+    overviewBoxes.push(createBoxSection('DETECTION', data.detection));
+    overviewBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.response)) {
+    overviewBoxes.push(createBoxSection('RESPONSE', data.response));
+    overviewBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.resolution)) {
+    overviewBoxes.push(createBoxSection('RESOLUTION', data.resolution));
+    overviewBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+
+  if (overviewBoxes.length > 0) {
+    docChildren.push(
+      createSectionHeader('INCIDENT OVERVIEW'),
+      ...overviewBoxes,
+      new Paragraph({ spacing: { after: 80 } })
+    );
+  }
+
+  // Contributing Factors & Lessons Learned (Hanya sub-bagian yang diisi)
+  const lessonsBoxes: (Table | Paragraph)[] = [];
+  if (hasPIRText(data.contributingFactors)) {
+    lessonsBoxes.push(createBoxSection('CONTRIBUTING FACTORS', data.contributingFactors));
+    lessonsBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.whatWentWell)) {
+    lessonsBoxes.push(createBoxSection('WHAT WENT WELL', data.whatWentWell));
+    lessonsBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.whatWentPoorly)) {
+    lessonsBoxes.push(createBoxSection('WHAT WENT POORLY', data.whatWentPoorly));
+    lessonsBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+  if (hasPIRText(data.whereWereWeLucky)) {
+    lessonsBoxes.push(createBoxSection('WHERE WERE WE LUCKY', data.whereWereWeLucky));
+    lessonsBoxes.push(new Paragraph({ spacing: { after: 100 } }));
+  }
+
+  if (lessonsBoxes.length > 0) {
+    docChildren.push(
+      createSectionHeader('CONTRIBUTING FACTORS & LESSONS LEARNED'),
+      ...lessonsBoxes,
+      new Paragraph({ spacing: { after: 80 } })
+    );
+  }
+
+  // Corrective Actions (Hanya jika ada tindakan perbaikan yang diisi, selalu mulai di halaman baru)
+  if (pirActionTable) {
+    docChildren.push(
+      createSectionHeader('CORRECTIVE ACTIONS', true),
+      pirActionTable,
+      new Paragraph({ spacing: { after: 140 } })
+    );
+  }
+
+  // Supporting Documentation (Hanya jika ada foto bukti yang diunggah — berada di SATU HALAMAN dengan Corrective Actions)
+  if (pirPhotoGridTable) {
+    docChildren.push(
+      createSectionHeader('SUPPORTING DOCUMENTATION', false),
+      pirPhotoGridTable,
+      new Paragraph({ spacing: { after: 180 } })
+    );
+  }
+
+  // Matriks Otorisasi & Tanda Tangan Resmi
+  docChildren.push(
+    createSectionHeader('MATRIKS OTORISASI & TANDA TANGAN', true),
+    pirSignatureTable
+  );
+
   const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: 'Century Gothic',
+            size: 20, // 10pt standar
+          },
+        },
+      },
+    },
     sections: [
       {
         properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
@@ -1794,71 +1970,14 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: 'Halaman ', size: 16, color: '64748B' }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 16, color: '64748B' }),
+                  new TextRun({ text: 'Halaman ', size: 16, color: '64748B', font: 'Century Gothic' }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 16, color: '64748B', font: 'Century Gothic' }),
                 ],
               }),
             ],
           }),
         },
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 180, after: 240 },
-            children: [
-              new TextRun({ text: 'POST INCIDENT REPORT (PIR)', bold: true, size: 28, color: '1E293B' }),
-            ],
-          }),
-
-          pirHeaderTable,
-          new Paragraph({ spacing: { after: 180 } }),
-
-          createSectionHeader('ATTENDEES'),
-          attendeesTable,
-          new Paragraph({ spacing: { after: 180 } }),
-
-          createBoxSection('EXECUTIVE SUMMARY', data.summary || 'N/A'),
-          new Paragraph({ spacing: { after: 180 } }),
-
-          createSectionHeader('INCIDENT OVERVIEW'),
-          createBoxSection('IMPACT', data.impact || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('TRIGGER', data.trigger || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('ROOT CAUSE', data.rootCause || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('DETECTION', data.detection || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('RESPONSE', data.response || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('RESOLUTION', data.resolution || 'N/A'),
-          new Paragraph({ spacing: { after: 180 } }),
-
-          createSectionHeader('CONTRIBUTING FACTORS & LESSONS LEARNED'),
-          createBoxSection('CONTRIBUTING FACTORS', data.contributingFactors || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('WHAT WENT WELL', data.whatWentWell || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('WHAT WENT POORLY', data.whatWentPoorly || 'N/A'),
-          new Paragraph({ spacing: { after: 100 } }),
-          createBoxSection('WHERE WERE WE LUCKY', data.whereWereWeLucky || 'N/A'),
-          new Paragraph({ spacing: { after: 180 } }),
-
-          createSectionHeader('CORRECTIVE ACTIONS'),
-          pirActionTable,
-          new Paragraph({ spacing: { after: 240 } }),
-
-          ...(pirPhotoGridTable
-            ? [
-              createSectionHeader('SUPPORTING DOCUMENTATION', false),
-              pirPhotoGridTable,
-              new Paragraph({ spacing: { after: 180 } }),
-            ]
-            : []),
-
-          createSectionHeader('MATRIKS OTORISASI & TANDA TANGAN', true),
-          pirSignatureTable,
-        ],
+        children: docChildren,
       },
     ],
   });
