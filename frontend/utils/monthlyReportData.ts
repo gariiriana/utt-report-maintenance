@@ -819,235 +819,235 @@ export function generatePrimaryGoalsFromEquipments(equipments: string[]): Primar
   });
 }
 
-// // Specific Task PM description mapping from official Service Reports (Activity Section) - Concise Single-Paragraph Bilingual (EN + ID)
+// Specific Task PM description mapping from official Service Reports (Activity Section) - Concise Single-Paragraph Bilingual (EN + ID)
 export const SCOPE_TASK_PM_MAPPING: Record<string, string> = {
   // 1. DOCK LEVELER
-  'dock leveler': `Visual inspection of dock leveler platform, telescopic lip plate, side toe guards, and rubber bumpers; hydraulic power unit fluid level, cylinder seals, and flexible hoses check; control push button panel cleaning and electrical wiring check; and full elevation, lip extension, and automatic return cycling test.
-Inspeksi visual platform dock leveler, pelat bibir teleskopik, pelindung samping, dan bumper karet; pemeriksaan level oli hidrolik, seal silinder, dan selang fleksibel; pembersihan panel tombol kontrol dan pengecekan pengkabelan; serta pengujian siklus penaikan, ekstensi bibir, dan pengembalian otomatis.`,
+  'dock leveler': `Visual inspection, hydraulic & electrical check, and operational cycling test.
+Inspeksi visual, pemeriksaan hidrolik & elektrikal, serta uji fungsi operasional.`,
 
   // 2. ATS (AUTOMATIC TRANSFER SWITCH)
-  'ats': `Visual inspection of ATS panel enclosure, indicator lamps, and controller display; control wiring tightness, cable grounding, and terminal connections check; thermography infrared scanning on busbars and transfer switch contacts; and automatic utility-to-generator transfer mechanism functional test.
-Inspeksi visual selungkup panel ATS, lampu indikator, dan tampilan kontroler; pemeriksaan kekencangan kabel kontrol, pentanahan, dan koneksi terminal; pemindaian termografi inframerah pada busbar dan kontak transfer switch; serta pengujian fungsional mekanisme perpindahan otomatis PLN ke genset.`,
+  'ats': `Visual inspection, control wiring check, and automatic transfer switching test.
+Inspeksi visual, pengecekan kabel kontrol, serta uji perpindahan transfer otomatis.`,
 
   // 3. VRV / VRF
-  'vrv': `Visual inspection of indoor ceiling cassettes and outdoor multi-inverter condensing units; suction and discharge refrigerant operating pressure checks; indoor air filter washing, evaporator coil fin cleaning, and electrical PCB diagnostics; and condensate drain pan flushing and cooling temperature differential (Delta-T) verification.
-Inspeksi visual unit indoor kaset dan condensing unit outdoor multi-inverter; pemeriksaan tekanan kerja hisap dan buang refrigeran; pencucian saringan filter udara, pembersihan sirip koil evaporator, dan diagnostik modul PCB; serta pembilasan baki drainase kondensat dan verifikasi selisih temperatur pendinginan (Delta-T).`,
+  'vrv': `Visual inspection, filter & coil cleaning, operating pressure check, and cooling verification.
+Inspeksi visual, pembersihan filter & koil, cek tekanan kerja, dan verifikasi pendinginan.`,
 
   // 4. PJU & OUTDOOR LIGHTING
-  'pju': `Visual inspection of street lighting poles, luminaire armatures, photovoltaic solar modules, and battery boxes; luminaire glass cover cleaning and solar panel surface washing; battery float voltage and charging controller current measurements; and photocell light sensor automatic dusk-to-dawn switching test.
-Inspeksi visual tiang lampu jalan PJU, rumah lampu, modul panel surya fotovoltaik, dan kotak baterai; pembersihan kaca penutup lampu dan pencucian permukaan panel surya; pengukuran tegangan float baterai dan arus kontroler pengisian; serta pengujian otomatisasi penyalaan sakelar fotosel senja hingga fajar.`,
+  'pju': `Visual inspection, luminaire & solar panel cleaning, battery check, and auto-switching test.
+Inspeksi visual, pembersihan lampu & panel surya, cek baterai, dan uji otomatisasi penyalaan.`,
 
-  'lighting': `Visual inspection of lamps, wiring connections, switch controls, and diffuser cleanliness; lighting distribution circuit voltage and load current measurements; emergency exit sign battery backup discharge verification; and lux illuminance level measurements across data halls, offices, and operational areas.
-Inspeksi visual lampu penerangan, sambungan kabel, sakelar kendali, dan kebersihan diffuser; pengukuran tegangan dan arus beban sirkuit distribusi penerangan; verifikasi daya cadangan baterai lampu darurat (exit sign); serta pengukuran tingkat kuat pencahayaan (Lux) pada data hall, perkantoran, dan area operasional.`,
+  'lighting': `Visual inspection, luminaire cleaning, voltage/current measurement, and lux level check.
+Inspeksi visual, pembersihan rumah lampu, pengukuran tegangan/arus, dan cek kuat pencahayaan lux.`,
 
   // 5. PDU PANEL
-  'pdu': `Visual inspection of PDU cabinet, branch circuit breakers, isolation transformer, and surge protective devices; branch circuit monitoring system (BCMS) and digital power meter calibration; internal vacuum cleaning and breaker termination torque checks; and infrared thermographic scanning on all busbars and breakers.
-Inspeksi visual kabinet PDU, pemutus sirkuit cabang, trafo isolasi, dan perangkat proteksi petir (SPD); kalibrasi sistem pemantauan sirkuit cabang (BCMS) dan meter daya digital; pembersihan vakum internal dan pemeriksaan torsi terminasi pemutus arus; serta pemindaian termografi inframerah pada seluruh busbar dan pemutus arus.`,
+  'pdu': `Visual inspection, breaker termination check, BCMS calibration, and thermographic scan.
+Inspeksi visual, pemeriksaan terminasi pemutus arus, kalibrasi BCMS, dan pemindaian termografi.`,
 
   // 6. COOLING TOWER & WATER TREATMENT
-  'cooling tower water treatment': `Water quality parameter testing including pH, conductivity, TDS, and total hardness; chemical dosing pump calibration, biocide and corrosion inhibitor replenishment; coupon corrosion rate monitoring; and automated blowdown control valve operation and sensor probe cleaning.
-Pengujian parameter kualitas air meliputi pH, konduktivitas, TDS, dan kesadahan total; kalibrasi pompa dosing kimia, pengisian biosida dan inhibitor korosi; pemantauan laju korosi kupon; serta pengujian katup blowdown otomatis dan pembersihan probe sensor.`,
+  'cooling tower water treatment': `Water quality testing (pH, TDS, hardness), dosing pump calibration, and chemical replenishment.
+Pengujian kualitas air (pH, TDS, kesadahan), kalibrasi pompa dosing, dan pengisian bahan kimia.`,
 
-  'ct water treatment': `Water quality parameter testing including pH, conductivity, TDS, and total hardness; chemical dosing pump calibration, biocide and corrosion inhibitor replenishment; coupon corrosion rate monitoring; and automated blowdown control valve operation and sensor probe cleaning.
-Pengujian parameter kualitas air meliputi pH, konduktivitas, TDS, dan kesadahan total; kalibrasi pompa dosing kimia, pengisian biosida dan inhibitor korosi; pemantauan laju korosi kupon; serta pengujian katup blowdown otomatis dan pembersihan probe sensor.`,
+  'ct water treatment': `Water quality testing (pH, TDS, hardness), dosing pump calibration, and chemical replenishment.
+Pengujian kualitas air (pH, TDS, kesadahan), kalibrasi pompa dosing, dan pengisian bahan kimia.`,
 
-  'cooling tower': `Visual inspection of cooling tower casing, water basin, drift eliminators, and PVC fill media; fan motor bearing greasing, belt tensioning, and blade clearance check; basin sludge and strainer mesh cleaning; and float valve water make-up operation and distribution nozzle spray pattern verification.
-Inspeksi visual selungkup, bak air (basin), drift eliminator, dan media pengisi PVC; pelumasan bearing motor kipas, ketegangan sabuk, dan celah bilah; pembersihan endapan basin dan saringan strainer; serta verifikasi katup pelampung dan pola semprotan nosel distribusi air.`,
+  'cooling tower': `Visual inspection, basin & strainer cleaning, fan lubrication, and water distribution check.
+Inspeksi visual, pembersihan basin & strainer, pelumasan kipas, dan cek distribusi air.`,
 
-  'ct': `Visual inspection of cooling tower casing, water basin, drift eliminators, and PVC fill media; fan motor bearing greasing, belt tensioning, and blade clearance check; basin sludge and strainer mesh cleaning; and float valve water make-up operation and distribution nozzle spray pattern verification.
-Inspeksi visual selungkup, bak air (basin), drift eliminator, dan media pengisi PVC; pelumasan bearing motor kipas, ketegangan sabuk, dan celah bilah; pembersihan endapan basin dan saringan strainer; serta verifikasi katup pelampung dan pola semprotan nosel distribusi air.`,
+  'ct': `Visual inspection, basin & strainer cleaning, fan lubrication, and water distribution check.
+Inspeksi visual, pembersihan basin & strainer, pelumasan kipas, dan cek distribusi air.`,
 
   // 7. AC SPLITS (BOQ: Splitwall / cat_25)
-  'ac split': `Visual inspection of indoor casing, outdoor condensing unit, and refrigerant piping insulation; indoor nylon mesh filter washing and evaporator/condenser coil fin cleaning; refrigerant suction pressure and compressor running current measurements; and supply/return air cooling temperature differential (Delta-T) verification.
-Inspeksi visual bodi indoor, unit outdoor kondensor, dan insulasi pipa refrigeran; pencucian saringan filter udara dan pembersihan sirip koil evaporator/kondensor; pengukuran tekanan hisap refrigeran dan arus kerja kompresor; serta verifikasi selisih temperatur pendinginan udara (Delta-T).`,
+  'ac split': `Visual inspection, filter & coil cleaning, suction pressure check, and Delta-T verification.
+Inspeksi visual, pencucian filter & koil, cek tekanan freon, dan verifikasi selisih suhu Delta-T.`,
 
-  'splitwall': `Visual inspection of indoor casing, outdoor condensing unit, and refrigerant piping insulation; indoor nylon mesh filter washing and evaporator/condenser coil fin cleaning; refrigerant suction pressure and compressor running current measurements; and supply/return air cooling temperature differential (Delta-T) verification.
-Inspeksi visual bodi indoor, unit outdoor kondensor, dan insulasi pipa refrigeran; pencucian saringan filter udara dan pembersihan sirip koil evaporator/kondensor; pengukuran tekanan hisap refrigeran dan arus kerja kompresor; serta verifikasi selisih temperatur pendinginan udara (Delta-T).`,
+  'splitwall': `Visual inspection, filter & coil cleaning, suction pressure check, and Delta-T verification.
+Inspeksi visual, pencucian filter & koil, cek tekanan freon, dan verifikasi selisih suhu Delta-T.`,
 
-  'ac split wall': `Visual inspection of indoor casing, outdoor condensing unit, and refrigerant piping insulation; indoor nylon mesh filter washing and evaporator/condenser coil fin cleaning; refrigerant suction pressure and compressor running current measurements; and supply/return air cooling temperature differential (Delta-T) verification.
-Inspeksi visual bodi indoor, unit outdoor kondensor, dan insulasi pipa refrigeran; pencucian saringan filter udara dan pembersihan sirip koil evaporator/kondensor; pengukuran tekanan hisap refrigeran dan arus kerja kompresor; serta verifikasi selisih temperatur pendinginan udara (Delta-T).`,
+  'ac split wall': `Visual inspection, filter & coil cleaning, suction pressure check, and Delta-T verification.
+Inspeksi visual, pencucian filter & koil, cek tekanan freon, dan verifikasi selisih suhu Delta-T.`,
 
-  'ac splits': `Visual inspection of indoor casing, outdoor condensing unit, and refrigerant piping insulation; indoor nylon mesh filter washing and evaporator/condenser coil fin cleaning; refrigerant suction pressure and compressor running current measurements; and supply/return air cooling temperature differential (Delta-T) verification.
-Inspeksi visual bodi indoor, unit outdoor kondensor, dan insulasi pipa refrigeran; pencucian saringan filter udara dan pembersihan sirip koil evaporator/kondensor; pengukuran tekanan hisap refrigeran dan arus kerja kompresor; serta verifikasi selisih temperatur pendinginan udara (Delta-T).`,
+  'ac splits': `Visual inspection, filter & coil cleaning, suction pressure check, and Delta-T verification.
+Inspeksi visual, pencucian filter & koil, cek tekanan freon, dan verifikasi selisih suhu Delta-T.`,
 
   // 8. GATE / DOOR ROLL / BARRIER
-  'gate': `Visual inspection of gate structure, boom alignment, and counterbalance springs; motor drive gearbox oil level inspection and mechanical limit switches check; safety infrared photocell obstacle detection and auto-reverse test; and remote console and manual emergency release operation.
-Inspeksi visual struktur gerbang, kelurusan palang boom, dan pegas penyeimbang; pemeriksaan level oli gearbox penggerak motor dan sakelar batas mekanis; pengujian deteksi rintangan sensor fotosel inframerah dan fitur auto-reverse; serta pengoperasian konsol remote dan tuas rilis darurat manual.`,
+  'gate': `Visual inspection, motor drive & gearbox check, safety sensor test, and remote control test.
+Inspeksi visual, pemeriksaan motor & gearbox, uji sensor keselamatan, dan uji kontrol gerbang.`,
 
-  'door': `Visual inspection of door curtain, guide tracks, torsion springs tension, and roller shutter assembly; limit switch positioning check, motor electrical panel cleaning, and bearing lubrication; safety photocell obstacle sensor test; and manual chain hoist emergency release and automatic operation verification.
-Inspeksi visual daun pintu rolling shutter, rel pemandu, tegangan pegas torsi, dan unit penggulung; pengecekan posisi sakelar batas, pembersihan panel listrik motor, dan pelumasan bearing; uji sensor fotosel pengaman rintangan; serta verifikasi tuas rantai manual darurat dan operasional otomatis.`,
+  'door': `Visual inspection, roller tracks & springs check, limit switch test, and motor operation check.
+Inspeksi visual, pemeriksaan rel & pegas, uji sakelar batas, dan pengecekan operasional motor.`,
 
   // 9. TRAFO / TRANSFORMER
-  'trafo': `Visual inspection of dry-type transformer enclosure, temperature controller, core, and cooling fans; cable terminal bolt torque verification, bushing cleaning, and grounding continuity check; high and low voltage winding insulation resistance (Megger) testing; and thermography infrared scan on all cable terminations and busbar joints.
-Inspeksi visual selungkup trafo tipe kering, modul pengontrol temperatur, inti besi, dan kipas pendingin; verifikasi torsi baut terminal kabel, pembersihan bushing, dan pengecekan kontinuitas grounding; pengujian resistansi isolasi belitan tegangan tinggi dan rendah (Megger); serta pemindaian termografi inframerah pada seluruh terminasi kabel dan sambungan busbar.`,
+  'trafo': `Visual inspection, winding insulation (Megger) test, bushing cleaning, and thermographic scan.
+Inspeksi visual, uji tahanan isolasi (Megger), pembersihan bushing, dan pemindaian termografi.`,
 
-  'transformer': `Visual inspection of dry-type transformer enclosure, temperature controller, core, and cooling fans; cable terminal bolt torque verification, bushing cleaning, and grounding continuity check; high and low voltage winding insulation resistance (Megger) testing; and thermography infrared scan on all cable terminations and busbar joints.
-Inspeksi visual selungkup trafo tipe kering, modul pengontrol temperatur, inti besi, dan kipas pendingin; verifikasi torsi baut terminal kabel, pembersihan bushing, dan pengecekan kontinuitas grounding; pengujian resistansi isolasi belitan tegangan tinggi dan rendah (Megger); serta pemindaian termografi inframerah pada seluruh terminasi kabel dan sambungan busbar.`,
+  'transformer': `Visual inspection, winding insulation (Megger) test, bushing cleaning, and thermographic scan.
+Inspeksi visual, uji tahanan isolasi (Megger), pembersihan bushing, dan pemindaian termografi.`,
 
   // 10. BUSDUCT
-  'busduct': `Visual inspection of busduct housing enclosure, hanger supports, and seismic bracing; joint pack bolt torque verification and expansion joint physical condition check; phase-to-phase and phase-to-ground insulation resistance (Megger) testing; and thermography infrared scan along busduct runs under normal operational load.
-Inspeksi visual rumah selungkup busduct, gantungan support, dan bracing seismik; verifikasi torsi baut joint pack dan pemeriksaan kondisi fisik sambungan ekspansi; pengujian resistansi isolasi antar fasa dan fasa terhadap pembumian (Megger); serta pemindaian termografi inframerah di sepanjang jalur busduct pada beban operasional normal.`,
+  'busduct': `Visual inspection, joint bolt torque check, insulation resistance test, and thermographic scan.
+Inspeksi visual, cek torsi baut sambungan, uji tahanan isolasi, dan pemindaian termografi.`,
 
   // 11. COOLING PUMP & PUMPS
-  'cooling pump': `Visual inspection of pump casing, pipe flanges, and mechanical seal for leakage; motor and pump bearing vibration analysis and re-greasing; suction and discharge pressure gauge verification; and motor winding insulation resistance (Megger) and operating current checks.
-Inspeksi visual rumah pompa, flensa pipa, dan mechanical seal dari kebocoran; analisis getaran dan pelumasan bearing motor serta pompa; verifikasi manometer tekanan hisap dan buang; serta uji resistansi isolasi belitan motor (Megger) dan pengecekan arus kerja.`,
+  'cooling pump': `Visual inspection, mechanical seal check, vibration measurement, and pump running test.
+Inspeksi visual, pemeriksaan mechanical seal, pengukuran getaran, dan uji jalan pompa.`,
 
-  'pump': `Visual inspection of pump casing, mechanical seal, and pipe flange gaskets; suction and discharge pressure gauge verification and strainer basket cleaning; motor insulation resistance testing (Megger) and operating current measurement; and sump pit float switch auto-start/stop and high water alarm functional test.
-Inspeksi visual rumah pompa, mechanical seal, dan paking flensa pipa; verifikasi manometer tekanan hisap dan buang serta pembersihan saringan strainer; pengujian tahanan isolasi motor (Megger) dan pengukuran arus operasional; serta uji fungsi pelampung level bak kontrol auto-start/stop dan alarm banjir.`,
+  'pump': `Visual inspection, mechanical seal check, vibration measurement, and pump running test.
+Inspeksi visual, pemeriksaan mechanical seal, pengukuran getaran, dan uji jalan pompa.`,
 
-  'pompa': `Visual inspection of pump casing, mechanical seal, and pipe flange gaskets; suction and discharge pressure gauge verification and strainer basket cleaning; motor insulation resistance testing (Megger) and operating current measurement; and sump pit float switch auto-start/stop and high water alarm functional test.
-Inspeksi visual rumah pompa, mechanical seal, dan paking flensa pipa; verifikasi manometer tekanan hisap dan buang serta pembersihan saringan strainer; pengujian tahanan isolasi motor (Megger) dan pengukuran arus operasional; serta uji fungsi pelampung level bak kontrol auto-start/stop dan alarm banjir.`,
+  'pompa': `Visual inspection, mechanical seal check, vibration measurement, and pump running test.
+Inspeksi visual, pemeriksaan mechanical seal, pengukuran getaran, dan uji jalan pompa.`,
 
   // 12. CAPACITOR BANK
-  'capacitor bank': `Visual inspection of capacitor steps, PFC regulator controller, and contactors; measurement of operating current per step, voltage, and harmonic distortion (THD) analysis; step capacitance value (microfarad) and discharge resistor functional testing; and thermography infrared scanning on capacitor terminals and vacuum dust cleaning.
-Inspeksi visual modul step kapasitor, kontroler regulator PFC, dan kontaktor; pengukuran arus kerja tiap step, tegangan listrik, dan analisis harmonisa THD; pengujian nilai kapasitansi step (mikrofarad) dan fungsi resistor pelepasan muatan; serta pemindaian termografi inframerah pada terminal kapasitor dan pembersihan debu vakum.`,
+  'capacitor bank': `Visual inspection, step capacitance & current check, contactor test, and thermographic scan.
+Inspeksi visual, pengukuran kapasitas & arus tiap step, uji kontaktor, dan pemindaian termografi.`,
 
   // 13. LDB & RDB PANEL
-  'ldb': `Visual inspection of distribution panel enclosure, main circuit breaker, and branch circuits; breaker mechanism check, indicator lamps, and power meter readings verification; thermography infrared scan on breaker termination lugs and internal busbars; and internal vacuum cleaning and terminal screw torque re-tightening.
-Inspeksi visual selungkup panel distribusi, pemutus utama, dan sirkuit cabang; pemeriksaan mekanisme pemutus arus, lampu indikator, dan verifikasi pembacaan meter daya; pemindaian termografi inframerah pada sepatu kabel terminasi dan busbar internal; serta pembersihan vakum interior panel dan pengencangan ulang torsi baut terminal.`,
+  'ldb': `Visual inspection, breaker mechanism check, internal vacuum cleaning, and thermographic scan.
+Inspeksi visual, pemeriksaan mekanisme pemutus arus, pembersihan vakum, dan pemindaian termografi.`,
 
   // 14. CHILLER
-  'chiller': `Visual inspection of compressor, evaporator, condenser shells, and piping insulation; suction and discharge refrigerant pressure, oil level, and superheat monitoring; condenser and chilled water delta-T and water flow rate validation; and ATC ball trap inspection, strainer cleaning, and control panel alarms review.
-Inspeksi visual kompresor, evaporator, kondensor, dan insulasi pipa; pemantauan tekanan hisap/buang refrigeran, level oli, dan superheat; validasi delta-T serta laju aliran air kondensor dan chiller; serta inspeksi ball trap ATC, pembersihan strainer, dan tinjauan riwayat alarm panel kontrol.`,
+  'chiller': `Visual inspection, refrigerant pressure & oil level check, flow rate check, and alarms review.
+Inspeksi visual, pemeriksaan tekanan refrigeran & oli, pengecekan aliran air, dan evaluasi alarm.`,
 
   // 15. GENERATOR & DIESEL GENSET
-  'generator': `Visual inspection of generator engine, radiator, coolant levels, and fuel piping lines; starting battery voltage, electrolyte specific gravity, and charger check; engine lube oil quality, filter condition, and fan belt tension check; and no-load manual running test verifying frequency, voltage, and auto-start transfer interlocks.
-Inspeksi visual mesin genset, radiator, level coolant, dan jalur pipa bahan bakar; pengecekan tegangan baterai starter, berat jenis elektrolit, dan charger; pemeriksaan kualitas oli mesin, filter, dan ketegangan belt kipas; serta uji jalan mesin tanpa beban (running test) untuk memverifikasi frekuensi, tegangan, dan interlock transfer otomatis.`,
+  'generator': `Visual inspection, battery & fluid levels check, filter inspection, and no-load engine test.
+Inspeksi visual, pengecekan baterai & cairan, pemeriksaan filter, dan uji mesin tanpa beban.`,
 
-  'genset': `Visual inspection of generator engine, radiator, coolant levels, and fuel piping lines; starting battery voltage, electrolyte specific gravity, and charger check; engine lube oil quality, filter condition, and fan belt tension check; and no-load manual running test verifying frequency, voltage, and auto-start transfer interlocks.
-Inspeksi visual mesin genset, radiator, level coolant, dan jalur pipa bahan bakar; pengecekan tegangan baterai starter, berat jenis elektrolit, dan charger; pemeriksaan kualitas oli mesin, filter, dan ketegangan belt kipas; serta uji jalan mesin tanpa beban (running test) untuk memverifikasi frekuensi, tegangan, dan interlock transfer otomatis.`,
+  'genset': `Visual inspection, battery & fluid levels check, filter inspection, and no-load engine test.
+Inspeksi visual, pengecekan baterai & cairan, pemeriksaan filter, dan uji mesin tanpa beban.`,
 
   // 16. MV & RMU PANEL
-  'mv': `Visual inspection of MV cubicle enclosure, mimic bus diagram, and position indicators; SF6 gas pressure gauge check, earthing switch operation, and mechanical interlock testing; vacuum circuit breaker (VCB) mechanism lubrication and contact wear check; and insulation resistance testing and thermographic inspection on cable terminations.
-Inspeksi visual selungkup kubikel TM, diagram mimik, dan indikator posisi; pemeriksaan manometer tekanan gas SF6, operasi sakelar pentanahan, dan uji interlock mekanis; pelumasan mekanisme pemutus tenaga VCB dan pemeriksaan keausan kontak; serta pengujian resistansi isolasi dan inspeksi termografi pada terminasi kabel daya.`,
+  'mv': `Visual inspection, SF6 pressure & earthing switch check, VCB lubrication, and thermal scan.
+Inspeksi visual, pemeriksaan tekanan gas SF6 & grounding, pelumasan VCB, dan pemindaian termal.`,
 
   // 17. LV PANEL
-  'lv': `Visual inspection of Main Distribution Panel, ACB/MCCB breakers, digital power meters, and indicator lights; internal vacuum cleaning and busbar terminal torque checks; thermography infrared scanning on incoming/outgoing busbars and cable connections; and Air Circuit Breaker (ACB) and MCCB manual and electronic trip unit testing.
-Inspeksi visual Panel Distribusi Utama, pemutus ACB/MCCB, meter daya digital, dan lampu indikator; pembersihan debu interior panel dengan vakum dan pengecekan torsi terminal busbar; pemindaian termografi inframerah pada busbar masuk/keluar dan sambungan kabel; serta pengujian mekanisme manual dan unit trip elektronik pemutus arus ACB dan MCCB.`,
+  'lv': `Visual inspection, ACB/MCCB trip test, internal vacuum cleaning, and thermographic scan.
+Inspeksi visual, uji mekanisme trip ACB/MCCB, pembersihan vakum internal, dan pemindaian termografi.`,
 
   // 18. UPS & BATTERY
-  'ups': `Inspection of UPS operating modes across normal inverter, static bypass, and maintenance bypass; input/output voltage, current balance, load percentage, and power factor measurements; individual battery block voltage and internal impedance testing; and cooling fans operation check, dust filter cleaning, and capacitor health check.
-Pemeriksaan mode operasi UPS (Inverter Normal, Static Bypass, dan Pemeliharaan); pengukuran tegangan masuk/keluar, keseimbangan arus, persentase beban, dan faktor daya; pengujian tegangan per blok baterai dan pengukuran impedansi internal; serta pemeriksaan operasi kipas pendingin, pembersihan filter udara, dan cek fisik kapasitor.`,
+  'ups': `Visual inspection, electrical parameter checks, battery impedance test, and filter cleaning.
+Inspeksi visual, pengukuran parameter kelistrikan, uji impedansi baterai, dan pembersihan filter.`,
 
   // 19. CRAC / PAC DATA HALL
-  'crac': `Visual inspection of microprocessor controller display, EC plug fans, chilled water modulating valve, and steam humidifier; air filter differential pressure verification and filter cleaning/replacement; condensate drain pan and drain line flushing; and underfloor supply/return air temperature and relative humidity precision calibration per ASHRAE standards.
-Inspeksi visual tampilan kontroler mikroprosesor, operasi kipas EC, katup modulasi air dingin, dan pelembab uap; verifikasi tekanan diferensial filter udara dan pembersihan/penggantian filter; pembilasan baki dan pipa drainase kondensat; serta kalibrasi presisi temperatur udara suplai/balik dan kelembaban relatif sesuai standar ASHRAE.`,
+  'crac': `Visual inspection, filter & drain pan cleaning, fan check, and temp/humidity calibration.
+Inspeksi visual, pembersihan filter & baki drainase, cek kipas, dan kalibrasi suhu/kelembaban.`,
 
-  'pac': `Visual inspection of microprocessor controller display, EC plug fans, chilled water modulating valve, and steam humidifier; air filter differential pressure verification and filter cleaning/replacement; condensate drain pan and drain line flushing; and underfloor supply/return air temperature and relative humidity precision calibration per ASHRAE standards.
-Inspeksi visual tampilan kontroler mikroprosesor, operasi kipas EC, katup modulasi air dingin, dan pelembab uap; verifikasi tekanan diferensial filter udara dan pembersihan/penggantian filter; pembilasan baki dan pipa drainase kondensat; serta kalibrasi presisi temperatur udara suplai/balik dan kelembaban relatif sesuai standar ASHRAE.`,
+  'pac': `Visual inspection, filter & drain pan cleaning, fan check, and temp/humidity calibration.
+Inspeksi visual, pembersihan filter & baki drainase, cek kipas, dan kalibrasi suhu/kelembaban.`,
 
   // 20. FCU (FAN COIL UNIT)
-  'fcu': `Visual inspection of FCU casing, ceiling suspensions, and 2-way chilled water modulating valve; air filter mesh cleaning, cooling coil wash, and condensate drain pan chemical treatment with anti-algae tablet; and fan blower motor multi-speed operation and supply/return temperature differential checks.
-Inspeksi visual selungkup FCU, gantungan plafon, dan katup modulasi air dingin 2-arah; pembersihan saringan udara, pencucian koil pendingin, dan pembilasan baki kondensat dengan tablet anti-lumut; serta pengujian kecepatan motor blower kipas dan pengecekan selisih temperatur udara.`,
+  'fcu': `Visual inspection, air filter & coil cleaning, condensate drain flush, and fan speed test.
+Inspeksi visual, pembersihan filter & koil, pembilasan drainase kondensat, dan uji kecepatan kipas.`,
 
   // 21. AHU (AIR HANDLING UNIT)
-  'ahu': `Visual inspection of fan blower assembly, drive belt tension and pulley alignment, and bearing lubrication; differential pressure measurement across pre-filters and bag filters; cooling coil fin cleaning and condensate drain trap inspection; and motorized fresh air/return dampers actuator calibration.
-Inspeksi visual rangkaian blower kipas, ketegangan sabuk puli, dan pelumasan bearing; pengukuran tekanan diferensial pada pre-filter dan bag filter; pembersihan sirip koil pendingin dan pemeriksaan drain trap kondensat; serta kalibrasi aktuator motorized damper udara segar dan udara balik.`,
+  'ahu': `Visual inspection, belt tension & bearing lubrication, filter cleaning, and damper check.
+Inspeksi visual, pelumasan bearing & tegangan belt, pembersihan filter, dan cek aktuator damper.`,
 
   // 22. FSS & FIRE SAFETY
-  'fss': `Visual inspection of clean agent gas cylinders, pressure gauges, control panels, and aspirating smoke detection (VESDA) airflow parameters; smoke and heat detector functional testing and manual abort station checks; audio/visual horn strobe activation and standby battery voltage measurements; and BMS alarm notification relay tests.
-Inspeksi visual tabung gas pemadam, manometer tekanan, panel kontrol, dan parameter aliran udara detektor aspirasi VESDA; uji fungsi detektor asap dan panas serta sakelar pembatalan manual (abort); pengujian sirine strobo audio/visual dan pengukuran tegangan baterai cadangan; serta uji relai sinyal integrasi ke sistem BMS.`,
+  'fss': `Visual inspection of gas cylinders, detector & VESDA functional test, and alarm interlock check.
+Inspeksi visual tabung gas, uji fungsi detektor & VESDA, serta pengujian interlock alarm.`,
 
-  'pre-action': `Visual inspection of pre-action deluge valve riser assembly, water supply, and supervisory air pressure gauges; automatic air compressor cut-in/cut-out pressure testing and piping moisture drainage; electrical solenoid actuator simulation test without water discharge; and water motor gong and waterflow alarm pressure switch validation.
-Inspeksi visual rangkaian katup deluge pipa tegak pre-action, manometer pasokan air, dan manometer udara pengawas; pengujian tekanan cut-in/cut-out kompresor udara otomatis dan pengurasan kondensat pipa; simulasi uji aktuator solenoid elektrik tanpa pelepasan air; serta validasi lonceng mekanik water motor gong dan sakelar aliran air.`,
+  'pre-action': `Visual inspection, valve riser & pressure gauges check, compressor test, and solenoid test.
+Inspeksi visual, pemeriksaan katup & manometer, uji kompresor, dan simulasi pengujian solenoid.`,
 
-  'hydrant': `Visual inspection of jockey pump, electric main pump, diesel standby pump, piping manifolds, and outdoor hydrant pillars; header pipe pressure stability check and sequential automatic start pressure testing; pump packing/mechanical seal inspection and strainer cleaning; and water discharge flow test measuring remote nozzle pressure.
-Inspeksi visual pompa jockey, pompa utama elektrik, pompa cadangan diesel, manifold pemipaan, dan pilar hidran luar; pemeriksaan kestabilan tekanan header dan uji sekuens start otomatis bertekanan; pemeriksaan seal pompa dan pembersihan saringan strainer; serta uji pancaran aliran air dengan pengukuran tekanan nosel terjauh.`,
+  'hydrant': `Visual inspection, jockey & main pump pressure test, mechanical seal check, and flow testing.
+Inspeksi visual, uji tekanan pompa jockey & utama, pemeriksaan seal mekanik, dan uji pancaran air.`,
 
   // 23. LIGHTNING PROTECTION SYSTEM (LPS) & GROUNDING
-  'lightning': `Visual inspection of rooftop lightning air terminals, support masts, guy wires, and down conductors; lightning strike event counter recording and continuity testing; earth ground resistance measurements (<1.0 Ohm target) using calibrated 3-pole earth tester; and equipotential bonding busbar inspections and terminal torque verification.
-Inspeksi visual terminal penangkal petir atap, tiang penyangga, kawat penarik, dan konduktor penurunan; pencatatan penghitung sambaran petir dan uji kontinuitas; pengukuran resistansi pembumian (target <1,0 Ohm) menggunakan earth tester 3-titik terkalibrasi; serta inspeksi busbar bonding ekipotensial dan verifikasi torsi terminal.`,
+  'lightning': `Visual inspection of air terminals & down conductors, strike counter log, and earth ground test.
+Inspeksi visual terminal petir & konduktor, pencatatan counter, dan uji tahanan grounding.`,
 
-  'lps': `Visual inspection of rooftop lightning air terminals, support masts, guy wires, and down conductors; lightning strike event counter recording and continuity testing; earth ground resistance measurements (<1.0 Ohm target) using calibrated 3-pole earth tester; and equipotential bonding busbar inspections and terminal torque verification.
-Inspeksi visual terminal penangkal petir atap, tiang penyangga, kawat penarik, dan konduktor penurunan; pencatatan penghitung sambaran petir dan uji kontinuitas; pengukuran resistansi pembumian (target <1,0 Ohm) menggunakan earth tester 3-titik terkalibrasi; serta inspeksi busbar bonding ekipotensial dan verifikasi torsi terminal.`,
+  'lps': `Visual inspection of air terminals & down conductors, strike counter log, and earth ground test.
+Inspeksi visual terminal petir & konduktor, pencatatan counter, dan uji tahanan grounding.`,
 
-  'lightning protection system': `Visual inspection of rooftop lightning air terminals, support masts, guy wires, and down conductors; lightning strike event counter recording and continuity testing; earth ground resistance measurements (<1.0 Ohm target) using calibrated 3-pole earth tester; and equipotential bonding busbar inspections and terminal torque verification.
-Inspeksi visual terminal penangkal petir atap, tiang penyangga, kawat penarik, dan konduktor penurunan; pencatatan penghitung sambaran petir dan uji kontinuitas; pengukuran resistansi pembumian (target <1,0 Ohm) menggunakan earth tester 3-titik terkalibrasi; serta inspeksi busbar bonding ekipotensial dan verifikasi torsi terminal.`,
+  'lightning protection system': `Visual inspection of air terminals & down conductors, strike counter log, and earth ground test.
+Inspeksi visual terminal petir & konduktor, pencatatan counter, dan uji tahanan grounding.`,
 
-  'grounding': `Visual inspection of earth ground inspection pits, copper ground rods, and Main Grounding Busbar (MGB); earth ground resistance measurement across all main electrodes (<1.0 Ohm target); equipotential bonding loop continuity testing across panel frames, transformers, and racks (<0.1 Ohm); and terminal bolt torque re-tightening and anti-corrosion grease application.
-Inspeksi visual bak kontrol pembumian, batang elektroda tembaga, dan Busbar Pembumian Utama (MGB); pengukuran resistansi pembumian pada seluruh elektroda utama (target <1,0 Ohm); pengujian kontinuitas loop bonding ekipotensial antar bodi panel, trafo, dan rak (<0,1 Ohm); serta pengencangan ulang torsi baut terminal dan aplikasi pasta anti-korosi.`,
+  'grounding': `Visual inspection of inspection pits & MGB, earth resistance test (<1.0 Ω), and bonding check.
+Inspeksi visual bak kontrol & MGB, pengukuran tahanan pembumian (<1,0 Ω), dan uji bonding.`,
 
   // 24. LIFT / ELEVATOR
-  'lift': `Visual inspection of car door operator, safety light curtain sensors, landing door interlocks, and car interior fittings; traction motor gearbox lubrication, brake shoe clearance, and wire rope inspection; car top and pit cleaning with buffer spring and limit switch checks; and Automatic Rescue Device (ARD) battery power operation test.
-Inspeksi visual operator pintu sangkar, sensor tirai keselamatan, interlock pintu lantai, dan kelengkapan interior; pelumasan gearbox mesin traksi, celah sepatu rem, dan pemeriksaan tali kawat baja; pembersihan atas sangkar dan pit serta pengecekan pegas buffer dan limit switch; serta uji fungsi daya baterai Automatic Rescue Device (ARD).`,
+  'lift': `Visual inspection, door sensors & interlocks check, gearbox lubrication, and ARD test.
+Inspeksi visual, sensor pintu & interlock, pelumasan gearbox, dan uji fungsional ARD.`,
 
-  'elevator': `Visual inspection of car door operator, safety light curtain sensors, landing door interlocks, and car interior fittings; traction motor gearbox lubrication, brake shoe clearance, and wire rope inspection; car top and pit cleaning with buffer spring and limit switch checks; and Automatic Rescue Device (ARD) battery power operation test.
-Inspeksi visual operator pintu sangkar, sensor tirai keselamatan, interlock pintu lantai, dan kelengkapan interior; pelumasan gearbox mesin traksi, celah sepatu rem, dan pemeriksaan tali kawat baja; pembersihan atas sangkar dan pit serta pengecekan pegas buffer dan limit switch; serta uji fungsi daya baterai Automatic Rescue Device (ARD).`,
+  'elevator': `Visual inspection, door sensors & interlocks check, gearbox lubrication, and ARD test.
+Inspeksi visual, sensor pintu & interlock, pelumasan gearbox, dan uji fungsional ARD.`,
 
   // 25. X-RAY & SECURITY
-  'x-ray': `Visual inspection of conveyor belt, tracking rollers, motor drive mechanism, and radiation lead shielding curtains; optical inspection sensors alignment and emergency stop push buttons verification; image processing monitor calibration and organic/inorganic dual-energy detection testing; and operational diagnostic and safety interlock check.
-Inspeksi visual sabuk konveyor, rol pelurus, mekanisme motor penggerak, dan tirai timbal pelindung radiasi; kalibrasi sensor optik dan verifikasi tombol stop darurat; kalibrasi monitor pemrosesan citra dan pengujian deteksi material organik/anorganik energi ganda; serta pemeriksaan diagnostik operasional dan interlock keselamatan.`,
+  'x-ray': `Visual inspection of conveyor & lead curtains, optical sensor calibration, and E-stop test.
+Inspeksi visual konveyor & tirai timbal, kalibrasi sensor optik, dan pengujian emergency stop.`,
 
-  'xray': `Visual inspection of conveyor belt, tracking rollers, motor drive mechanism, and radiation lead shielding curtains; optical inspection sensors alignment and emergency stop push buttons verification; image processing monitor calibration and organic/inorganic dual-energy detection testing; and operational diagnostic and safety interlock check.
-Inspeksi visual sabuk konveyor, rol pelurus, mekanisme motor penggerak, dan tirai timbal pelindung radiasi; kalibrasi sensor optik dan verifikasi tombol stop darurat; kalibrasi monitor pemrosesan citra dan pengujian deteksi material organik/anorganik energi ganda; serta pemeriksaan diagnostik operasional dan interlock keselamatan.`,
+  'xray': `Visual inspection of conveyor & lead curtains, optical sensor calibration, and E-stop test.
+Inspeksi visual konveyor & tirai timbal, kalibrasi sensor optik, dan pengujian emergency stop.`,
 
   // 26. WATER SOFTENER & PLUMBING
-  'water softener': `Visual inspection of mineral resin tanks, brine solution tanks, salt levels, and brine suction tubing; automatic multi-port control valve backwash and brine regeneration cycling test; treated soft water total hardness titration measurement (<5 ppm CaCO3); and inlet/outlet water pressure gauge and flow totalizer recording.
-Inspeksi visual tangki resin mineral, tangki larutan garam (brine), ketinggian garam, dan selang hisap brine; pengujian siklus pencucian balik (backwash) dan regenerasi otomatis katup multi-port; pengukuran titrasi kesadahan total air lunak olahan (<5 ppm CaCO3); serta pencatatan manometer tekanan air masuk/keluar dan totalizer aliran.`,
+  'water softener': `Visual inspection of resin/brine tanks, multi-port valve regeneration test, and hardness test.
+Inspeksi visual tangki resin/brine, uji siklus regenerasi katup, dan uji kesadahan air.`,
 
   // 27. EXHAUST & VENTILATION FAN
-  'exhaust': `Comprehensive visual inspection of fan housing, impeller blades, safety wire guards, and automatic gravity backdraft louvers; motor bearing lubrication and vibration check; electrical termination, operating voltage, and current measurements; and airflow velocity verification to ensure optimal room air exchange.
-Inspeksi visual menyeluruh pada selungkup kipas, bilah impeler, kasa pengaman, dan kisi louvers otomatis; pelumasan bearing motor dan pengecekan getaran; pemeriksaan terminasi listrik, tegangan kerja, dan arus operasional; serta verifikasi kecepatan aliran udara untuk memastikan pertukaran udara ruangan yang optimal.`,
+  'exhaust': `Visual inspection of housing & impeller, bearing lubrication, and airflow verification.
+Inspeksi visual selungkup & impeler, pelumasan bearing, dan verifikasi kelancaran aliran udara.`,
 
-  'exhaust fan': `Comprehensive visual inspection of fan housing, impeller blades, safety wire guards, and automatic gravity backdraft louvers; motor bearing lubrication and vibration check; electrical termination, operating voltage, and current measurements; and airflow velocity verification to ensure optimal room air exchange.
-Inspeksi visual menyeluruh pada selungkup kipas, bilah impeler, kasa pengaman, dan kisi louvers otomatis; pelumasan bearing motor dan pengecekan getaran; pemeriksaan terminasi listrik, tegangan kerja, dan arus operasional; serta verifikasi kecepatan aliran udara untuk memastikan pertukaran udara ruangan yang optimal.`,
+  'exhaust fan': `Visual inspection of housing & impeller, bearing lubrication, and airflow verification.
+Inspeksi visual selungkup & impeler, pelumasan bearing, dan verifikasi kelancaran aliran udara.`,
 
-  'fan': `Comprehensive visual inspection of fan housing, impeller blades, safety wire guards, and automatic gravity backdraft louvers; motor bearing lubrication and vibration check; electrical termination, operating voltage, and current measurements; and airflow velocity verification to ensure optimal room air exchange.
-Inspeksi visual menyeluruh pada selungkup kipas, bilah impeler, kasa pengaman, dan kisi louvers otomatis; pelumasan bearing motor dan pengecekan getaran; pemeriksaan terminasi listrik, tegangan kerja, dan arus operasional; serta verifikasi kecepatan aliran udara untuk memastikan pertukaran udara ruangan yang optimal.`,
+  'fan': `Visual inspection of housing & impeller, bearing lubrication, and airflow verification.
+Inspeksi visual selungkup & impeler, pelumasan bearing, dan verifikasi kelancaran aliran udara.`,
 
   // 28. FUEL SYSTEM & FUEL TANK
-  'fuel system': `Visual inspection of bulk fuel storage tank, daily service tanks, pipe trenches, and containment bunds; fuel level transmitter sensor calibration and mechanical gauge comparison; fuel transfer gear pump operation and pressure relief valve test; and duplex fuel strainer and water separator cleaning.
-Inspeksi visual tangki timbun utama, tangki harian, parit pipa, dan tanggul penampungan bahan bakar; kalibrasi sensor transmiter level dan komparasi tongkat ukur manual; uji fungsi motor pompa transfer solar dan katup pelepas tekanan; serta pembersihan saringan ganda dan pemisah air.`,
+  'fuel system': `Visual inspection of tanks & containment, level sensor check, pump test, and strainer cleaning.
+Inspeksi visual tangki & tanggul penampung, cek sensor level, uji pompa, dan pembersihan strainer.`,
 
-  'fuel tank': `Visual inspection of bulk fuel storage tank, daily service tanks, pipe trenches, and containment bunds; fuel level transmitter sensor calibration and mechanical gauge comparison; fuel transfer gear pump operation and pressure relief valve test; and duplex fuel strainer and water separator cleaning.
-Inspeksi visual tangki timbun utama, tangki harian, parit pipa, dan tanggul penampungan bahan bakar; kalibrasi sensor transmiter level dan komparasi tongkat ukur manual; uji fungsi motor pompa transfer solar dan katup pelepas tekanan; serta pembersihan saringan ganda dan pemisah air.`,
+  'fuel tank': `Visual inspection of tanks & containment, level sensor check, pump test, and strainer cleaning.
+Inspeksi visual tangki & tanggul penampung, cek sensor level, uji pompa, dan pembersihan strainer.`,
 
   // 29. LOAD BANK
-  'load bank': `Visual inspection of load bank chassis, cam-lock cable connection terminals, resistor banks, and exhaust air louvers; resistor elements insulation resistance testing (Megger 1000VDC); cooling blower fan motor operation and airflow differential pressure interlock verification; and step load contactor switching and emergency stop trip testing.
-Inspeksi visual sasis load bank, terminal koneksi kabel cam-lock, bank resistor, dan kisi pembuangan udara panas; pengujian resistansi isolasi elemen resistor (Megger 1000VDC); verifikasi operasional kipas blower pendingin dan interlock sakelar aliran udara; serta pengujian pensaklaran kontaktor beban bertingkat dan tombol trip darurat.`,
+  'load bank': `Visual inspection, resistor insulation (Megger) test, blower fan check, and step load test.
+Inspeksi visual, uji isolasi resistor (Megger), cek kipas blower, dan pengujian beban bertingkat.`,
 
   // 30. VESDA
-  'vesda': `Aspirating smoke detector laser chamber inspection and airflow rate verification (100%); micro-particulate air filter replacement and sampling pipe network blow-through flush; smoke aerosol sensitivity test and pre-alarm/fire alarm threshold verification; and relay outputs interlock testing to Main Fire Alarm Control Panel (MCFA).
-Inspeksi kamar laser detektor asap hisap dan verifikasi laju aliran udara (100%); penggantian filter udara partikulat mikro dan pembersihan hembusan pipa sampling; uji sensitivitas aerosol asap dan verifikasi ambang batas pre-alarm serta alarm; serta pengujian interlock keluaran relai ke Panel Kontrol Alarm Kebakaran Utama.`,
+  'vesda': `Laser chamber inspection, airflow rate verification, filter check, and smoke sensitivity test.
+Inspeksi kamar laser, verifikasi laju aliran udara, cek filter, dan uji sensitivitas asap.`,
 
   // 31. BAS / BMS
-  'bas': `Visual inspection of BMS DDC controller panels, 24VDC power supplies, network communication switches, and field sensor terminations; field temperature, humidity, differential pressure, and energy meter calibration verification; central graphic workstation real-time monitoring and alarm notification dispatch testing; and historical trend logging validation.
-Inspeksi visual panel kontroler DDC BMS, catu daya 24VDC, switch jaringan komunikasi, dan terminasi sensor lapangan; verifikasi kalibrasi sensor temperatur, kelembaban, tekanan diferensial, dan meter energi; pengujian pemantauan visual stasiun kerja dan pengiriman notifikasi alarm; serta validasi pencatatan log tren historis.`,
+  'bas': `Visual inspection of DDC panels, power supplies, sensor calibration check, and alarm test.
+Inspeksi visual panel DDC, catu daya, verifikasi kalibrasi sensor, dan pengujian alarm.`,
 
-  'bms': `Visual inspection of BMS DDC controller panels, 24VDC power supplies, network communication switches, and field sensor terminations; field temperature, humidity, differential pressure, and energy meter calibration verification; central graphic workstation real-time monitoring and alarm notification dispatch testing; and historical trend logging validation.
-Inspeksi visual panel kontroler DDC BMS, catu daya 24VDC, switch jaringan komunikasi, dan terminasi sensor lapangan; verifikasi kalibrasi sensor temperatur, kelembaban, tekanan diferensial, dan meter energi; pengujian pemantauan visual stasiun kerja dan pengiriman notifikasi alarm; serta validasi pencatatan log tren historis.`,
+  'bms': `Visual inspection of DDC panels, power supplies, sensor calibration check, and alarm test.
+Inspeksi visual panel DDC, catu daya, verifikasi kalibrasi sensor, dan pengujian alarm.`,
 
   // 32. ACCESS CONTROL & CCTV
-  'cctv': `Visual inspection and optical cleaning of CCTV camera lenses, domes, and infrared illuminators; NVR/VMS server storage health, recording frame rate, and time synchronization checks; access control card readers, electromagnetic door locks, and emergency push buttons testing; and fire alarm release interlock test for fail-safe automatic unlocking.
-Inspeksi visual dan pembersihan optik lensa kamera CCTV, dome, dan iluminator inframerah; pemeriksaan penyimpanan server NVR/VMS, frame rate rekaman, dan sinkronisasi waktu; pengujian pembaca kartu akses, kunci elektromagnetik pintu, dan tombol darurat; serta uji integrasi interlock alarm kebakaran untuk pembukaan pintu otomatis (fail-safe).`,
+  'cctv': `Visual inspection & lens cleaning, NVR recording check, card reader test, and fire release test.
+Inspeksi visual & pembersihan lensa, cek rekaman NVR, uji card reader, dan uji fire release.`,
 
-  'access control': `Visual inspection and optical cleaning of CCTV camera lenses, domes, and infrared illuminators; NVR/VMS server storage health, recording frame rate, and time synchronization checks; access control card readers, electromagnetic door locks, and emergency push buttons testing; and fire alarm release interlock test for fail-safe automatic unlocking.
-Inspeksi visual dan pembersihan optik lensa kamera CCTV, dome, dan iluminator inframerah; pemeriksaan penyimpanan server NVR/VMS, frame rate rekaman, dan sinkronisasi waktu; pengujian pembaca kartu akses, kunci elektromagnetik pintu, dan tombol darurat; serta uji integrasi interlock alarm kebakaran untuk pembukaan pintu otomatis (fail-safe).`,
+  'access control': `Visual inspection & lens cleaning, NVR recording check, card reader test, and fire release test.
+Inspeksi visual & pembersihan lensa, cek rekaman NVR, uji card reader, dan uji fire release.`,
 
   // 33. WATER TREATMENT PLANT (WTP)
-  'wtp': `Raw water deep well supply pumps inspection and multi-media sand filter backwash; water softener automatic regeneration cycle test and salt brine tank level check; cooling tower chemical dosing pumps calibration; and daily water quality titration testing (Total Hardness <5 ppm, pH 7.5 - 8.5, TDS).
-Inspeksi pompa air baku sumur dalam dan pencucian balik (backwash) filter pasir; uji siklus regenerasi otomatis pelembut air dan cek ketinggian garam tangki brine; kalibrasi pompa injeksi kimia cooling tower; serta uji titrasi kualitas air harian (Kesadahan Total <5 ppm, pH 7.5 - 8.5, dan TDS).`,
+  'wtp': `Well pumps check, sand filter backwash, softener regeneration test, and water quality testing.
+Pemeriksaan pompa sumur, backwash filter pasir, uji regenerasi softener, dan uji kualitas air.`,
 
-  'water treatment': `Raw water deep well supply pumps inspection and multi-media sand filter backwash; water softener automatic regeneration cycle test and salt brine tank level check; cooling tower chemical dosing pumps calibration; and daily water quality titration testing (Total Hardness <5 ppm, pH 7.5 - 8.5, TDS).
-Inspeksi pompa air baku sumur dalam dan pencucian balik (backwash) filter pasir; uji siklus regenerasi otomatis pelembut air dan cek ketinggian garam tangki brine; kalibrasi pompa injeksi kimia cooling tower; serta uji titrasi kualitas air harian (Kesadahan Total <5 ppm, pH 7.5 - 8.5, dan TDS).`,
+  'water treatment': `Well pumps check, sand filter backwash, softener regeneration test, and water quality testing.
+Pemeriksaan pompa sumur, backwash filter pasir, uji regenerasi softener, dan uji kualitas air.`,
 
   // 34. WATER LEAK DETECTION (WLD)
-  'water leak': `Visual inspection of WLD controller displays, communication modules, and underfloor sensing cable routing; sensor cable cleaning and hold-down clamp securing; operating power supply voltage and sensing loop continuity resistance measurements; and simulated damp-cloth leak testing validating distance mapping accuracy and BMS alarm response.
-Inspeksi visual layar kontroler WLD, modul komunikasi, dan rute kabel sensor bawah lantai; pembersihan kabel sensor dan pengencangan klem penahan; pengukuran tegangan catu daya dan resistansi kontinuitas loop sensor; serta simulasi uji kebocoran kain lembab untuk memvalidasi akurasi pemetaan jarak dan respon alarm BMS.`,
+  'water leak': `Visual inspection of WLD controller & sensing cables, loop continuity test, and leak response test.
+Inspeksi visual kontroler WLD & kabel sensor, uji kontinuitas loop, dan uji simulasi kebocoran.`,
 
-  'wld': `Visual inspection of WLD controller displays, communication modules, and underfloor sensing cable routing; sensor cable cleaning and hold-down clamp securing; operating power supply voltage and sensing loop continuity resistance measurements; and simulated damp-cloth leak testing validating distance mapping accuracy and BMS alarm response.
-Inspeksi visual layar kontroler WLD, modul komunikasi, dan rute kabel sensor bawah lantai; pembersihan kabel sensor dan pengencangan klem penahan; pengukuran tegangan catu daya dan resistansi kontinuitas loop sensor; serta simulasi uji kebocoran kain lembab untuk memvalidasi akurasi pemetaan jarak dan respon alarm BMS.`,
+  'wld': `Visual inspection of WLD controller & sensing cables, loop continuity test, and leak response test.
+Inspeksi visual kontroler WLD & kabel sensor, uji kontinuitas loop, dan uji simulasi kebocoran.`,
 
   // 35. FUEL LEAK DETECTION
-  'fuel leak': `Visual inspection of fuel leak detection controller consoles, ATEX junction boxes, and hydrocarbon sensor cables; sensor probe cleaning and environmental sealing gasket check; loop continuity resistance measurements; and high-level alarm functional testing with automatic fuel transfer pump emergency shutdown interlock verification.
-Inspeksi visual konsol kontroler pendeteksi kebocoran solar, junction box ATEX, dan kabel sensor hidrokarbon; pembersihan probe sensor dan pemeriksaan segel gasket; pengukuran resistansi kontinuitas loop; serta pengujian alarm batas tinggi dan verifikasi interlock pemutus darurat pompa transfer solar.`,
+  'fuel leak': `Visual inspection of sensor cables & junction boxes, loop continuity test, and alarm trip test.
+Inspeksi visual kabel sensor & junction box, uji kontinuitas loop, dan pengujian alarm batas level.`,
 
   // 36. CIVIL & BUILDING STRUCTURE
-  'civil': `Comprehensive visual inspection of architectural structures, ceiling panels, raised floor tiles, wall finishes, and water barrier sealants to ensure building structural integrity.
-Inspeksi visual menyeluruh pada struktur arsitektural, plafon, ubin raised floor, lapisan dinding, dan seal penahan air untuk memastikan integritas struktural bangunan.`,
+  'civil': `Visual inspection of architectural structures, ceiling panels, raised floors, and sealants.
+Inspeksi visual struktur arsitektur, plafon, raised floor, dan perapat seal bangunan.`,
 
-  'sipil': `Comprehensive visual inspection of architectural structures, ceiling panels, raised floor tiles, wall finishes, and water barrier sealants to ensure building structural integrity.
-Inspeksi visual menyeluruh pada struktur arsitektural, plafon, ubin raised floor, lapisan dinding, dan seal penahan air untuk memastikan integritas struktural bangunan.`
+  'sipil': `Visual inspection of architectural structures, ceiling panels, raised floors, and sealants.
+Inspeksi visual struktur arsitektur, plafon, raised floor, dan perapat seal bangunan.`
 };
 
 /** Comprehensive Dictionary of individual task bullet points across data center equipment */
@@ -1687,8 +1687,8 @@ export function convertTaskPMToBilingual(taskPM: string, scopeName?: string): st
     return getTaskPMForScope(scopeName || '');
   }
 
-  // If text contains bullet points or legacy multi-line items (>2 lines), convert to concise 1-paragraph bilingual
-  if (rawLines.some(l => /^[•\-\*]/.test(l)) || rawLines.length > 2) {
+  // If text contains bullet points, legacy multi-line items (>2 lines), or overly long verbose text (>150 chars), convert to concise format
+  if (rawLines.some(l => /^[•\-\*]/.test(l)) || rawLines.length > 2 || rawLines[0].length > 150) {
     return getTaskPMForScope(scopeName || '');
   }
 
@@ -1791,8 +1791,8 @@ export function getTaskPMForScope(scopeName: string): string {
   for (const k of keys) {
     if (k.includes(clean)) return SCOPE_TASK_PM_MAPPING[k];
   }
-  return `Comprehensive visual inspection, parameter measurements, mechanical cleaning, and operational functional testing with safety verification according to OEM standards.
-Inspeksi visual menyeluruh, pengukuran parameter, pembersihan mekanikal, dan pengujian fungsional operasional beserta verifikasi keselamatan sesuai standar pabrikan.`;
+  return `Visual inspection, parameter measurements, cleaning, and operational functional testing.
+Inspeksi visual, pengukuran parameter, pembersihan, dan pengujian fungsional operasional.`;
 }
 
 /**

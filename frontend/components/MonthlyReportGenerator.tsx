@@ -798,8 +798,8 @@ export function MonthlyReportGenerator() {
                     const prod = (it.productName || '').trim().toLowerCase();
                     return cls !== 'equipment' && cls !== 'total' && cls !== 'grand total' && cls !== '' && prod !== 'total';
                   }).map((it: any, i: number) => {
-                    // Normalisasi Task PM ke format 1 paragraf ringkas bilingual jika masih berformat bullets lama / terlalu panjang
-                    if (it.taskPM && (it.taskPM.includes('•') || it.taskPM.split('\n').length > 3)) {
+                    // Normalisasi Task PM ke format 1 baris ringkas bilingual jika masih berformat bullets lama / terlalu panjang (>180 karakter)
+                    if (it.taskPM && (it.taskPM.includes('•') || it.taskPM.split('\n').length > 2 || it.taskPM.length > 180)) {
                       it.taskPM = getTaskPMFromSR(tbl.scope || it.className);
                     }
                     return { ...it, no: i + 1 };
@@ -3066,7 +3066,7 @@ export function MonthlyReportGenerator() {
 
               {/* Task Performance Scope Tables (Tabel 2 - 17) */}
               <div className="space-y-8 pt-8">
-                {/* Header with Tambah Tabel Scope Baru button */}
+                {/* Header with Tambah Tabel Scope Baru button & Ringkas Task PM */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-gradient-to-r from-blue-50/70 to-slate-50 border border-blue-200/80 rounded-2xl print:hidden shadow-xs">
                   <div>
                     <h4 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
@@ -3074,20 +3074,46 @@ export function MonthlyReportGenerator() {
                       <span>Daftar Tabel Task Performance ({reportData.taskPerformanceTables?.length || 0} Scope)</span>
                     </h4>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Tabel scope pemeliharaan preventif. Anda dapat menambah atau memulihkan tabel scope dari BOQ.
+                      Tabel scope pemeliharaan preventif. Isian kolom Task PM menggunakan format ringkas standar.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewScopeSearchQuery('');
-                      setIsAddScopeTableModalOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold font-sans shadow-sm transition-all cursor-pointer shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Tambah Tabel Scope Baru dari BOQ</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("Perbarui seluruh isian kolom 'Task Preventive Maintenance' di semua tabel ke format ringkas padat standar?")) {
+                          setReportData(prev => {
+                            if (!prev || !Array.isArray(prev.taskPerformanceTables)) return prev;
+                            const updated = prev.taskPerformanceTables.map(tbl => ({
+                              ...tbl,
+                              items: (tbl.items || []).map(it => ({
+                                ...it,
+                                taskPM: getTaskPMFromSR(tbl.scope || it.className)
+                              }))
+                            }));
+                            return { ...prev, taskPerformanceTables: updated };
+                          });
+                          toast.success("Seluruh isian Task Preventive Maintenance berhasil diperingkas!");
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold font-sans shadow-xs transition-all cursor-pointer"
+                      title="Ringkas teks Task PM di seluruh tabel"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Ringkas Semua Task PM</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewScopeSearchQuery('');
+                        setIsAddScopeTableModalOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold font-sans shadow-sm transition-all cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Tabel Scope Baru dari BOQ</span>
+                    </button>
+                  </div>
                 </div>
 
                 {reportData.taskPerformanceTables.map((tTable, tIdx) => (
@@ -3104,6 +3130,33 @@ export function MonthlyReportGenerator() {
                         >
                           <Plus className="w-3 h-3" />
                           <span>Tambah Alat {tTable.scope}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setReportData(prev => {
+                              if (!prev || !Array.isArray(prev.taskPerformanceTables)) return prev;
+                              const updated = [...prev.taskPerformanceTables];
+                              if (updated[tIdx]) {
+                                updated[tIdx] = {
+                                  ...updated[tIdx],
+                                  items: (updated[tIdx].items || []).map(it => ({
+                                    ...it,
+                                    taskPM: getTaskPMFromSR(tTable.scope || it.className)
+                                  }))
+                                };
+                              }
+                              return { ...prev, taskPerformanceTables: updated };
+                            });
+                            toast.success(`Isian Task PM pada tabel "${tTable.scope}" berhasil diperingkas!`);
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer"
+                          title="Ringkas teks Task PM pada tabel ini"
+                        >
+                          <Sparkles className="w-3 h-3 text-amber-600" />
+                          <span>Ringkas PM</span>
                         </button>
                         <button
                           type="button"

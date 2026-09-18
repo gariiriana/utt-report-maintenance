@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
             setUserRole(initialRole);
             setCompanyType(initialCompanyType);
-          }
+          } 
         } catch (error) {
           console.warn('Error creating/fetching user document (offline?):', error);
         }

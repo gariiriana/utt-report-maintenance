@@ -77,9 +77,11 @@ export interface PIRReportData {
     // Halaman 9: Matriks Otorisasi & Tanda Tangan Resmi
     preparedByName: string;                 // Pembuat Laporan (Shift Engineer)
     preparedByTitle: string;                // Jabatan Pembuat
+    preparedBySign?: string;                // Tanda Tangan Digital Pembuat (Base64 PNG)
 
     reviewedBy1Name: string;                // Pemeriksa 1 (Technical Manager)
     reviewedBy1Title: string;               // Jabatan Pemeriksa 1
+    reviewedBySign?: string;                // Tanda Tangan Digital Pemeriksa (Base64 PNG)
     reviewedBy2Name: string;                // Pemeriksa 2 (Project Manager)
     reviewedBy2Title: string;               // Jabatan Pemeriksa 2
 
@@ -135,9 +137,11 @@ export const INITIAL_PIR_REPORT_DATA: PIRReportData = {
     // Matriks Otorisasi Nama & Jabatan Baku
     preparedByName: 'Agil Zakia Rahman',
     preparedByTitle: '(Shift Engineer)',
+    preparedBySign: '',
 
     reviewedBy1Name: 'Arif Budiman',
     reviewedBy1Title: '(Technical Manager)',
+    reviewedBySign: '',
     reviewedBy2Name: 'Dwi Tasmiyadi',
     reviewedBy2Title: '(Project manager)',
 

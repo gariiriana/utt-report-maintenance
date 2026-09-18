@@ -6,6 +6,13 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoK2 from '@/assets/logo_k2.png';
 import { compressBase64Image } from '@/utils/imageCompression';
 import { toast } from 'sonner';
+import {
+  PREPARED_BY_SIGNATURES,
+  ARIF_BUDIMAN_SIGNATURE_BASE64,
+  normalizeEngineerName,
+  getEngineerSignature,
+  cleanSignature
+} from '@/utils/engineerSignatures';
 
 /** Helper to convert image URL to base64 */
 async function loadImageBase64(src: string): Promise<string> {
@@ -461,6 +468,16 @@ export async function generatePIRReportPDF(data: PIRReportData) {
 
     y = 28;
 
+    const normalizedPrepName = normalizeEngineerName(data.preparedByName);
+    const prepSign = cleanSignature((data as any).preparedBySign) ||
+      getEngineerSignature(normalizedPrepName) ||
+      cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) ||
+      '';
+    const rev1Sign = cleanSignature((data as any).reviewedBySign) ||
+      ((data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('budiman')
+        ? ARIF_BUDIMAN_SIGNATURE_BASE64
+        : '');
+
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },
@@ -473,14 +490,27 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       body: [
         ['\n\n\n', '\n\n\n', '\n\n\n'],
         [
-          `${data.preparedByName || 'Agil Zakia Rahman'}\n(${data.preparedByTitle || 'Shift Engineer'})`,
+          `${normalizedPrepName}\n(${data.preparedByTitle || 'Shift Engineer'})`,
           `${data.reviewedBy1Name || 'Arif Budiman'}\n(${data.reviewedBy1Title || 'Technical Manager'})`,
           `${data.reviewedBy2Name || 'Dwi Tasmiyadi'}\n(${data.reviewedBy2Title || 'Project manager'})`
         ]
       ],
       headStyles: { fillColor: HEADER_FILL, textColor: [40, 40, 40], fontStyle: 'bold', fontSize: 9, lineWidth: 0.2, lineColor: TABLE_BORDER },
       bodyStyles: { textColor: [30, 30, 30], fontSize: 8.5, halign: 'center', lineWidth: 0.2, lineColor: TABLE_BORDER },
-      columnStyles: { 0: { cellWidth: 62 }, 1: { cellWidth: 62 }, 2: { cellWidth: 62 } }
+      columnStyles: { 0: { cellWidth: 62 }, 1: { cellWidth: 62 }, 2: { cellWidth: 62 } },
+      didDrawCell: (cellData: any) => {
+        if (cellData.section === 'body' && cellData.row.index === 0) {
+          if (cellData.column.index === 0 && prepSign) {
+            try {
+              doc.addImage(prepSign, 'PNG', cellData.cell.x + (cellData.cell.width - 32) / 2, cellData.cell.y + 1, 32, 11);
+            } catch { /* ignore */ }
+          } else if (cellData.column.index === 1 && rev1Sign) {
+            try {
+              doc.addImage(rev1Sign, 'PNG', cellData.cell.x + (cellData.cell.width - 32) / 2, cellData.cell.y + 1, 32, 11);
+            } catch { /* ignore */ }
+          }
+        }
+      }
     });
 
     y = (doc as any).lastAutoTable.finalY;
@@ -492,7 +522,7 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       body: [
         ['\n\n\n', '\n\n\n'],
         [
-          `${data.acknowledgedBy1Name || 'Habib Mulyana'}\n(${data.acknowledgedBy1Title || 'Chief Engineer'})`,
+          `${(!data.acknowledgedBy1Name || data.acknowledgedBy1Name === 'Andrean Bima Pratama') ? 'Habib Mulyana' : data.acknowledgedBy1Name}\n(${data.acknowledgedBy1Title || 'Chief Engineer'})`,
           `${data.acknowledgedBy2Name || 'Supriyatno'}\n(${data.acknowledgedBy2Title || 'Facility manager'})`
         ]
       ],

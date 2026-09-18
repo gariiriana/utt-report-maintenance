@@ -123,7 +123,7 @@ export function MainApp() {
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: false },
-    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
+    { id: 'corrective', label: 'Corrective Maintenance', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
     { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: (userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer) || isDwimitra || userEmailLower === 'dwimitra@co.id' },
     { id: 'hse_archive', label: 'Arsip K3 & HSE', icon: HardHat, color: 'from-emerald-600 to-teal-600', show: isDwimitra || userRole === 'admin' || userRole === 'hse' },
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: !isAdmin && userRole !== 'DME' && !isK2Engineer && !isStandby },

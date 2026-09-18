@@ -26,6 +26,13 @@ import { exportPIRReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { ImageEditor } from './ImageEditor';
+import {
+  PREPARED_BY_SIGNATURES,
+  ARIF_BUDIMAN_SIGNATURE_BASE64,
+  normalizeEngineerName,
+  getEngineerSignature,
+  cleanSignature
+} from '@/utils/engineerSignatures';
 
 // Helper to recursively strip undefined and invalid fields for Firestore
 function cleanPayloadForFirestore<T extends Record<string, any>>(obj: T): Partial<T> {
@@ -69,10 +76,19 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
+  const userEngineerName = user?.displayName
+    ? normalizeEngineerName(user.displayName)
+    : (user?.email ? normalizeEngineerName(user.email) : 'Agil Zakia Rahman');
+  const initialPrepSign = cleanSignature((PREPARED_BY_SIGNATURES as Record<string, string>)[userEngineerName]) ||
+    cleanSignature((PREPARED_BY_SIGNATURES as Record<string, string>)['Agil Zakia Rahman']) || '';
+
   // Form State
   const [formData, setFormData] = useState<PIRReportData>({
     ...INITIAL_PIR_REPORT_DATA,
-    companyType: isK2User ? 'k2' : 'neutra'
+    companyType: isK2User ? 'k2' : 'neutra',
+    preparedByName: userEngineerName,
+    preparedBySign: initialPrepSign,
+    preparedByTitle: '(Shift Engineer)',
   });
 
   // Temporary Attendee Input State
@@ -87,9 +103,21 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
           const docSnap = await getDoc(doc(db, 'corrective_reports', editId));
           if (docSnap.exists()) {
             const data = docSnap.data() as any;
+            let ack1Name = data.acknowledgedBy1Name;
+            if (!ack1Name || ack1Name === 'Andrean Bima Pratama') {
+              ack1Name = 'Habib Mulyana';
+            }
+            const normalizedPrepName = normalizeEngineerName(data.preparedByName || userEngineerName);
+            const prepSign = cleanSignature(data.preparedBySign) || getEngineerSignature(normalizedPrepName) || cleanSignature((PREPARED_BY_SIGNATURES as Record<string, string>)[normalizedPrepName]) || '';
+            const revSign = cleanSignature(data.reviewedBySign) || ((data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
+
             setFormData({
               ...INITIAL_PIR_REPORT_DATA,
               ...data,
+              preparedByName: normalizedPrepName,
+              preparedBySign: prepSign,
+              reviewedBySign: revSign,
+              acknowledgedBy1Name: ack1Name,
               attendeesTDE: data.attendeesTDE || INITIAL_PIR_REPORT_DATA.attendeesTDE,
               attendeesDME: data.attendeesDME || INITIAL_PIR_REPORT_DATA.attendeesDME,
               correctiveActions: data.correctiveActions || INITIAL_PIR_REPORT_DATA.correctiveActions,
@@ -108,7 +136,17 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         try {
           const parsed = JSON.parse(savedDraft);
           if (parsed.formData) {
-            setFormData(parsed.formData);
+            const loaded = { ...parsed.formData };
+            if (!loaded.acknowledgedBy1Name || loaded.acknowledgedBy1Name === 'Andrean Bima Pratama') {
+              loaded.acknowledgedBy1Name = 'Habib Mulyana';
+              loaded.acknowledgedBy1Title = loaded.acknowledgedBy1Title || '(Chief Engineer)';
+            }
+            const pName = normalizeEngineerName(loaded.preparedByName || userEngineerName);
+            const pSign = cleanSignature(loaded.preparedBySign) || getEngineerSignature(pName) || cleanSignature((PREPARED_BY_SIGNATURES as Record<string, string>)[pName]) || '';
+            loaded.preparedByName = pName;
+            loaded.preparedBySign = pSign;
+
+            setFormData(loaded);
           }
           if (parsed.currentStep) {
             setCurrentStep(parsed.currentStep);
@@ -120,11 +158,26 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     }
   }, [editId]);
 
+  // Pastikan Chief Engineer selalu Habib Mulyana (otomatis menimpa sisa draft lama)
+  useEffect(() => {
+    if (formData.acknowledgedBy1Name === 'Andrean Bima Pratama' || !formData.acknowledgedBy1Name) {
+      setFormData(prev => ({
+        ...prev,
+        acknowledgedBy1Name: 'Habib Mulyana',
+        acknowledgedBy1Title: prev.acknowledgedBy1Title || '(Chief Engineer)'
+      }));
+    }
+  }, [formData.acknowledgedBy1Name]);
+
   // Save draft on state change
   useEffect(() => {
     if (!editId) {
       try {
-        localStorage.setItem('pir_report_draft', JSON.stringify({ formData, currentStep }));
+        const draftToSave = {
+          ...formData,
+          acknowledgedBy1Name: (!formData.acknowledgedBy1Name || formData.acknowledgedBy1Name === 'Andrean Bima Pratama') ? 'Habib Mulyana' : formData.acknowledgedBy1Name
+        };
+        localStorage.setItem('pir_report_draft', JSON.stringify({ formData: draftToSave, currentStep }));
       } catch (err) {
         console.warn('PIR draft auto-save quota exceeded, skipping localStorage:', err);
       }
@@ -336,8 +389,17 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       }
     }
 
+    const prepName = normalizeEngineerName(formData.preparedByName);
+    const prepSign = cleanSignature(formData.preparedBySign) || getEngineerSignature(prepName) || cleanSignature((PREPARED_BY_SIGNATURES as Record<string, string>)[prepName]) || '';
+    const rev1Sign = cleanSignature(formData.reviewedBySign) || ((formData.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('arif') || (formData.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
+
     const basePayload = {
       ...formData,
+      preparedByName: prepName,
+      preparedBySign: prepSign,
+      reviewedBySign: rev1Sign,
+      acknowledgedBy1Name: (!formData.acknowledgedBy1Name || formData.acknowledgedBy1Name === 'Andrean Bima Pratama') ? 'Habib Mulyana' : formData.acknowledgedBy1Name,
+      acknowledgedBy1Title: formData.acknowledgedBy1Title || '(Chief Engineer)',
       reportType: 'PIR',
       category: 'Report PIR',
       issue: formData.incidentName || 'Postmortem Incident Report',
@@ -1075,13 +1137,33 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   <span>1. PREPARED BY</span>
                   <span className="text-[10px] text-emerald-600 font-extrabold uppercase">(Bisa Diubah)</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.preparedByName}
-                  onChange={(e) => setFormData({ ...formData, preparedByName: e.target.value })}
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold mb-1 focus:ring-2 focus:ring-red-500 outline-none"
-                  placeholder="Nama"
-                />
+                  onChange={(e) => {
+                    const selectedName = e.target.value;
+                    setFormData(prev => ({
+                      ...prev,
+                      preparedByName: selectedName,
+                      preparedBySign: cleanSignature((PREPARED_BY_SIGNATURES as Record<string, string>)[selectedName]) || ''
+                    }));
+                  }}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold mb-1 focus:ring-2 focus:ring-red-500 outline-none bg-white text-slate-900 cursor-pointer"
+                >
+                  {![
+                    'Agil Zakia Rahman',
+                    'Asep Mohammad Fauzi',
+                    'Nugroho Gilang Ramadhan',
+                    'Dison Mintuno Andarbeni',
+                    'Riyan Bayu Nugroho'
+                  ].includes(formData.preparedByName) && formData.preparedByName && (
+                    <option value={formData.preparedByName}>{formData.preparedByName}</option>
+                  )}
+                  <option value="Agil Zakia Rahman">Agil Zakia Rahman</option>
+                  <option value="Asep Mohammad Fauzi">Asep Mohammad Fauzi</option>
+                  <option value="Nugroho Gilang Ramadhan">Nugroho Gilang Ramadhan</option>
+                  <option value="Dison Mintuno Andarbeni">Dison Mintuno Andarbeni</option>
+                  <option value="Riyan Bayu Nugroho">Riyan Bayu Nugroho</option>
+                </select>
                 <input
                   type="text"
                   value={formData.preparedByTitle}
@@ -1143,16 +1225,16 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                 <input
                   type="text"
                   readOnly
-                  value={formData.acknowledgedBy1Name}
+                  value={(!formData.acknowledgedBy1Name || formData.acknowledgedBy1Name === 'Andrean Bima Pratama') ? 'Habib Mulyana' : formData.acknowledgedBy1Name}
                   className="w-full px-3 py-1.5 border border-slate-200 bg-slate-100/80 rounded-lg text-xs font-semibold text-slate-600 cursor-not-allowed mb-1"
-                  placeholder="Nama"
+                  placeholder="Habib Mulyana"
                 />
                 <input
                   type="text"
                   readOnly
-                  value={formData.acknowledgedBy1Title}
+                  value={formData.acknowledgedBy1Title || '(Chief Engineer)'}
                   className="w-full px-3 py-1.5 border border-slate-200 bg-slate-100/80 rounded-lg text-xs font-semibold text-slate-500 cursor-not-allowed"
-                  placeholder="Jabatan"
+                  placeholder="(Chief Engineer)"
                 />
               </div>
 
