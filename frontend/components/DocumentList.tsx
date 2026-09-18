@@ -2847,32 +2847,90 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       return renderDmeContent();
     }
 
+    if (searchQuery.trim() !== '') {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between bg-blue-50/80 border border-blue-200/90 rounded-2xl p-3 sm:p-3.5 flex-wrap gap-2.5 shadow-2xs">
+            <div className="flex items-center gap-2 text-xs font-semibold text-blue-950">
+              <Search className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>
+                Hasil pencarian untuk <strong>"{searchQuery}"</strong> ({filteredDocuments.length} laporan ditemukan)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="px-2.5 py-1 bg-white hover:bg-blue-100 text-blue-800 border border-blue-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 text-blue-600" />
+              <span>Reset Pencarian</span>
+            </button>
+          </div>
+          {filteredDocuments.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 shadow-xs">
+              <Search className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-700">Tidak ada laporan HSE yang sesuai dengan kata kunci "{searchQuery}"</p>
+              <p className="text-xs text-slate-500 mt-1">Coba gunakan kata kunci lain atau periksa rentang tanggal filter Anda.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {filteredDocuments.map((document, index) => renderDocumentCard(document, index))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (currentLevel === 'root') {
       const categories = [
-        { id: 'inspection', name: 'HSE Inspection Report', icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
+        {
+          id: 'inspection',
+          name: 'HSE Inspection Report',
+          desc: 'Koleksi berkas resmi laporan inspeksi keselamatan kerja K3 & HSE lingkungan data center',
+          icon: ClipboardList,
+          color: 'text-blue-600',
+          bg: 'bg-blue-50 border-blue-100',
+        },
       ];
 
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map((cat) => {
             const count = filteredDocuments.filter(d => d.hseType === cat.id).length;
             return (
               <motion.button
                 key={cat.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.99 }}
                 onClick={() => {
                   setSelectedCategory(cat.id as any);
                   setCurrentLevel('category');
                 }}
-                className="flex items-center gap-4 p-6 bg-white border border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group text-left shadow-sm cursor-pointer"
+                className="flex items-center justify-between p-5 sm:p-6 bg-white border border-slate-200/90 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group text-left shadow-2xs cursor-pointer"
               >
-                <div className={`p-3 ${cat.bg} rounded-xl border group-hover:scale-110 transition-transform`}>
-                  <cat.icon className={`w-8 h-8 ${cat.color}`} />
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className={`p-3.5 ${cat.bg} rounded-2xl border group-hover:scale-105 transition-transform shrink-0`}>
+                    <cat.icon className={`w-7 h-7 ${cat.color}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                      {cat.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
+                      {cat.desc}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200/70">
+                        {count} Dokumen
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-semibold">Tersimpan</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">{cat.name}</h3>
-                  <p className="text-sm font-medium text-slate-500">{count} Dokumen</p>
+
+                <div className="flex items-center gap-1 text-blue-600 font-bold text-xs bg-blue-50/80 group-hover:bg-blue-600 group-hover:text-white px-3 py-2 rounded-xl transition-all border border-blue-200/60 group-hover:border-blue-600 shadow-2xs shrink-0 ml-3">
+                  <span className="hidden sm:inline">Buka Arsip</span>
+                  <ChevronRight className="w-4 h-4" />
                 </div>
               </motion.button>
             );
@@ -3450,13 +3508,25 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 relative z-10 pb-32 sm:pb-16 min-w-0 overflow-x-hidden">
+    <div className={`w-full relative z-10 min-w-0 overflow-x-hidden ${filterOverride === 'hse_utt' ? 'py-1 pb-16' : 'max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-32 sm:pb-16'}`}>
       { }
-      <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 mb-3.5 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 w-full max-w-full overflow-hidden">
-        <div className="mb-3 sm:mb-6 flex items-center justify-between flex-wrap gap-3">
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 mb-3.5 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 w-full max-w-full overflow-hidden">
+        <div className="mb-3.5 sm:mb-5 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">{viewMode === 'flat' ? 'Arsip Dokumen' : 'Management File & Arsip Dokumen'}</h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">{viewMode === 'flat' ? 'Arsip laporan maintenance akun Anda — hasil export PDF tersimpan di sini' : 'Semua berkas operasional, laporan preventive & corrective maintenance terpusat'}</p>
+            <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+              {filterOverride === 'hse_utt'
+                ? 'Arsip Laporan Inspeksi HSE'
+                : viewMode === 'flat'
+                  ? 'Arsip Dokumen'
+                  : 'Management File & Arsip Dokumen'}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">
+              {filterOverride === 'hse_utt'
+                ? 'Semua berkas laporan inspeksi keselamatan kerja K3 & HSE terpusat'
+                : viewMode === 'flat'
+                  ? 'Arsip laporan maintenance akun Anda — hasil export PDF tersimpan di sini'
+                  : 'Semua berkas operasional, laporan preventive & corrective maintenance terpusat'}
+            </p>
           </div>
           <button
             type="button"
@@ -3470,17 +3540,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           </button>
         </div>
 
-
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : 'xl:grid-cols-3'} gap-2 sm:gap-4 items-center w-full min-w-0`}>
-
-          <div className="relative min-w-0 w-full">
-            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        {/* Tier 1: Search Bar & Control Dropdowns */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0">
+          {/* Input Pencarian */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari dokumen / file..."
-              className="w-full pl-9 sm:pl-12 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-xs sm:text-sm font-medium"
+              placeholder="Cari dokumen, nomor laporan, atau kegiatan..."
+              className="w-full pl-10 sm:pl-11 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-xs sm:text-sm font-medium shadow-2xs"
             />
             {searchQuery && (
               <button
@@ -3496,113 +3566,127 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
             )}
           </div>
 
+          {/* Control Dropdowns */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+            {/* Sort Dropdown */}
+            <div className="relative flex-1 sm:flex-initial min-w-[200px]">
+              <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="w-full pl-9 pr-7 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-800 cursor-pointer text-xs sm:text-sm font-semibold shadow-2xs"
+                title="Urutkan dokumen"
+              >
+                <option value="newest_upload">Terbaru Masuk / Export</option>
+                <option value="maintenance_newest">Tgl Pelaksanaan (Terbaru)</option>
+                <option value="maintenance_oldest">Tgl Pelaksanaan (Terlama)</option>
+              </select>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 items-center w-full min-w-0">
-            <div className="relative min-w-0 w-full">
-              <div className="flex items-center gap-1.5 bg-slate-50/90 border border-slate-200 rounded-xl px-2.5 py-1.5 sm:py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Dari:</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0 cursor-pointer"
-                  title="Dari tanggal"
-                />
-              </div>
-            </div>
-            <div className="relative min-w-0 w-full">
-              <div className="flex items-center gap-1.5 bg-slate-50/90 border border-slate-200 rounded-xl px-2.5 py-1.5 sm:py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Sampai:</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0 cursor-pointer"
-                  title="Sampai tanggal"
-                />
-              </div>
-            </div>
-            <div className="sm:col-span-2 flex flex-wrap items-center gap-1 pt-0.5">
-              <span className="text-[10px] text-slate-400 font-medium mr-0.5">Preset:</span>
-              {[
-                { label: 'Bulan Ini', preset: 'this_month' as const },
-                { label: 'Bulan Lalu', preset: 'last_month' as const },
-                { label: 'Tahun Ini', preset: 'this_year' as const },
-              ].map((p) => (
-                <button
-                  key={p.preset}
-                  type="button"
-                  onClick={() => {
-                    const { start, end } = getPresetRange(p.preset);
-                    setStartDate(start);
-                    setEndDate(end);
-                  }}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[10px] font-medium transition cursor-pointer"
+            {/* File Type Dropdown (!isDME) */}
+            {!isDME && (
+              <div className="relative flex-1 sm:flex-initial min-w-[130px]">
+                <FileType className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as any)}
+                  className="w-full pl-9 pr-6 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-800 cursor-pointer text-xs sm:text-sm font-semibold shadow-2xs"
+                  title="Filter tipe dokumen"
                 >
-                  {p.label}
-                </button>
-              ))}
-              {(startDate || endDate) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStartDate('');
-                    setEndDate('');
-                  }}
-                  className="px-2 py-0.5 text-rose-600 hover:text-rose-800 text-[10px] font-bold transition cursor-pointer"
+                  <option value="all">Semua Tipe</option>
+                  <option value="excel">Excel</option>
+                  <option value="pdf">PDF</option>
+                  <option value="hse">HSE</option>
+                </select>
+              </div>
+            )}
+
+            {/* Admin Delete Filter */}
+            {isAdmin && (
+              <div className="relative flex-1 sm:flex-initial min-w-[190px]">
+                <Shield className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                <select
+                  value={adminDeleteFilter}
+                  onChange={(e) => setAdminDeleteFilter(e.target.value as any)}
+                  className="w-full pl-9 pr-6 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-800 cursor-pointer text-xs sm:text-sm font-semibold shadow-2xs"
+                  title="Filter pengajuan admin"
                 >
-                  Reset ✕
-                </button>
-              )}
+                  <option value="all">Semua Dokumen ({documents.length})</option>
+                  <option value="pending_delete">Menunggu Hapus ({documents.filter(d => d.deleteRequested).length})</option>
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tier 2: Date Range Toolbar & Quick Presets */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2.5 bg-slate-50/70 p-2.5 sm:p-3 rounded-2xl border border-slate-200/80">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-1.5 text-slate-600 text-xs font-bold shrink-0">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <span>Rentang Tanggal:</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition shadow-2xs">
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Dari:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent outline-none text-slate-900 text-xs font-semibold cursor-pointer w-[125px] sm:w-[130px]"
+                title="Dari tanggal"
+              />
+            </div>
+
+            <span className="text-slate-400 font-bold text-xs select-none">s/d</span>
+
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition shadow-2xs">
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Sampai:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent outline-none text-slate-900 text-xs font-semibold cursor-pointer w-[125px] sm:w-[130px]"
+                title="Sampai tanggal"
+              />
             </div>
           </div>
 
-
-          <div className="relative min-w-0 w-full">
-            <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium"
-              title="Urutkan dokumen"
-            >
-              <option value="newest_upload">Terbaru Masuk / Export (Default)</option>
-              <option value="maintenance_newest">Tanggal Pelaksanaan (Terbaru)</option>
-              <option value="maintenance_oldest">Tanggal Pelaksanaan (Terlama)</option>
-            </select>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] text-slate-400 font-semibold mr-1 hidden sm:inline">Pilihan Cepat:</span>
+            {[
+              { label: 'Bulan Ini', preset: 'this_month' as const },
+              { label: 'Bulan Lalu', preset: 'last_month' as const },
+              { label: 'Tahun Ini', preset: 'this_year' as const },
+            ].map((p) => (
+              <button
+                key={p.preset}
+                type="button"
+                onClick={() => {
+                  const { start, end } = getPresetRange(p.preset);
+                  setStartDate(start);
+                  setEndDate(end);
+                }}
+                className="px-2.5 py-1 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-600 border border-slate-200 rounded-lg text-xs font-medium transition cursor-pointer shadow-2xs"
+              >
+                {p.label}
+              </button>
+            ))}
+            {(startDate || endDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ml-1"
+                title="Reset rentang tanggal"
+              >
+                <X className="w-3 h-3" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
-
-          {!isDME && (
-            <div className="relative min-w-0 w-full">
-              <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as any)}
-                className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium"
-                title="Filter tipe dokumen"
-              >
-                <option value="all">Semua Tipe</option>
-                <option value="excel">Excel</option>
-                <option value="pdf">PDF</option>
-                <option value="hse">HSE</option>
-              </select>
-            </div>
-          )}
-
-          {isAdmin && (
-            <div className="relative min-w-0 w-full">
-              <Shield className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              <select
-                value={adminDeleteFilter}
-                onChange={(e) => setAdminDeleteFilter(e.target.value as any)}
-                className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium truncate"
-                title="Filter pengajuan admin"
-              >
-                <option value="all">Semua Dokumen ({documents.length})</option>
-                <option value="pending_delete">Menunggu Hapus ({documents.filter(d => d.deleteRequested).length})</option>
-              </select>
-            </div>
-          )}
         </div>
 
         {/* Status Filter Tabs (Foto Saja vs Foto + Service Report vs Dokumen Abnormal) */}
@@ -3687,32 +3771,56 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3.5 mt-3 w-full">
-          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Dokumen</p>
-            <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
-              {isDME && filterOverride !== 'hse_utt' ? documents.length + managementFilesCount : documents.length}
-            </p>
+        {/* Kartu Statistik */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 mt-3.5 w-full">
+          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0 border border-blue-100">
+              <FolderArchive className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Dokumen</p>
+              <p className="text-base sm:text-xl font-black text-slate-900 mt-0.5 truncate">
+                {isDME && filterOverride !== 'hse_utt' ? documents.length + managementFilesCount : documents.length}
+              </p>
+            </div>
           </div>
-          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Hasil Filter</p>
-            <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
-              {isDME && filterOverride !== 'hse_utt' && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
-            </p>
+
+          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl shrink-0 border border-indigo-100">
+              <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Hasil Filter</p>
+              <p className="text-base sm:text-xl font-black text-slate-900 mt-0.5 truncate">
+                {isDME && filterOverride !== 'hse_utt' && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
+              </p>
+            </div>
           </div>
-          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Ukuran</p>
-            <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
-              {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (isDME && filterOverride !== 'hse_utt' ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
-            </p>
+
+          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 text-teal-600 rounded-xl shrink-0 border border-teal-100">
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Ukuran</p>
+              <p className="text-base sm:text-xl font-black text-slate-900 mt-0.5 truncate">
+                {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (isDME && filterOverride !== 'hse_utt' ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
+              </p>
+            </div>
           </div>
-          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Status Filter</p>
-            <p className="text-xs sm:text-sm font-bold text-slate-700 mt-1 flex items-center gap-1.5 truncate">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${(searchQuery || startDate || endDate || (filterType !== 'all' && !isDME) || (srStatusFilter !== 'all' && !isDME)) ? 'bg-amber-500 animate-pulse' : 'bg-slate-300'
-                }`} />
-              <span className="truncate">{(searchQuery || startDate || endDate || (filterType !== 'all' && !isDME) || (srStatusFilter !== 'all' && !isDME)) ? 'Filter Aktif' : 'Tidak Ada'}</span>
-            </p>
+
+          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl shrink-0 border border-amber-100">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Status Filter</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 flex items-center gap-1.5 truncate">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${(searchQuery || startDate || endDate || (filterType !== 'all' && !isDME) || (srStatusFilter !== 'all' && !isDME)) ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
+                  }`} />
+                <span className="truncate">{(searchQuery || startDate || endDate || (filterType !== 'all' && !isDME) || (srStatusFilter !== 'all' && !isDME)) ? 'Filter Aktif' : 'Semua Data'}</span>
+              </p>
+            </div>
           </div>
         </div>
 

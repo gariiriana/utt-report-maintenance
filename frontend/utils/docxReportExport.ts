@@ -37,6 +37,7 @@ import {
 import { PIRReportData } from '@/types/pirReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import logoK2 from '@/assets/logo_k2.png';
 
 /** Helper to convert base64 or URL to Uint8Array for docx ImageRun */
 function base64ToUint8Array(base64: string): Uint8Array {
@@ -1274,9 +1275,25 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
 // 3. EXPORT POST INCIDENT REPORT (PIR) TO DOCX
 // ==========================================
 export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> {
-  const [logoLeftBytes, logoRightBytes] = await Promise.all([
+  const normalizedPrepName = normalizeEngineerName(data.preparedByName || 'Agil Zakia Rahman');
+  const resolvedRevSign = cleanSignature((data as any).reviewedBySign) ||
+    ((data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedBy1Name || 'Arif Budiman').toLowerCase().includes('budiman')
+      ? ARIF_BUDIMAN_SIGNATURE_BASE64
+      : '');
+  const resolvedPrepSign = cleanSignature((data as any).preparedBySign) ||
+    getEngineerSignature(normalizedPrepName) ||
+    cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) || '';
+
+  const [logoLeftBytes, logoRightBytes, prepSignBytes, revSignBytes, ack1SignBytes, ack2SignBytes, app1SignBytes, app2SignBytes, app3SignBytes] = await Promise.all([
     loadImageAsUint8Array(logoDwimitra),
-    loadImageAsUint8Array(logoNeutraDC),
+    loadImageAsUint8Array(data.companyType === 'k2' ? logoK2 : logoNeutraDC),
+    loadImageAsUint8Array(resolvedPrepSign),
+    loadImageAsUint8Array(resolvedRevSign),
+    loadImageAsUint8Array((data as any).acknowledgedBy1Sign || ''),
+    loadImageAsUint8Array((data as any).acknowledgedBy2Sign || ''),
+    loadImageAsUint8Array((data as any).approvedBy1Sign || ''),
+    loadImageAsUint8Array((data as any).approvedBy2Sign || ''),
+    loadImageAsUint8Array((data as any).approvedBy3Sign || ''),
   ]);
 
   const resolvedIncidentName = data.incidentName || (data as any).issue || (data as any).ticketName || '-';
@@ -1422,38 +1439,312 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
     ],
   });
 
-  // Photos
-  const photoParagraphs: Paragraph[] = [];
+  // Photo Documentation - 2-Column Table Grid (Compact & Space-Saving)
+  const photoTableRows: TableRow[] = [];
   if (data.photos && data.photos.length > 0) {
-    for (const p of data.photos) {
-      if (!p.photoBase64) continue;
-      const imgBytes = await loadImageAsUint8Array(p.photoBase64);
-      if (imgBytes.length > 0) {
-        photoParagraphs.push(
+    const validPhotos = data.photos.filter((p) => p.photoBase64);
+    for (let i = 0; i < validPhotos.length; i += 2) {
+      const p1 = validPhotos[i];
+      const p2 = validPhotos[i + 1];
+
+      const img1Bytes = await loadImageAsUint8Array(p1.photoBase64);
+      const img2Bytes = p2 ? await loadImageAsUint8Array(p2.photoBase64) : new Uint8Array();
+
+      const cell1Children: Paragraph[] = [];
+      if (img1Bytes.length > 0) {
+        cell1Children.push(
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            spacing: { before: 140, after: 60 },
             children: [
               new ImageRun({
-                data: imgBytes,
-                transformation: { width: 360, height: 220 },
+                data: img1Bytes,
+                transformation: { width: 235, height: 135 },
                 type: 'png',
               }),
             ],
           })
         );
-        if (p.caption) {
-          photoParagraphs.push(
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 180 },
-              children: [new TextRun({ text: `Ket: ${p.caption}`, italics: true, size: 16, color: '64748B' })],
-            })
-          );
-        }
+        cell1Children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 30, after: 30 },
+            children: [
+              new TextRun({
+                text: p1.caption ? `Ket: ${p1.caption}` : `Ket: Dokumentasi Foto #${i + 1}`,
+                size: 16,
+                color: '334155',
+                font: 'Century Gothic',
+              }),
+            ],
+          })
+        );
       }
+
+      const cell2Children: Paragraph[] = [];
+      if (p2 && img2Bytes.length > 0) {
+        cell2Children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new ImageRun({
+                data: img2Bytes,
+                transformation: { width: 235, height: 135 },
+                type: 'png',
+              }),
+            ],
+          })
+        );
+        cell2Children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 30, after: 30 },
+            children: [
+              new TextRun({
+                text: p2.caption ? `Ket: ${p2.caption}` : `Ket: Dokumentasi Foto #${i + 2}`,
+                size: 16,
+                color: '334155',
+                font: 'Century Gothic',
+              }),
+            ],
+          })
+        );
+      }
+
+      // Add Header Row for Photo Documentation Pair
+      photoTableRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+              margins: { top: 50, bottom: 50, left: 60, right: 60 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: [new TextRun({ text: `FOTO DOKUMENTASI #${i + 1}`, bold: true, size: 16, color: '1E293B', font: 'Century Gothic' })],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+              margins: { top: 50, bottom: 50, left: 60, right: 60 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: [p2 ? new TextRun({ text: `FOTO DOKUMENTASI #${i + 2}`, bold: true, size: 16, color: '1E293B', font: 'Century Gothic' }) : new TextRun({ text: '' })],
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              margins: { top: 60, bottom: 60, left: 60, right: 60 },
+              children: cell1Children.length > 0 ? cell1Children : [new Paragraph({ children: [] })],
+            }),
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              margins: { top: 60, bottom: 60, left: 60, right: 60 },
+              children: cell2Children.length > 0 ? cell2Children : [new Paragraph({ children: [] })],
+            }),
+          ],
+        })
+      );
     }
   }
+
+  const pirPhotoGridTable = photoTableRows.length > 0
+    ? new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorder,
+      rows: photoTableRows,
+    })
+    : null;
+
+  // Helper to build signature cell contents for PIR Matriks Otorisasi
+  const buildPirSigCell = (signBytes: Uint8Array, nameText: string, titleText: string) => {
+    const children: Paragraph[] = [];
+    if (signBytes && signBytes.length > 0) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 20, after: 20 },
+          children: [new ImageRun({ data: signBytes, transformation: { width: 110, height: 46 }, type: 'png' })],
+        })
+      );
+    } else {
+      children.push(new Paragraph({ spacing: { before: 180 } }));
+    }
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 20 },
+        children: [new TextRun({ text: nameText, bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: titleText, size: 15, color: '475569', font: 'Century Gothic' })],
+      })
+    );
+    return children;
+  };
+
+  const pirSignatureTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorder,
+    rows: [
+      // Row 1 Header: PREPARED BY & REVIEWED BY
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 34, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'PREPARED BY,', bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
+              }),
+            ],
+          }),
+          new TableCell({
+            columnSpan: 2,
+            width: { size: 66, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'REVIEWED BY,', bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
+              }),
+            ],
+          }),
+        ],
+      }),
+      // Row 1 Content: 3 cells (Prepared By, Reviewed By 1, Reviewed By 2)
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 34, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(prepSignBytes, normalizedPrepName, data.preparedByTitle || '(Shift Engineer)'),
+          }),
+          new TableCell({
+            width: { size: 33, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(revSignBytes, data.reviewedBy1Name || 'Arif Budiman', data.reviewedBy1Title || '(Technical Manager)'),
+          }),
+          new TableCell({
+            width: { size: 33, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(new Uint8Array(), data.reviewedBy2Name || 'Dwi Tasmiyadi', data.reviewedBy2Title || '(Project manager)'),
+          }),
+        ],
+      }),
+
+      // Row 2 Header: ACKNOWLEDGED BY
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 3,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'ACKNOWLEDGED BY,', bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
+              }),
+            ],
+          }),
+        ],
+      }),
+      // Row 2 Content: 2 cells (Habib Mulyana & Supriyatno)
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 1,
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(ack1SignBytes, (!data.acknowledgedBy1Name || data.acknowledgedBy1Name === 'Andrean Bima Pratama') ? 'Habib Mulyana' : data.acknowledgedBy1Name, data.acknowledgedBy1Title || '(Chief Engineer)'),
+          }),
+          new TableCell({
+            columnSpan: 2,
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(ack2SignBytes, data.acknowledgedBy2Name || 'Supriyatno', data.acknowledgedBy2Title || '(Facility manager)'),
+          }),
+        ],
+      }),
+
+      // Row 3 Header: APPROVED BY (1 & 2)
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 3,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'APPROVED BY,', bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
+              }),
+            ],
+          }),
+        ],
+      }),
+      // Row 3 Content: 2 cells (Budi Susanto & Rezki Rahman Daulay)
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 1,
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(app1SignBytes, data.approvedBy1Name || 'Budi Susanto', data.approvedBy1Title || '(Assistant manager HDC Facility Management)'),
+          }),
+          new TableCell({
+            columnSpan: 2,
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(app2SignBytes, data.approvedBy2Name || 'Rezki Rahman Daulay', data.approvedBy2Title || '(Manager HDC Operation)'),
+          }),
+        ],
+      }),
+
+      // Row 4 Header: APPROVED BY (EGM DC Operation)
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 3,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'APPROVED BY,', bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
+              }),
+            ],
+          }),
+        ],
+      }),
+      // Row 4 Content: 1 cell (Muryani)
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 3,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
+            children: buildPirSigCell(app3SignBytes, data.approvedBy3Name || 'Muryani', data.approvedBy3Title || '(EGM DC Operation)'),
+          }),
+        ],
+      }),
+    ],
+  });
 
   const doc = new Document({
     sections: [
@@ -1524,7 +1815,16 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           pirActionTable,
           new Paragraph({ spacing: { after: 240 } }),
 
-          ...(photoParagraphs.length > 0 ? [createSectionHeader('SUPPORTING DOCUMENTATION'), ...photoParagraphs] : []),
+          ...(pirPhotoGridTable
+            ? [
+              createSectionHeader('SUPPORTING DOCUMENTATION', true),
+              pirPhotoGridTable,
+              new Paragraph({ spacing: { after: 180 } }),
+            ]
+            : []),
+
+          createSectionHeader('MATRIKS OTORISASI & TANDA TANGAN', true),
+          pirSignatureTable,
         ],
       },
     ],

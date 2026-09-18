@@ -409,10 +409,11 @@ export async function generatePIRReportPDF(data: PIRReportData) {
 
     if (processedPhotos.length > 0) {
       const boxW = (contentW - 6) / 2;
-      const boxH = 95;
+      const boxH = 76;
 
       for (let i = 0; i < processedPhotos.length; i++) {
-        if (i > 0 && i % 2 === 0) {
+        if (i > 0 && i % 4 === 0) {
+          drawPageFooter(lastPageNum);
           doc.addPage();
           lastPageNum++;
           drawHeaderLogos();
@@ -421,32 +422,32 @@ export async function generatePIRReportPDF(data: PIRReportData) {
           doc.setFontSize(11);
           doc.setTextColor(50, 50, 50);
           doc.text('SUPPORTING DOCUMENTATION (Lanjutan)', margin, y);
-          y += 6;
         }
 
-        const col = i % 2;
+        const indexInPage = i % 4;
+        const col = indexInPage % 2;
+        const row = Math.floor(indexInPage / 2);
         const xPos = margin + col * (boxW + 6);
+        const yPos = 35 + row * (boxH + 6);
 
         // Draw photo container box
         doc.setDrawColor(TABLE_BORDER[0], TABLE_BORDER[1], TABLE_BORDER[2]);
-        doc.rect(xPos, y, boxW, boxH);
+        doc.setFillColor(255, 255, 255);
+        doc.rect(xPos, yPos, boxW, boxH, 'FD');
 
         const photo = processedPhotos[i];
         if (photo.base64) {
           try {
-            doc.addImage(photo.base64, 'JPEG', xPos + 2, y + 2, boxW - 4, boxH - 12);
+            doc.addImage(photo.base64, 'JPEG', xPos + 1.5, yPos + 1.5, boxW - 3, boxH - 9);
           } catch { /* ignore */ }
         }
 
         // Caption bar at bottom of box
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(40, 40, 40);
-        doc.text(photo.caption || `Foto ${i + 1}`, xPos + boxW / 2, y + boxH - 4, { align: 'center' });
-
-        if (col === 1 || i === processedPhotos.length - 1) {
-          y += boxH + 8;
-        }
+        doc.setFontSize(8.5);
+        doc.setTextColor(50, 50, 50);
+        const captionText = photo.caption ? `Ket: ${photo.caption}` : `Dokumentasi Foto #${i + 1}`;
+        doc.text(captionText, xPos + boxW / 2, yPos + boxH - 2.5, { align: 'center', maxWidth: boxW - 4 });
       }
     } else {
       autoTable(doc, {
