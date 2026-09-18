@@ -131,6 +131,7 @@ const cellBorder = {
 function createSectionHeader(title: string, pageBreak = false): Paragraph {
   return new Paragraph({
     pageBreakBefore: pageBreak,
+    keepWithNext: true,
     alignment: AlignmentType.LEFT,
     spacing: { before: 180, after: 120 },
     children: [
@@ -1610,15 +1611,19 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
     return children;
   };
 
+  const colW = 1744; // 10464 twips total printable width (A4 with 720 margins) / 6 units
   const pirSignatureTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: colW * 6, type: WidthType.DXA },
+    columnWidths: [colW, colW, colW, colW, colW, colW],
     borders: cellBorder,
     rows: [
-      // Row 1 Header: PREPARED BY & REVIEWED BY
+      // Row 1 Header: PREPARED BY (2 cols = 33.33%) & REVIEWED BY (4 cols = 66.67%)
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            width: { size: 34, type: WidthType.PERCENTAGE },
+            columnSpan: 2,
+            width: { size: colW * 2, type: WidthType.DXA },
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: [
@@ -1629,8 +1634,8 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
             ],
           }),
           new TableCell({
-            columnSpan: 2,
-            width: { size: 66, type: WidthType.PERCENTAGE },
+            columnSpan: 4,
+            width: { size: colW * 4, type: WidthType.DXA },
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: [
@@ -1642,21 +1647,25 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           }),
         ],
       }),
-      // Row 1 Content: 3 cells (Prepared By, Reviewed By 1, Reviewed By 2)
+      // Row 1 Content: 3 cells (Prepared By, Reviewed By 1, Reviewed By 2) -> EXACTLY 2 COLS (33.33%) EACH!
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            width: { size: 34, type: WidthType.PERCENTAGE },
+            columnSpan: 2,
+            width: { size: colW * 2, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(prepSignBytes, normalizedPrepName, data.preparedByTitle || '(Shift Engineer)'),
           }),
           new TableCell({
-            width: { size: 33, type: WidthType.PERCENTAGE },
+            columnSpan: 2,
+            width: { size: colW * 2, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(revSignBytes, data.reviewedBy1Name || 'Arif Budiman', data.reviewedBy1Title || '(Technical Manager)'),
           }),
           new TableCell({
-            width: { size: 33, type: WidthType.PERCENTAGE },
+            columnSpan: 2,
+            width: { size: colW * 2, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(rev2SignBytes, data.reviewedBy2Name || 'Dwi Tasmiyadi', data.reviewedBy2Title || '(Project manager)'),
           }),
@@ -1665,10 +1674,11 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
 
       // Row 2 Header: ACKNOWLEDGED BY
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            columnSpan: 3,
-            width: { size: 100, type: WidthType.PERCENTAGE },
+            columnSpan: 6,
+            width: { size: colW * 6, type: WidthType.DXA },
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: [
@@ -1680,18 +1690,19 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           }),
         ],
       }),
-      // Row 2 Content: 2 cells (Habib Mulyana & Supriyatno)
+      // Row 2 Content: 2 cells (Habib Mulyana & Supriyatno) -> EXACTLY 3 COLS (50%) EACH!
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            columnSpan: 1,
-            width: { size: 50, type: WidthType.PERCENTAGE },
+            columnSpan: 3,
+            width: { size: colW * 3, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(ack1SignBytes, (!data.acknowledgedBy1Name || data.acknowledgedBy1Name === 'Andrean Bima Pratama') ? 'Habib Mulyana' : data.acknowledgedBy1Name, data.acknowledgedBy1Title || '(Chief Engineer)'),
           }),
           new TableCell({
-            columnSpan: 2,
-            width: { size: 50, type: WidthType.PERCENTAGE },
+            columnSpan: 3,
+            width: { size: colW * 3, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(ack2SignBytes, data.acknowledgedBy2Name || 'Supriyatno', data.acknowledgedBy2Title || '(Facility manager)'),
           }),
@@ -1700,10 +1711,11 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
 
       // Row 3 Header: APPROVED BY (1 & 2)
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            columnSpan: 3,
-            width: { size: 100, type: WidthType.PERCENTAGE },
+            columnSpan: 6,
+            width: { size: colW * 6, type: WidthType.DXA },
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: [
@@ -1715,18 +1727,19 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           }),
         ],
       }),
-      // Row 3 Content: 2 cells (Budi Susanto & Rezki Rahman Daulay)
+      // Row 3 Content: 2 cells (Budi Susanto & Rezki Rahman Daulay) -> EXACTLY 3 COLS (50%) EACH!
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            columnSpan: 1,
-            width: { size: 50, type: WidthType.PERCENTAGE },
+            columnSpan: 3,
+            width: { size: colW * 3, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(app1SignBytes, data.approvedBy1Name || 'Budi Susanto', data.approvedBy1Title || '(Assistant manager HDC Facility Management)'),
           }),
           new TableCell({
-            columnSpan: 2,
-            width: { size: 50, type: WidthType.PERCENTAGE },
+            columnSpan: 3,
+            width: { size: colW * 3, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(app2SignBytes, data.approvedBy2Name || 'Rezki Rahman Daulay', data.approvedBy2Title || '(Manager HDC Operation)'),
           }),
@@ -1735,10 +1748,11 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
 
       // Row 4 Header: APPROVED BY (EGM DC Operation)
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            columnSpan: 3,
-            width: { size: 100, type: WidthType.PERCENTAGE },
+            columnSpan: 6,
+            width: { size: colW * 6, type: WidthType.DXA },
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: [
@@ -1750,12 +1764,13 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
           }),
         ],
       }),
-      // Row 4 Content: 1 cell (Muryani)
+      // Row 4 Content: 1 cell (Muryani) -> EXACTLY 6 COLS (100%)!
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            columnSpan: 3,
-            width: { size: 100, type: WidthType.PERCENTAGE },
+            columnSpan: 6,
+            width: { size: colW * 6, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: buildPirSigCell(app3SignBytes, data.approvedBy3Name || 'Muryani', data.approvedBy3Title || '(EGM DC Operation)'),
           }),
@@ -1835,13 +1850,13 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
 
           ...(pirPhotoGridTable
             ? [
-              createSectionHeader('SUPPORTING DOCUMENTATION', true),
+              createSectionHeader('SUPPORTING DOCUMENTATION', false),
               pirPhotoGridTable,
               new Paragraph({ spacing: { after: 180 } }),
             ]
             : []),
 
-          createSectionHeader('MATRIKS OTORISASI & TANDA TANGAN', true),
+          createSectionHeader('MATRIKS OTORISASI & TANDA TANGAN', false),
           pirSignatureTable,
         ],
       },
