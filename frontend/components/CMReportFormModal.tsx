@@ -655,7 +655,16 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         if (editId) {
           await updateDoc(doc(db, 'corrective_reports', editId), reportPayload);
         } else {
-          await addDoc(collection(db, 'corrective_reports'), reportPayload);
+          const newDocRef = await addDoc(collection(db, 'corrective_reports'), reportPayload);
+          await sendFileNotification({
+            title: `Laporan CM Baru: ${formattedData.incidentName || formattedData.equipmentName || 'Corrective Maintenance'}`,
+            fileName: formattedData.incidentName || formattedData.equipmentName || 'Laporan CM',
+            category: 'Report CM',
+            fileId: newDocRef.id,
+            uploadedBy: user.email || 'Standby Engineer',
+            targetTab: 'corrective_archive',
+            searchQuery: formattedData.incidentName || formattedData.equipmentName || ''
+          });
         }
       }
 

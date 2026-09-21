@@ -51,7 +51,9 @@ function notifySubscribers() {
 function subscribeToFirestoreNotifications() {
     if (unsubscribers) return; // Already subscribed
 
-    // 1. Listen to explicit notifications collection
+    // The notification collection is the canonical stream. Every supported
+    // create/upload flow writes an event here, so the global header must not
+    // fan out into several large business collections on every app load.
     const qNotif = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(15));
     const unsubNotif = onSnapshot(qNotif, (snapshot) => {
         snapshot.docs.forEach(docSnap => {
@@ -73,95 +75,7 @@ function subscribeToFirestoreNotifications() {
         console.warn('NotificationCenter qNotif error (offline/quota):', err?.message || err);
     });
 
-    // 2. Listen to uploaded_files collection
-    const qFiles = query(collection(db, 'uploaded_files'), orderBy('uploadedAt', 'desc'), limit(10));
-    const unsubFiles = onSnapshot(qFiles, (snapshot) => {
-        snapshot.docs.forEach(docSnap => {
-            const data = docSnap.data();
-            const notifId = `file_${docSnap.id}`;
-            if (!notifItemsMap[notifId]) {
-                notifItemsMap[notifId] = {
-                    id: notifId,
-                    title: `File Upload: ${data.fileName || 'Dokumen Baru'}`,
-                    fileName: data.fileName || 'File Dokumen',
-                    category: data.category || 'Manajemen File',
-                    uploadedBy: data.uploadedBy || 'Teknisi DME',
-                    uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date(),
-                    targetTab: 'files',
-                    fileId: docSnap.id,
-                    searchQuery: data.fileName || ''
-                };
-            }
-        });
-        notifySubscribers();
-    }, (err) => {
-        console.warn('NotificationCenter qFiles error (offline/quota):', err?.message || err);
-    });
-
-    // 3. Listen to corrective_reports collection
-    const qCorrective = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'), limit(10));
-    const unsubCorrective = onSnapshot(qCorrective, (snapshot) => {
-        snapshot.docs.forEach(docSnap => {
-            const data = docSnap.data();
-            const notifId = `cm_${docSnap.id}`;
-            const isSLA = data.reportType === 'SLA';
-            const isPIR = data.reportType === 'PIR';
-            const typeLabel = isSLA ? 'Laporan SLA' : isPIR ? 'Report PIR' : 'Laporan CM';
-            const nameStr = data.incidentName || data.ticketName || data.issue || 'Corrective Maintenance';
-
-            if (!notifItemsMap[notifId]) {
-                notifItemsMap[notifId] = {
-                    id: notifId,
-                    title: `${typeLabel} Baru: ${nameStr}`,
-                    fileName: nameStr,
-                    category: isSLA ? 'Form SLA/SLG' : isPIR ? 'Report PIR' : 'Report CM',
-                    uploadedBy: data.reportedByEmail || 'Standby Engineer',
-                    uploadedAt: data.reportedAt?.toDate ? data.reportedAt.toDate() : new Date(),
-                    targetTab: 'corrective_archive',
-                    fileId: docSnap.id,
-                    searchQuery: nameStr
-                };
-            }
-        });
-        notifySubscribers();
-    }, (err) => {
-        console.warn('NotificationCenter qCorrective error (offline/quota):', err?.message || err);
-    });
-
-    // 4. Listen to pdf_documents collection (Dokumentasi Maintenance)
-    const qPdfDocs = query(collection(db, 'pdf_documents'), orderBy('createdAt', 'desc'), limit(10));
-    const unsubPdfDocs = onSnapshot(qPdfDocs, (snapshot) => {
-        snapshot.docs.forEach(docSnap => {
-            const data = docSnap.data();
-            const notifId = `pdfdoc_${docSnap.id}`;
-            if (!notifItemsMap[notifId]) {
-                const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : (data.date ? new Date(data.date) : new Date());
-                const mName = data.maintenanceName || data.equipmentName || data.system || data.maintenanceType || '';
-                const displayFileName = (data.fileName && data.fileName !== 'Service Report.pdf') 
-                    ? data.fileName 
-                    : (mName ? `Dokumentasi Maintenance ${mName}.pdf` : 'Dokumentasi Maintenance.pdf');
-                const displayTitle = mName ? `Dokumentasi Maintenance ${mName}` : (data.fileName || 'Dokumentasi Maintenance');
-                const uploaderEmail = data.createdBy || data.uploadedByEmail || data.uploadedBy || data.author || 'Teknisi DME';
-
-                notifItemsMap[notifId] = {
-                    id: notifId,
-                    title: displayTitle,
-                    fileName: displayFileName,
-                    category: 'Arsip Dokumen',
-                    uploadedBy: uploaderEmail,
-                    uploadedAt: dateObj,
-                    targetTab: 'documents',
-                    fileId: docSnap.id,
-                    searchQuery: displayFileName || mName
-                };
-            }
-        });
-        notifySubscribers();
-    }, (err) => {
-        console.warn('NotificationCenter qPdfDocs error (offline/quota):', err?.message || err);
-    });
-
-    unsubscribers = [unsubNotif, unsubFiles, unsubCorrective, unsubPdfDocs];
+    unsubscribers = [unsubNotif];
 }
 
 function unsubscribeFromFirestoreNotifications() {

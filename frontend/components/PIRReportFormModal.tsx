@@ -493,6 +493,15 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
         exportedDocId = newDocRef.id;
         toast.success('Laporan PIR diekspor PDF & disimpan!');
+        await sendFileNotification({
+          title: `Laporan PIR Baru: ${formData.incidentName || 'Post Incident Report'}`,
+          fileName: formData.incidentName || 'Laporan PIR',
+          category: 'Report PIR',
+          fileId: newDocRef.id,
+          uploadedBy: user?.email || (isK2User ? 'Engineer K2' : 'Standby Engineer'),
+          targetTab: 'pir',
+          searchQuery: formData.incidentName || ''
+        });
         try {
           localStorage.removeItem('pir_report_draft');
         } catch { /* ignore */ }
@@ -517,7 +526,16 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         if (editId) {
           await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
         } else {
-          await addDoc(collection(db, 'corrective_reports'), docPayload);
+          const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
+          await sendFileNotification({
+            title: `Laporan PIR Baru: ${formData.incidentName || 'Post Incident Report'}`,
+            fileName: formData.incidentName || 'Laporan PIR',
+            category: 'Report PIR',
+            fileId: newDocRef.id,
+            uploadedBy: user?.email || (isK2User ? 'Engineer K2' : 'Standby Engineer'),
+            targetTab: 'pir',
+            searchQuery: formData.incidentName || ''
+          });
         }
       }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
     Calendar, 
     Search, 
@@ -16,7 +16,9 @@ import {
     query, 
     orderBy, 
     limit, 
-    onSnapshot 
+    onSnapshot,
+    getDocs,
+    startAfter
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { format, isWithinInterval, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, parseISO } from 'date-fns';
@@ -28,9 +30,169 @@ interface NotificationPageProps {
     onSelectNotification: (item: AppNotificationItem) => void;
 }
 
+// The page used to open five realtime listeners with up to 700 documents in
+// total. Keep every source and its full history accessible, but only subscribe
+// to the newest page. Older records are fetched explicitly when requested.
+const NOTIFICATION_PAGE_SIZE = 30;
+const notificationSources = ['notifications', 'uploaded_files', 'pdf_documents', 'corrective_reports', 'ptw_records'] as const;
+type NotificationSource = typeof notificationSources[number];
+type SourceItems = Record<NotificationSource, Record<string, AppNotificationItem>>;
+type SourceFlags = Record<NotificationSource, boolean>;
+
+const createSourceItems = (): SourceItems => ({
+    notifications: {},
+    uploaded_files: {},
+    pdf_documents: {},
+    corrective_reports: {},
+    ptw_records: {},
+});
+
+const createSourceFlags = (value: boolean): SourceFlags => ({
+    notifications: value,
+    uploaded_files: value,
+    pdf_documents: value,
+    corrective_reports: value,
+    ptw_records: value,
+});
+
+const buildNotificationQuery = (source: NotificationSource, cursor?: any) => {
+    const cursorConstraint = cursor ? [startAfter(cursor)] : [];
+
+    switch (source) {
+        case 'notifications':
+            return query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), ...cursorConstraint, limit(NOTIFICATION_PAGE_SIZE));
+        case 'uploaded_files':
+            return query(collection(db, 'uploaded_files'), orderBy('uploadedAt', 'desc'), ...cursorConstraint, limit(NOTIFICATION_PAGE_SIZE));
+        case 'pdf_documents':
+            return query(collection(db, 'pdf_documents'), orderBy('createdAt', 'desc'), ...cursorConstraint, limit(NOTIFICATION_PAGE_SIZE));
+        case 'corrective_reports':
+            return query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'), ...cursorConstraint, limit(NOTIFICATION_PAGE_SIZE));
+        case 'ptw_records':
+            return query(collection(db, 'ptw_records'), orderBy('createdAt', 'desc'), ...cursorConstraint, limit(NOTIFICATION_PAGE_SIZE));
+    }
+};
+
+const toNotificationItem = (source: NotificationSource, docSnap: any): AppNotificationItem => {
+    const data = docSnap.data();
+
+    if (source === 'notifications') {
+        const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+        return {
+            id: `notif_${docSnap.id}`,
+            title: data.title || 'File Baru Diunggah',
+            fileName: data.fileName || 'Dokumen Maintenance',
+            category: data.category || 'Manajemen File',
+            uploadedBy: data.uploadedBy || 'User',
+            uploadedAt: dateObj,
+            targetTab: data.targetTab || 'files',
+            fileId: data.fileId || '',
+            searchQuery: data.searchQuery || data.fileName || ''
+        };
+    }
+
+    if (source === 'uploaded_files') {
+        const dateObj = data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date();
+        return {
+            id: `file_${docSnap.id}`,
+            title: `File Upload: ${data.fileName || 'Dokumen Baru'}`,
+            fileName: data.fileName || 'File Dokumen',
+            category: data.category || 'Manajemen File',
+            uploadedBy: data.uploadedByEmail || data.uploadedBy || 'Teknisi DME',
+            uploadedAt: dateObj,
+            targetTab: 'files',
+            fileId: docSnap.id,
+            searchQuery: data.fileName || ''
+        };
+    }
+
+    if (source === 'pdf_documents') {
+        const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : (data.date ? new Date(data.date) : new Date());
+        const maintenanceName = data.maintenanceName || data.equipmentName || data.system || data.maintenanceType || '';
+        const fileName = (data.fileName && data.fileName !== 'Service Report.pdf')
+            ? data.fileName
+            : (maintenanceName ? `Dokumentasi Maintenance ${maintenanceName}.pdf` : 'Dokumentasi Maintenance.pdf');
+
+        return {
+            id: `pdfdoc_${docSnap.id}`,
+            title: maintenanceName ? `Dokumentasi Maintenance ${maintenanceName}` : (data.fileName || 'Dokumentasi Maintenance'),
+            fileName,
+            category: 'Arsip Dokumen',
+            uploadedBy: data.createdBy || data.uploadedByEmail || data.uploadedBy || data.author || 'Teknisi DME',
+            uploadedAt: dateObj,
+            targetTab: 'documents',
+            fileId: docSnap.id,
+            searchQuery: fileName || maintenanceName
+        };
+    }
+
+    if (source === 'corrective_reports') {
+        const isSLA = data.reportType === 'SLA';
+        const isPIR = data.reportType === 'PIR';
+        const typeLabel = isSLA ? 'Laporan SLA' : isPIR ? 'Report PIR' : 'Laporan CM';
+        const name = data.incidentName || data.ticketName || data.issue || 'Corrective Maintenance';
+        const dateObj = data.reportedAt?.toDate ? data.reportedAt.toDate() : new Date();
+
+        return {
+            id: `cm_${docSnap.id}`,
+            title: `${typeLabel} Baru: ${name}`,
+            fileName: name,
+            category: isSLA ? 'Form SLA/SLG' : isPIR ? 'Report PIR' : 'Report CM',
+            uploadedBy: data.reportedByEmail || 'Standby Engineer',
+            uploadedAt: dateObj,
+            targetTab: 'corrective_archive',
+            fileId: docSnap.id,
+            searchQuery: name
+        };
+    }
+
+    const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+    const title = data.workTitle || data.sequenceNumber || 'Izin Kerja PTW';
+    return {
+        id: `ptw_${docSnap.id}`,
+        title: `Dokumen PTW: ${title}`,
+        fileName: `PTW_${title}`,
+        category: 'PTW',
+        uploadedBy: data.contractorName || data.applicantEmail || 'Vendor / Engineer',
+        uploadedAt: dateObj,
+        targetTab: 'ptw',
+        fileId: docSnap.id,
+        searchQuery: title
+    };
+};
+
+const flattenSourceItems = (sourceItems: SourceItems): AppNotificationItem[] => {
+    return Object.values(sourceItems)
+        .flatMap(items => Object.values(items))
+        .sort((a, b) => {
+            const timeA = a.uploadedAt instanceof Date ? a.uploadedAt.getTime() : 0;
+            const timeB = b.uploadedAt instanceof Date ? b.uploadedAt.getTime() : 0;
+            return timeB - timeA;
+        });
+};
+
 export function NotificationPage({ onSelectNotification }: NotificationPageProps) {
     const [allNotifications, setAllNotifications] = useState<AppNotificationItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const sourceItemsRef = useRef<SourceItems>(createSourceItems());
+    const cursorRef = useRef<Record<NotificationSource, any>>({
+        notifications: null,
+        uploaded_files: null,
+        pdf_documents: null,
+        corrective_reports: null,
+        ptw_records: null,
+    });
+    const hasMoreRef = useRef<SourceFlags>(createSourceFlags(true));
+    const liveItemIdsRef = useRef<Record<NotificationSource, Set<string>>>({
+        notifications: new Set(),
+        uploaded_files: new Set(),
+        pdf_documents: new Set(),
+        corrective_reports: new Set(),
+        ptw_records: new Set(),
+    });
+    const loadedOlderPagesRef = useRef<SourceFlags>(createSourceFlags(false));
+    const mountedRef = useRef(false);
 
     // Filter States
     const [startDate, setStartDate] = useState<string>('');
@@ -39,169 +201,120 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [presetRange, setPresetRange] = useState<'all' | 'today' | '7days' | '30days' | 'thisMonth'>('all');
 
-    // Real-time synchronization across multiple collections
-    useEffect(() => {
-        setLoading(true);
-        const itemsMap: { [id: string]: AppNotificationItem } = {};
-
-        // 1. Explicit notifications collection
-        const qNotif = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(150));
-        const unsubNotif = onSnapshot(qNotif, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
-                itemsMap[`notif_${docSnap.id}`] = {
-                    id: docSnap.id,
-                    title: data.title || 'File Baru Diunggah',
-                    fileName: data.fileName || 'Dokumen Maintenance',
-                    category: data.category || 'Manajemen File',
-                    uploadedBy: data.uploadedBy || 'User',
-                    uploadedAt: dateObj,
-                    targetTab: data.targetTab || 'files',
-                    fileId: data.fileId || '',
-                    searchQuery: data.searchQuery || data.fileName || ''
-                };
-            });
-            updateList();
-        }, (err) => {
-            console.warn('NotificationPage qNotif error (offline/quota):', err?.message || err);
-        });
-
-        // 2. uploaded_files collection
-        const qFiles = query(collection(db, 'uploaded_files'), orderBy('uploadedAt', 'desc'), limit(150));
-        const unsubFiles = onSnapshot(qFiles, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const notifId = `file_${docSnap.id}`;
-                if (!itemsMap[notifId]) {
-                    const dateObj = data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date();
-                    itemsMap[notifId] = {
-                        id: notifId,
-                        title: `File Upload: ${data.fileName || 'Dokumen Baru'}`,
-                        fileName: data.fileName || 'File Dokumen',
-                        category: data.category || 'Manajemen File',
-                        uploadedBy: data.uploadedByEmail || data.uploadedBy || 'Teknisi DME',
-                        uploadedAt: dateObj,
-                        targetTab: 'files',
-                        fileId: docSnap.id,
-                        searchQuery: data.fileName || ''
-                    };
-                }
-            });
-            updateList();
-        }, (err) => {
-            console.warn('NotificationPage qFiles error (offline/quota):', err?.message || err);
-        });
-
-        // 3. pdf_documents collection (Dokumentasi Maintenance)
-        const qPdfDocs = query(collection(db, 'pdf_documents'), orderBy('createdAt', 'desc'), limit(150));
-        const unsubPdfDocs = onSnapshot(qPdfDocs, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const notifId = `pdfdoc_${docSnap.id}`;
-                if (!itemsMap[notifId]) {
-                    const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : (data.date ? new Date(data.date) : new Date());
-                    const mName = data.maintenanceName || data.equipmentName || data.system || data.maintenanceType || '';
-                    const displayFileName = (data.fileName && data.fileName !== 'Service Report.pdf') 
-                        ? data.fileName 
-                        : (mName ? `Dokumentasi Maintenance ${mName}.pdf` : 'Dokumentasi Maintenance.pdf');
-                    const displayTitle = mName ? `Dokumentasi Maintenance ${mName}` : (data.fileName || 'Dokumentasi Maintenance');
-                    const uploaderEmail = data.createdBy || data.uploadedByEmail || data.uploadedBy || data.author || 'Teknisi DME';
-
-                    itemsMap[notifId] = {
-                        id: notifId,
-                        title: displayTitle,
-                        fileName: displayFileName,
-                        category: 'Arsip Dokumen',
-                        uploadedBy: uploaderEmail,
-                        uploadedAt: dateObj,
-                        targetTab: 'documents',
-                        fileId: docSnap.id,
-                        searchQuery: displayFileName || mName
-                    };
-                }
-            });
-            updateList();
-        }, (err) => {
-            console.warn('NotificationPage qPdfDocs error (offline/quota):', err?.message || err);
-        });
-
-        // 4. corrective_reports collection (CM, PIR, SLA)
-        const qCorrective = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'), limit(150));
-        const unsubCorrective = onSnapshot(qCorrective, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const notifId = `cm_${docSnap.id}`;
-                const isSLA = data.reportType === 'SLA';
-                const isPIR = data.reportType === 'PIR';
-                const typeLabel = isSLA ? 'Laporan SLA' : isPIR ? 'Report PIR' : 'Laporan CM';
-                const nameStr = data.incidentName || data.ticketName || data.issue || 'Corrective Maintenance';
-
-                if (!itemsMap[notifId]) {
-                    const dateObj = data.reportedAt?.toDate ? data.reportedAt.toDate() : new Date();
-                    itemsMap[notifId] = {
-                        id: notifId,
-                        title: `${typeLabel} Baru: ${nameStr}`,
-                        fileName: nameStr,
-                        category: isSLA ? 'Form SLA/SLG' : isPIR ? 'Report PIR' : 'Report CM',
-                        uploadedBy: data.reportedByEmail || 'Standby Engineer',
-                        uploadedAt: dateObj,
-                        targetTab: 'corrective_archive',
-                        fileId: docSnap.id,
-                        searchQuery: nameStr
-                    };
-                }
-            });
-            updateList();
-        }, (err) => {
-            console.warn('NotificationPage qCorrective error (offline/quota):', err?.message || err);
-        });
-
-        // 5. ptw_records collection
-        const qPtw = query(collection(db, 'ptw_records'), orderBy('createdAt', 'desc'), limit(100));
-        const unsubPtw = onSnapshot(qPtw, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const notifId = `ptw_${docSnap.id}`;
-                if (!itemsMap[notifId]) {
-                    const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
-                    const titleStr = data.workTitle || data.sequenceNumber || 'Izin Kerja PTW';
-                    itemsMap[notifId] = {
-                        id: notifId,
-                        title: `Dokumen PTW: ${titleStr}`,
-                        fileName: `PTW_${titleStr}`,
-                        category: 'PTW',
-                        uploadedBy: data.contractorName || data.applicantEmail || 'Vendor / Engineer',
-                        uploadedAt: dateObj,
-                        targetTab: 'ptw',
-                        fileId: docSnap.id,
-                        searchQuery: titleStr
-                    };
-                }
-            });
-            updateList();
-        }, (err) => {
-            console.warn('NotificationPage qPtw error (offline/quota):', err?.message || err);
-        });
-
-        function updateList() {
-            const list = Object.values(itemsMap).sort((a, b) => {
-                const timeA = a.uploadedAt instanceof Date ? a.uploadedAt.getTime() : 0;
-                const timeB = b.uploadedAt instanceof Date ? b.uploadedAt.getTime() : 0;
-                return timeB - timeA;
-            });
-            setAllNotifications(list);
-            setLoading(false);
+    const publishNotifications = useCallback(() => {
+        if (mountedRef.current) {
+            setAllNotifications(flattenSourceItems(sourceItemsRef.current));
         }
+    }, []);
+
+    // Realtime is retained for fresh activity only. Historical entries remain
+    // available through the explicit pagination action below.
+    useEffect(() => {
+        mountedRef.current = true;
+        setLoading(true);
+        sourceItemsRef.current = createSourceItems();
+        cursorRef.current = {
+            notifications: null,
+            uploaded_files: null,
+            pdf_documents: null,
+            corrective_reports: null,
+            ptw_records: null,
+        };
+        hasMoreRef.current = createSourceFlags(true);
+        liveItemIdsRef.current = {
+            notifications: new Set(),
+            uploaded_files: new Set(),
+            pdf_documents: new Set(),
+            corrective_reports: new Set(),
+            ptw_records: new Set(),
+        };
+        loadedOlderPagesRef.current = createSourceFlags(false);
+
+        const completedSources = new Set<NotificationSource>();
+        const markInitialSourceComplete = (source: NotificationSource) => {
+            completedSources.add(source);
+            if (completedSources.size === notificationSources.length && mountedRef.current) {
+                setLoading(false);
+            }
+        };
+
+        const unsubscribers = notificationSources.map((source) => onSnapshot(
+            buildNotificationQuery(source),
+            (snapshot) => {
+                const sourceItems = sourceItemsRef.current[source];
+                // Once older pages have been appended, an item can leave the
+                // realtime window merely because a newer item arrived. Keep
+                // it in the history already shown instead of making it vanish.
+                if (!loadedOlderPagesRef.current[source]) {
+                    liveItemIdsRef.current[source].forEach((id) => delete sourceItems[id]);
+                }
+
+                const liveIds = new Set<string>();
+                snapshot.docs.forEach((docSnap) => {
+                    const item = toNotificationItem(source, docSnap);
+                    sourceItems[item.id] = item;
+                    liveIds.add(item.id);
+                });
+                liveItemIdsRef.current[source] = liveIds;
+
+                if (!loadedOlderPagesRef.current[source]) {
+                    cursorRef.current[source] = snapshot.docs[snapshot.docs.length - 1] || null;
+                    hasMoreRef.current[source] = snapshot.size === NOTIFICATION_PAGE_SIZE;
+                    setHasMore(notificationSources.some((key) => hasMoreRef.current[key]));
+                }
+
+                publishNotifications();
+                markInitialSourceComplete(source);
+            },
+            (err) => {
+                console.warn(`NotificationPage ${source} listener error (offline/quota):`, err?.message || err);
+                hasMoreRef.current[source] = false;
+                setHasMore(notificationSources.some((key) => hasMoreRef.current[key]));
+                markInitialSourceComplete(source);
+            }
+        ));
 
         return () => {
-            unsubNotif();
-            unsubFiles();
-            unsubPdfDocs();
-            unsubCorrective();
-            unsubPtw();
+            mountedRef.current = false;
+            unsubscribers.forEach((unsubscribe) => unsubscribe());
         };
-    }, []);
+    }, [publishNotifications]);
+
+    const loadOlderNotifications = useCallback(async () => {
+        if (loadingMore || !hasMore) return;
+
+        setLoadingMore(true);
+        try {
+            const sourcesToLoad = notificationSources.filter((source) => hasMoreRef.current[source] && cursorRef.current[source]);
+            const results = await Promise.allSettled(
+                sourcesToLoad.map(async (source) => ({
+                    source,
+                    snapshot: await getDocs(buildNotificationQuery(source, cursorRef.current[source]))
+                }))
+            );
+
+            results.forEach((result) => {
+                if (result.status !== 'fulfilled') return;
+
+                const { source, snapshot } = result.value;
+                snapshot.docs.forEach((docSnap) => {
+                    const item = toNotificationItem(source, docSnap);
+                    sourceItemsRef.current[source][item.id] = item;
+                });
+                cursorRef.current[source] = snapshot.docs[snapshot.docs.length - 1] || cursorRef.current[source];
+                hasMoreRef.current[source] = snapshot.size === NOTIFICATION_PAGE_SIZE;
+                loadedOlderPagesRef.current[source] = true;
+            });
+
+            setHasMore(notificationSources.some((source) => hasMoreRef.current[source]));
+            publishNotifications();
+        } catch (err: any) {
+            console.warn('NotificationPage load older notifications failed:', err?.message || err);
+            toast.error('Gagal memuat riwayat notifikasi tambahan. Silakan coba lagi.');
+        } finally {
+            if (mountedRef.current) setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, publishNotifications]);
 
     // Handle Quick Date Presets
     const handlePresetChange = (preset: 'all' | 'today' | '7days' | '30days' | 'thisMonth') => {
@@ -428,6 +541,18 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
                         <Clock className="w-4 h-4 text-slate-500" />
                         Daftar Berkas &amp; Laporan Masuk ({filteredNotifications.length})
                     </h3>
+                    {hasMore && (
+                        <button
+                            type="button"
+                            onClick={loadOlderNotifications}
+                            disabled={loadingMore}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 disabled:opacity-60 disabled:cursor-not-allowed text-[11px] font-bold transition cursor-pointer"
+                            title="Memuat 30 riwayat berikutnya dari setiap sumber data"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${loadingMore ? 'animate-spin' : ''}`} />
+                            {loadingMore ? 'Memuat...' : 'Muat Riwayat Lama'}
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (
