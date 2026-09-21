@@ -358,7 +358,8 @@ interface DocumentListProps {
 
 export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initialFolder, viewMode = 'folder' }: DocumentListProps) {
   const { user, userRole, companyType, isQcDme } = useAuth();
-  const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
+  // Access mode must follow the assigned role, not the email domain.
+  const isDME = userRole === 'DME' || userRole === 'site_manager_dme';
   const isAdmin = userRole === 'admin' || isQcDme;
   const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
     userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';

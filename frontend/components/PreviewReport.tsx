@@ -37,7 +37,8 @@ export function PreviewReport({
     onExport
 }: PreviewReportProps) {
     const { user, userRole } = useAuth();
-    const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
+    // Do not infer read-only access from an @dme.com address: engineers can use it.
+    const isDME = userRole === 'DME' || userRole === 'site_manager_dme';
     const isATS = userEmail === 'ats@gmail.com';
     const isPDU = userEmail === 'pdu@gmail.com';
     const isLV = userEmail === 'lv@gmail.com';

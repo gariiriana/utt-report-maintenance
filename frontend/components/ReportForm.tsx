@@ -82,7 +82,9 @@ interface ReportFormProps {
 
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const { user, userRole, companyType: authCompanyType } = useAuth();
-  const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
+  // A company's email domain is not an authorization role. Some engineers use
+  // @dme.com addresses, so only the explicit role may make this form read-only.
+  const isDME = userRole === 'DME' || userRole === 'site_manager_dme';
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | 'k2'>(authCompanyType || (userRole === 'Engineer_K2' || userRole === 'engineer_k2' ? 'k2' : 'neutra'));
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
