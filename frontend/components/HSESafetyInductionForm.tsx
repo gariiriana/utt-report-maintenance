@@ -66,10 +66,10 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
   const [jabatan, setJabatan] = useState('Pekerja / Vendor');
   const [catatan, setCatatan] = useState('');
 
-  // 3 Slot Foto Khusus
-  const [fotoInduction, setFotoInduction] = useState<string>('');
-  const [fotoSuratSehat, setFotoSuratSehat] = useState<string>('');
-  const [fotoSertifikatK3, setFotoSertifikatK3] = useState<string>('');
+  // 3 Slot Foto Khusus (multi-foto per slot)
+  const [fotoInduction, setFotoInduction] = useState<string[]>([]);
+  const [fotoSuratSehat, setFotoSuratSehat] = useState<string[]>([]);
+  const [fotoSertifikatK3, setFotoSertifikatK3] = useState<string[]>([]);
 
   // UI State
   const [isSaving, setIsSaving] = useState(false);
@@ -141,20 +141,43 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
             setTime(data.time || getCurrentTime());
             setJabatan(data.jabatan || 'Pekerja / Vendor');
             setCatatan(data.catatan || '');
-            setFotoInduction(data.fotoInduction || '');
-            setFotoSuratSehat(data.fotoSuratSehat || '');
-            setFotoSertifikatK3(data.fotoSertifikatK3 || '');
 
-            // Cek subcollection photos jika di root kosong
-            if (!data.fotoInduction || !data.fotoSuratSehat) {
-              const photosSnap = await getDocs(collection(db, `hse/${editingData.id}/photos`));
-              photosSnap.docs.forEach(pDoc => {
-                const p = pDoc.data();
-                if (p.label === 'fotoInduction' && !data.fotoInduction) setFotoInduction(p.dataUrl || p.base64);
-                if (p.label === 'fotoSuratSehat' && !data.fotoSuratSehat) setFotoSuratSehat(p.dataUrl || p.base64);
-                if (p.label === 'fotoSertifikatK3' && !data.fotoSertifikatK3) setFotoSertifikatK3(p.dataUrl || p.base64);
-              });
+            // Inisialisasi foto dari field root (backward compat: bisa string atau array)
+            const initFotoArr = (val: any): string[] => {
+              if (Array.isArray(val)) return val.filter(Boolean);
+              if (typeof val === 'string' && val) return [val];
+              return [];
+            };
+            let loadedInduction = initFotoArr(data.fotoInduction);
+            let loadedSuratSehat = initFotoArr(data.fotoSuratSehat);
+            let loadedSertifikat = initFotoArr(data.fotoSertifikatK3);
+
+            // Load foto dari subcollection photos (sumber utama)
+            const photosSnap = await getDocs(collection(db, `hse/${editingData.id}/photos`));
+            if (photosSnap.docs.length > 0) {
+              // Jika ada subcollection, gunakan data dari sana (lebih up-to-date)
+              const subInduction: string[] = [];
+              const subSuratSehat: string[] = [];
+              const subSertifikat: string[] = [];
+              // Sort by index for consistent ordering
+              const sortedDocs = photosSnap.docs
+                .map(d => ({ ...d.data(), _id: d.id }))
+                .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0));
+              for (const p of sortedDocs) {
+                const imgData = (p as any).dataUrl || (p as any).base64;
+                if (!imgData) continue;
+                if ((p as any).label === 'fotoInduction') subInduction.push(imgData);
+                else if ((p as any).label === 'fotoSuratSehat') subSuratSehat.push(imgData);
+                else if ((p as any).label === 'fotoSertifikatK3') subSertifikat.push(imgData);
+              }
+              if (subInduction.length > 0) loadedInduction = subInduction;
+              if (subSuratSehat.length > 0) loadedSuratSehat = subSuratSehat;
+              if (subSertifikat.length > 0) loadedSertifikat = subSertifikat;
             }
+
+            setFotoInduction(loadedInduction);
+            setFotoSuratSehat(loadedSuratSehat);
+            setFotoSertifikatK3(loadedSertifikat);
           }
           toast.dismiss(toastId);
         } catch (err) {
@@ -166,43 +189,59 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
     }
   }, [editingData]);
 
-  // Handle Single Photo Upload dari Input File
-  const handleSingleFileUpload = async (
+  // Helper: append foto ke slot tertentu
+  const appendToSlot = (slot: PhotoSlotType, base64: string) => {
+    if (slot === 'fotoInduction') setFotoInduction(prev => [...prev, base64]);
+    else if (slot === 'fotoSuratSehat') setFotoSuratSehat(prev => [...prev, base64]);
+    else if (slot === 'fotoSertifikatK3') setFotoSertifikatK3(prev => [...prev, base64]);
+  };
+
+  // Helper: hapus foto tertentu dari slot
+  const removeFromSlot = (slot: PhotoSlotType, index: number) => {
+    if (slot === 'fotoInduction') setFotoInduction(prev => prev.filter((_, i) => i !== index));
+    else if (slot === 'fotoSuratSehat') setFotoSuratSehat(prev => prev.filter((_, i) => i !== index));
+    else if (slot === 'fotoSertifikatK3') setFotoSertifikatK3(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Handle Photo Upload dari Input File (multi-file support)
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     slot: PhotoSlotType
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const toastId = toast.loading('Mengompresi dan memproses foto...');
-    try {
-      const base64 = await compressImage(file, { maxWidth: 800, quality: 0.7 });
-      if (slot === 'fotoInduction') setFotoInduction(base64);
-      else if (slot === 'fotoSuratSehat') setFotoSuratSehat(base64);
-      else if (slot === 'fotoSertifikatK3') setFotoSertifikatK3(base64);
-      toast.success('Foto berhasil diunggah!', { id: toastId });
-    } catch (err) {
-      console.warn('Kompresi gagal, membaca file langsung:', err);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        if (slot === 'fotoInduction') setFotoInduction(result);
-        else if (slot === 'fotoSuratSehat') setFotoSuratSehat(result);
-        else if (slot === 'fotoSertifikatK3') setFotoSertifikatK3(result);
-        toast.success('Foto berhasil dimuat!', { id: toastId });
-      };
-      reader.onerror = () => toast.error('Gagal membaca file foto', { id: toastId });
-      reader.readAsDataURL(file);
-    } finally {
-      e.target.value = '';
+    const toastId = toast.loading(`Memproses ${files.length} foto...`);
+    let successCount = 0;
+    for (let fi = 0; fi < files.length; fi++) {
+      const file = files[fi];
+      try {
+        const base64 = await compressImage(file, { maxWidth: 800, quality: 0.7 });
+        appendToSlot(slot, base64);
+        successCount++;
+      } catch (err) {
+        console.warn('Kompresi gagal, membaca file langsung:', err);
+        try {
+          const result = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('Gagal membaca file'));
+            reader.readAsDataURL(file);
+          });
+          appendToSlot(slot, result);
+          successCount++;
+        } catch {
+          console.warn('Gagal total membaca file:', file.name);
+        }
+      }
     }
+    toast.success(`${successCount} foto berhasil diunggah!`, { id: toastId });
+    e.target.value = '';
   };
 
   // Handle Capture dari CameraModal
   const handleCameraCapture = (base64: string) => {
-    if (activeCameraSlot === 'fotoInduction') setFotoInduction(base64);
-    else if (activeCameraSlot === 'fotoSuratSehat') setFotoSuratSehat(base64);
-    else if (activeCameraSlot === 'fotoSertifikatK3') setFotoSertifikatK3(base64);
+    if (activeCameraSlot) appendToSlot(activeCameraSlot, base64);
     setActiveCameraSlot(null);
     toast.success('Foto dari kamera berhasil diambil!');
   };
@@ -214,9 +253,9 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
     setTime(getCurrentTime());
     setJabatan('Pekerja / Vendor');
     setCatatan('');
-    setFotoInduction('');
-    setFotoSuratSehat('');
-    setFotoSertifikatK3('');
+    setFotoInduction([]);
+    setFotoSuratSehat([]);
+    setFotoSertifikatK3([]);
     if (onClearEdit) onClearEdit();
     toast.info('Formulir berhasil direset');
   };
@@ -240,9 +279,10 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
       date,
       time,
       jabatan: jabatan.trim() || 'Pekerja / Vendor',
-      fotoInduction,
-      fotoSuratSehat,
-      fotoSertifikatK3: fotoSertifikatK3 || undefined,
+      // Untuk backward compat dengan PDF export: gunakan foto pertama per slot
+      fotoInduction: fotoInduction[0] || '',
+      fotoSuratSehat: fotoSuratSehat[0] || '',
+      fotoSertifikatK3: fotoSertifikatK3[0] || undefined,
       catatan: catatan.trim() || 'Peserta telah mengikuti pengarahan Safety Induction K3 & memahami regulasi Data Center NeutraDC.',
       inspectorK3: user?.displayName || user?.email || 'HSE Officer',
       authorEmail: (user?.email || '').toLowerCase(),
@@ -266,11 +306,11 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
       }
     }
 
-    if (!fotoInduction) {
+    if (fotoInduction.length === 0) {
       toast.error('Foto orang yang sedang di-induction wajib dilampirkan!');
       return;
     }
-    if (!fotoSuratSehat) {
+    if (fotoSuratSehat.length === 0) {
       toast.error('Foto surat keterangan sehat wajib dilampirkan!');
       return;
     }
@@ -280,6 +320,8 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
 
     try {
       const record = buildRecord();
+      // PENTING: Jangan simpan base64 foto di document utama — Firestore limit 1MB per document.
+      // Foto hanya disimpan di subcollection `hse/{docId}/photos`.
       const docData: any = {
         nama: record.nama,
         perusahaan: record.perusahaan,
@@ -288,9 +330,14 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
         time: record.time,
         jabatan: record.jabatan,
         catatan: record.catatan,
-        fotoInduction: record.fotoInduction,
-        fotoSuratSehat: record.fotoSuratSehat,
-        fotoSertifikatK3: record.fotoSertifikatK3 || '',
+        // Simpan jumlah foto saja (bukan base64) untuk referensi cepat
+        fotoInductionCount: fotoInduction.length,
+        fotoSuratSehatCount: fotoSuratSehat.length,
+        fotoSertifikatK3Count: fotoSertifikatK3.length,
+        // Hapus field base64 lama jika ada (migrasi dari format lama)
+        fotoInduction: '',
+        fotoSuratSehat: '',
+        fotoSertifikatK3: '',
         aktivitas: `Safety Induction - ${record.nama} (${record.perusahaan})`,
         inspectorK3: record.inspectorK3,
         authorEmail: record.authorEmail,
@@ -321,24 +368,28 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
         finalDocId = docRef.id;
       }
 
-      // Simpan 3 foto ke subcollection agar DocumentList & viewer dapat membacanya
-      const photosToSave = [
-        { label: 'fotoInduction', desc: 'Foto Kegiatan Induction', base64: record.fotoInduction },
-        { label: 'fotoSuratSehat', desc: 'Foto Surat Keterangan Sehat', base64: record.fotoSuratSehat },
+      // Simpan SEMUA foto ke subcollection (multi-foto per slot)
+      const slotDescMap: Record<PhotoSlotType, string> = {
+        fotoInduction: 'Foto Kegiatan Induction',
+        fotoSuratSehat: 'Foto Surat Keterangan Sehat',
+        fotoSertifikatK3: 'Sertifikat K3 dari TDE',
+      };
+      const allSlots: { slot: PhotoSlotType; photos: string[] }[] = [
+        { slot: 'fotoInduction', photos: fotoInduction },
+        { slot: 'fotoSuratSehat', photos: fotoSuratSehat },
+        { slot: 'fotoSertifikatK3', photos: fotoSertifikatK3 },
       ];
-      if (record.fotoSertifikatK3) {
-        photosToSave.push({ label: 'fotoSertifikatK3', desc: 'Sertifikat K3 dari TDE', base64: record.fotoSertifikatK3 });
-      }
-
-      for (let i = 0; i < photosToSave.length; i++) {
-        const item = photosToSave[i];
-        await addDoc(collection(db, `hse/${finalDocId}/photos`), {
-          dataUrl: item.base64,
-          label: item.label,
-          description: item.desc,
-          index: i,
-          createdAt: serverTimestamp(),
-        });
+      let globalIdx = 0;
+      for (const { slot, photos } of allSlots) {
+        for (let pi = 0; pi < photos.length; pi++) {
+          await addDoc(collection(db, `hse/${finalDocId}/photos`), {
+            dataUrl: photos[pi],
+            label: slot,
+            description: `${slotDescMap[slot]} (${pi + 1})`,
+            index: globalIdx++,
+            createdAt: serverTimestamp(),
+          });
+        }
       }
 
       toast.success('Laporan Safety Induction berhasil disimpan ke Arsip Dokumen HSE!', { id: toastId });
@@ -642,63 +693,70 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
           </span>
         </div>
 
-        {/* Hidden File Inputs */}
+        {/* Hidden File Inputs (multi-file) */}
         <input
           type="file"
           ref={fileInputInductionRef}
-          onChange={(e) => handleSingleFileUpload(e, 'fotoInduction')}
+          onChange={(e) => handleFileUpload(e, 'fotoInduction')}
           accept="image/*"
+          multiple
           className="hidden"
         />
         <input
           type="file"
           ref={fileInputSuratSehatRef}
-          onChange={(e) => handleSingleFileUpload(e, 'fotoSuratSehat')}
+          onChange={(e) => handleFileUpload(e, 'fotoSuratSehat')}
           accept="image/*"
+          multiple
           className="hidden"
         />
         <input
           type="file"
           ref={fileInputSertifikatRef}
-          onChange={(e) => handleSingleFileUpload(e, 'fotoSertifikatK3')}
+          onChange={(e) => handleFileUpload(e, 'fotoSertifikatK3')}
           accept="image/*"
+          multiple
           className="hidden"
         />
 
         {/* 3 Upload Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* SLOT 1: Foto Orang yang Sedang Di-Induction */}
+          {/* SLOT 1: Foto Orang yang Sedang Di-Induction (multi) */}
           <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/60 flex flex-col justify-between space-y-3 shadow-2xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-emerald-600" />
                 <span className="text-xs font-black text-slate-800">1. Foto Sedang Di-Induction</span>
+                {fotoInduction.length > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white">{fotoInduction.length}</span>
+                )}
               </div>
               <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
                 Wajib
               </span>
             </div>
 
-            {fotoInduction ? (
-              <div className="relative aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-900/5 group">
-                <img src={fotoInduction} alt="Foto Induction" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewModalImg({ url: fotoInduction, title: 'Foto Sedang Di-Induction' })}
-                    className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-xl transition shadow"
-                    title="Perbesar"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFotoInduction('')}
-                    className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition shadow"
-                    title="Hapus"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {fotoInduction.length > 0 ? (
+              <div className="space-y-2">
+                <div className={`grid gap-2 ${fotoInduction.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {fotoInduction.map((foto, idx) => (
+                    <div key={idx} className="relative aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-900/5 group">
+                      <img src={foto} alt={`Foto Induction ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button type="button" onClick={() => setPreviewModalImg({ url: foto, title: `Foto Induction (${idx + 1})` })} className="p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg transition shadow" title="Perbesar"><Eye className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => removeFromSlot('fotoInduction', idx)} className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[9px] font-bold rounded-md">{idx + 1}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Tombol tambah foto lagi */}
+                <div
+                  onClick={() => fileInputInductionRef.current?.click()}
+                  className="rounded-xl border-2 border-dashed border-emerald-200 hover:border-emerald-400 bg-emerald-50/50 flex items-center justify-center gap-2 py-2.5 cursor-pointer transition group"
+                >
+                  <Plus className="w-4 h-4 text-emerald-500 group-hover:text-emerald-700" />
+                  <span className="text-xs font-bold text-emerald-700">Tambah Foto Lagi</span>
                 </div>
               </div>
             ) : (
@@ -708,7 +766,7 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
               >
                 <Camera className="w-7 h-7 text-slate-400 group-hover:text-emerald-600 mb-2 transition-colors" />
                 <p className="text-xs font-bold text-slate-700">Foto Kegiatan Induction</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Wajib dilampirkan</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Wajib · Bisa upload beberapa foto</p>
               </div>
             )}
 
@@ -732,38 +790,41 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
             </div>
           </div>
 
-          {/* SLOT 2: Foto Surat Sehat */}
+          {/* SLOT 2: Foto Surat Sehat (multi) */}
           <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/60 flex flex-col justify-between space-y-3 shadow-2xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <HeartPulse className="w-4 h-4 text-emerald-600" />
                 <span className="text-xs font-black text-slate-800">2. Foto Surat Sehat</span>
+                {fotoSuratSehat.length > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white">{fotoSuratSehat.length}</span>
+                )}
               </div>
               <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
                 Wajib
               </span>
             </div>
 
-            {fotoSuratSehat ? (
-              <div className="relative aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-900/5 group">
-                <img src={fotoSuratSehat} alt="Foto Surat Sehat" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewModalImg({ url: fotoSuratSehat, title: 'Foto Surat Keterangan Sehat' })}
-                    className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-xl transition shadow"
-                    title="Perbesar"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFotoSuratSehat('')}
-                    className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition shadow"
-                    title="Hapus"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {fotoSuratSehat.length > 0 ? (
+              <div className="space-y-2">
+                <div className={`grid gap-2 ${fotoSuratSehat.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {fotoSuratSehat.map((foto, idx) => (
+                    <div key={idx} className="relative aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-900/5 group">
+                      <img src={foto} alt={`Foto Surat Sehat ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button type="button" onClick={() => setPreviewModalImg({ url: foto, title: `Surat Sehat (${idx + 1})` })} className="p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg transition shadow" title="Perbesar"><Eye className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => removeFromSlot('fotoSuratSehat', idx)} className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[9px] font-bold rounded-md">{idx + 1}</span>
+                    </div>
+                  ))}
+                </div>
+                <div
+                  onClick={() => fileInputSuratSehatRef.current?.click()}
+                  className="rounded-xl border-2 border-dashed border-emerald-200 hover:border-emerald-400 bg-emerald-50/50 flex items-center justify-center gap-2 py-2.5 cursor-pointer transition group"
+                >
+                  <Plus className="w-4 h-4 text-emerald-500 group-hover:text-emerald-700" />
+                  <span className="text-xs font-bold text-emerald-700">Tambah Foto Lagi</span>
                 </div>
               </div>
             ) : (
@@ -773,7 +834,7 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
               >
                 <HeartPulse className="w-7 h-7 text-slate-400 group-hover:text-emerald-600 mb-2 transition-colors" />
                 <p className="text-xs font-bold text-slate-700">Foto Surat Sehat</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Surat Keterangan Dokter</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Surat Keterangan Dokter · Bisa multi foto</p>
               </div>
             )}
 
@@ -797,38 +858,41 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
             </div>
           </div>
 
-          {/* SLOT 3: Sertifikat K3 dari TDE (Opsional) */}
+          {/* SLOT 3: Sertifikat K3 dari TDE (Opsional, multi) */}
           <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/60 flex flex-col justify-between space-y-3 shadow-2xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-blue-600" />
                 <span className="text-xs font-black text-slate-800">3. Sertifikat K3 dari TDE</span>
+                {fotoSertifikatK3.length > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white">{fotoSertifikatK3.length}</span>
+                )}
               </div>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase">
                 Opsional
               </span>
             </div>
 
-            {fotoSertifikatK3 ? (
-              <div className="relative aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-900/5 group">
-                <img src={fotoSertifikatK3} alt="Sertifikat K3 TDE" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewModalImg({ url: fotoSertifikatK3, title: 'Sertifikat K3 dari TDE' })}
-                    className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-xl transition shadow"
-                    title="Perbesar"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFotoSertifikatK3('')}
-                    className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition shadow"
-                    title="Hapus"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {fotoSertifikatK3.length > 0 ? (
+              <div className="space-y-2">
+                <div className={`grid gap-2 ${fotoSertifikatK3.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {fotoSertifikatK3.map((foto, idx) => (
+                    <div key={idx} className="relative aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-900/5 group">
+                      <img src={foto} alt={`Sertifikat K3 ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button type="button" onClick={() => setPreviewModalImg({ url: foto, title: `Sertifikat K3 TDE (${idx + 1})` })} className="p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg transition shadow" title="Perbesar"><Eye className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => removeFromSlot('fotoSertifikatK3', idx)} className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[9px] font-bold rounded-md">{idx + 1}</span>
+                    </div>
+                  ))}
+                </div>
+                <div
+                  onClick={() => fileInputSertifikatRef.current?.click()}
+                  className="rounded-xl border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/50 flex items-center justify-center gap-2 py-2.5 cursor-pointer transition group"
+                >
+                  <Plus className="w-4 h-4 text-blue-500 group-hover:text-blue-700" />
+                  <span className="text-xs font-bold text-blue-700">Tambah Foto Lagi</span>
                 </div>
               </div>
             ) : (
@@ -838,7 +902,7 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
               >
                 <Award className="w-7 h-7 text-slate-400 group-hover:text-blue-600 mb-2 transition-colors" />
                 <p className="text-xs font-bold text-slate-700">Sertifikat K3 TDE</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Opsional jika ada</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Opsional · Bisa multi foto</p>
               </div>
             )}
 
