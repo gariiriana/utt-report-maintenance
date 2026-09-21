@@ -36,7 +36,7 @@ export function PreviewReport({
     onBack,
     onExport
 }: PreviewReportProps) {
-    const { user, userRole } = useAuth();
+    const { userRole } = useAuth();
     // Do not infer read-only access from an @dme.com address: engineers can use it.
     const isDME = userRole === 'DME' || userRole === 'site_manager_dme';
     const isATS = userEmail === 'ats@gmail.com';

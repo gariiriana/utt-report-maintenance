@@ -41,7 +41,6 @@ import {
     Download,
     HelpCircle,
     CheckSquare,
-    FileSpreadsheet,
     CalendarRange
 } from 'lucide-react';
 import { toast } from 'sonner';

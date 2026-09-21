@@ -27,8 +27,7 @@ import {
   Award,
   User,
   Plus,
-  Copy,
-  Users
+  Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
