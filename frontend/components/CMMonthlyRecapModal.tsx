@@ -27,7 +27,8 @@ import {
   Clock3,
   Wrench,
   Download,
-  Camera
+  Camera,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -116,14 +117,25 @@ export function CMMonthlyRecapModal({
   initialStartDate,
   initialEndDate
 }: CMMonthlyRecapModalProps) {
-  const currentYearStr = new Date().getFullYear().toString();
-  const currentMonthStr = new Date().getMonth().toString();
+  const now = new Date();
+  const currentYearStr = now.getFullYear().toString();
+  const currentMonthStr = now.getMonth().toString();
 
-  const [filterMode, setFilterMode] = useState<'monthly' | 'range'>(initialFilterMode || 'monthly');
+  const formatYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const defaultStartDate = initialStartDate || formatYMD(new Date(now.getFullYear(), now.getMonth(), 1));
+  const defaultEndDate = initialEndDate || formatYMD(now);
+
+  const [filterMode, setFilterMode] = useState<'monthly' | 'range'>(initialFilterMode || 'range');
   const [selectedMonth, setSelectedMonth] = useState<string>(initialMonth !== undefined ? initialMonth : currentMonthStr);
   const [selectedYear, setSelectedYear] = useState<string>(initialYear !== undefined ? initialYear : currentYearStr);
-  const [startDate, setStartDate] = useState<string>(initialStartDate || '');
-  const [endDate, setEndDate] = useState<string>(initialEndDate || '');
+  const [startDate, setStartDate] = useState<string>(defaultStartDate);
+  const [endDate, setEndDate] = useState<string>(defaultEndDate);
   const [troubleFilter, setTroubleFilter] = useState<'all' | 'closed' | 'open'>('all');
   const [sparepartFilter, setSparepartFilter] = useState<'all' | 'sparepart_all' | 'sparepart_dme' | 'consumable' | 'non_sparepart'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -140,8 +152,12 @@ export function CMMonthlyRecapModal({
     if (initialMonth !== undefined) setSelectedMonth(initialMonth);
     if (initialYear !== undefined) setSelectedYear(initialYear);
     if (initialFilterMode !== undefined) setFilterMode(initialFilterMode);
-    if (initialStartDate !== undefined) setStartDate(initialStartDate);
-    if (initialEndDate !== undefined) setEndDate(initialEndDate);
+    if (initialStartDate !== undefined) {
+      setStartDate(initialStartDate);
+    }
+    if (initialEndDate !== undefined) {
+      setEndDate(initialEndDate);
+    }
   }, [initialMonth, initialYear, initialFilterMode, initialStartDate, initialEndDate, isOpen]);
 
   // Fetch Firestore reports if not passed via props
@@ -187,33 +203,34 @@ export function CMMonthlyRecapModal({
   };
 
   // Quick range selector helper
-  const applyQuickRange = (type: 'today' | 'this_month' | 'last_month' | 'cycle_21' | 'reset') => {
-    const now = new Date();
-    const formatYMD = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
-
+  const applyQuickRange = (type: 'today' | '7_days' | '30_days' | 'this_month' | 'last_month' | 'cycle_21' | 'reset') => {
+    const n = new Date();
     if (type === 'today') {
-      const today = formatYMD(now);
+      const today = formatYMD(n);
       setStartDate(today);
       setEndDate(today);
+    } else if (type === '7_days') {
+      const start = new Date(n.getTime() - 6 * 24 * 60 * 60 * 1000);
+      setStartDate(formatYMD(start));
+      setEndDate(formatYMD(n));
+    } else if (type === '30_days') {
+      const start = new Date(n.getTime() - 29 * 24 * 60 * 60 * 1000);
+      setStartDate(formatYMD(start));
+      setEndDate(formatYMD(n));
     } else if (type === 'this_month') {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const firstDay = new Date(n.getFullYear(), n.getMonth(), 1);
+      const lastDay = new Date(n.getFullYear(), n.getMonth() + 1, 0);
       setStartDate(formatYMD(firstDay));
       setEndDate(formatYMD(lastDay));
     } else if (type === 'last_month') {
-      const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+      const firstDay = new Date(n.getFullYear(), n.getMonth() - 1, 1);
+      const lastDay = new Date(n.getFullYear(), n.getMonth(), 0);
       setStartDate(formatYMD(firstDay));
       setEndDate(formatYMD(lastDay));
     } else if (type === 'cycle_21') {
       // Siklus 21 Bulan Lalu s/d 20 Bulan Ini
-      const startCycle = new Date(now.getFullYear(), now.getMonth() - 1, 21);
-      const endCycle = new Date(now.getFullYear(), now.getMonth(), 20);
+      const startCycle = new Date(n.getFullYear(), n.getMonth() - 1, 21);
+      const endCycle = new Date(n.getFullYear(), n.getMonth(), 20);
       setStartDate(formatYMD(startCycle));
       setEndDate(formatYMD(endCycle));
     } else if (type === 'reset') {
@@ -542,6 +559,20 @@ export function CMMonthlyRecapModal({
                 </button>
                 <button
                   type="button"
+                  onClick={() => applyQuickRange('7_days')}
+                  className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition cursor-pointer"
+                >
+                  7 Hari Terakhir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyQuickRange('30_days')}
+                  className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition cursor-pointer"
+                >
+                  30 Hari Terakhir
+                </button>
+                <button
+                  type="button"
                   onClick={() => applyQuickRange('this_month')}
                   className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition cursor-pointer"
                 >
@@ -760,6 +791,14 @@ export function CMMonthlyRecapModal({
             </div>
           ) : (
             <>
+              {/* Info Banner: Format Compact & Pemisahan Per Bulan */}
+              <div className="flex items-center gap-2.5 p-3 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-emerald-50/60 border border-blue-200/70 rounded-2xl text-xs text-slate-700 shadow-2xs">
+                <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                <div className="flex-1 text-[11px] leading-relaxed">
+                  <span className="font-bold text-slate-900">Format Ringkas &amp; Otomatis Dipisah Per Bulan:</span> Hasil ekspor didesain ringkas dengan kompresi foto otomatis. Jika periode melintasi beberapa bulan, dokumen langsung <strong>dipisahkan per bulan dalam satu file</strong> (halaman/tabel terpisah di PDF &amp; Word, tab sheet bulanan di Excel).
+                </div>
+              </div>
+
               {/* 4 KPI Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* 1. Total CM */}
@@ -967,14 +1006,14 @@ export function CMMonthlyRecapModal({
               disabled={filteredCMReports.length === 0 || exportingDocx || exportingExcel || exportingPdf || isDateRangeInvalid}
               onClick={handleExportPdf}
               className="px-3.5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-red-500/20 text-xs cursor-pointer shrink-0"
-              title="Ekspor Rekap CM ke format Dokumen PDF (.pdf) Landscape"
+              title="Ekspor Rekap CM ke format Dokumen PDF (.pdf) Landscape Ringkas dengan Foto Terpadu"
             >
               {exportingPdf ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              <span>Export PDF (.pdf)</span>
+              <span>Export PDF Ringkas (+ Foto)</span>
             </button>
           </div>
         </div>

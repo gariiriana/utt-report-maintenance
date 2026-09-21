@@ -41,7 +41,8 @@ import {
     Download,
     HelpCircle,
     CheckSquare,
-    FileSpreadsheet
+    FileSpreadsheet,
+    CalendarRange
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -231,6 +232,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [isPendingSlaExpanded, setIsPendingSlaExpanded] = useState<boolean>(true);
     const [isRecapModalOpen, setIsRecapModalOpen] = useState<boolean>(false);
     const [isCMRecapModalOpen, setIsCMRecapModalOpen] = useState<boolean>(false);
+    const [cmRecapFilterMode, setCmRecapFilterMode] = useState<'monthly' | 'range'>('range');
     const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState<boolean>(false);
 
     // State Predictive Maintenance Report (AI)
@@ -1837,6 +1839,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     reports={allCMReports}
                     initialMonth={selectedMonth}
                     initialYear={selectedYear}
+                    initialFilterMode={cmRecapFilterMode}
                 />
             </div >
         );
@@ -1850,8 +1853,23 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         <FolderOpen className="w-6 h-6 text-red-600" />
                         Arsip Standby
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Daftar laporan pemeliharaan Standby Engineer (Report CM, SLA/SLG, & Report PIR)</p>
+                    <p className="text-slate-500 text-sm mt-1">Daftar laporan pemeliharaan Standby Engineer (Report CM, SLA/SLG, &amp; Report PIR)</p>
                 </div>
+
+                {archiveFolder === 'cm_pdf' && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setCmRecapFilterMode('range');
+                            setIsCMRecapModalOpen(true);
+                        }}
+                        className="px-4 py-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-red-500/20 cursor-pointer text-xs sm:text-sm shrink-0 active:scale-95"
+                        title="Rekapitulasi Data CM: Filter dari Tanggal Berapa Bulan Berapa s/d Selesai"
+                    >
+                        <CalendarRange className="w-4 h-4" />
+                        <span>Rekap CM (Pilih Rentang Tgl &amp; Bulan)</span>
+                    </button>
+                )}
             </div>
 
             {/* Folder Switcher Tabs in Arsip Standby */}
@@ -2193,12 +2211,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     {archiveFolder === 'cm_pdf' && (
                                         <button
                                             type="button"
-                                            onClick={() => setIsCMRecapModalOpen(true)}
-                                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
-                                            title="Rekapitulasi Laporan CM: Export Word, Excel, & PDF per Tanggal & Rentang Bulan"
+                                            onClick={() => {
+                                                setCmRecapFilterMode('range');
+                                                setIsCMRecapModalOpen(true);
+                                            }}
+                                            className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-red-500/20 cursor-pointer text-xs shrink-0"
+                                            title="Rekapitulasi Laporan CM: Export Word, Excel, &amp; PDF per Tanggal &amp; Rentang Bulan"
                                         >
-                                            <FileSpreadsheet className="w-4 h-4" />
-                                            Rekap CM (Per Tgl &amp; Rentang Bulan)
+                                            <CalendarRange className="w-4 h-4" />
+                                            <span>Rekap CM (Per Tgl &amp; Rentang Bulan)</span>
                                         </button>
                                     )}
 
@@ -3801,6 +3822,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 reports={allCMReports}
                 initialMonth={selectedMonth}
                 initialYear={selectedYear}
+                initialFilterMode={cmRecapFilterMode}
             />
 
             {/* Modal Diagnostik CM vs SLA */}

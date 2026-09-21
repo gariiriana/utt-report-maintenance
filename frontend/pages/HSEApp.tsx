@@ -18,7 +18,9 @@ import {
     User, 
     AlertTriangle,
     ShieldAlert,
-    FolderArchive
+    FolderArchive,
+    Clock,
+    UserCheck
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
@@ -27,6 +29,8 @@ import { HSEReportForm } from '@/components/HSEReportForm';
 import { DocumentList } from '@/components/DocumentList';
 import { HSEFindings } from '@/components/HSEFindings';
 import { HSEFindingsArchive } from '@/components/HSEFindingsArchive';
+import { HSETbmForm } from '@/components/HSETbmForm';
+import { HSESafetyInductionForm } from '@/components/HSESafetyInductionForm';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 export function HSEApp() {
@@ -34,8 +38,8 @@ export function HSEApp() {
     const { user, logout } = useAuth();
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
     
-    // State tab aktif ('inspection' untuk buat laporan HSE, 'findings' untuk input temuan K3, 'findings_archive' arsip temuan, 'iso' untuk arsip dokumen, 'management_files' untuk Management File)
-    const [activeTab, setActiveTab] = useState<'inspection' | 'findings' | 'findings_archive' | 'iso' | 'management_files'>('inspection');
+    // State tab aktif ('inspection' | 'tbm' | 'induction' | 'findings' | 'findings_archive' | 'iso' | 'management_files')
+    const [activeTab, setActiveTab] = useState<'inspection' | 'tbm' | 'induction' | 'findings' | 'findings_archive' | 'iso' | 'management_files'>('inspection');
     // State tipe temuan K3 yang dipilih ('negative' atau 'positive')
     const [findingsTypeSelection, setFindingsTypeSelection] = useState<'negative' | 'positive'>('negative');
     const [editingData, setEditingData] = useState<any>(null); // Data laporan yang sedang di-edit
@@ -44,7 +48,13 @@ export function HSEApp() {
     // Handler saat user mengklik tombol edit laporan dari daftar dokumen
     const handleEditReport = (data: any) => {
         setEditingData(data);
-        setActiveTab('inspection'); // Otomatis pindah ke tab form inspeksi
+        if (data.hseType === 'tbm') {
+            setActiveTab('tbm');
+        } else if (data.hseType === 'induction') {
+            setActiveTab('induction');
+        } else {
+            setActiveTab('inspection'); // Otomatis pindah ke tab form inspeksi
+        }
     };
 
     // Handler untuk mereset mode edit (kembali ke mode form kosong)
@@ -64,6 +74,26 @@ export function HSEApp() {
                     color: 'text-emerald-600',
                     bg: 'bg-emerald-50',
                     border: 'border-emerald-200'
+                };
+            case 'tbm':
+                return {
+                    title: 'Absen TBM (Toolbox Meeting)',
+                    subtitle: 'Pencatatan Waktu Pelaksanaan, Total SDM Hadir & Dokumentasi Foto TBM',
+                    icon: Clock,
+                    badge: 'Toolbox Meeting',
+                    color: 'text-indigo-600',
+                    bg: 'bg-indigo-50',
+                    border: 'border-indigo-200'
+                };
+            case 'induction':
+                return {
+                    title: 'Safety Induction Report',
+                    subtitle: 'Pendaftaran Peserta Induction, Asal PT, Foto Kegiatan, Surat Sehat & Sertifikat K3',
+                    icon: UserCheck,
+                    badge: 'Safety Induction',
+                    color: 'text-amber-600',
+                    bg: 'bg-amber-50',
+                    border: 'border-amber-200'
                 };
             case 'findings':
                 return {
@@ -100,7 +130,7 @@ export function HSEApp() {
             case 'iso':
                 return {
                     title: 'Arsip Dokumen HSE',
-                    subtitle: 'Penyimpanan & Manajemen Berkas Laporan Inspeksi HSE UTT Maintenance',
+                    subtitle: 'Penyimpanan & Manajemen Berkas Laporan Inspeksi, Absen TBM & Safety Induction',
                     icon: FolderArchive,
                     badge: 'Arsip Dokumen',
                     color: 'text-blue-600',
@@ -129,6 +159,22 @@ export function HSEApp() {
             activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20 border-transparent',
             mobileColor: 'bg-emerald-600',
             mobileShadow: 'shadow-emerald-600/20'
+        },
+        { 
+            id: 'tbm', 
+            label: 'Absen TBM', 
+            icon: Clock, 
+            activeClass: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/20 border-transparent',
+            mobileColor: 'bg-indigo-600',
+            mobileShadow: 'shadow-indigo-600/20'
+        },
+        { 
+            id: 'induction', 
+            label: 'Safety Induction', 
+            icon: UserCheck, 
+            activeClass: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-600/20 border-transparent',
+            mobileColor: 'bg-orange-600',
+            mobileShadow: 'shadow-orange-600/20'
         },
         { 
             id: 'findings', 
@@ -448,6 +494,18 @@ export function HSEApp() {
                     <DocumentList 
                         filterOverride="hse_utt" 
                         onEdit={handleEditReport} 
+                    />
+                ) : activeTab === 'tbm' ? (
+                    <HSETbmForm
+                        editingData={editingData}
+                        onClearEdit={handleClearEdit}
+                        onSuccess={() => setActiveTab('iso')}
+                    />
+                ) : activeTab === 'induction' ? (
+                    <HSESafetyInductionForm
+                        editingData={editingData}
+                        onClearEdit={handleClearEdit}
+                        onSuccess={() => setActiveTab('iso')}
                     />
                 ) : activeTab === 'findings' ? (
                     <HSEFindings 

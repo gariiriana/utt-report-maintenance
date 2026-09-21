@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck } from 'lucide-react';
 import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -32,6 +32,9 @@ import { FileManagement } from './FileManagement';
 import { FindingArchive } from './FindingArchive';
 import { generateHSEPdf, generateHSEPdfBlob } from '@/utils/HSEPdfExport';
 import { exportHSEInspectionRecapPDF } from '@/utils/HSEInspectionRecapPdfExport';
+import { generateHSETbmPdfBlob, exportHSETbmPDF } from '@/utils/HSETbmPdfExport';
+import { generateHSESafetyInductionPdfBlob, exportHSESafetyInductionPDF } from '@/utils/HSESafetyInductionPdfExport';
+import { HSETbmRecord, HSESafetyInductionRecord } from '@/types/hseTbmInductionTypes';
 
 import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
 import { downloadPDFBlob } from '@/utils/pdfDownload';
@@ -83,7 +86,10 @@ export interface ExcelDocument {
   companyType?: 'neutra' | 'bri' | 'k2';
   hasAbnormal?: boolean;
   abnormalFinding?: AbnormalFinding | null;
-  hseType?: 'inspection' | 'sio' | 'silo';
+  hseType?: 'inspection' | 'sio' | 'silo' | 'tbm' | 'induction';
+  totalSDM?: number;
+  inductionPerson?: string;
+  companyName?: string;
   maintenanceType?: string;
   atsCustomerInfo?: any;
   atsReportData?: any;
@@ -393,8 +399,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
-  const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | null>(null);
-  const [selectedMaintenance, setSelectedMaintenance] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | 'tbm' | 'induction' | null>(null);
+  const [selectedMaintenance] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
@@ -658,12 +664,28 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       const mapHse = (docId: string, data: any): ExcelDocument => {
         const createdAt = getTimestampDate(data, 'createdAt') || (data.date ? getDocumentDate({ maintenanceTime: data.date }) : new Date());
         const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
+        
+        let fileName = `HSE_${data.aktivitas || 'Report'}_${data.date || ''}.pdf`;
+        let maintenanceName = data.aktivitas || 'Laporan HSE';
+        let specificDetail = data.lokasi || '';
+        const hseType = data.hseType || 'inspection';
+
+        if (hseType === 'tbm') {
+          fileName = data.fileName || `TBM_${data.date || ''}.pdf`;
+          maintenanceName = data.aktivitas || `Absen TBM (${data.totalSDM || 0} Personel)`;
+          specificDetail = `Total SDM: ${data.totalSDM || 0} Orang`;
+        } else if (hseType === 'induction') {
+          fileName = data.fileName || `Induction_${data.nama || 'Peserta'}_${data.perusahaan || 'PT'}.pdf`;
+          maintenanceName = data.aktivitas || `Safety Induction - ${data.nama || 'Peserta'} (${data.perusahaan || 'PT'})`;
+          specificDetail = `Perusahaan: ${data.perusahaan || '-'}`;
+        }
+
         return {
           id: docId,
-          fileName: `HSE_${data.aktivitas}_${data.date}.pdf`,
-          maintenanceName: data.aktivitas,
-          maintenanceTime: data.date,
-          specificDetail: data.lokasi,
+          fileName,
+          maintenanceName,
+          maintenanceTime: data.date || '',
+          specificDetail,
           createdAt,
           updatedAt,
           createdBy: normalizeCreatedBy(data.authorEmail),
@@ -674,8 +696,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           documentType: 'hse',
           hasAbnormal: data.hasAbnormal || false,
           abnormalFinding: data.abnormalFinding || null,
-          hseType: data.hseType || 'inspection',
-          maintenanceType: data.maintenanceType || 'OTHER',
+          hseType,
+          maintenanceType: data.maintenanceType || (hseType === 'tbm' ? 'TBM' : hseType === 'induction' ? 'INDUCTION' : 'OTHER'),
+          totalSDM: data.totalSDM,
+          inductionPerson: data.nama,
+          companyName: data.perusahaan,
           deleteRequested: data.deleteRequested || false,
           deleteRequestedBy: data.deleteRequestedBy || '',
           deleteReason: data.deleteReason || '',
@@ -1518,11 +1543,66 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       .map(d => {
         const data = d.data();
         return {
-          base64: data.dataUrl,
+          base64: data.dataUrl || data.base64,
           description: data.description || '',
           label: data.label || ''
         };
       });
+
+    // 1. Dokumen TBM (Toolbox Meeting)
+    if (hseData.hseType === 'tbm' || docData.hseType === 'tbm') {
+      const tbmRecord: HSETbmRecord = {
+        date: hseData.date || docData.maintenanceTime || '',
+        time: hseData.time || '',
+        totalSDM: hseData.totalSDM || docData.totalSDM || 0,
+        lokasi: hseData.lokasi || 'Data Center NeutraDC Cikarang',
+        keterangan: hseData.keterangan || '',
+        inspectorK3: hseData.inspectorK3 || '',
+        authorEmail: hseData.authorEmail || docData.createdBy || '',
+        reportType: hseData.reportType || 'utt',
+        hseType: 'tbm',
+        photos: photos.length > 0 ? photos : (hseData.photos || []),
+      };
+      if (saveToFile) {
+        await exportHSETbmPDF(tbmRecord, { companyVariant: 'neutradc' });
+      }
+      return await generateHSETbmPdfBlob(tbmRecord, { companyVariant: 'neutradc' });
+    }
+
+    // 2. Dokumen Safety Induction
+    if (hseData.hseType === 'induction' || docData.hseType === 'induction') {
+      let fInduction = hseData.fotoInduction || '';
+      let fSurat = hseData.fotoSuratSehat || '';
+      let fSertifikat = hseData.fotoSertifikatK3 || '';
+
+      photos.forEach(p => {
+        if (p.label === 'fotoInduction' && !fInduction) fInduction = p.base64;
+        if (p.label === 'fotoSuratSehat' && !fSurat) fSurat = p.base64;
+        if (p.label === 'fotoSertifikatK3' && !fSertifikat) fSertifikat = p.base64;
+      });
+
+      const inductionRecord: HSESafetyInductionRecord = {
+        nama: hseData.nama || docData.inductionPerson || '',
+        perusahaan: hseData.perusahaan || docData.companyName || '',
+        date: hseData.date || docData.maintenanceTime || '',
+        time: hseData.time || '',
+        jabatan: hseData.jabatan || '',
+        catatan: hseData.catatan || '',
+        fotoInduction: fInduction,
+        fotoSuratSehat: fSurat,
+        fotoSertifikatK3: fSertifikat || undefined,
+        inspectorK3: hseData.inspectorK3 || '',
+        authorEmail: hseData.authorEmail || docData.createdBy || '',
+        reportType: hseData.reportType || 'utt',
+        hseType: 'induction',
+      };
+      if (saveToFile) {
+        await exportHSESafetyInductionPDF(inductionRecord, { companyVariant: 'neutradc' });
+      }
+      return await generateHSESafetyInductionPdfBlob(inductionRecord, { companyVariant: 'neutradc' });
+    }
+
+    // 3. Default: HSE Inspection Report
     const formData = {
       aktivitas: hseData.aktivitas,
       lokasi: hseData.lokasi,
@@ -3005,151 +3085,349 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
         {
           id: 'inspection',
           name: 'HSE Inspection Report',
-          desc: 'Koleksi berkas resmi laporan inspeksi keselamatan kerja K3 & HSE lingkungan data center',
+          categoryTag: 'Inspeksi K3 & Lingkungan',
+          desc: 'Koleksi berkas resmi laporan inspeksi keselamatan kerja K3 & HSE lingkungan data center NeutraDC Cikarang.',
           icon: ClipboardList,
           color: 'text-blue-600',
-          bg: 'bg-blue-50 border-blue-100',
+          bgIcon: 'bg-blue-50 text-blue-600 border-blue-200/80 group-hover:bg-blue-600 group-hover:text-white',
+          hoverBorder: 'hover:border-blue-400 hover:shadow-blue-500/10',
+          badgeStyle: 'bg-blue-50 text-blue-700 border-blue-200/80',
+          tagStyle: 'bg-blue-50 text-blue-700 border-blue-200',
+          btnStyle: 'bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white border-blue-200 group-hover:border-blue-600',
+          topAccent: 'from-blue-500 to-indigo-600',
+        },
+        {
+          id: 'tbm',
+          name: 'Absen TBM (Toolbox Meeting)',
+          categoryTag: 'Presensi Harian',
+          desc: 'Arsip berita acara presensi & dokumentasi foto kegiatan briefing Toolbox Meeting keselamatan kerja teknisi.',
+          icon: Clock,
+          color: 'text-indigo-600',
+          bgIcon: 'bg-indigo-50 text-indigo-600 border-indigo-200/80 group-hover:bg-indigo-600 group-hover:text-white',
+          hoverBorder: 'hover:border-indigo-400 hover:shadow-indigo-500/10',
+          badgeStyle: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+          tagStyle: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          btnStyle: 'bg-indigo-50 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white border-indigo-200 group-hover:border-indigo-600',
+          topAccent: 'from-indigo-500 to-violet-600',
+        },
+        {
+          id: 'induction',
+          name: 'Safety Induction Report',
+          categoryTag: 'Induction & Sertifikasi',
+          desc: 'Arsip formulir safety induction K3 pekerja/vendor, berkas surat keterangan sehat, dan sertifikat K3 TDE.',
+          icon: UserCheck,
+          color: 'text-amber-600',
+          bgIcon: 'bg-amber-50 text-amber-600 border-amber-200/80 group-hover:bg-amber-500 group-hover:text-white',
+          hoverBorder: 'hover:border-amber-400 hover:shadow-amber-500/10',
+          badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200/80',
+          tagStyle: 'bg-amber-50 text-amber-700 border-amber-200',
+          btnStyle: 'bg-amber-50 group-hover:bg-amber-500 text-amber-700 group-hover:text-white border-amber-200 group-hover:border-amber-500',
+          topAccent: 'from-amber-400 to-orange-500',
         },
       ];
 
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((cat) => {
-            const count = filteredDocuments.filter(d => d.hseType === cat.id).length;
-            return (
-              <motion.button
-                key={cat.id}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.99 }}
-                onClick={() => {
-                  setSelectedCategory(cat.id as any);
-                  setCurrentLevel('category');
-                }}
-                className="flex items-center justify-between p-5 sm:p-6 bg-white border border-slate-200/90 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group text-left shadow-2xs cursor-pointer"
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className={`p-3.5 ${cat.bg} rounded-2xl border group-hover:scale-105 transition-transform shrink-0`}>
-                    <cat.icon className={`w-7 h-7 ${cat.color}`} />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                      {cat.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
-                      {cat.desc}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200/70">
-                        {count} Dokumen
+        <div className="space-y-6 w-full max-w-6xl">
+          {/* Header Banner */}
+          <div className="bg-white/95 backdrop-blur-xl p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl shadow-md shadow-blue-500/20">
+                <FolderArchive className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    Kategori Arsip Dokumen HSE
+                  </h3>
+                  <span className="px-2.5 py-0.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
+                    {filteredDocuments.length} Dokumen Tersimpan
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                  Pilih folder di bawah untuk mengakses arsip berkas inspeksi K3, presensi TBM harian, dan verifikasi safety induction
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => fetchDocuments(true)}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 shadow-2xs"
+              title="Segarkan data arsip & laporan terbaru"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : 'text-slate-600'}`} />
+              <span>Segarkan</span>
+            </button>
+          </div>
+
+          {/* 3 Modern Vertical Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {categories.map((cat) => {
+              const count = filteredDocuments.filter(d => d.hseType === cat.id).length;
+              return (
+                <motion.div
+                  key={cat.id}
+                  whileHover={{ y: -4 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => {
+                    setSelectedCategory(cat.id as any);
+                    setCurrentLevel('category');
+                  }}
+                  className={`flex flex-col justify-between bg-white border border-slate-200/90 ${cat.hoverBorder} rounded-3xl p-6 transition-all duration-300 group shadow-xs hover:shadow-xl cursor-pointer relative overflow-hidden h-full min-h-[260px]`}
+                >
+                  {/* Top Color Accent Line */}
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${cat.topAccent}`} />
+
+                  {/* Upper Section */}
+                  <div>
+                    {/* Top Row: Icon + Badge */}
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <div className={`p-3.5 rounded-2xl border transition-all duration-300 shadow-2xs group-hover:scale-105 ${cat.bgIcon}`}>
+                        <cat.icon className="w-6 h-6" />
+                      </div>
+                      <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border ${cat.tagStyle}`}>
+                        {cat.categoryTag}
                       </span>
-                      <span className="text-[11px] text-slate-400 font-semibold">Tersimpan</span>
+                    </div>
+
+                    {/* Title & Description - Full text, NO truncation */}
+                    <div className="mt-4">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                        {cat.name}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed">
+                        {cat.desc}
+                      </p>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-1 text-blue-600 font-bold text-xs bg-blue-50/80 group-hover:bg-blue-600 group-hover:text-white px-3 py-2 rounded-xl transition-all border border-blue-200/60 group-hover:border-blue-600 shadow-2xs shrink-0 ml-3">
-                  <span className="hidden sm:inline">Buka Arsip</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </motion.button>
-            );
-          })}
+                  {/* Bottom Action Row */}
+                  <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-3 py-1 rounded-full text-xs font-black border ${cat.badgeStyle}`}>
+                        {count} Dokumen
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-medium">Tersimpan</span>
+                    </div>
+
+                    <div className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 shadow-2xs ${cat.btnStyle}`}>
+                      <span>Buka Folder</span>
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       );
     }
 
     if (currentLevel === 'category') {
-      const backBtn = (
-        <button
-          onClick={() => setCurrentLevel('root')}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-sm font-semibold mb-4 cursor-pointer"
-        >
-          <ChevronLeft className="w-4 h-4" /> Kembali ke Root HSE
-        </button>
+      const getCategoryInfo = () => {
+        if (selectedCategory === 'inspection') {
+          return {
+            title: 'HSE Inspection Report',
+            tag: 'Inspeksi K3 & Lingkungan',
+            tagColor: 'text-blue-700 bg-blue-50 border-blue-200',
+            folderColor: 'bg-blue-50 text-blue-600 border-blue-200',
+            hoverBorder: 'hover:border-blue-400',
+            unitLabel: 'Laporan',
+            emptyIcon: ClipboardList,
+            emptyTitle: 'Belum ada laporan HSE Inspection yang tersimpan',
+            emptyHint: 'Laporan inspeksi K3 yang dibuat akan otomatis tersimpan di dalam folder ini.',
+          };
+        }
+        if (selectedCategory === 'tbm') {
+          return {
+            title: 'Absen TBM (Toolbox Meeting)',
+            tag: 'Presensi Harian',
+            tagColor: 'text-indigo-700 bg-indigo-50 border-indigo-200',
+            folderColor: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+            hoverBorder: 'hover:border-indigo-400',
+            unitLabel: 'Laporan TBM',
+            emptyIcon: Clock,
+            emptyTitle: 'Belum ada dokumen Absen TBM yang tersimpan',
+            emptyHint: 'Gunakan tab "Absen TBM" pada navigasi atas untuk menginput data briefing TBM baru.',
+          };
+        }
+        return {
+          title: 'Safety Induction Report',
+          tag: 'Induction & Sertifikasi',
+          tagColor: 'text-amber-700 bg-amber-50 border-amber-200',
+          folderColor: 'bg-amber-50 text-amber-600 border-amber-200',
+          hoverBorder: 'hover:border-amber-400',
+          unitLabel: 'Peserta Induction',
+          emptyIcon: UserCheck,
+          emptyTitle: 'Belum ada dokumen Safety Induction yang tersimpan',
+          emptyHint: 'Gunakan tab "Safety Induction" pada navigasi atas untuk mendaftarkan verifikasi induction baru.',
+        };
+      };
+
+      const catInfo = getCategoryInfo();
+      const monthGroups = new Set<string>();
+      filteredDocuments
+        .filter(d => d.hseType === selectedCategory)
+        .forEach(doc => monthGroups.add(getMonthYearString(getDocumentDate(doc))));
+
+      const sortedMonths = Array.from(monthGroups).sort((a, b) => {
+        const docA = filteredDocuments.find(d => d.hseType === selectedCategory && getMonthYearString(getDocumentDate(d)) === a);
+        const docB = filteredDocuments.find(d => d.hseType === selectedCategory && getMonthYearString(getDocumentDate(d)) === b);
+        const timeA = docA ? getDocumentDate(docA).getTime() : 0;
+        const timeB = docB ? getDocumentDate(docB).getTime() : 0;
+        return timeB - timeA;
+      });
+
+      const EmptyIcon = catInfo.emptyIcon;
+
+      return (
+        <div className="space-y-5 w-full max-w-6xl">
+          {/* Breadcrumb & Folder Header */}
+          <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm flex items-center justify-between flex-wrap gap-3">
+            <button
+              onClick={() => setCurrentLevel('root')}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl transition-colors text-xs font-bold cursor-pointer border border-slate-200 shadow-2xs"
+            >
+              <ChevronLeft className="w-4 h-4" /> Kembali ke Kategori Utama
+            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Folder:</span>
+              <span className={`px-3 py-1.5 text-xs font-black rounded-xl border shadow-2xs ${catInfo.tagColor}`}>
+                {catInfo.title}
+              </span>
+              <span className="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 rounded-xl border border-slate-200">
+                {filteredDocuments.filter(d => d.hseType === selectedCategory).length} Dokumen
+              </span>
+            </div>
+          </div>
+
+          {/* Month Folders Grid */}
+          {sortedMonths.length === 0 ? (
+            <div className="text-center py-16 bg-white/95 backdrop-blur-xl rounded-3xl border border-dashed border-slate-200 shadow-sm p-6">
+              <div className="w-16 h-16 mx-auto mb-3 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-200">
+                <EmptyIcon className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-base font-bold text-slate-800">{catInfo.emptyTitle}</p>
+              <p className="text-xs text-slate-500 font-medium mt-1 max-w-md mx-auto">{catInfo.emptyHint}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sortedMonths.map((month) => {
+                const count = filteredDocuments.filter(
+                  d => d.hseType === selectedCategory && getMonthYearString(getDocumentDate(d)) === month
+                ).length;
+
+                return (
+                  <motion.button
+                    key={month}
+                    whileHover={{ y: -3 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => {
+                      setSelectedMonth(month);
+                      setCurrentLevel('month');
+                    }}
+                    className={`flex items-center justify-between p-5 bg-white border border-slate-200/90 rounded-2xl ${catInfo.hoverBorder} hover:shadow-md transition-all group text-left shadow-2xs cursor-pointer`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className={`p-3 ${catInfo.folderColor} rounded-xl border group-hover:scale-105 transition-transform shrink-0`}>
+                        <Folder className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                          {month}
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500 mt-0.5">
+                          {count} {catInfo.unitLabel}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-1.5 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0">
+                      <ChevronRight className="w-5 h-5" />
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       );
-
-      if (selectedCategory === 'inspection') {
-        const monthGroups = new Set<string>();
-        filteredDocuments
-          .filter(d => d.hseType === 'inspection')
-          .forEach(doc => monthGroups.add(getMonthYearString(getDocumentDate(doc))));
-
-        const sortedMonths = Array.from(monthGroups).sort((a, b) => {
-          const docA = filteredDocuments.find(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === a);
-          const docB = filteredDocuments.find(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === b);
-          const timeA = docA ? getDocumentDate(docA).getTime() : 0;
-          const timeB = docB ? getDocumentDate(docB).getTime() : 0;
-          return timeB - timeA;
-        });
-
-        return (
-          <div className="space-y-4">
-            {backBtn}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedMonths.map((month) => (
-                <motion.button
-                  key={month}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setSelectedMonth(month);
-                    setCurrentLevel('month');
-                  }}
-                  className="flex items-center gap-4 p-6 bg-white border border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group text-left shadow-sm cursor-pointer"
-                >
-                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                    <Folder className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">{month}</h3>
-                    <p className="text-sm font-medium text-slate-500">
-                      {filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === month).length} Laporan
-                    </p>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        );
-      } else {
-        const maintenanceTypes = new Set<string>();
-        filteredDocuments
-          .filter(d => d.hseType === selectedCategory)
-          .forEach(doc => maintenanceTypes.add(doc.maintenanceType || 'OTHER'));
-
-        return (
-          <div className="space-y-4">
-            {backBtn}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from(maintenanceTypes).map((type) => (
-                <motion.button
-                  key={type}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setSelectedMaintenance(type);
-                    setCurrentLevel('maintenance');
-                  }}
-                  className="flex items-center gap-4 p-6 bg-white border border-slate-200 rounded-2xl hover:border-indigo-400 hover:shadow-md transition-all group text-left shadow-sm cursor-pointer"
-                >
-                  <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                    <Folder className="w-8 h-8 text-indigo-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 uppercase">{type}</h3>
-                    <p className="text-sm font-medium text-slate-500">
-                      {filteredDocuments.filter(d => d.hseType === selectedCategory && d.maintenanceType === type).length} Dokumen
-                    </p>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        );
-      }
     }
 
     if (currentLevel === 'month') {
+      // 1. Jika kategori TBM: Langsung tampilkan daftar dokumen TBM di bulan terpilih
+      if (selectedCategory === 'tbm') {
+        const tbmDocs = filteredDocuments.filter(
+          d => d.hseType === 'tbm' && getMonthYearString(getDocumentDate(d)) === selectedMonth
+        );
+
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <button
+                onClick={() => setCurrentLevel('category')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200 w-fit"
+              >
+                <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan TBM
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
+                  Absen TBM Bulan {selectedMonth} ({tbmDocs.length} Dokumen)
+                </span>
+              </div>
+            </div>
+
+            {tbmDocs.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 shadow-xs">
+                <Clock className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-700">Tidak ada laporan Absen TBM pada bulan {selectedMonth}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {tbmDocs.map((document, index) => renderDocumentCard(document, index))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // 2. Jika kategori Induction: Langsung tampilkan daftar dokumen Safety Induction di bulan terpilih
+      if (selectedCategory === 'induction') {
+        const inductionDocs = filteredDocuments.filter(
+          d => d.hseType === 'induction' && getMonthYearString(getDocumentDate(d)) === selectedMonth
+        );
+
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <button
+                onClick={() => setCurrentLevel('category')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200 w-fit"
+              >
+                <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan Induction
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+                  Safety Induction Bulan {selectedMonth} ({inductionDocs.length} Dokumen)
+                </span>
+              </div>
+            </div>
+
+            {inductionDocs.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 shadow-xs">
+                <UserCheck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-700">Tidak ada laporan Safety Induction pada bulan {selectedMonth}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {inductionDocs.map((document, index) => renderDocumentCard(document, index))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // 3. Jika kategori Inspection: Tampilkan minggu (Minggu ke-1, 2, 3...)
       const monthDocs = filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === selectedMonth);
       const weeks = new Set<number>();
       monthDocs.forEach(doc => weeks.add(getWeekOfMonth(getDocumentDate(doc))));
@@ -3324,8 +3602,14 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                   </span>
                 ) : null}
                 {document.hseType && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
-                    {document.hseType}
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
+                    document.hseType === 'tbm'
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      : document.hseType === 'induction'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {document.hseType === 'tbm' ? 'ABSEN TBM' : document.hseType === 'induction' ? 'SAFETY INDUCTION' : document.hseType}
                   </span>
                 )}
                 {document.deleteRequested && (

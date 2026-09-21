@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { loadLogoBase64 } from '@/utils/ReportPdfExport';
+import { compressBase64Image } from '@/utils/imageCompression';
 
 // --- HELPER DATES & PARSING ---
 
@@ -227,6 +228,43 @@ export interface CMPhotoDetail {
   description: string;
 }
 
+export interface MonthGroupedReports {
+  key: string;        // e.g. '2026-01'
+  year: number;       // 2026
+  month: number;      // 0-11
+  monthLabel: string; // e.g. 'Januari 2026'
+  reports: any[];
+}
+
+/** Group reports chronologically by year and month */
+export function groupReportsByMonth(reports: any[]): MonthGroupedReports[] {
+  const map: Record<string, MonthGroupedReports> = {};
+
+  for (const r of reports) {
+    const ts = parseReportTime(r);
+    const dt = ts > 0 ? new Date(ts) : new Date();
+    const y = dt.getFullYear();
+    const m = dt.getMonth();
+    const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+
+    if (!map[key]) {
+      map[key] = {
+        key,
+        year: y,
+        month: m,
+        monthLabel: `${INDO_MONTH_NAMES[m] || 'Bulan'} ${y}`,
+        reports: [],
+      };
+    }
+    map[key].reports.push(r);
+  }
+
+  return Object.keys(map).sort().map(k => {
+    map[k].reports.sort((a, b) => parseReportTime(a) - parseReportTime(b));
+    return map[k];
+  });
+}
+
 export interface CMReportWithPhotos {
   report: any;
   index: number;
@@ -288,7 +326,17 @@ export async function resolveReportsWithPhotos(reports: any[]): Promise<CMReport
       for (const p of rawPhotos) {
         const b64 = await ensureBase64Image(p.base64);
         if (b64) {
-          resolvedList.push({ base64: b64, description: p.description });
+          let optimizedB64 = b64;
+          try {
+            optimizedB64 = await compressBase64Image(b64, {
+              maxWidth: 600,
+              maxHeight: 450,
+              quality: 0.72,
+            });
+          } catch (compErr) {
+            console.warn('Compress photo for recap fallback to original:', compErr);
+          }
+          resolvedList.push({ base64: optimizedB64, description: p.description });
         }
       }
       if (resolvedList.length > 0) {
@@ -374,11 +422,7 @@ export async function exportCMMonthlyRecapToExcel(
     workbook.created = new Date();
     workbook.modified = new Date();
 
-    const sheet = workbook.addWorksheet('Rekap CM', {
-      pageSetup: { orientation: 'landscape', paperSize: 9 } // A4 Landscape
-    });
-
-    // Theme Colors
+    // Theme Colors & Styles (Shared across all worksheets)
     const headerNavy = '002060';
     const textDark = '0F172A';
     const borderGray = 'CBD5E1';
@@ -390,148 +434,201 @@ export async function exportCMMonthlyRecapToExcel(
       right: { style: 'thin', color: { argb: borderGray } },
     };
 
-    // Row 1-4: Document Title & Metadata
-    sheet.mergeCells('A1:P1');
-    const r1 = sheet.getCell('A1');
-    r1.value = 'PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG';
-    r1.font = { name: 'Calibri', size: 14, bold: true, color: { argb: headerNavy } };
-    r1.alignment = { horizontal: 'left', vertical: 'middle' };
-    sheet.getRow(1).height = 24;
+    // Helper to generate a standardized CM recap sheet
+    const populateCMExcelSheet = (
+      sheetName: string,
+      sheetTitle: string,
+      sheetReports: any[],
+      statsText: string
+    ) => {
+      const sheet = workbook.addWorksheet(sheetName.substring(0, 31), {
+        pageSetup: { orientation: 'landscape', paperSize: 9 } // A4 Landscape
+      });
 
-    sheet.mergeCells('A2:P2');
-    const r2 = sheet.getCell('A2');
-    r2.value = `REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM) — PERIODE: ${periodTitle.toUpperCase()}`;
-    r2.font = { name: 'Calibri', size: 12, bold: true, color: { argb: textDark } };
-    r2.alignment = { horizontal: 'left', vertical: 'middle' };
-    sheet.getRow(2).height = 20;
+      // Row 1-3: Document Title & Metadata
+      sheet.mergeCells('A1:P1');
+      const r1 = sheet.getCell('A1');
+      r1.value = 'PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG';
+      r1.font = { name: 'Calibri', size: 14, bold: true, color: { argb: headerNavy } };
+      r1.alignment = { horizontal: 'left', vertical: 'middle' };
+      sheet.getRow(1).height = 24;
 
-    // Statistics Row
+      sheet.mergeCells('A2:P2');
+      const r2 = sheet.getCell('A2');
+      r2.value = sheetTitle;
+      r2.font = { name: 'Calibri', size: 12, bold: true, color: { argb: textDark } };
+      r2.alignment = { horizontal: 'left', vertical: 'middle' };
+      sheet.getRow(2).height = 20;
+
+      sheet.mergeCells('A3:P3');
+      const r3 = sheet.getCell('A3');
+      r3.value = statsText;
+      r3.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '475569' } };
+      r3.alignment = { horizontal: 'left', vertical: 'middle' };
+      sheet.getRow(3).height = 18;
+
+      sheet.getRow(4).height = 10; // Empty spacer
+
+      // Row 5: Column Headers
+      const headers = [
+        'No',
+        'Tanggal',
+        'Waktu',
+        'No. Tiket / Insiden',
+        'Uraian Pekerjaan / Gangguan',
+        'Perangkat',
+        'Lokasi / Ruangan',
+        'Status Trouble',
+        'Catatan Penyelesaian / Pending',
+        'Jenis Penanganan',
+        'Kategori Sparepart',
+        'Uraian Gejala & Analisis Masalah',
+        'Tindakan Perbaikan (Action Taken)',
+        'Sparepart Terpakai',
+        'Teknisi Pelaksana (PIC DME)',
+        'PIC NeutraDC'
+      ];
+
+      const headerRow = sheet.getRow(5);
+      headerRow.values = headers;
+      headerRow.height = 28;
+
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: headerNavy }
+        };
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = thinBorder;
+      });
+
+      // Data Rows
+      sheetReports.forEach((report, index) => {
+        const statusInfo = getTroubleStatusInfo(report);
+        const isSp = isCMSparepart(report);
+
+        const rowValues = [
+          index + 1,
+          formatReportDate(report),
+          formatReportTime(report),
+          report.incidentName || report.ticketName || report.ticketNumber || `CM-${index + 1}`,
+          report.issue || report.problem || report.incidentName || 'Corrective Maintenance',
+          report.equipmentName || report.equipment || report.device || '-',
+          report.location || report.area || 'NeutraDC Cikarang',
+          statusInfo.label,
+          statusInfo.note,
+          isSp ? 'Pergantian Sparepart' : 'Non-Sparepart (Troubleshoot)',
+          getSparepartCategoryLabel(report),
+          report.problemAnalysis || report.summaryProblemAnalysis || report.problem || '-',
+          report.correctiveAction || report.actionTaken || '-',
+          getSparepartsSummary(report),
+          report.picDME || report.preparedByName || report.technician || '-',
+          report.picTDE || report.acknowledgedBy1Name || report.customerPIC || '-'
+        ];
+
+        const row = sheet.addRow(rowValues);
+        row.height = 32;
+
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Calibri', size: 9, color: { argb: textDark } };
+          cell.border = thinBorder;
+          cell.alignment = {
+            vertical: 'middle',
+            wrapText: true,
+            horizontal: (colNumber === 1 || colNumber === 2 || colNumber === 3 || colNumber === 8 || colNumber === 10)
+              ? 'center'
+              : 'left'
+          };
+
+          // Alternating zebra
+          if (index % 2 === 1) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'F8FAFC' }
+            };
+          }
+
+          // Status Trouble highlight
+          if (colNumber === 8) {
+            if (statusInfo.isClosed) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'DCFCE7' } // light emerald
+              };
+              cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '166534' } };
+            } else {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FEF3C7' } // light amber
+              };
+              cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'B45309' } };
+            }
+          }
+        });
+      });
+
+      // Column widths
+      const colWidths = [6, 14, 11, 20, 28, 22, 18, 16, 26, 18, 22, 30, 30, 24, 18, 18];
+      colWidths.forEach((w, i) => {
+        sheet.getColumn(i + 1).width = w;
+      });
+
+      // Freeze header pane
+      sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 5 }];
+      return sheet;
+    };
+
+    const monthGroups = groupReportsByMonth(reports);
+
+    // Summary statistics keseluruhan
     const totalCM = reports.length;
     const closedCount = reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
     const openCount = totalCM - closedCount;
     const sparepartCount = reports.filter(r => isCMSparepart(r)).length;
     const nonSparepartCount = totalCM - sparepartCount;
 
-    sheet.mergeCells('A3:P3');
-    const r3 = sheet.getCell('A3');
-    r3.value = `Total Laporan CM: ${totalCM} | Solved (Closed): ${closedCount} | Pending (Open): ${openCount} | Pergantian Sparepart: ${sparepartCount} | Non-Sparepart: ${nonSparepartCount} | Waktu Ekspor: ${new Date().toLocaleString('id-ID')}`;
-    r3.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '475569' } };
-    r3.alignment = { horizontal: 'left', vertical: 'middle' };
-    sheet.getRow(3).height = 18;
+    if (monthGroups.length > 1) {
+      // 1. Sheet Semua Periode
+      const statsAll = `Total Laporan CM: ${totalCM} | Solved (Closed): ${closedCount} | Pending (Open): ${openCount} | Pergantian Sparepart: ${sparepartCount} | Non-Sparepart: ${nonSparepartCount} | Periode: ${periodTitle} | Waktu Ekspor: ${new Date().toLocaleString('id-ID')}`;
+      populateCMExcelSheet(
+        'Semua Periode',
+        `REKAPITULASI LAPORAN CM — SEMUA PERIODE: ${periodTitle.toUpperCase()}`,
+        reports,
+        statsAll
+      );
 
-    sheet.getRow(4).height = 10; // Empty spacer
+      // 2. Sheet Terpisah Per Bulan
+      monthGroups.forEach((group) => {
+        const gTotal = group.reports.length;
+        const gClosed = group.reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
+        const gOpen = gTotal - gClosed;
+        const gSp = group.reports.filter(r => isCMSparepart(r)).length;
+        const gNonSp = gTotal - gSp;
+        const statsGroup = `Total CM Bulan Ini: ${gTotal} | Solved: ${gClosed} | Pending: ${gOpen} | Pergantian Sparepart: ${gSp} | Non-Sparepart: ${gNonSp} | Waktu Ekspor: ${new Date().toLocaleString('id-ID')}`;
 
-    // Row 5: Column Headers
-    const headers = [
-      'No',
-      'Tanggal',
-      'Waktu',
-      'No. Tiket / Insiden',
-      'Uraian Pekerjaan / Gangguan',
-      'Perangkat',
-      'Lokasi / Ruangan',
-      'Status Trouble',
-      'Catatan Penyelesaian / Pending',
-      'Jenis Penanganan',
-      'Kategori Sparepart',
-      'Uraian Gejala & Analisis Masalah',
-      'Tindakan Perbaikan (Action Taken)',
-      'Sparepart Terpakai',
-      'Teknisi Pelaksana (PIC DME)',
-      'PIC NeutraDC'
-    ];
-
-    const headerRow = sheet.getRow(5);
-    headerRow.values = headers;
-    headerRow.height = 28;
-
-    headerRow.eachCell((cell) => {
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: headerNavy }
-      };
-      cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      cell.border = thinBorder;
-    });
-
-    // Data Rows
-    reports.forEach((report, index) => {
-      const statusInfo = getTroubleStatusInfo(report);
-      const isSp = isCMSparepart(report);
-
-      const rowValues = [
-        index + 1,
-        formatReportDate(report),
-        formatReportTime(report),
-        report.incidentName || report.ticketName || report.ticketNumber || `CM-${index + 1}`,
-        report.issue || report.problem || report.incidentName || 'Corrective Maintenance',
-        report.equipmentName || report.equipment || report.device || '-',
-        report.location || report.area || 'NeutraDC Cikarang',
-        statusInfo.label,
-        statusInfo.note,
-        isSp ? 'Pergantian Sparepart' : 'Non-Sparepart (Troubleshoot)',
-        getSparepartCategoryLabel(report),
-        report.problemAnalysis || report.summaryProblemAnalysis || report.problem || '-',
-        report.correctiveAction || report.actionTaken || '-',
-        getSparepartsSummary(report),
-        report.picDME || report.preparedByName || report.technician || '-',
-        report.picTDE || report.acknowledgedBy1Name || report.customerPIC || '-'
-      ];
-
-      const row = sheet.addRow(rowValues);
-      row.height = 32;
-
-      row.eachCell((cell, colNumber) => {
-        cell.font = { name: 'Calibri', size: 9, color: { argb: textDark } };
-        cell.border = thinBorder;
-        cell.alignment = {
-          vertical: 'middle',
-          wrapText: true,
-          horizontal: (colNumber === 1 || colNumber === 2 || colNumber === 3 || colNumber === 8 || colNumber === 10)
-            ? 'center'
-            : 'left'
-        };
-
-        // Alternating zebra
-        if (index % 2 === 1) {
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'F8FAFC' }
-          };
-        }
-
-        // Status Trouble highlight
-        if (colNumber === 8) {
-          if (statusInfo.isClosed) {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'DCFCE7' } // light emerald
-            };
-            cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '166534' } };
-          } else {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FEF3C7' } // light amber
-            };
-            cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'B45309' } };
-          }
-        }
+        const safeMonthSheetName = `Rekap ${group.monthLabel}`.replace(/[\\/?*:[\]]/g, '_').substring(0, 31);
+        populateCMExcelSheet(
+          safeMonthSheetName,
+          `REKAPITULASI LAPORAN CM — BULAN ${group.monthLabel.toUpperCase()}`,
+          group.reports,
+          statsGroup
+        );
       });
-    });
-
-    // Column widths
-    const colWidths = [6, 14, 11, 20, 28, 22, 18, 16, 26, 18, 22, 30, 30, 24, 18, 18];
-    colWidths.forEach((w, i) => {
-      sheet.getColumn(i + 1).width = w;
-    });
-
-    // Freeze header pane
-    sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 5 }];
+    } else {
+      // 1 Bulan Saja
+      const statsSingle = `Total Laporan CM: ${totalCM} | Solved (Closed): ${closedCount} | Pending (Open): ${openCount} | Pergantian Sparepart: ${sparepartCount} | Non-Sparepart: ${nonSparepartCount} | Waktu Ekspor: ${new Date().toLocaleString('id-ID')}`;
+      populateCMExcelSheet(
+        'Rekap CM',
+        `REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM) — PERIODE: ${periodTitle.toUpperCase()}`,
+        reports,
+        statsSingle
+      );
+    }
 
     // ========================================================================
     // WORKSHEET 2: DOKUMENTASI FOTO CM (Halaman / Tab Terpisah)
@@ -802,147 +899,150 @@ export async function exportCMMonthlyRecapToDocx(
     const sparepartCount = reports.filter(r => isCMSparepart(r)).length;
     const nonSparepartCount = totalCM - sparepartCount;
 
-    // Table Header Row
-    const tableHeaderCells = [
-      { text: 'No', width: 4 },
-      { text: 'Tanggal & Jam', width: 12 },
-      { text: 'No Tiket / Insiden', width: 16 },
-      { text: 'Perangkat & Lokasi', width: 18 },
-      { text: 'Uraian Masalah & Tindakan Perbaikan', width: 26 },
-      { text: 'Status Trouble', width: 12 },
-      { text: 'Sparepart Terpakai', width: 12 },
-    ].map(h => new TableCell({
-      width: { size: h.width, type: WidthType.PERCENTAGE },
-      shading: { fill: NAVY_BLUE, type: ShadingType.CLEAR },
-      borders: cellBorderThin,
-      children: [
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({ text: h.text, bold: true, size: 16, color: 'FFFFFF' }),
-          ],
-        }),
-      ],
-    }));
-
-    // Data Rows
-    const dataRows = reports.map((report, idx) => {
-      const statusInfo = getTroubleStatusInfo(report);
-      const isClosed = statusInfo.isClosed;
-
-      const dateStr = formatReportDate(report);
-      const timeStr = formatReportTime(report);
-      const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
-      const equipLocStr = `${report.equipmentName || report.equipment || '-'}\nLokasi: ${report.location || report.area || 'NeutraDC'}`;
-      
-      const issueActionStr = `Masalah:\n${report.issue || report.problemAnalysis || report.problem || '-'}\n\nTindakan:\n${report.correctiveAction || report.actionTaken || '-'}`;
-      
-      const sparepartsStr = getSparepartsSummary(report);
-
-      return new TableRow({
+    // Helper to generate a CM Table in Word for a given report list
+    const buildWordCMTable = (sheetReports: any[]): Table => {
+      const tableHeaderCells = [
+        { text: 'No', width: 4 },
+        { text: 'Tanggal & Jam', width: 12 },
+        { text: 'No Tiket / Insiden', width: 16 },
+        { text: 'Perangkat & Lokasi', width: 18 },
+        { text: 'Uraian Masalah & Tindakan Perbaikan', width: 26 },
+        { text: 'Status Trouble', width: 12 },
+        { text: 'Sparepart Terpakai', width: 12 },
+      ].map(h => new TableCell({
+        width: { size: h.width, type: WidthType.PERCENTAGE },
+        shading: { fill: NAVY_BLUE, type: ShadingType.CLEAR },
+        borders: cellBorderThin,
         children: [
-          // 1. No
-          new TableCell({
-            width: { size: 4, type: WidthType.PERCENTAGE },
-            borders: cellBorderThin,
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
             children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: String(idx + 1), size: 16, bold: true })],
-              }),
-            ],
-          }),
-          // 2. Tanggal & Jam
-          new TableCell({
-            width: { size: 12, type: WidthType.PERCENTAGE },
-            borders: cellBorderThin,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: dateStr, size: 16, bold: true }),
-                  new TextRun({ text: `\n${timeStr}`, size: 14, color: '64748B' }),
-                ],
-              }),
-            ],
-          }),
-          // 3. No Tiket / Insiden
-          new TableCell({
-            width: { size: 16, type: WidthType.PERCENTAGE },
-            borders: cellBorderThin,
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: ticketStr, size: 16, bold: true, color: '0F172A' })],
-              }),
-            ],
-          }),
-          // 4. Perangkat & Lokasi
-          new TableCell({
-            width: { size: 18, type: WidthType.PERCENTAGE },
-            borders: cellBorderThin,
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({ text: equipLocStr, size: 16, color: '1E293B' }),
-                ],
-              }),
-            ],
-          }),
-          // 5. Uraian Masalah & Perbaikan
-          new TableCell({
-            width: { size: 26, type: WidthType.PERCENTAGE },
-            borders: cellBorderThin,
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({ text: issueActionStr, size: 15, color: '334155' }),
-                ],
-              }),
-            ],
-          }),
-          // 6. Status Trouble
-          new TableCell({
-            width: { size: 12, type: WidthType.PERCENTAGE },
-            borders: cellBorderThin,
-            shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({
-                    text: statusInfo.label,
-                    size: 15,
-                    bold: true,
-                    color: isClosed ? '166534' : 'B45309',
-                  }),
-                  new TextRun({
-                    text: `\n\n${statusInfo.note}`,
-                    size: 13,
-                    color: '475569',
-                  }),
-                ],
-              }),
-            ],
-          }),
-          // 7. Sparepart
-          new TableCell({
-            width: { size: 12, type: WidthType.PERCENTAGE },
-            borders: cellBorderThin,
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({ text: sparepartsStr, size: 14, color: '1E293B' }),
-                ],
-              }),
+              new TextRun({ text: h.text, bold: true, size: 16, color: 'FFFFFF' }),
             ],
           }),
         ],
-      });
-    });
+      }));
 
-    const mainTable = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [new TableRow({ children: tableHeaderCells }), ...dataRows],
-    });
+      const dataRows = sheetReports.map((report, idx) => {
+        const statusInfo = getTroubleStatusInfo(report);
+        const isClosed = statusInfo.isClosed;
+
+        const dateStr = formatReportDate(report);
+        const timeStr = formatReportTime(report);
+        const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
+        const equipLocStr = `${report.equipmentName || report.equipment || '-'}\nLokasi: ${report.location || report.area || 'NeutraDC'}`;
+        
+        const issueActionStr = `Masalah:\n${report.issue || report.problemAnalysis || report.problem || '-'}\n\nTindakan:\n${report.correctiveAction || report.actionTaken || '-'}`;
+        
+        const sparepartsStr = getSparepartsSummary(report);
+
+        return new TableRow({
+          children: [
+            // 1. No
+            new TableCell({
+              width: { size: 4, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: String(idx + 1), size: 16, bold: true })],
+                }),
+              ],
+            }),
+            // 2. Tanggal & Jam
+            new TableCell({
+              width: { size: 12, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({ text: dateStr, size: 16, bold: true }),
+                    new TextRun({ text: `\n${timeStr}`, size: 14, color: '64748B' }),
+                  ],
+                }),
+              ],
+            }),
+            // 3. No Tiket / Insiden
+            new TableCell({
+              width: { size: 16, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: ticketStr, size: 16, bold: true, color: '0F172A' })],
+                }),
+              ],
+            }),
+            // 4. Perangkat & Lokasi
+            new TableCell({
+              width: { size: 18, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: equipLocStr, size: 16, color: '1E293B' }),
+                  ],
+                }),
+              ],
+            }),
+            // 5. Uraian Masalah & Perbaikan
+            new TableCell({
+              width: { size: 26, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: issueActionStr, size: 15, color: '334155' }),
+                  ],
+                }),
+              ],
+            }),
+            // 6. Status Trouble
+            new TableCell({
+              width: { size: 12, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: statusInfo.label,
+                      size: 15,
+                      bold: true,
+                      color: isClosed ? '166534' : 'B45309',
+                    }),
+                    new TextRun({
+                      text: `\n\n${statusInfo.note}`,
+                      size: 13,
+                      color: '475569',
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            // 7. Sparepart
+            new TableCell({
+              width: { size: 12, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: sparepartsStr, size: 14, color: '1E293B' }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        });
+      });
+
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [new TableRow({ children: tableHeaderCells }), ...dataRows],
+      });
+    };
+
+    const monthGroups = groupReportsByMonth(reports);
 
     // 3-Column Signatures
     const sigCellBorder = {
@@ -1102,11 +1202,11 @@ export async function exportCMMonthlyRecapToDocx(
               children: p1Bytes.length > 0 ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { before: 80, after: 80 },
+                  spacing: { before: 60, after: 60 },
                   children: [
                     new ImageRun({
                       data: p1Bytes,
-                      transformation: { width: 320, height: 210 },
+                      transformation: { width: 230, height: 150 },
                       type: 'jpg',
                     }),
                   ],
@@ -1119,11 +1219,11 @@ export async function exportCMMonthlyRecapToDocx(
               children: (p2Bytes && p2Bytes.length > 0) ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { before: 80, after: 80 },
+                  spacing: { before: 60, after: 60 },
                   children: [
                     new ImageRun({
                       data: p2Bytes,
-                      transformation: { width: 320, height: 210 },
+                      transformation: { width: 230, height: 150 },
                       type: 'jpg',
                     }),
                   ],
@@ -1186,6 +1286,105 @@ export async function exportCMMonthlyRecapToDocx(
       }
     }
 
+    const wordDocChildren: (Paragraph | Table)[] = [
+      headerTable,
+      new Paragraph({ spacing: { before: 200 } }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({
+            text: 'BERITA ACARA & REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM)',
+            bold: true,
+            size: 24,
+            color: NAVY_BLUE,
+          }),
+        ],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 150 },
+        children: [
+          new TextRun({
+            text: `Periode Rekapitulasi: ${periodTitle}`,
+            bold: true,
+            size: 18,
+            color: '475569',
+          }),
+        ],
+      }),
+      new Paragraph({
+        spacing: { after: 180 },
+        children: [
+          new TextRun({
+            text: `Ringkasan Statistik:  Total CM: ${totalCM} Dokumen  |  Solved (Closed): ${closedCount}  |  Pending (Open): ${openCount}  |  Pergantian Sparepart: ${sparepartCount}  |  Non-Sparepart: ${nonSparepartCount}`,
+            size: 16,
+            color: '1E293B',
+            bold: true,
+          }),
+        ],
+      }),
+    ];
+
+    if (monthGroups.length > 1) {
+      // Loop tiap bulan terpisah
+      monthGroups.forEach((group, gIdx) => {
+        const gTotal = group.reports.length;
+        const gClosed = group.reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
+        const gOpen = gTotal - gClosed;
+        const gSp = group.reports.filter(r => isCMSparepart(r)).length;
+
+        wordDocChildren.push(
+          new Paragraph({
+            pageBreakBefore: gIdx > 0,
+            spacing: { before: gIdx > 0 ? 0 : 250, after: 80 },
+            children: [
+              new TextRun({
+                text: `BAGIAN ${gIdx + 1}: REKAPITULASI CM — BULAN ${group.monthLabel.toUpperCase()}`,
+                bold: true,
+                size: 20,
+                color: NAVY_BLUE,
+              }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 160 },
+            children: [
+              new TextRun({
+                text: `Sub-Ringkasan Bulan ${group.monthLabel}:  Total: ${gTotal} CM  |  Solved: ${gClosed}  |  Pending: ${gOpen}  |  Sparepart: ${gSp}`,
+                bold: true,
+                size: 15,
+                color: '475569',
+              }),
+            ],
+          }),
+          buildWordCMTable(group.reports),
+          new Paragraph({ spacing: { before: 200 } })
+        );
+      });
+    } else {
+      // 1 Bulan saja
+      wordDocChildren.push(
+        buildWordCMTable(reports)
+      );
+    }
+
+    wordDocChildren.push(
+      new Paragraph({ spacing: { before: 300 } }),
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: 'LEMBAR PENGESAHAN REKAPITULASI CORRECTIVE MAINTENANCE',
+            bold: true,
+            size: 18,
+            color: NAVY_BLUE,
+          }),
+        ],
+      }),
+      new Paragraph({ spacing: { before: 100 } }),
+      signatureTable,
+      ...photoSectionChildren
+    );
+
     const doc = new Document({
       sections: [
         {
@@ -1222,59 +1421,7 @@ export async function exportCMMonthlyRecapToDocx(
               ],
             }),
           },
-          children: [
-            headerTable,
-            new Paragraph({ spacing: { before: 200 } }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: 'BERITA ACARA & REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM)',
-                  bold: true,
-                  size: 24,
-                  color: NAVY_BLUE,
-                }),
-              ],
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 150 },
-              children: [
-                new TextRun({
-                  text: `Periode Rekapitulasi: ${periodTitle}`,
-                  bold: true,
-                  size: 18,
-                  color: '475569',
-                }),
-              ],
-            }),
-            new Paragraph({
-              spacing: { after: 180 },
-              children: [
-                new TextRun({
-                  text: `Ringkasan Statistik:  Total CM: ${totalCM} Dokumen  |  Solved (Closed): ${closedCount}  |  Pending (Open): ${openCount}  |  Pergantian Sparepart: ${sparepartCount}  |  Non-Sparepart: ${nonSparepartCount}`,
-                  size: 16,
-                  color: '1E293B',
-                  bold: true,
-                }),
-              ],
-            }),
-            mainTable,
-            new Paragraph({ spacing: { before: 300 } }),
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: 'LEMBAR PENGESAHAN REKAPITULASI CORRECTIVE MAINTENANCE',
-                  bold: true,
-                  size: 18,
-                  color: NAVY_BLUE,
-                }),
-              ],
-            }),
-            new Paragraph({ spacing: { before: 100 } }),
-            signatureTable,
-            ...photoSectionChildren,
-          ],
+          children: wordDocChildren,
         },
       ],
     });
@@ -1307,7 +1454,7 @@ export async function exportCMMonthlyRecapToPDF(
     throw new Error('Tidak ada data Laporan CM yang valid untuk diekspor ke PDF.');
   }
 
-  const toastId = toast.loading('Membuat Dokumen PDF Rekap CM...');
+  const toastId = toast.loading('Menyiapkan & mengompresi PDF Rekap CM Ringkas...');
 
   try {
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
@@ -1320,14 +1467,22 @@ export async function exportCMMonthlyRecapToPDF(
     const DARK = '#1e293b';
     const GRAY = '#64748b';
 
-    const [leftLogo, rightLogo] = await Promise.all([
+    // Resolving logos & optimized report photos simultaneously
+    const [leftLogo, rightLogo, pdfReportsWithPhotos] = await Promise.all([
       loadLogoBase64(logoDwimitra),
       loadLogoBase64(logoNeutraDC),
+      resolveReportsWithPhotos(reports),
     ]);
 
+    const photosMapByReportId: Record<string, CMPhotoDetail[]> = {};
+    pdfReportsWithPhotos.forEach((item) => {
+      const rId = item.report.id || String(item.index);
+      photosMapByReportId[rId] = item.photos;
+    });
+
     const headerTopY = 4.5;
-    const headerH = 22;
-    const tableStartY = headerTopY + headerH + 3.5;
+    const headerH = 21;
+    const tableStartY = headerTopY + headerH + 3;
 
     const totalCM = reports.length;
     const closedCount = reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
@@ -1336,7 +1491,9 @@ export async function exportCMMonthlyRecapToPDF(
     const nonSparepartCount = totalCM - sparepartCount;
     const todayPrint = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    const drawHeader = (currentDoc: jsPDF) => {
+    const monthGroups = groupReportsByMonth(reports);
+
+    const drawHeader = (currentDoc: jsPDF, group?: MonthGroupedReports) => {
       // Top accent strip
       currentDoc.setFillColor(...BLUE_RGB);
       currentDoc.rect(0, 0, pageWidth, 2.5, 'F');
@@ -1352,237 +1509,220 @@ export async function exportCMMonthlyRecapToPDF(
       currentDoc.line(pageWidth - margin - col3W, headerTopY, pageWidth - margin - col3W, headerTopY + headerH);
 
       if (leftLogo) {
-        currentDoc.addImage(leftLogo, 'PNG', margin + 2.5, headerTopY + 3.5, col1W - 5, 15, 'logo_dme', 'FAST');
+        currentDoc.addImage(leftLogo, 'PNG', margin + 2.5, headerTopY + 3.2, col1W - 5, 14, 'logo_dme', 'FAST');
       }
       if (rightLogo) {
-        currentDoc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerTopY + 4, col3W - 5, 14, 'logo_neutra', 'FAST');
+        currentDoc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerTopY + 3.5, col3W - 5, 13.5, 'logo_neutra', 'FAST');
       }
 
       const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
-      currentDoc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
-      currentDoc.text('REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM)', centerX, headerTopY + 6.5, { align: 'center' });
+      currentDoc.setFontSize(10).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+      currentDoc.text('REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM)', centerX, headerTopY + 6.2, { align: 'center' });
 
-      currentDoc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(DARK);
-      currentDoc.text(`PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG (Periode: ${periodTitle})`, centerX, headerTopY + 11.5, { align: 'center' });
+      currentDoc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
+      const subTitle = group && monthGroups.length > 1
+        ? `PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG (Periode: ${periodTitle} • Bagian: ${group.monthLabel})`
+        : `PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG (Periode: ${periodTitle})`;
+      currentDoc.text(subTitle, centerX, headerTopY + 11, { align: 'center' });
 
-      currentDoc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
-      currentDoc.text(
-        `Total CM: ${totalCM}  |  Solved (Closed): ${closedCount}  |  Pending (Open): ${openCount}  |  Sparepart: ${sparepartCount}  |  Non-Sparepart: ${nonSparepartCount}  |  Cetak: ${todayPrint}`,
-        centerX,
-        headerTopY + 16.8,
-        { align: 'center' }
-      );
+      const targetReports = group ? group.reports : reports;
+      const gTotal = targetReports.length;
+      const gClosed = targetReports.filter(r => getTroubleStatusInfo(r).isClosed).length;
+      const gOpen = gTotal - gClosed;
+      const gSp = targetReports.filter(r => isCMSparepart(r)).length;
+      const gNonSp = gTotal - gSp;
+
+      currentDoc.setFontSize(6.8).setFont('helvetica', 'bold').setTextColor(GRAY);
+      const metricsText = group && monthGroups.length > 1
+        ? `[Bulan ${group.monthLabel}] Total: ${gTotal} CM  |  Solved: ${gClosed}  |  Pending: ${gOpen}  |  Sparepart: ${gSp}  |  Non-SP: ${gNonSp}  |  Cetak: ${todayPrint}`
+        : `Total CM: ${totalCM}  |  Solved (Closed): ${closedCount}  |  Pending (Open): ${openCount}  |  Sparepart: ${sparepartCount}  |  Non-SP: ${nonSparepartCount}  |  Cetak: ${todayPrint}`;
+
+      currentDoc.text(metricsText, centerX, headerTopY + 16, { align: 'center' });
     };
 
     const drawFooter = (currentDoc: jsPDF, pg: number, totalPages: number) => {
       currentDoc.setFillColor(...BLUE_RGB);
       currentDoc.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
       currentDoc.setFontSize(6.5).setTextColor(GRAY);
-      currentDoc.text('PT DWIMITRA EKATAMA MANDIRI — Corrective Maintenance Recap Report', margin, pageHeight - 4.5);
+      currentDoc.text('PT DWIMITRA EKATAMA MANDIRI — Corrective Maintenance Recap Report (Compact Format)', margin, pageHeight - 4.5);
       currentDoc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 4.5, { align: 'right' });
     };
 
-    drawHeader(doc);
+    // Render Table per Month Group
+    for (let gIdx = 0; gIdx < monthGroups.length; gIdx++) {
+      const currentGroup = monthGroups[gIdx];
+      const groupReports = currentGroup.reports;
 
-    // Build Table Rows
-    const tableRows = reports.map((r, idx) => {
-      const statusInfo = getTroubleStatusInfo(r);
-      const isSp = isCMSparepart(r);
-
-      const dateText = formatReportDate(r);
-      const timeText = formatReportTime(r);
-      const ticketText = `${r.incidentName || r.ticketName || r.ticketNumber || `CM-${idx + 1}`}\nPerangkat: ${r.equipmentName || r.equipment || '-'}\nLokasi: ${r.location || r.area || '-'}`;
-      
-      const issueActionText = `Masalah:\n${r.issue || r.problemAnalysis || r.problem || '-'}\n\nSolusi:\n${r.correctiveAction || r.actionTaken || '-'}`;
-      
-      const statusText = `${statusInfo.label}\n\nCatatan:\n${statusInfo.note}`;
-      const spText = `${isSp ? '[SPAREPART]\n' : '[NON-SP]\n'}${getSparepartsSummary(r)}`;
-      const picText = `DME: ${r.picDME || r.preparedByName || '-'}\nNeutra: ${r.picTDE || r.acknowledgedBy1Name || '-'}`;
-
-      return [
-        String(idx + 1),
-        timeText !== '-' ? `${dateText}\n${timeText}` : dateText,
-        ticketText,
-        issueActionText,
-        statusText,
-        spText,
-        picText,
-      ];
-    });
-
-    autoTable(doc, {
-      startY: tableStartY,
-      head: [[
-        'No',
-        'Tanggal & Jam',
-        'No Tiket & Perangkat',
-        'Uraian Masalah & Tindakan Perbaikan',
-        'Status Trouble',
-        'Sparepart Terpakai',
-        'Pelaksana (PIC)'
-      ]],
-      body: tableRows,
-      margin: { top: tableStartY, left: margin, right: margin, bottom: 10 },
-      styles: {
-        fontSize: 6.8,
-        cellPadding: 1.8,
-        lineColor: [203, 213, 225],
-        lineWidth: 0.15,
-        textColor: [30, 41, 59],
-        font: 'helvetica',
-        valign: 'middle',
-      },
-      headStyles: {
-        fillColor: BLUE_RGB,
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 7.2,
-        halign: 'center',
-        valign: 'middle',
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
-      },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 8 },
-        1: { halign: 'center', cellWidth: 24 },
-        2: { cellWidth: 50 },
-        3: { cellWidth: 'auto' },
-        4: { cellWidth: 42 },
-        5: { cellWidth: 40 },
-        6: { cellWidth: 32 },
-      },
-      didDrawPage: (data: any) => {
-        if (data.pageNumber > 1) {
-          drawHeader(doc);
-        }
-      },
-    });
-
-    // ========================================================================
-    // LAMPIRAN FOTO CM DI PDF (Halaman-halaman Terpisah)
-    // ========================================================================
-    const pdfReportsWithPhotos = await resolveReportsWithPhotos(reports);
-
-    interface FlatPdfPhoto {
-      reportIndex: number;
-      ticketStr: string;
-      equipLocStr: string;
-      dateStr: string;
-      base64: string;
-      description: string;
-      photoIndex: number;
-      totalPhotosForReport: number;
-    }
-
-    const flatPhotos: FlatPdfPhoto[] = [];
-    pdfReportsWithPhotos.forEach((item) => {
-      item.photos.forEach((p, idx) => {
-        flatPhotos.push({
-          reportIndex: item.index,
-          ticketStr: item.ticketStr,
-          equipLocStr: item.equipLocStr,
-          dateStr: item.dateStr,
-          base64: p.base64,
-          description: p.description,
-          photoIndex: idx + 1,
-          totalPhotosForReport: item.photos.length,
-        });
-      });
-    });
-
-    // Add Photo Documentation Page(s)
-    doc.addPage('a4', 'landscape');
-    const photoPageCenterX = pageWidth / 2;
-
-    const drawPhotoPageHeader = (currentDoc: jsPDF) => {
-      currentDoc.setFillColor(...BLUE_RGB);
-      currentDoc.rect(0, 0, pageWidth, 3.5, 'F');
-
-      if (leftLogo) {
-        currentDoc.addImage(leftLogo, 'PNG', margin, 5, 24, 8);
-      }
-      if (rightLogo) {
-        currentDoc.addImage(rightLogo, 'PNG', pageWidth - margin - 22, 5, 22, 8);
+      if (gIdx > 0) {
+        doc.addPage('a4', 'landscape');
       }
 
-      currentDoc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
-      currentDoc.text('LAMPIRAN DOKUMENTASI FOTO CORRECTIVE MAINTENANCE (CM)', photoPageCenterX, 9, { align: 'center' });
+      drawHeader(doc, currentGroup);
 
-      currentDoc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
-      currentDoc.text(`PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG (Periode: ${periodTitle})`, photoPageCenterX, 13.5, { align: 'center' });
+      const tableRows = groupReports.map((r, idx) => {
+        const rId = r.id || String(idx + 1);
+        const rPhotos = photosMapByReportId[rId] || [];
+        const hasPhotos = rPhotos.length > 0;
 
-      currentDoc.setDrawColor(203, 213, 225);
-      currentDoc.setLineWidth(0.2);
-      currentDoc.line(margin, 16.5, pageWidth - margin, 16.5);
-    };
+        const statusInfo = getTroubleStatusInfo(r);
+        const isSp = isCMSparepart(r);
 
-    drawPhotoPageHeader(doc);
+        const dateText = formatReportDate(r);
+        const timeText = formatReportTime(r);
+        const ticketText = `${r.incidentName || r.ticketName || r.ticketNumber || `CM-${idx + 1}`}\nPerangkat: ${r.equipmentName || r.equipment || '-'}\nLokasi: ${r.location || r.area || 'NeutraDC'}`;
+        
+        const issueActionText = `Masalah:\n${r.issue || r.problemAnalysis || r.problem || '-'}\n\nTindakan:\n${r.correctiveAction || r.actionTaken || '-'}`;
+        
+        const statusText = `Status: ${statusInfo.label}\n\nSparepart:\n${isSp ? '[GANTI SP]' : '[NON-SP]'}\n${getSparepartsSummary(r)}\n\nPIC: ${r.picDME || r.preparedByName || '-'}`;
 
-    if (flatPhotos.length === 0) {
-      doc.setFontSize(10).setFont('helvetica', 'italic').setTextColor(GRAY);
-      doc.text('(Tidak terdapat lampiran foto dokumentasi pada data laporan CM periode ini)', photoPageCenterX, 80, { align: 'center' });
-    } else {
-      const photosPerPage = 4;
-      const cardW = 132;
-      const cardH = 82;
-      const gapX = 7;
-      const gapY = 6;
-      const startX = margin;
-      const startY = 20;
+        return [
+          String(idx + 1),
+          timeText !== '-' ? `${dateText}\n${timeText}` : dateText,
+          ticketText,
+          issueActionText,
+          statusText,
+          {
+            content: '',
+            styles: { minCellHeight: hasPhotos ? 29 : 12 }
+          },
+        ];
+      });
 
-      flatPhotos.forEach((photo, idx) => {
-        const slotIdx = idx % photosPerPage;
+      const photoColHeader = monthGroups.length > 1
+        ? `Dokumentasi Foto (${currentGroup.monthLabel})`
+        : 'Dokumentasi Foto Pekerjaan (Terpadu)';
 
-        if (idx > 0 && slotIdx === 0) {
-          doc.addPage('a4', 'landscape');
-          drawPhotoPageHeader(doc);
-        }
+      autoTable(doc, {
+        startY: tableStartY,
+        head: [[
+          'No',
+          'Tanggal & Jam',
+          'No Tiket & Perangkat',
+          'Uraian Masalah & Tindakan Perbaikan',
+          'Status & PIC',
+          photoColHeader
+        ]],
+        body: tableRows,
+        margin: { top: tableStartY, left: margin, right: margin, bottom: 8 },
+        styles: {
+          fontSize: 6.8,
+          cellPadding: 1.6,
+          lineColor: [203, 213, 225],
+          lineWidth: 0.15,
+          textColor: [30, 41, 59],
+          font: 'helvetica',
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: BLUE_RGB,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7.2,
+          halign: 'center',
+          valign: 'middle',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 7 },
+          1: { halign: 'center', cellWidth: 23 },
+          2: { cellWidth: 44 },
+          3: { cellWidth: 67 },
+          4: { cellWidth: 38 },
+          5: { cellWidth: 98, halign: 'center' },
+        },
+        didDrawPage: () => {
+          drawHeader(doc, currentGroup);
+        },
+        didDrawCell: (data: any) => {
+          if (data.section === 'body' && data.column.index === 5) {
+            const currentReport = groupReports[data.row.index];
+            const rId = currentReport?.id || String(data.row.index + 1);
+            const rPhotos = photosMapByReportId[rId] || [];
 
-        const col = slotIdx % 2;
-        const row = Math.floor(slotIdx / 2);
+            if (rPhotos.length > 0) {
+              const photosToDraw = rPhotos.slice(0, 3);
+              const count = photosToDraw.length;
+              const padX = 1.2;
+              const padY = 1.2;
+              const availW = data.cell.width - padX * 2;
+              const availH = data.cell.height - padY * 2;
+              const gap = 1.8;
+              const photoW = (availW - (count - 1) * gap) / count;
+              const maxPhotoH = availH - 4;
+              const photoH = Math.max(16, Math.min(maxPhotoH, 23.5));
 
-        const cardX = startX + col * (cardW + gapX);
-        const cardY = startY + row * (cardH + gapY);
+              photosToDraw.forEach((photo, pIdx) => {
+                const imgX = data.cell.x + padX + pIdx * (photoW + gap);
+                const imgY = data.cell.y + padY;
 
-        // Card container border & fill
-        doc.setFillColor(248, 250, 252);
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(cardX, cardY, cardW, cardH, 1.5, 1.5, 'FD');
+                doc.setFillColor(241, 245, 249);
+                doc.setDrawColor(203, 213, 225);
+                doc.setLineWidth(0.15);
+                doc.roundedRect(imgX, imgY, photoW, photoH, 0.8, 0.8, 'FD');
 
-        // Card Header Bar (Ticket & Equipment)
-        doc.setFillColor(...BLUE_RGB);
-        doc.roundedRect(cardX, cardY, cardW, 6.5, 1.5, 1.5, 'F');
-        doc.rect(cardX, cardY + 3, cardW, 3.5, 'F'); // square bottom corners
-        doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
-        const headerText = `[CM #${photo.reportIndex}] ${photo.ticketStr} | ${photo.equipLocStr}`;
-        doc.text(headerText.length > 58 ? headerText.substring(0, 56) + '...' : headerText, cardX + 3, cardY + 4.5);
+                try {
+                  doc.addImage(photo.base64, 'JPEG', imgX, imgY, photoW, photoH, undefined, 'FAST');
+                } catch (err) {
+                  console.warn('Gagal render foto di sel PDF:', err);
+                }
 
-        // Photo Image Box
-        const imgX = cardX + 2.5;
-        const imgY = cardY + 8;
-        const imgW = cardW - 5;
-        const imgH = 58;
+                doc.setDrawColor(148, 163, 184);
+                doc.setLineWidth(0.1);
+                doc.roundedRect(imgX, imgY, photoW, photoH, 0.8, 0.8, 'S');
 
-        doc.setFillColor(255, 255, 255);
-        doc.rect(imgX, imgY, imgW, imgH, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.rect(imgX, imgY, imgW, imgH, 'S');
-
-        try {
-          doc.addImage(photo.base64, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
-        } catch (imgErr) {
-          console.warn('Gagal render foto di PDF:', imgErr);
-        }
-
-        // Caption Bar
-        doc.setFontSize(6.5).setFont('helvetica', 'italic').setTextColor(DARK);
-        const capText = `Foto ${photo.photoIndex}/${photo.totalPhotosForReport}: ${photo.description || 'Dokumentasi perbaikan CM'}`;
-        const splitCap = doc.splitTextToSize(capText, cardW - 6);
-        doc.text(splitCap, cardX + 3, cardY + 70);
+                doc.setFontSize(4.8).setFont('helvetica', 'normal').setTextColor(71, 85, 105);
+                const rawDesc = photo.description || `Foto ${pIdx + 1}`;
+                const shortDesc = rawDesc.length > 20 ? rawDesc.substring(0, 18) + '..' : rawDesc;
+                doc.text(shortDesc, imgX + photoW / 2, imgY + photoH + 3, { align: 'center' });
+              });
+            } else {
+              doc.setFontSize(6.2).setFont('helvetica', 'italic').setTextColor(148, 163, 184);
+              doc.text('(Tanpa Lampiran Foto)', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, { align: 'center' });
+            }
+          }
+        },
       });
     }
+
+    // ========================================================================
+    // LEMBAR PENGESAHAN TANDA TANGAN (Compact & Hemat Space)
+    // ========================================================================
+    const finalY = (doc as any).lastAutoTable?.finalY || 150;
+    const sigBoxH = 32;
+    let sigStartY = finalY + 5;
+
+    if (sigStartY + sigBoxH > pageHeight - 8) {
+      doc.addPage('a4', 'landscape');
+      drawHeader(doc);
+      sigStartY = tableStartY + 5;
+    }
+
+    const colSigW = (contentW - 8) / 3;
+    const sigBoxes = [
+      { title: 'PREPARED BY,', name: 'Arif Budiman', org: 'PT Dwimitra Ekatama Mandiri', role: 'Standby Engineer' },
+      { title: 'ACKNOWLEDGED BY,', name: 'Dwi Tasmiyadi', org: 'Facility Management NeutraDC', role: 'Facility Manager' },
+      { title: 'APPROVED BY,', name: 'Budi Susanto', org: 'NeutraDC (PT Telkom Data Ekosistem)', role: 'Assistant Manager HDC' },
+    ];
+
+    sigBoxes.forEach((box, bIdx) => {
+      const bx = margin + bIdx * (colSigW + 4);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(bx, sigStartY, colSigW, sigBoxH, 1, 1, 'FD');
+
+      doc.setFillColor(241, 245, 249);
+      doc.rect(bx, sigStartY, colSigW, 5.5, 'F');
+      doc.setFontSize(6.8).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+      doc.text(box.title, bx + colSigW / 2, sigStartY + 4, { align: 'center' });
+
+      doc.setFontSize(7.2).setFont('helvetica', 'bold').setTextColor(DARK);
+      doc.text(box.name, bx + colSigW / 2, sigStartY + sigBoxH - 7, { align: 'center' });
+      doc.setFontSize(5.8).setFont('helvetica', 'normal').setTextColor(GRAY);
+      doc.text(`${box.role} — ${box.org}`, bx + colSigW / 2, sigStartY + sigBoxH - 3, { align: 'center' });
+    });
 
     // Add Footers to all pages
     const totalPages = (doc as any).internal.getNumberOfPages();
@@ -1592,10 +1732,10 @@ export async function exportCMMonthlyRecapToPDF(
     }
 
     const cleanPeriod = periodTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const fileName = `Rekap_CM_${cleanPeriod}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `Rekap_CM_Ringkas_${cleanPeriod}_${new Date().toISOString().split('T')[0]}.pdf`;
 
     doc.save(fileName);
-    toast.success('PDF Rekap CM berhasil diunduh!', { id: toastId });
+    toast.success('PDF Rekap CM Ringkas & Foto berhasil diunduh!', { id: toastId });
   } catch (err: any) {
     console.error('Error exporting CM recap to PDF:', err);
     toast.error(`Gagal membuat PDF Rekap CM: ${err?.message || err}`, { id: toastId });
