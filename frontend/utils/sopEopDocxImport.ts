@@ -162,6 +162,22 @@ function isWorkStepHeader(text: string): boolean {
   return /(?:Action|Tindakan)/i.test(text) && /(?:Expected\s*Outcome|Hasil\s*yang\s*Diharapkan)/i.test(text);
 }
 
+/** Read Author/Penyusun only from Document Information, never from another section. */
+function extractDocumentAuthor(xml: string, isEop: boolean): string {
+  const documentInfoSection = getSectionBlocks(xml, isEop ? 5 : 12);
+  const text = documentInfoSection
+    .map((block) => structuredXmlText(block.xml))
+    .join('\n')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text) return '';
+
+  const match = text.match(
+    /(?:Author|Penulis|Penyusun)\s*(?:\/\s*(?:Author|Penulis|Penyusun))?\s*:?\s*([\s\S]*?)(?=(?:Author|Penulis|Penyusun)\s*:|Date\s*of\s*Creation|Tanggal\s*(?:Pembuatan|Dibuat)|Next\s*Date\s*Revision|Date\s*Revision|Revision\s*Number|Nomor\s*Revisi|$)/i
+  );
+  return match?.[1]?.replace(/^[\s:\-]+|[\s:\-]+$/g, '').trim() || '';
+}
+
 
 /**
  * Deteksi apakah sebuah teks lebih cenderung Bahasa Indonesia atau Bahasa Inggris
@@ -333,7 +349,9 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
     getMatch(/Lokasi\s*Kerja\s*:\s*([\s\S]*?)(?:Section|Seksi|\n\n)/i) || 'Neutra DC Cikarang';
 
   const author =
-    getMatch(/Author\s*:?\s*([a-zA-Z0-9\s\.\,\'\-]+?)(?:Date\s*of\s*Creation|Penulis|\n|$)/i) || 'Alif Darmawan';
+    extractDocumentAuthor(xml, isEop) ||
+    getMatch(/(?:Author|Penulis|Penyusun)\s*:?\s*([a-zA-Z0-9\s\.\,\'\-]+?)(?:Date\s*of\s*Creation|Tanggal\s*Pembuatan|\n|$)/i) ||
+    'Alif Darmawan';
   const creationDate =
     getMatch(
       /Date\s*of\s*Creation\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Penulis|Tanggal\s*Pembuatan|Date\s*Revision|Next\s*Date\s*Revision|Revision\s*Number|\n|$)/i
