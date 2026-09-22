@@ -313,33 +313,12 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
     return m && m[1] ? decodeEntities(m[1].trim()) : '';
   };
 
-  let rawTitle = getMatch(/Document\s*Title\s*:\s*([\s\S]*?)(?:Judul\s*Dokumen|Document\s*Purpose)/i)
-    .replace(/^[\s\-:]+/, '')
+  // The uploaded filename is the canonical document identity. Never replace
+  // it with a generic equipment/template title during an import.
+  const title = fileName
+    .replace(/\.docx$/i, '')
+    .replace(/\s*\(\d+\)\s*$/g, '')
     .trim();
-
-  let title = rawTitle;
-  if (title === '-' || !title) {
-    const cleanFn = fileName
-      .replace(/\.docx$/i, '')
-      .replace(/\s*\(\d+\)\s*$/g, '') // Bersihkan suffix copy seperti (1), (2)
-      .replace(/[-_]/g, ' ')
-      .trim()
-      .toUpperCase();
-
-    if (/trafo|transformer/i.test(fileName) || /transformer/i.test(xml)) {
-      title = isEop
-        ? 'EOP GANGGUAN / PADAM TRANSFORMATOR (TRAFO)'
-        : 'SOP PEMELIHARAAN TRANSFORMATOR (TRAFO)';
-    } else {
-      title = isEop
-        ? cleanFn.includes('EOP')
-          ? cleanFn
-          : `EOP ${cleanFn}`
-        : cleanFn.includes('SOP')
-        ? cleanFn
-        : `SOP ${cleanFn}`;
-    }
-  }
 
   const purposeEn = getMatch(/Document\s*Purpose\s*:\s*([\s\S]*?)(?:Tujuan\s*Dokumen|Work\s*Location)/i);
   const purposeId = getMatch(/Tujuan\s*Dokumen\s*:\s*([\s\S]*?)(?:Work\s*Location|Section|Seksi)/i);
