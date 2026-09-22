@@ -107,6 +107,63 @@ function extractPlainSection(xml: string, sectionNumber: number, nextSectionNumb
 }
 
 /**
+ * DOCX exports often split a logical section across several adjacent blocks:
+ * a heading table, a paragraph containing column labels, then one or more
+ * data tables (including continuation tables on the next page).  Keep that
+ * original order so individual parsers never need to guess globally.
+ */
+type WordDocumentBlock = {
+  kind: 'paragraph' | 'table';
+  xml: string;
+  text: string;
+};
+
+function getOrderedDocumentBlocks(xml: string): WordDocumentBlock[] {
+  const bodyMatch = xml.match(/<w:body(?:\s|>)[\s\S]*?<\/w:body>/i);
+  const body = bodyMatch?.[0] || xml;
+  const tableMatches = [...body.matchAll(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/gi)].map((match) => ({
+    start: match.index || 0,
+    end: (match.index || 0) + match[0].length,
+    kind: 'table' as const,
+    xml: match[0],
+  }));
+  const paragraphMatches = [...body.matchAll(/<w:p(?:\s|>)[\s\S]*?<\/w:p>/gi)]
+    .filter((match) => !tableMatches.some((table) => (match.index || 0) >= table.start && (match.index || 0) < table.end))
+    .map((match) => ({ start: match.index || 0, kind: 'paragraph' as const, xml: match[0] }));
+
+  return [...tableMatches, ...paragraphMatches]
+    .sort((a, b) => a.start - b.start)
+    .map(({ kind, xml: blockXml }) => ({ kind, xml: blockXml, text: cleanText(blockXml) }));
+}
+
+function getSectionBlocks(xml: string, sectionNumber: number): WordDocumentBlock[] {
+  const blocks = getOrderedDocumentBlocks(xml);
+  let activeSection: number | null = null;
+  const result: WordDocumentBlock[] = [];
+
+  for (const block of blocks) {
+    const heading = block.text.match(/(?:Section|Seksi)\s*(\d+)\b/i);
+    if (heading) activeSection = Number(heading[1]);
+    if (activeSection === sectionNumber) result.push(block);
+  }
+
+  return result;
+}
+
+function getTableRows(tableXml: string): Array<{ cells: string[]; cellXml: string[] }> {
+  const rows = tableXml.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/gi) || [];
+  return rows.map((row) => {
+    const cellXml = row.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/gi) || [];
+    return { cellXml, cells: cellXml.map((cell) => cleanText(cell)) };
+  });
+}
+
+function isWorkStepHeader(text: string): boolean {
+  return /(?:Action|Tindakan)/i.test(text) && /(?:Expected\s*Outcome|Hasil\s*yang\s*Diharapkan)/i.test(text);
+}
+
+
+/**
  * Deteksi apakah sebuah teks lebih cenderung Bahasa Indonesia atau Bahasa Inggris
  */
 function detectLanguage(text: string): 'id' | 'en' {
@@ -601,82 +658,62 @@ function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
   return items;
 }
 
+/** Read a work-instruction table plus any continuation tables in the same section. */
+function parseSectionWorkSteps(
+  xml: string,
+  sectionNumber: number,
+  lastColumn: 'initial' | 'name'
+): Array<SOPWorkStepItem | EOPWorkStepItem> {
+  const sectionTables = getSectionBlocks(xml, sectionNumber).filter((block) => block.kind === 'table');
+  const headerTableIndex = sectionTables.findIndex((block) => isWorkStepHeader(block.text));
+  if (headerTableIndex < 0) return [];
+
+  const headerRows = getTableRows(sectionTables[headerTableIndex].xml);
+  const headerRow = headerRows.find((row) => isWorkStepHeader(row.cells.join(' ')));
+  const hasNoCol = !!headerRow && /^\s*(?:no\b|nomor\b|#)/i.test(headerRow.cells[0] || '');
+  const steps: Array<SOPWorkStepItem | EOPWorkStepItem> = [];
+
+  // Every following table remains in this section. A table may be a page-break
+  // continuation and therefore deliberately has no repeated header row.
+  for (let tableIndex = headerTableIndex; tableIndex < sectionTables.length; tableIndex++) {
+    const rows = getTableRows(sectionTables[tableIndex].xml);
+    for (const row of rows) {
+      if (isWorkStepHeader(row.cells.join(' ')) || row.cells.length < 2) continue;
+
+      const firstCell = (row.cells[0] || '').replace(/\.$/, '').trim();
+      const rowHasNoCol = hasNoCol || (/^\d+$/.test(firstCell) && row.cells.length >= 4);
+      const actionIndex = rowHasNoCol ? 1 : 0;
+      const outcomeIndex = rowHasNoCol ? 2 : 1;
+      const timeIndex = rowHasNoCol ? 3 : 2;
+      const finalIndex = rowHasNoCol ? 4 : 3;
+      const action = extractBilingualFromXml(row.cellXml[actionIndex] || '');
+      const outcome = extractBilingualFromXml(row.cellXml[outcomeIndex] || '');
+      if (!action.en && !action.id) continue;
+
+      const no = rowHasNoCol ? parseInt(firstCell, 10) || steps.length + 1 : steps.length + 1;
+      const base = {
+        no,
+        actionEn: (action.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim(),
+        actionId: (action.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim(),
+        expectedOutcomeEn: (outcome.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim(),
+        expectedOutcomeId: (outcome.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim(),
+        time: row.cells[timeIndex] || '',
+      };
+      steps.push(lastColumn === 'initial'
+        ? { ...base, initial: row.cells[finalIndex] || '' }
+        : { ...base, name: row.cells[finalIndex] || '' });
+    }
+  }
+
+  return steps;
+}
+
 /**
  * Mengekstrak Langkah Kerja SOP (Seksi 10) secara dwibahasa presisi.
  * Mendukung tabel baik yang memiliki kolom No terpisah maupun tanpa kolom No.
  */
 function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
-  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
-  const stepTbl = tbls.find(
-    (t) =>
-      (containsLabel(t, 'Action') || containsLabel(t, 'Tindakan')) &&
-      (containsLabel(t, 'Expected Outcome') || containsLabel(t, 'Hasil yang Diharapkan'))
-  );
-  if (!stepTbl) return [];
-
-  const trs = stepTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
-  const headerIdx = trs.findIndex(
-    (tr) => containsLabel(tr, 'Expected Outcome') || containsLabel(tr, 'Hasil yang Diharapkan')
-  );
-  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
-
-  // Deteksi apakah header memiliki kolom No di kolom pertama
-  let hasNoCol = false;
-  if (headerIdx >= 0) {
-    const headerTcs = trs[headerIdx].match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
-    if (headerTcs.length >= 4) {
-      const firstColText = cleanText(headerTcs[0] || '').toLowerCase();
-      if (/^no\b|^nomor\b|^#/.test(firstColText)) {
-        hasNoCol = true;
-      }
-    }
-  }
-
-  const steps = dataRows
-    .map((tr, idx) => {
-      const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
-      if (tcs.length < 2) return null;
-
-      const firstColText = cleanText(tcs[0] || '').replace(/\.$/, '');
-      const isFirstColNumber = /^\d+$/.test(firstColText);
-      const isRowWithNoCol = hasNoCol || (isFirstColNumber && tcs.length >= 4);
-
-      let stepNo = idx + 1;
-      let actionCell = tcs[0];
-      let outcomeCell = tcs[1];
-      let timeCell = tcs[2];
-      let initialCell = tcs[3];
-
-      if (isRowWithNoCol) {
-        stepNo = parseInt(firstColText, 10) || idx + 1;
-        actionCell = tcs[1];
-        outcomeCell = tcs[2];
-        timeCell = tcs[3];
-        initialCell = tcs[4];
-      }
-
-      const action = extractBilingualFromXml(actionCell || '');
-      const outcome = extractBilingualFromXml(outcomeCell || '');
-      if (!action.en && !action.id) return null;
-
-      const cleanActionEn = (action.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-      const cleanActionId = (action.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-      const cleanOutcomeEn = (outcome.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-      const cleanOutcomeId = (outcome.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-
-      return {
-        no: stepNo,
-        actionEn: cleanActionEn,
-        actionId: cleanActionId,
-        expectedOutcomeEn: cleanOutcomeEn,
-        expectedOutcomeId: cleanOutcomeId,
-        time: timeCell ? cleanText(timeCell) : '',
-        initial: initialCell ? cleanText(initialCell) : ''
-      };
-    })
-    .filter(Boolean) as SOPWorkStepItem[];
-
-  return steps;
+  return parseSectionWorkSteps(xml, 10, 'initial') as SOPWorkStepItem[];
 }
 
 /**
@@ -684,118 +721,36 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
  * Mendukung format tabel dengan atau tanpa kolom nomor (No).
  */
 function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
-  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
-  const stepTbl = tbls.find(
-    (t) =>
-      (containsLabel(t, 'Action') || containsLabel(t, 'Tindakan')) &&
-      (containsLabel(t, 'Expected Outcome') || containsLabel(t, 'Hasil yang Diharapkan'))
-  );
-  if (!stepTbl) return [];
-
-  const trs = stepTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
-  const headerIdx = trs.findIndex(
-    (tr) => containsLabel(tr, 'Expected Outcome') || containsLabel(tr, 'Hasil yang Diharapkan')
-  );
-  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
-
-  let hasNoCol = false;
-  if (headerIdx >= 0) {
-    const headerTcs = trs[headerIdx].match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
-    if (headerTcs.length >= 4) {
-      const firstColText = cleanText(headerTcs[0] || '').toLowerCase();
-      if (/^no\b|^nomor\b|^#/.test(firstColText)) {
-        hasNoCol = true;
-      }
-    }
-  }
-
-  const steps = dataRows
-    .map((tr, idx) => {
-      const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
-      if (tcs.length < 2) return null;
-
-      const firstColText = cleanText(tcs[0] || '').replace(/\.$/, '');
-      const isFirstColNumber = /^\d+$/.test(firstColText);
-      const isRowWithNoCol = hasNoCol || (isFirstColNumber && tcs.length >= 4);
-
-      let stepNo = idx + 1;
-      let actionCell = tcs[0];
-      let outcomeCell = tcs[1];
-      let timeCell = tcs[2];
-      let nameCell = tcs[3];
-
-      if (isRowWithNoCol) {
-        stepNo = parseInt(firstColText, 10) || idx + 1;
-        actionCell = tcs[1];
-        outcomeCell = tcs[2];
-        timeCell = tcs[3];
-        nameCell = tcs[4];
-      }
-
-      const action = extractBilingualFromXml(actionCell || '');
-      const outcome = extractBilingualFromXml(outcomeCell || '');
-      if (!action.en && !action.id) return null;
-
-      const cleanActionEn = (action.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-      const cleanActionId = (action.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-      const cleanOutcomeEn = (outcome.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-      const cleanOutcomeId = (outcome.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
-
-      return {
-        no: stepNo,
-        actionEn: cleanActionEn,
-        actionId: cleanActionId,
-        expectedOutcomeEn: cleanOutcomeEn,
-        expectedOutcomeId: cleanOutcomeId,
-        time: timeCell ? cleanText(timeCell) : '',
-        name: nameCell ? cleanText(nameCell) : ''
-      };
-    })
-    .filter(Boolean) as EOPWorkStepItem[];
-
-  return steps;
+  return parseSectionWorkSteps(xml, 4, 'name') as EOPWorkStepItem[];
 }
 
 /**
  * Mengekstrak tabel Dokumen Referensi (SOP Seksi 5 / EOP Seksi 2).
  * Mendukung tabel 2 kolom [Name, Number] maupun 3 kolom [No, Name, Number].
  */
-function parseReferencedDocuments(xml: string): SOPReferencedDocItem[] {
-  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
-  const refTbl = tbls.find(
-    (t) =>
-      (containsLabel(t, 'Document Name') || containsLabel(t, 'Nama Dokumen')) &&
-      (containsLabel(t, 'Document Number') || containsLabel(t, 'Nomor Dokumen'))
+function parseReferencedDocuments(xml: string, sectionNumber: number): SOPReferencedDocItem[] {
+  const blocks = getSectionBlocks(xml, sectionNumber);
+  const headerIndex = blocks.findIndex((block) =>
+    /(?:Document\s*Name|Nama\s*Dokumen)/i.test(block.text) &&
+    /(?:Document\s*Number|Nomor\s*Dokumen)/i.test(block.text)
   );
-  if (!refTbl) return [];
-
-  const trs = refTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
-  const headerIdx = trs.findIndex(
-    (tr) =>
-      (containsLabel(tr, 'Document Name') || containsLabel(tr, 'Nama Dokumen')) &&
-      (containsLabel(tr, 'Document Number') || containsLabel(tr, 'Nomor Dokumen'))
-  );
-  const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+  if (headerIndex < 0) return [];
 
   const docs: SOPReferencedDocItem[] = [];
-  for (const tr of dataRows) {
-    const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
-    if (tcs.length < 2) continue;
-
-    let name = cleanText(tcs[0] || '');
-    let number = cleanText(tcs[1] || '');
-
-    // Jika kolom pertama adalah nomor urut (angka) dan tabel memiliki 3 kolom
-    if (tcs.length >= 3 && /^\d+$/.test(name.replace(/\.$/, ''))) {
-      name = cleanText(tcs[1] || '');
-      number = cleanText(tcs[2] || '');
-    }
-
-    if ((name && name !== '-') || (number && number !== '-')) {
-      docs.push({ name, number });
+  // Header labels can be a paragraph, while their data table starts in the
+  // next block. Read all tables after the labels until the next section.
+  for (const block of blocks.slice(headerIndex)) {
+    if (block.kind !== 'table') continue;
+    for (const row of getTableRows(block.xml)) {
+      if (row.cells.length < 2 || /(?:Document\s*Name|Nama\s*Dokumen)/i.test(row.cells.join(' '))) continue;
+      let [name, number] = row.cells;
+      if (row.cells.length >= 3 && /^\d+\.?$/.test(name.trim())) {
+        name = row.cells[1];
+        number = row.cells[2];
+      }
+      if ((name && name !== '-') || (number && number !== '-')) docs.push({ name: name || '', number: number || '' });
     }
   }
-
   return docs;
 }
 
@@ -1158,7 +1113,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     affectedSystemsDetails,
     affectedSystemsDetailsEn: affectedSystemsPair.en || affectedSystemsDetails,
     affectedSystemsDetailsId: affectedSystemsPair.id,
-    referencedDocuments: parseReferencedDocuments(xml),
+    referencedDocuments: parseReferencedDocuments(xml, 5),
     ehsRequirements,
     prerequisites,
     dryRun: {
@@ -1190,7 +1145,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
  */
 function parseEOPData(xml: string, fileName: string): EOPDocumentData {
   const meta = extractMetadata(xml, fileName, true);
-  const referencedDocuments = parseReferencedDocuments(xml);
+  const referencedDocuments = parseReferencedDocuments(xml, 2);
   const ehsRequirements = parseEOPEHSRequirementsRobust(xml);
   const robustExpectedCond = parseEOPExpectedConditionsRobust(xml);
   const parsedExpectedCond = robustExpectedCond.en || robustExpectedCond.id
