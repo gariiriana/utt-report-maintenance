@@ -1045,86 +1045,6 @@ export async function exportCMMonthlyRecapToDocx(
 
     const monthGroups = groupReportsByMonth(reports);
 
-    // 3-Column Signatures
-    const sigCellBorder = {
-      top: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-      bottom: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-      left: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-      right: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-    };
-
-    const signatureTable = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      borders: sigCellBorder,
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 33.3, type: WidthType.PERCENTAGE },
-              borders: sigCellBorder,
-              shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'PREPARED BY,', bold: true, size: 16 })],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 33.3, type: WidthType.PERCENTAGE },
-              borders: sigCellBorder,
-              shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'ACKNOWLEDGED BY,', bold: true, size: 16 })],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 33.3, type: WidthType.PERCENTAGE },
-              borders: sigCellBorder,
-              shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'APPROVED BY,', bold: true, size: 16 })],
-                }),
-              ],
-            }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 33.3, type: WidthType.PERCENTAGE },
-              borders: sigCellBorder,
-              children: [
-                new Paragraph({ spacing: { before: 900, after: 100 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Arif Budiman', bold: true, size: 16 })] }),
-                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'PT Dwimitra Ekatama Mandiri', size: 14, color: '64748B' })] }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 33.3, type: WidthType.PERCENTAGE },
-              borders: sigCellBorder,
-              children: [
-                new Paragraph({ spacing: { before: 900, after: 100 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Dwi Tasmiyadi', bold: true, size: 16 })] }),
-                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Facility Manager (NeutraDC)', size: 14, color: '64748B' })] }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 33.3, type: WidthType.PERCENTAGE },
-              borders: sigCellBorder,
-              children: [
-                new Paragraph({ spacing: { before: 900, after: 100 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Budi Susanto', bold: true, size: 16 })] }),
-                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Assistant Manager HDC (NeutraDC)', size: 14, color: '64748B' })] }),
-              ],
-            }),
-          ],
-        }),
-      ],
-    });
-
     // ========================================================================
     // LAMPIRAN FOTO CM DI WORD (Section / Halaman Terpisah dengan PageBreak)
     // ========================================================================
@@ -1308,22 +1228,8 @@ export async function exportCMMonthlyRecapToDocx(
       );
     }
 
-    wordDocChildren.push(
-      new Paragraph({ spacing: { before: 300 } }),
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: 'LEMBAR PENGESAHAN REKAPITULASI CORRECTIVE MAINTENANCE',
-            bold: true,
-            size: 18,
-            color: NAVY_BLUE,
-          }),
-        ],
-      }),
-      new Paragraph({ spacing: { before: 100 } }),
-      signatureTable,
-      ...photoSectionChildren
-    );
+    // Rekap diekspor tanpa lembar pengesahan / tanda tangan.
+    wordDocChildren.push(...photoSectionChildren);
 
     const doc = new Document({
       sections: [
@@ -1626,9 +1532,8 @@ export async function exportCMMonthlyRecapToPDF(
       });
     }
 
-    // ========================================================================
-    // LEMBAR PENGESAHAN TANDA TANGAN (Compact & Hemat Space)
-    // ========================================================================
+    // Rekap PDF tidak menggunakan lembar pengesahan / tanda tangan.
+    if (false) {
     const finalY = (doc as any).lastAutoTable?.finalY || 150;
     const sigBoxH = 32;
     let sigStartY = finalY + 5;
@@ -1663,6 +1568,8 @@ export async function exportCMMonthlyRecapToPDF(
       doc.setFontSize(5.8).setFont('helvetica', 'normal').setTextColor(GRAY);
       doc.text(`${box.role} — ${box.org}`, bx + colSigW / 2, sigStartY + sigBoxH - 3, { align: 'center' });
     });
+
+    }
 
     // Add Footers to all pages
     const totalPages = (doc as any).internal.getNumberOfPages();

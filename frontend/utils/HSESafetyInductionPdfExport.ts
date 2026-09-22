@@ -279,37 +279,6 @@ async function buildSafetyInductionPdfDocument(
   const komitmenText = 'Peserta telah mengikuti pengarahan Safety Induction, memahami bahaya di lingkungan Data Center NeutraDC Cikarang, sanggup mengenakan APD standar, mentaati izin kerja (PTW), serta bersedia mengutamakan keselamatan kerja.';
   doc.text(komitmenText, margin + 3, y + 8.5, { maxWidth: contentW - 6 });
 
-  y += 20;
-
-  // Signatures Table
-  const officerName = record.inspectorK3 || record.authorEmail?.split('@')[0]?.toUpperCase() || 'HSE Officer';
-  const pesertaName = hasMultiplePeserta
-    ? `${record.pesertaList![0].nama || 'Peserta'}, dkk (${record.pesertaList!.length} Orang)`
-    : (record.nama || 'Peserta Induction');
-
-  autoTable(doc, {
-    startY: y,
-    margin: { left: margin, right: margin },
-    theme: 'plain',
-    styles: {
-      fontSize: 8,
-      cellPadding: 1,
-      textColor: DARK,
-      halign: 'center',
-    },
-    columnStyles: {
-      0: { cellWidth: contentW / 2 },
-      1: { cellWidth: contentW / 2 },
-    },
-    body: [
-      ['Peserta Safety Induction,', 'Petugas HSE / Pengawas K3,'],
-      [`${record.perusahaan || 'Vendor / Kontraktor'}`, 'PT Dwimitra Ekatama Mandiri'],
-      ['\n\n\n', '\n\n\n'], // Space for signature
-      [`( ${pesertaName} )`, `( ${officerName} )`],
-      ['Tanda Tangan & Nama Jelas', 'HSE Officer NeutraDC Cikarang'],
-    ],
-  });
-
   // Footer on every page
   const totalPages = doc.getNumberOfPages();
   for (let pNo = 1; pNo <= totalPages; pNo++) {

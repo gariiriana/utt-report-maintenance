@@ -230,39 +230,6 @@ async function buildTbmPdfDocument(
     }
   }
 
-  // Check page overflow for Signatures
-  if (y + 35 > pageHeight - margin) {
-    doc.addPage();
-    y = margin + 5;
-  } else {
-    y = Math.max(y + 3, pageHeight - 48);
-  }
-
-  // Signatures Table
-  const officerName = record.inspectorK3 || record.authorEmail?.split('@')[0]?.toUpperCase() || 'HSE Officer';
-  autoTable(doc, {
-    startY: y,
-    margin: { left: margin, right: margin },
-    theme: 'plain',
-    styles: {
-      fontSize: 8,
-      cellPadding: 1,
-      textColor: DARK,
-      halign: 'center',
-    },
-    columnStyles: {
-      0: { cellWidth: contentW / 2 },
-      1: { cellWidth: contentW / 2 },
-    },
-    body: [
-      ['Dibuat Oleh,', 'Diketahui Oleh,'],
-      ['HSE Officer', 'Site Coordinator / Koordinator Lapangan'],
-      ['\n\n\n', '\n\n\n'], // Space for signature
-      [`( ${officerName} )`, '( ........................................ )'],
-      ['PT Dwimitra Ekatama Mandiri', 'Neutra DC Cikarang'],
-    ],
-  });
-
   // Footer text on every page
   const totalPages = doc.getNumberOfPages();
   for (let pNo = 1; pNo <= totalPages; pNo++) {

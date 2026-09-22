@@ -772,125 +772,7 @@ export async function exportAbnormalRecapToWord(
     }
   }
 
-  // 6. LEMBAR PENGESAHAN / TANDA TANGAN RESMI
-  const signatureTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: borderNone,
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            borders: borderNone,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: 'Disiapkan dan Diverifikasi Oleh,',
-                    size: 16,
-                    color: COLOR_DARK,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 600 },
-                children: [
-                  new TextRun({
-                    text: 'Quality Control DME (PT Dwimitra Ekatama Mandiri)',
-                    bold: true,
-                    size: 16,
-                    color: COLOR_PRIMARY_RED,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: '( _____________________________________ )',
-                    bold: true,
-                    size: 16,
-                    color: COLOR_DARK,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: 'Tim Quality Control Data Center',
-                    size: 14,
-                    color: COLOR_MUTED,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            borders: borderNone,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: 'Mengetahui dan Menyetujui,',
-                    size: 16,
-                    color: COLOR_DARK,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 600 },
-                children: [
-                  new TextRun({
-                    text: 'Site Manager / Facility Management NeutraDC',
-                    bold: true,
-                    size: 16,
-                    color: COLOR_SECONDARY_BLUE,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: '( _____________________________________ )',
-                    bold: true,
-                    size: 16,
-                    color: COLOR_DARK,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: 'NeutraDC HDC Cikarang',
-                    size: 14,
-                    color: COLOR_MUTED,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
-
-  // 7. SUSUN DOKUMEN DOCX UTAMA
+  // 6. SUSUN DOKUMEN DOCX UTAMA (tanpa lembar pengesahan / tanda tangan)
   const doc = new Document({
     styles: {
       default: {
@@ -1005,10 +887,6 @@ export async function exportAbnormalRecapToWord(
           // Rincian Detail per Laporan
           ...detailReportParagraphs,
 
-          new Paragraph({ spacing: { before: 300, after: 150 } }),
-
-          // Lembar Tanda Tangan
-          signatureTable,
         ],
       },
     ],
