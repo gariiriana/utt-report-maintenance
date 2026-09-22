@@ -907,10 +907,11 @@ export async function exportCMMonthlyRecapToDocx(
     const buildWordCMTable = (sheetReports: any[]): Table => {
       const tableHeaderCells = [
         { text: 'No', width: 4 },
-        { text: 'Identitas Pekerjaan', width: 20 },
-        { text: 'Jenis CM, Status & Sparepart', width: 18 },
-        { text: 'Uraian Masalah', width: 28 },
-        { text: 'Tindakan Perbaikan', width: 30 },
+        { text: 'Identitas Pekerjaan', width: 16 },
+        { text: 'Jenis CM / Sparepart', width: 13 },
+        { text: 'Status CM', width: 8 },
+        { text: 'Uraian Masalah', width: 26 },
+        { text: 'Tindakan Perbaikan', width: 33 },
       ].map(h => new TableCell({
         width: { size: h.width, type: WidthType.PERCENTAGE },
         shading: { fill: NAVY_BLUE, type: ShadingType.CLEAR },
@@ -951,9 +952,9 @@ export async function exportCMMonthlyRecapToDocx(
                 }),
               ],
             }),
-            // 2. Identitas dipadatkan dalam satu kolom agar uraian dan tindakan mendapat ruang lebar.
+            // 2. Identitas dipadatkan agar laporan dibaca mendatar pada A4 landscape.
             new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
+              width: { size: 16, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
@@ -963,24 +964,34 @@ export async function exportCMMonthlyRecapToDocx(
                 }),
               ],
             }),
-            // 3. Klasifikasi, status, dan sparepart menjadi satu informasi ringkas.
+            // 3. Jenis CM dan sparepart tetap satu konteks, namun status punya kolom sendiri.
             new TableCell({
-              width: { size: 18, type: WidthType.PERCENTAGE },
+              width: { size: 13, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
-              shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
               children: [
                 new Paragraph({
                   children: [
                     new TextRun({ text: reportTypeStr, size: 14, bold: true, color: '1E293B' }),
-                    new TextRun({ text: `\nStatus: ${statusInfo.label}`, size: 13, bold: true, color: isClosed ? '166534' : 'B45309' }),
                     new TextRun({ text: `\nSparepart: ${sparepartsStr}`, size: 12, color: '334155' }),
                   ],
                 }),
               ],
             }),
-            // 4. Kolom lebar: uraian masalah.
+            // 4. Status CM terpisah dari jenis CM.
             new TableCell({
-              width: { size: 28, type: WidthType.PERCENTAGE },
+              width: { size: 8, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: statusInfo.label, size: 13, bold: true, color: isClosed ? '166534' : 'B45309' })],
+                }),
+              ],
+            }),
+            // 5. Kolom lebar: uraian masalah.
+            new TableCell({
+              width: { size: 26, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
@@ -990,9 +1001,9 @@ export async function exportCMMonthlyRecapToDocx(
                 }),
               ],
             }),
-            // 5. Kolom terlebar: tindakan perbaikan tidak lagi turun huruf per huruf.
+            // 6. Kolom terlebar: tindakan perbaikan tidak lagi turun huruf per huruf.
             new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
+              width: { size: 33, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
