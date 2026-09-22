@@ -14,9 +14,7 @@ import {
   EOPWorkStepItem,
   SOPPrerequisiteItem,
   SOPReferencedDocItem,
-  DocumentSigner,
-  DEFAULT_AFFECTED_SYSTEMS,
-  DEFAULT_DEFAULT_APPROVERS
+  DocumentSigner
 } from '@/types/sopEopTypes';
 
 export interface ParsedSopEopResult {
@@ -305,7 +303,7 @@ function getImportWarnings(data: SOPDocumentData | EOPDocumentData): string[] {
 /**
  * Mengekstrak metadata teks dari dokumen XML secara cerdas dan tahan multiline
  */
-function extractMetadata(xml: string, fileName: string, isEop: boolean) {
+function extractMetadata(xml: string, isEop: boolean) {
   const norm = structuredXmlText(xml);
 
   const getMatch = (regex: RegExp): string => {
@@ -317,64 +315,39 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
     .replace(/^[\s\-:]+/, '')
     .trim();
 
-  let title = rawTitle;
-  if (title === '-' || !title) {
-    const cleanFn = fileName
-      .replace(/\.docx$/i, '')
-      .replace(/\s*\(\d+\)\s*$/g, '') // Bersihkan suffix copy seperti (1), (2)
-      .replace(/[-_]/g, ' ')
-      .trim()
-      .toUpperCase();
-
-    if (/trafo|transformer/i.test(fileName) || /transformer/i.test(xml)) {
-      title = isEop
-        ? 'EOP GANGGUAN / PADAM TRANSFORMATOR (TRAFO)'
-        : 'SOP PEMELIHARAAN TRANSFORMATOR (TRAFO)';
-    } else {
-      title = isEop
-        ? cleanFn.includes('EOP')
-          ? cleanFn
-          : `EOP ${cleanFn}`
-        : cleanFn.includes('SOP')
-        ? cleanFn
-        : `SOP ${cleanFn}`;
-    }
-  }
+  const title = rawTitle === '-' ? '' : rawTitle;
 
   const purposeEn = getMatch(/Document\s*Purpose\s*:\s*([\s\S]*?)(?:Tujuan\s*Dokumen|Work\s*Location)/i);
   const purposeId = getMatch(/Tujuan\s*Dokumen\s*:\s*([\s\S]*?)(?:Work\s*Location|Section|Seksi)/i);
-  const locationEn =
-    getMatch(/Work\s*Location\s*:\s*([\s\S]*?)(?:Lokasi\s*Kerja|Section|Seksi)/i) || 'Neutra DC Cikarang';
-  const locationId =
-    getMatch(/Lokasi\s*Kerja\s*:\s*([\s\S]*?)(?:Section|Seksi|\n\n)/i) || 'Neutra DC Cikarang';
+  const locationEn = getMatch(/Work\s*Location\s*:\s*([\s\S]*?)(?:Lokasi\s*Kerja|Section|Seksi)/i);
+  const locationId = getMatch(/Lokasi\s*Kerja\s*:\s*([\s\S]*?)(?:Section|Seksi|\n\n)/i);
 
   const author =
     extractDocumentAuthor(xml, isEop) ||
-    getMatch(/(?:Author|Penulis|Penyusun)\s*:?\s*([a-zA-Z0-9\s\.\,\'\-]+?)(?:Date\s*of\s*Creation|Tanggal\s*Pembuatan|\n|$)/i) ||
-    'Alif Darmawan';
+    getMatch(/(?:Author|Penulis|Penyusun)\s*:?\s*([a-zA-Z0-9\s\.\,\'\-]+?)(?:Date\s*of\s*Creation|Tanggal\s*Pembuatan|\n|$)/i);
   const creationDate =
     getMatch(
       /Date\s*of\s*Creation\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Penulis|Tanggal\s*Pembuatan|Date\s*Revision|Next\s*Date\s*Revision|Revision\s*Number|\n|$)/i
-    ) || '07 Sep 2026';
+    );
   const revisionNumber =
     getMatch(
       /Revision\s*Number\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Tanggal\s*Revisi|Nomor\s*Revisi|Section|Seksi|\n|$)/i
-    ) || '00';
+    );
   const revisionDate =
     getMatch(
       /(?:Date\s*Revision|Next\s*Date\s*Revision)\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Revision\s*Number|Nomor\s*Revisi|Tanggal\s*Revisi|\n|$)/i
-    ) || 'N/A';
+    );
 
   return {
     title,
     purposeEn: purposeEn || '',
     purposeId: purposeId || '',
-    locationEn: locationEn || 'Neutra DC Cikarang',
-    locationId: locationId || 'Neutra DC Cikarang',
-    author: author || 'DME Maintenance Team',
-    creationDate: creationDate || '07 Sep 2026',
-    revisionNumber: revisionNumber === 'T/A' || !revisionNumber ? '00' : revisionNumber,
-    revisionDate: revisionDate === 'T/A' || !revisionDate ? 'N/A' : revisionDate
+    locationEn,
+    locationId,
+    author,
+    creationDate,
+    revisionNumber: revisionNumber === 'T/A' ? '' : revisionNumber,
+    revisionDate: revisionDate === 'T/A' ? '' : revisionDate
   };
 }
 
@@ -554,8 +527,6 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
     return !isSubheaderRow(tcs);
   });
 
-  const isTrafoDoc = /trafo|transformer/i.test(xml);
-
   const items = dataRows
     .map((tr, idx) => {
       const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
@@ -574,10 +545,7 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
         }
       }
 
-      let classId = getColVal(colMap.classId);
-      if (!classId && isTrafoDoc) {
-        classId = 'TR';
-      }
+      const classId = getColVal(colMap.classId);
 
       const ciName = getColVal(colMap.ciName);
       const ciDescription = getColVal(colMap.ciDescription);
@@ -934,14 +902,14 @@ function parseApprovals(xml: string): DocumentSigner[] {
       containsLabel(t, 'Facility Manager') ||
       containsLabel(t, 'Manajer Proyek')
   );
-  if (!appTbl) return [...DEFAULT_DEFAULT_APPROVERS];
+  if (!appTbl) return [];
 
   const trs = appTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
   const defaultRoles = [
-    { roleEn: 'Project Manager', roleId: 'Manajer Proyek', fallbackName: 'Dwi Tasmiyadi' },
-    { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', fallbackName: 'Habib Mulyana' },
-    { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas', fallbackName: 'Supriyatno' },
-    { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', fallbackName: 'Budi Susanto' }
+    { roleEn: 'Project Manager', roleId: 'Manajer Proyek' },
+    { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering' },
+    { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas' },
+    { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC' }
   ];
 
   const approvers: DocumentSigner[] = defaultRoles.map((role, idx) => {
@@ -950,7 +918,7 @@ function parseApprovals(xml: string): DocumentSigner[] {
       return {
         roleEn: role.roleEn,
         roleId: role.roleId,
-        name: role.fallbackName,
+        name: '',
         date: '',
         signature: ''
       };
@@ -974,7 +942,7 @@ function parseApprovals(xml: string): DocumentSigner[] {
     return {
       roleEn: role.roleEn,
       roleId: role.roleId,
-      name: extractedName || role.fallbackName,
+      name: extractedName,
       date: '',
       signature: ''
     };
@@ -1038,8 +1006,8 @@ function parseSOPEHSRequirements(xml: string): {
 /**
  * Parsing berkas Word SOP (14 Seksi) secara komprehensif
  */
-function parseSOPData(xml: string, fileName: string): SOPDocumentData {
-  const meta = extractMetadata(xml, fileName, false);
+function parseSOPData(xml: string): SOPDocumentData {
+  const meta = extractMetadata(xml, false);
   const equipmentList = parseCIEquipment(xml);
   const prerequisites = parsePrerequisites(xml);
   const workSteps = parseSOPWorkSteps(xml);
@@ -1069,9 +1037,9 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   );
 
   // Seksi 4: Affected Systems
-  const affectedSystems = [...DEFAULT_AFFECTED_SYSTEMS];
-  let affectedSystemsDetails =
-    '1. Standby Generator will be running if the source in the MV panel shut down .\n1. Generator Cadangan akan beroperasi jika sumber pada panel MV padam/dimatikan.';
+  // Keep the standard labels for the form, but never invent a checked system.
+  const affectedSystems = [];
+  let affectedSystemsDetails = '';
   const impactMatch = xml.match(
     /if any of the item above is checked[\s\S]*?:\s*([\s\S]*?)(?:Section\s*5|Seksi\s*5)/i
   );
@@ -1083,14 +1051,14 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   }
   const affectedSystemsPair = impactMatch?.[1]
     ? extractBilingualFromXml(impactMatch[1])
-    : { en: affectedSystemsDetails, id: '' };
+    : { en: '', id: '' };
 
   // Seksi 9: Maintenance Period
   const is6Months = /■\s*6\s*Months|☑\s*6\s*Months|\[x\]\s*6\s*Months/i.test(xml);
-  const maintenancePeriod = is6Months ? '6_months' : 'annual';
+  const maintenancePeriod = is6Months ? '6_months' : 'custom';
 
   // Seksi 11: Back Out Procedure
-  let backOutProcedure = 'N/A T/A';
+  let backOutProcedure = '';
   const backoutMatch = xml.match(
     /(?:Section\s*11|Seksi\s*11)[\s\S]*?(?:Action|Tindakan)[\s\S]*?<w:t[^>]*>([\s\S]*?)<\/w:t>/i
   );
@@ -1125,8 +1093,8 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
         : '',
     referenceTicketNumber:
       ticketMatch && ticketMatch[1] && ticketMatch[1].trim() !== '-' ? ticketMatch[1].trim() : '',
-    executedByName: executedMatch && executedMatch[1] ? executedMatch[1].trim() : 'DME Maintenance Team',
-    executedByJobTitle: 'Teknisi Data Center',
+    executedByName: executedMatch && executedMatch[1] ? executedMatch[1].trim() : '',
+    executedByJobTitle: '',
     affectedSystems,
     affectedSystemsDetails,
     affectedSystemsDetailsEn: affectedSystemsPair.en || affectedSystemsDetails,
@@ -1135,7 +1103,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     ehsRequirements,
     prerequisites,
     dryRun: {
-      jobTitle: 'Teknisi Data Center',
+      jobTitle: '',
       name: '',
       date: '',
       signatureBase64: ''
@@ -1152,7 +1120,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     dateRevision: meta.revisionDate,
     revisionNumber: meta.revisionNumber,
     approvals,
-    additionalInformation: additionalPair.en || additionalPair.id || 'N/A T/A',
+    additionalInformation: additionalPair.en || additionalPair.id,
     additionalInformationEn: additionalPair.en,
     additionalInformationId: additionalPair.id
   };
@@ -1161,8 +1129,8 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
 /**
  * Parsing berkas Word EOP (8 Seksi) secara komprehensif
  */
-function parseEOPData(xml: string, fileName: string): EOPDocumentData {
-  const meta = extractMetadata(xml, fileName, true);
+function parseEOPData(xml: string): EOPDocumentData {
+  const meta = extractMetadata(xml, true);
   const referencedDocuments = parseReferencedDocuments(xml, 2);
   const ehsRequirements = parseEOPEHSRequirementsRobust(xml);
   const robustExpectedCond = parseEOPExpectedConditionsRobust(xml);
@@ -1202,16 +1170,16 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
     workSteps,
     author: meta.author,
     dateOfCreation: meta.creationDate,
-    nextDateRevision: meta.revisionDate || 'N/A',
-    revisionNumber: meta.revisionNumber || '00',
+    nextDateRevision: meta.revisionDate,
+    revisionNumber: meta.revisionNumber,
     dryRun: {
-      jobTitle: 'Teknisi Data Center',
+      jobTitle: '',
       name: '',
       date: '',
       signatureBase64: ''
     },
     approvals,
-    additionalInformation: additionalPair.en || additionalPair.id || 'N/A T/A',
+    additionalInformation: additionalPair.en || additionalPair.id,
     additionalInformationEn: additionalPair.en,
     additionalInformationId: additionalPair.id
   };
@@ -1241,7 +1209,7 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
     /emergency\s*operating\s*procedure/i.test(documentText);
 
   if (isEop) {
-    const eopData = parseEOPData(xml, file.name);
+    const eopData = parseEOPData(xml);
     const warnings = getImportWarnings(eopData);
     return {
       type: 'EOP',
@@ -1256,7 +1224,7 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
       warnings
     };
   } else {
-    const sopData = parseSOPData(xml, file.name);
+    const sopData = parseSOPData(xml);
     const warnings = getImportWarnings(sopData);
     return {
       type: 'SOP',
