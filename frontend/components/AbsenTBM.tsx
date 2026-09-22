@@ -13,7 +13,7 @@ import {
   Plus, Trash2, Search, RefreshCw,
   TrendingUp, CheckCircle, XCircle,
   Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save,
-  Clock
+  Clock, Download, Eye
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, setDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/api/firebase';
@@ -21,6 +21,8 @@ import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -135,6 +137,14 @@ export function AbsenTBM() {
   const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
   const [docRecords, setDocRecords] = useState<DocumentationRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [photoStartDate, setPhotoStartDate] = useState<string>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [photoEndDate, setPhotoEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [photoCategoryFilter, setPhotoCategoryFilter] = useState('Semua');
+  const [isDownloadingPhotoZip, setIsDownloadingPhotoZip] = useState(false);
+  const [previewDocumentationPhoto, setPreviewDocumentationPhoto] = useState<string | null>(null);
   
   // Filters
   const [startDate, setStartDate] = useState<string>(() => {
@@ -403,19 +413,20 @@ export function AbsenTBM() {
     setManualChecklist(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  // Effective start date for real-time query (defaults to 45 days ago or user's custom startDate)
+  // Keep attendance and period-gallery data available from the earlier selected start date.
   const effectiveStartDate = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 45);
     const fortyFiveDaysAgo = d.toISOString().split('T')[0];
-    if (startDate && startDate < fortyFiveDaysAgo) {
-      return startDate;
-    }
-    return fortyFiveDaysAgo;
-  }, [startDate]);
+    const requestedStarts = [startDate, photoStartDate].filter(Boolean).sort();
+    return requestedStarts[0] && requestedStarts[0] < fortyFiveDaysAgo
+      ? requestedStarts[0]
+      : fortyFiveDaysAgo;
+  }, [startDate, photoStartDate]);
 
   // Firestore Realtime Listener for logs & documentation (scoped to prevent 3500+ document reads per load)
   useEffect(() => {
+    setLoading(true);
     const q = query(
       collection(db, 'absen_tbm'),
       where('tanggal', '>=', effectiveStartDate),
@@ -430,11 +441,18 @@ export function AbsenTBM() {
           return; // Skip personnel definitions
         }
         if (data.isDocumentation) {
+          const photos = Array.isArray(data.photos)
+            ? data.photos.map((photo: any) => {
+                if (typeof photo === 'string') return photo;
+                if (photo && typeof photo === 'object') return photo.base64 || photo.url || photo.photo || '';
+                return '';
+              }).filter((photo: string) => Boolean(photo))
+            : [];
           docs.push({
             id: docSnap.id,
             tanggal: data.tanggal || '',
             isDocumentation: true,
-            photos: data.photos || [],
+            photos,
             category: data.category || ''
           });
         } else {
@@ -464,6 +482,69 @@ export function AbsenTBM() {
     });
     return () => unsubscribe();
   }, [effectiveStartDate]);
+
+  const filteredDocumentationRecords = useMemo(() => docRecords.filter(record => {
+    const matchesStart = !photoStartDate || record.tanggal >= photoStartDate;
+    const matchesEnd = !photoEndDate || record.tanggal <= photoEndDate;
+    const matchesCategory = photoCategoryFilter === 'Semua' || (record.category || 'Tanpa kategori') === photoCategoryFilter;
+    return matchesStart && matchesEnd && matchesCategory && record.photos.length > 0;
+  }), [docRecords, photoStartDate, photoEndDate, photoCategoryFilter]);
+
+  const documentationCategories = useMemo(() => Array.from(new Set(
+    docRecords
+      .filter(record => (!photoStartDate || record.tanggal >= photoStartDate) && (!photoEndDate || record.tanggal <= photoEndDate))
+      .map(record => record.category || 'Tanpa kategori')
+  )).sort((a, b) => a.localeCompare(b, 'id')), [docRecords, photoStartDate, photoEndDate]);
+
+  const totalDocumentationPhotos = filteredDocumentationRecords.reduce((total, record) => total + record.photos.length, 0);
+
+  const downloadDocumentationPhoto = (photo: string, date: string, index: number) => {
+    const match = photo.match(/^data:image\/([a-zA-Z0-9.+-]+);base64,/);
+    const extension = match?.[1]?.replace('jpeg', 'jpg') || 'jpg';
+    const link = document.createElement('a');
+    link.href = photo;
+    link.download = `Foto_TBM_${date}_${index + 1}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleDownloadDocumentationZip = async () => {
+    if (!totalDocumentationPhotos) {
+      toast.error('Tidak ada foto TBM pada periode dan kategori yang dipilih');
+      return;
+    }
+    setIsDownloadingPhotoZip(true);
+    const toastId = toast.loading(`Menyiapkan ${totalDocumentationPhotos} foto TBM ke file ZIP...`);
+    try {
+      const zip = new JSZip();
+      const folderName = `Dokumentasi_TBM_${photoStartDate || 'Awal'}_sd_${photoEndDate || 'Akhir'}`;
+      const folder = zip.folder(folderName) || zip;
+      let count = 0;
+      for (const record of filteredDocumentationRecords) {
+        const category = (record.category || 'Tanpa_kategori').replace(/[^a-zA-Z0-9_-]/g, '_');
+        record.photos.forEach((photo, index) => {
+          const match = photo.match(/^data:image\/([a-zA-Z0-9.+-]+);base64,(.+)$/);
+          if (!match) return;
+          const extension = match[1].replace('jpeg', 'jpg');
+          folder.file(`${record.tanggal}_${category}_Foto_${index + 1}.${extension}`, match[2], { base64: true });
+          count++;
+        });
+      }
+      if (!count) {
+        toast.error('Foto tidak memiliki format gambar yang dapat dimasukkan ke ZIP', { id: toastId });
+        return;
+      }
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `${folderName}.zip`);
+      toast.success(`Berhasil mengunduh ${count} foto TBM dalam ZIP`, { id: toastId });
+    } catch (error) {
+      console.error('Gagal membuat ZIP dokumentasi TBM:', error);
+      toast.error('Gagal membuat file ZIP dokumentasi TBM', { id: toastId });
+    } finally {
+      setIsDownloadingPhotoZip(false);
+    }
+  };
 
   // Filtered Records for statistics / search
   const filteredRecords = useMemo(() => {
@@ -2834,6 +2915,74 @@ export function AbsenTBM() {
       </motion.div>
 
       {/* ─── Personnel Panel ────────────────────────────────────── */}
+      {/* Galeri dokumentasi foto TBM dengan filter periode dan kategori */}
+      <section className="bg-white/90 border border-sky-100 rounded-2xl overflow-hidden shadow-lg text-slate-800">
+        <div className="px-5 py-4 bg-gradient-to-r from-sky-50 via-blue-50/50 to-indigo-50 border-b border-sky-100 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md"><Camera className="w-5 h-5" /></div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-black text-slate-900">Dokumentasi Foto Absen TBM</h2>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700 border border-blue-200">{totalDocumentationPhotos} Foto</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">{filteredDocumentationRecords.length} Hari Kegiatan</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Pilih periode dan kategori untuk meninjau atau mengunduh dokumentasi.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-[10px] font-bold text-slate-500">DARI
+              <input type="date" value={photoStartDate} max={photoEndDate || undefined} onChange={e => setPhotoStartDate(e.target.value)} className="block mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700" />
+            </label>
+            <label className="text-[10px] font-bold text-slate-500">SAMPAI
+              <input type="date" value={photoEndDate} min={photoStartDate || undefined} onChange={e => setPhotoEndDate(e.target.value)} className="block mt-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700" />
+            </label>
+            <select value={photoCategoryFilter} onChange={e => setPhotoCategoryFilter(e.target.value)} aria-label="Filter kategori dokumentasi TBM" className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+              <option value="Semua">Semua Kategori</option>
+              {documentationCategories.map(category => <option key={category} value={category}>{category}</option>)}
+            </select>
+            <button type="button" onClick={handleDownloadDocumentationZip} disabled={!totalDocumentationPhotos || isDownloadingPhotoZip} className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
+              <Download className={`w-3.5 h-3.5 ${isDownloadingPhotoZip ? 'animate-bounce' : ''}`} />{isDownloadingPhotoZip ? 'Menyiapkan ZIP...' : 'Unduh ZIP'}
+            </button>
+          </div>
+        </div>
+        <div className="p-5">
+          {loading ? (
+            <div className="py-8 text-center text-sm text-slate-400">Memuat dokumentasi foto TBM...</div>
+          ) : filteredDocumentationRecords.length === 0 ? (
+            <div className="py-10 text-center bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+              <Camera className="w-9 h-9 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-600">Belum ada dokumentasi pada filter ini</p>
+              <p className="text-xs text-slate-500 mt-1">Periode: {formatIndonesianDate(photoStartDate)} s/d {formatIndonesianDate(photoEndDate)}</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {filteredDocumentationRecords.map(record => (
+                <div key={record.id} className="bg-slate-50/70 border border-slate-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-black text-slate-900">{formatIndonesianDate(record.tanggal)}</h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-700">{record.category || 'Tanpa kategori'}</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">{record.photos.length} Foto</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {record.photos.map((photo, index) => (
+                      <div key={`${record.id}-${index}`} className="group relative aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                        <img src={photo} alt={`TBM ${record.tanggal} foto ${index + 1}`} loading="lazy" className="w-full h-full object-cover cursor-zoom-in" onClick={() => setPreviewDocumentationPhoto(photo)} />
+                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <button type="button" onClick={() => setPreviewDocumentationPhoto(photo)} aria-label="Lihat foto" className="p-2 bg-white rounded-full text-slate-700"><Eye className="w-4 h-4" /></button>
+                          <button type="button" onClick={() => downloadDocumentationPhoto(photo, record.tanggal, index)} aria-label="Unduh foto" className="p-2 bg-white rounded-full text-blue-600"><Download className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       <AnimatePresence>
         {isPersonnelPanelOpen && (
           <motion.div
@@ -4271,6 +4420,23 @@ export function AbsenTBM() {
       </div>
 
       {/* Custom Delete Confirmation Modal */}
+      <AnimatePresence>
+        {previewDocumentationPhoto && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPreviewDocumentationPhoto(null)} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-0 z-[110] flex items-center justify-center p-6 pointer-events-none">
+              <div className="relative max-w-[90vw] max-h-[90vh] pointer-events-auto">
+                <div className="absolute -top-3 -right-3 z-10 flex gap-2">
+                  <button type="button" onClick={() => downloadDocumentationPhoto(previewDocumentationPhoto, 'TBM', 0)} title="Unduh foto" className="p-2 bg-white rounded-full text-blue-600 shadow"><Download className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => setPreviewDocumentationPhoto(null)} title="Tutup" className="p-2 bg-white rounded-full text-slate-700 shadow"><X className="w-4 h-4" /></button>
+                </div>
+                <img src={previewDocumentationPhoto} alt="Pratinjau dokumentasi TBM" className="max-w-[90vw] max-h-[85vh] rounded-xl object-contain shadow-2xl" />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {deleteConfirmOpen && dateToDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">

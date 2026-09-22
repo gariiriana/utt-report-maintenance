@@ -639,8 +639,46 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             if (isQcDme) {
                 // QC DME approves delete and deletes the document permanently
                 const toastId = toast.loading('Menghapus dokumen secara permanen...');
+
+                // === CASCADE DELETE: Hapus SLA/SLG yang terkait dengan CM ini ===
+                const cmDoc = selectedReportForDelete;
+                const slaIdsToDelete = new Set<string>();
+
+                // Collect exact links first. Query failures abort the cascade so the CM
+                // cannot be removed while linked SLA/SLG documents are left behind.
+                const directSlaId = (cmDoc as any).slaReportId;
+                if (typeof directSlaId === 'string' && directSlaId.trim()) {
+                    slaIdsToDelete.add(directSlaId.trim());
+                }
+                const reverseQ = query(
+                    collection(db, 'corrective_reports'),
+                    where('cmReportId', '==', cmDoc.id)
+                );
+                const reverseSnap = await getDocs(reverseQ);
+                reverseSnap.docs.forEach(slaSnap => {
+                    if (slaSnap.data().reportType === 'SLA') slaIdsToDelete.add(slaSnap.id);
+                });
+
+                // Legacy SLA docs may not have link fields. Reuse the strict existing
+                // matcher only when no exact link was found.
+                if (slaIdsToDelete.size === 0) {
+                    const slaList = reports.filter(r => r.reportType === 'SLA' && r.id !== cmDoc.id);
+                    const { cmToSLAMap } = buildCMSLAMapping([cmDoc], slaList);
+                    const matchedSLA = cmToSLAMap.get(cmDoc.id);
+                    if (matchedSLA?.id) slaIdsToDelete.add(matchedSLA.id);
+                }
+
+                for (const slaId of slaIdsToDelete) {
+                    await deleteDoc(doc(db, 'corrective_reports', slaId));
+                }
+
+                // Delete the CM document itself
                 await deleteDoc(doc(db, 'corrective_reports', selectedReportForDelete.id));
-                toast.success('Laporan berhasil dihapus secara permanen', { id: toastId });
+
+                const cascadeMsg = slaIdsToDelete.size > 0
+                    ? ` (termasuk ${slaIdsToDelete.size} SLA/SLG terkait)`
+                    : '';
+                toast.success(`Laporan berhasil dihapus secara permanen${cascadeMsg}`, { id: toastId });
             } else {
                 // Non-QC DME (including Admin & Standby Engineers) request deletion with mandatory remark
                 if (!reason || !reason.trim()) {
