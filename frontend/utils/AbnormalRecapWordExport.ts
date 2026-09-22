@@ -29,6 +29,7 @@ import {
   Footer,
   PageNumber,
   NumberFormat,
+  PageOrientation,
   VerticalAlign,
 } from 'docx';
 import { saveAs } from 'file-saver';
@@ -333,14 +334,15 @@ export async function exportAbnormalRecapToWord(
     children: [
       'No',
       'Nama Unit / Peralatan',
-      'Laporan Pemeliharaan',
-      'Tanggal',
+      'Nama Maintenance',
       'Akun Maintenance',
+      'Periode',
+      'Deskripsi Temuan',
       'Foto',
     ].map((text, idx) =>
       new TableCell({
         width: {
-          size: [5, 26, 28, 14, 20, 7][idx],
+          size: [4, 15, 15, 16, 10, 31, 9][idx],
           type: WidthType.PERCENTAGE,
         },
         shading: { type: ShadingType.SOLID, color: COLOR_PRIMARY_RED, fill: COLOR_PRIMARY_RED },
@@ -367,15 +369,17 @@ export async function exportAbnormalRecapToWord(
 
   const tableDataRows = items.map((item, idx) => {
     const unitName = item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName;
-    const hasPhoto = Boolean(item.abnormalFinding?.photoBase64);
+    const hasPhoto = Boolean(item.abnormalFinding?.photoBase64 || item.abnormalFinding?.photos?.length);
+    const description = item.abnormalFinding?.description || '-';
 
     return new TableRow({
       children: [
         String(idx + 1),
         unitName,
         item.maintenanceName,
-        item.maintenanceTime || '-',
         item.createdBy,
+        item.maintenanceTime || '-',
+        description,
         hasPhoto ? 'Ada' : 'Tidak',
       ].map((text, colIdx) =>
         new TableCell({
@@ -387,7 +391,7 @@ export async function exportAbnormalRecapToWord(
               : undefined,
           children: [
             new Paragraph({
-              alignment: colIdx === 0 || colIdx === 3 || colIdx === 5 ? AlignmentType.CENTER : AlignmentType.LEFT,
+              alignment: colIdx === 0 || colIdx === 4 || colIdx === 6 ? AlignmentType.CENTER : AlignmentType.LEFT,
               spacing: { before: 30, after: 30 },
               children: [
                 new TextRun({
@@ -395,7 +399,7 @@ export async function exportAbnormalRecapToWord(
                   size: 15,
                   color: COLOR_DARK,
                   font: 'Calibri',
-                  bold: colIdx === 1,
+                  bold: colIdx === 1 || colIdx === 2,
                 }),
               ],
             }),
@@ -914,6 +918,11 @@ export async function exportAbnormalRecapToWord(
       {
         properties: {
           page: {
+            size: {
+              orientation: PageOrientation.LANDSCAPE,
+              width: 16838,
+              height: 11906,
+            },
             margin: {
               top: 720, // 0.5 inch
               bottom: 720,

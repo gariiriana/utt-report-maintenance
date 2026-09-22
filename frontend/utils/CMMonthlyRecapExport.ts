@@ -591,10 +591,12 @@ export async function exportCMMonthlyRecapToExcel(
     const openCount = totalCM - closedCount;
     const sparepartCount = reports.filter(r => isCMSparepart(r)).length;
     const nonSparepartCount = totalCM - sparepartCount;
+    const dmeSparepartCount = reports.filter(r => r.sparepartType === 'sparepart_dme').length;
+    const consumableCount = reports.filter(r => r.sparepartType === 'consumable').length;
 
     if (monthGroups.length > 1) {
       // 1. Sheet Semua Periode
-      const statsAll = `Total Laporan CM: ${totalCM} | Solved (Closed): ${closedCount} | Pending (Open): ${openCount} | Pergantian Sparepart: ${sparepartCount} | Non-Sparepart: ${nonSparepartCount} | Periode: ${periodTitle} | Waktu Ekspor: ${new Date().toLocaleString('id-ID')}`;
+      const statsAll = `Total CM: ${totalCM} | Solved: ${closedCount} | Pending: ${openCount} | Sparepart DME/Baut: ${dmeSparepartCount} | Consumable Part: ${consumableCount} | Non-Sparepart: ${nonSparepartCount} | Periode: ${periodTitle} | Ekspor: ${new Date().toLocaleString('id-ID')}`;
       populateCMExcelSheet(
         'Semua Periode',
         `REKAPITULASI LAPORAN CM — SEMUA PERIODE: ${periodTitle.toUpperCase()}`,
@@ -621,7 +623,7 @@ export async function exportCMMonthlyRecapToExcel(
       });
     } else {
       // 1 Bulan Saja
-      const statsSingle = `Total Laporan CM: ${totalCM} | Solved (Closed): ${closedCount} | Pending (Open): ${openCount} | Pergantian Sparepart: ${sparepartCount} | Non-Sparepart: ${nonSparepartCount} | Waktu Ekspor: ${new Date().toLocaleString('id-ID')}`;
+      const statsSingle = `Total CM: ${totalCM} | Solved: ${closedCount} | Pending: ${openCount} | Sparepart DME/Baut: ${dmeSparepartCount} | Consumable Part: ${consumableCount} | Non-Sparepart: ${nonSparepartCount} | Ekspor: ${new Date().toLocaleString('id-ID')}`;
       populateCMExcelSheet(
         'Rekap CM',
         `REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM) — PERIODE: ${periodTitle.toUpperCase()}`,
@@ -898,17 +900,20 @@ export async function exportCMMonthlyRecapToDocx(
     const openCount = totalCM - closedCount;
     const sparepartCount = reports.filter(r => isCMSparepart(r)).length;
     const nonSparepartCount = totalCM - sparepartCount;
+    const dmeSparepartCount = reports.filter(r => r.sparepartType === 'sparepart_dme').length;
+    const consumableCount = reports.filter(r => r.sparepartType === 'consumable').length;
 
     // Helper to generate a CM Table in Word for a given report list
     const buildWordCMTable = (sheetReports: any[]): Table => {
       const tableHeaderCells = [
         { text: 'No', width: 4 },
-        { text: 'Tanggal & Jam', width: 12 },
-        { text: 'No Tiket / Insiden', width: 16 },
-        { text: 'Perangkat & Lokasi', width: 18 },
-        { text: 'Uraian Masalah & Tindakan Perbaikan', width: 26 },
-        { text: 'Status Trouble', width: 12 },
-        { text: 'Sparepart Terpakai', width: 12 },
+        { text: 'Tanggal & Jam', width: 10 },
+        { text: 'Tiket / Perangkat / Lokasi', width: 17 },
+        { text: 'Jenis Laporan CM', width: 15 },
+        { text: 'Uraian Masalah', width: 18 },
+        { text: 'Tindakan Perbaikan', width: 18 },
+        { text: 'Status', width: 8 },
+        { text: 'Sparepart', width: 10 },
       ].map(h => new TableCell({
         width: { size: h.width, type: WidthType.PERCENTAGE },
         shading: { fill: NAVY_BLUE, type: ShadingType.CLEAR },
@@ -930,10 +935,10 @@ export async function exportCMMonthlyRecapToDocx(
         const dateStr = formatReportDate(report);
         const timeStr = formatReportTime(report);
         const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
-        const equipLocStr = `${report.equipmentName || report.equipment || '-'}\nLokasi: ${report.location || report.area || 'NeutraDC'}`;
-        
-        const issueActionStr = `Masalah:\n${report.issue || report.problemAnalysis || report.problem || '-'}\n\nTindakan:\n${report.correctiveAction || report.actionTaken || '-'}`;
-        
+        const equipLocStr = `${ticketStr}\n${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
+        const issueStr = report.issue || report.problemAnalysis || report.problem || '-';
+        const actionStr = report.correctiveAction || report.actionTaken || '-';
+        const reportTypeStr = getSparepartCategoryLabel(report);
         const sparepartsStr = getSparepartsSummary(report);
 
         return new TableRow({
@@ -951,7 +956,7 @@ export async function exportCMMonthlyRecapToDocx(
             }),
             // 2. Tanggal & Jam
             new TableCell({
-              width: { size: 12, type: WidthType.PERCENTAGE },
+              width: { size: 10, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
@@ -963,74 +968,70 @@ export async function exportCMMonthlyRecapToDocx(
                 }),
               ],
             }),
-            // 3. No Tiket / Insiden
+            // 3. Tiket / Perangkat / Lokasi
             new TableCell({
-              width: { size: 16, type: WidthType.PERCENTAGE },
+              width: { size: 17, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: ticketStr, size: 16, bold: true, color: '0F172A' })],
+                  children: [new TextRun({ text: equipLocStr, size: 15, bold: true, color: '0F172A' })],
                 }),
               ],
             }),
-            // 4. Perangkat & Lokasi
+            // 4. Klasifikasi laporan CM
+            new TableCell({
+              width: { size: 15, type: WidthType.PERCENTAGE },
+              borders: cellBorderThin,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: reportTypeStr, size: 14, bold: true, color: '1E293B' }),
+                  ],
+                }),
+              ],
+            }),
+            // 5. Uraian masalah dibuat kolom sendiri agar setiap nomor terbaca menyamping.
             new TableCell({
               width: { size: 18, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
                   children: [
-                    new TextRun({ text: equipLocStr, size: 16, color: '1E293B' }),
+                    new TextRun({ text: issueStr, size: 14, color: '334155' }),
                   ],
                 }),
               ],
             }),
-            // 5. Uraian Masalah & Perbaikan
+            // 6. Tindakan perbaikan dibuat kolom sendiri agar tidak menumpuk ke bawah.
             new TableCell({
-              width: { size: 26, type: WidthType.PERCENTAGE },
+              width: { size: 18, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
                   children: [
-                    new TextRun({ text: issueActionStr, size: 15, color: '334155' }),
+                    new TextRun({ text: actionStr, size: 14, color: '334155' }),
                   ],
                 }),
               ],
             }),
-            // 6. Status Trouble
+            // 7. Status
             new TableCell({
-              width: { size: 12, type: WidthType.PERCENTAGE },
+              width: { size: 8, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
               children: [
                 new Paragraph({
                   children: [
-                    new TextRun({
-                      text: statusInfo.label,
-                      size: 15,
-                      bold: true,
-                      color: isClosed ? '166534' : 'B45309',
-                    }),
-                    new TextRun({
-                      text: `\n\n${statusInfo.note}`,
-                      size: 13,
-                      color: '475569',
-                    }),
+                    new TextRun({ text: statusInfo.label, size: 13, bold: true, color: isClosed ? '166534' : 'B45309' }),
                   ],
                 }),
               ],
             }),
-            // 7. Sparepart
+            // 8. Sparepart terpakai
             new TableCell({
-              width: { size: 12, type: WidthType.PERCENTAGE },
+              width: { size: 10, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: sparepartsStr, size: 14, color: '1E293B' }),
-                  ],
-                }),
-              ],
+              children: [new Paragraph({ children: [new TextRun({ text: sparepartsStr, size: 13, color: '1E293B' })] })],
             }),
           ],
         });
@@ -1187,94 +1188,33 @@ export async function exportCMMonthlyRecapToDocx(
           })
         );
 
+        // Tiga foto per baris dan caption di sel yang sama: dokumentasi tetap jelas
+        // tanpa menggandakan tinggi halaman untuk baris caption terpisah.
         const photoTableRows: TableRow[] = [];
-        for (let pIdx = 0; pIdx < item.photos.length; pIdx += 2) {
-          const p1 = item.photos[pIdx];
-          const p2 = item.photos[pIdx + 1];
-
-          const p1Bytes = base64ToUint8Array(p1.base64);
-          const p2Bytes = p2 ? base64ToUint8Array(p2.base64) : null;
-
-          const imgRowCells: TableCell[] = [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              children: p1Bytes.length > 0 ? [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { before: 60, after: 60 },
-                  children: [
-                    new ImageRun({
-                      data: p1Bytes,
-                      transformation: { width: 230, height: 150 },
-                      type: 'jpg',
-                    }),
-                  ],
-                }),
-              ] : [new Paragraph('')],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              children: (p2Bytes && p2Bytes.length > 0) ? [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { before: 60, after: 60 },
-                  children: [
-                    new ImageRun({
-                      data: p2Bytes,
-                      transformation: { width: 230, height: 150 },
-                      type: 'jpg',
-                    }),
-                  ],
-                }),
-              ] : [new Paragraph('')],
-            }),
-          ];
-
-          const capRowCells: TableCell[] = [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
+        for (let pIdx = 0; pIdx < item.photos.length; pIdx += 3) {
+          const group = item.photos.slice(pIdx, pIdx + 3);
+          const photoCells = [0, 1, 2].map((offset) => {
+            const photo = group[offset];
+            const imageBytes = photo ? base64ToUint8Array(photo.base64) : new Uint8Array();
+            return new TableCell({
+              width: { size: 33.34, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
-              children: [
+              children: photo && imageBytes.length > 0 ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { before: 50, after: 50 },
-                  children: [
-                    new TextRun({
-                      text: `Foto ${pIdx + 1}: ${p1.description || 'Dokumentasi perbaikan CM'}`,
-                      italics: true,
-                      size: 15,
-                      color: '334155',
-                    }),
-                  ],
+                  spacing: { before: 35, after: 20 },
+                  children: [new ImageRun({ data: imageBytes, transformation: { width: 150, height: 95 }, type: 'jpg' })],
                 }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
-              children: p2 ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { before: 50, after: 50 },
-                  children: [
-                    new TextRun({
-                      text: `Foto ${pIdx + 2}: ${p2.description || 'Dokumentasi perbaikan CM'}`,
-                      italics: true,
-                      size: 15,
-                      color: '334155',
-                    }),
-                  ],
+                  spacing: { before: 0, after: 35 },
+                  children: [new TextRun({ text: `Foto ${pIdx + offset + 1}: ${photo.description || 'Dokumentasi perbaikan CM'}`, italics: true, size: 12, color: '334155' })],
                 }),
               ] : [new Paragraph('')],
-            }),
-          ];
-
-          photoTableRows.push(new TableRow({ children: imgRowCells }));
-          photoTableRows.push(new TableRow({ children: capRowCells }));
+            });
+          });
+          photoTableRows.push(new TableRow({ children: photoCells }));
         }
 
         photoSectionChildren.push(
@@ -1316,7 +1256,7 @@ export async function exportCMMonthlyRecapToDocx(
         spacing: { after: 180 },
         children: [
           new TextRun({
-            text: `Ringkasan Statistik:  Total CM: ${totalCM} Dokumen  |  Solved (Closed): ${closedCount}  |  Pending (Open): ${openCount}  |  Pergantian Sparepart: ${sparepartCount}  |  Non-Sparepart: ${nonSparepartCount}`,
+            text: `Ringkasan Statistik:  Total CM: ${totalCM} Dokumen  |  Solved: ${closedCount}  |  Pending: ${openCount}  |  Sparepart DME/Baut: ${dmeSparepartCount}  |  Consumable Part: ${consumableCount}  |  Non-Sparepart: ${nonSparepartCount}`,
             size: 16,
             color: '1E293B',
             bold: true,
@@ -1573,7 +1513,7 @@ export async function exportCMMonthlyRecapToPDF(
         
         const issueActionText = `Masalah:\n${r.issue || r.problemAnalysis || r.problem || '-'}\n\nTindakan:\n${r.correctiveAction || r.actionTaken || '-'}`;
         
-        const statusText = `Status: ${statusInfo.label}\n\nSparepart:\n${isSp ? '[GANTI SP]' : '[NON-SP]'}\n${getSparepartsSummary(r)}\n\nPIC: ${r.picDME || r.preparedByName || '-'}`;
+        const statusText = `Status: ${statusInfo.label}\n\nJenis CM:\n${getSparepartCategoryLabel(r)}\n\nSparepart:\n${isSp ? '[GANTI SP]' : '[NON-SP]'}\n${getSparepartsSummary(r)}\n\nPIC: ${r.picDME || r.preparedByName || '-'}`;
 
         return [
           String(idx + 1),
@@ -1599,7 +1539,7 @@ export async function exportCMMonthlyRecapToPDF(
           'Tanggal & Jam',
           'No Tiket & Perangkat',
           'Uraian Masalah & Tindakan Perbaikan',
-          'Status & PIC',
+          'Status, Jenis CM & PIC',
           photoColHeader
         ]],
         body: tableRows,
