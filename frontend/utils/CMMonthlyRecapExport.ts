@@ -907,13 +907,10 @@ export async function exportCMMonthlyRecapToDocx(
     const buildWordCMTable = (sheetReports: any[]): Table => {
       const tableHeaderCells = [
         { text: 'No', width: 4 },
-        { text: 'Tanggal & Jam', width: 10 },
-        { text: 'Tiket / Perangkat / Lokasi', width: 17 },
-        { text: 'Jenis Laporan CM', width: 15 },
-        { text: 'Uraian Masalah', width: 18 },
-        { text: 'Tindakan Perbaikan', width: 18 },
-        { text: 'Status', width: 8 },
-        { text: 'Sparepart', width: 10 },
+        { text: 'Identitas Pekerjaan', width: 20 },
+        { text: 'Jenis CM, Status & Sparepart', width: 18 },
+        { text: 'Uraian Masalah', width: 28 },
+        { text: 'Tindakan Perbaikan', width: 30 },
       ].map(h => new TableCell({
         width: { size: h.width, type: WidthType.PERCENTAGE },
         shading: { fill: NAVY_BLUE, type: ShadingType.CLEAR },
@@ -935,7 +932,7 @@ export async function exportCMMonthlyRecapToDocx(
         const dateStr = formatReportDate(report);
         const timeStr = formatReportTime(report);
         const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
-        const equipLocStr = `${ticketStr}\n${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
+        const equipLocStr = `${dateStr}${timeStr !== '-' ? ` | ${timeStr}` : ''}\n${ticketStr}\n${report.equipmentName || report.equipment || '-'} | ${report.location || report.area || 'NeutraDC'}`;
         const issueStr = report.issue || report.problemAnalysis || report.problem || '-';
         const actionStr = report.correctiveAction || report.actionTaken || '-';
         const reportTypeStr = getSparepartCategoryLabel(report);
@@ -954,45 +951,36 @@ export async function exportCMMonthlyRecapToDocx(
                 }),
               ],
             }),
-            // 2. Tanggal & Jam
+            // 2. Identitas dipadatkan dalam satu kolom agar uraian dan tindakan mendapat ruang lebar.
             new TableCell({
-              width: { size: 10, type: WidthType.PERCENTAGE },
+              width: { size: 20, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
-                  alignment: AlignmentType.CENTER,
                   children: [
-                    new TextRun({ text: dateStr, size: 16, bold: true }),
-                    new TextRun({ text: `\n${timeStr}`, size: 14, color: '64748B' }),
+                    new TextRun({ text: equipLocStr, size: 14, bold: true, color: '0F172A' }),
                   ],
                 }),
               ],
             }),
-            // 3. Tiket / Perangkat / Lokasi
+            // 3. Klasifikasi, status, dan sparepart menjadi satu informasi ringkas.
             new TableCell({
-              width: { size: 17, type: WidthType.PERCENTAGE },
+              width: { size: 18, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: equipLocStr, size: 15, bold: true, color: '0F172A' })],
-                }),
-              ],
-            }),
-            // 4. Klasifikasi laporan CM
-            new TableCell({
-              width: { size: 15, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
+              shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
               children: [
                 new Paragraph({
                   children: [
                     new TextRun({ text: reportTypeStr, size: 14, bold: true, color: '1E293B' }),
+                    new TextRun({ text: `\nStatus: ${statusInfo.label}`, size: 13, bold: true, color: isClosed ? '166534' : 'B45309' }),
+                    new TextRun({ text: `\nSparepart: ${sparepartsStr}`, size: 12, color: '334155' }),
                   ],
                 }),
               ],
             }),
-            // 5. Uraian masalah dibuat kolom sendiri agar setiap nomor terbaca menyamping.
+            // 4. Kolom lebar: uraian masalah.
             new TableCell({
-              width: { size: 18, type: WidthType.PERCENTAGE },
+              width: { size: 28, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
@@ -1002,9 +990,9 @@ export async function exportCMMonthlyRecapToDocx(
                 }),
               ],
             }),
-            // 6. Tindakan perbaikan dibuat kolom sendiri agar tidak menumpuk ke bawah.
+            // 5. Kolom terlebar: tindakan perbaikan tidak lagi turun huruf per huruf.
             new TableCell({
-              width: { size: 18, type: WidthType.PERCENTAGE },
+              width: { size: 30, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               children: [
                 new Paragraph({
@@ -1013,25 +1001,6 @@ export async function exportCMMonthlyRecapToDocx(
                   ],
                 }),
               ],
-            }),
-            // 7. Status
-            new TableCell({
-              width: { size: 8, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: statusInfo.label, size: 13, bold: true, color: isClosed ? '166534' : 'B45309' }),
-                  ],
-                }),
-              ],
-            }),
-            // 8. Sparepart terpakai
-            new TableCell({
-              width: { size: 10, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              children: [new Paragraph({ children: [new TextRun({ text: sparepartsStr, size: 13, color: '1E293B' })] })],
             }),
           ],
         });
@@ -1108,23 +1077,23 @@ export async function exportCMMonthlyRecapToDocx(
           })
         );
 
-        // Tiga foto per baris dan caption di sel yang sama: dokumentasi tetap jelas
-        // tanpa menggandakan tinggi halaman untuk baris caption terpisah.
+        // Dua foto per baris: cukup besar untuk inspeksi visual, tetap hemat karena
+        // caption berada dalam sel foto dan tidak membentuk baris tambahan.
         const photoTableRows: TableRow[] = [];
-        for (let pIdx = 0; pIdx < item.photos.length; pIdx += 3) {
-          const group = item.photos.slice(pIdx, pIdx + 3);
-          const photoCells = [0, 1, 2].map((offset) => {
+        for (let pIdx = 0; pIdx < item.photos.length; pIdx += 2) {
+          const group = item.photos.slice(pIdx, pIdx + 2);
+          const photoCells = [0, 1].map((offset) => {
             const photo = group[offset];
             const imageBytes = photo ? base64ToUint8Array(photo.base64) : new Uint8Array();
             return new TableCell({
-              width: { size: 33.34, type: WidthType.PERCENTAGE },
+              width: { size: 50, type: WidthType.PERCENTAGE },
               borders: cellBorderThin,
               shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
               children: photo && imageBytes.length > 0 ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
                   spacing: { before: 35, after: 20 },
-                  children: [new ImageRun({ data: imageBytes, transformation: { width: 150, height: 95 }, type: 'jpg' })],
+                  children: [new ImageRun({ data: imageBytes, transformation: { width: 245, height: 155 }, type: 'jpg' })],
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
