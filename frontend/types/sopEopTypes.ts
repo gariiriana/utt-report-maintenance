@@ -171,6 +171,16 @@ export interface EOPDocumentData {
     ppeId: string;
     commsEn: string;
     commsId: string;
+    /** Full ordered list as it appears in the imported document. */
+    items?: Array<{
+      textEn: string;
+      textId: string;
+    }>;
+    /** Requirements that do not fit the legacy PPE/communication slots. */
+    additionalItems?: Array<{
+      textEn: string;
+      textId: string;
+    }>;
   };
 
   // Section 4 – Work Instruction / Procedure

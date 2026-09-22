@@ -54,10 +54,56 @@ function cleanText(raw: string): string {
   if (!raw) return '';
   return decodeEntities(
     raw
-      .replace(/<[^>]+>/g, ' ')
+      .replace(/<w:tab\b[^>]*\/?\s*>/gi, ' ')
+      .replace(/<w:br\b[^>]*\/?\s*>/gi, '\n')
+      .replace(/<\/w:(?:p|tc|tr)>/gi, ' ')
+      .replace(/<[^>]+>/g, '')
       .replace(/\s+/g, ' ')
       .trim()
   );
+}
+
+/** Word frequently splits labels across multiple runs; always match normalized text. */
+function normalizedXmlText(raw: string): string {
+  return cleanText(raw)
+    .replace(/[–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function containsLabel(raw: string, label: string): boolean {
+  const haystack = normalizedXmlText(raw).toLowerCase();
+  const needle = label.toLowerCase();
+  return haystack.includes(needle) ||
+    haystack.replace(/[^a-z0-9]/g, '').includes(needle.replace(/[^a-z0-9]/g, ''));
+}
+
+/** Preserve paragraph/table boundaries while removing WordprocessingML markup. */
+function structuredXmlText(raw: string): string {
+  return decodeEntities(
+    raw
+      .replace(/<w:tab\b[^>]*\/?\s*>/gi, '\t')
+      .replace(/<w:br\b[^>]*\/?\s*>/gi, '\n')
+      .replace(/<\/w:tc>/gi, '\t')
+      .replace(/<\/w:tr>/gi, '\n')
+      .replace(/<\/w:p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+  )
+    .replace(/[^\S\r\n\t]+/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function extractPlainSection(xml: string, sectionNumber: number, nextSectionNumber: number): string {
+  const text = structuredXmlText(xml);
+  const start = new RegExp(`(?:Section|Seksi)\\s*${sectionNumber}\\b`, 'i').exec(text);
+  if (!start) return '';
+  const remainder = text.slice(start.index);
+  const end = new RegExp(`(?:Section|Seksi)\\s*${nextSectionNumber}\\b`, 'i').exec(remainder.slice(start[0].length));
+  return end
+    ? remainder.slice(0, start[0].length + end.index)
+    : remainder;
 }
 
 /**
@@ -152,7 +198,7 @@ function extractSectionBilingual(
   const afterStart = xml.slice(startIndex);
   const endOffset = afterStart.search(endPattern);
   const sectionXml = endOffset >= 0 ? afterStart.slice(0, endOffset) : afterStart;
-  const paragraphs = sectionXml.match(/<w:p[\s\S]*?<\/w:p>/g) || [];
+  const paragraphs = sectionXml.match(/<w:p(?:\s|>)[\s\S]*?<\/w:p>/g) || [];
   const enLines: string[] = [];
   const idLines: string[] = [];
 
@@ -172,10 +218,14 @@ function extractSectionBilingual(
 function getImportWarnings(data: SOPDocumentData | EOPDocumentData): string[] {
   const warnings: string[] = [];
   if (!data.documentTitle) warnings.push('Judul dokumen tidak terbaca.');
+  if (data.referencedDocuments.length === 0) warnings.push('Tabel dokumen referensi tidak terbaca atau memang kosong.');
   if (data.workSteps.length === 0) warnings.push('Tidak ada langkah kerja yang terbaca; periksa struktur tabel Action / Expected Outcome pada Word.');
   if (data.type === 'SOP' && data.equipmentList.length === 0) warnings.push('Tidak ada data CI Equipment yang terbaca.');
   if (data.type === 'SOP' && data.prerequisites.length === 0) warnings.push('Tidak ada prasyarat yang terbaca.');
   if (data.type === 'EOP' && !data.expectedConditionsEn && !data.expectedConditionsId) warnings.push('Expected Conditions EOP tidak terbaca.');
+  if (data.type === 'EOP' && !data.ehsRequirements.ppeEn && !data.ehsRequirements.ppeId && !data.ehsRequirements.commsEn && !data.ehsRequirements.commsId && !(data.ehsRequirements.items || []).length) {
+    warnings.push('Persyaratan EHS EOP tidak terbaca.');
+  }
   return warnings;
 }
 
@@ -183,11 +233,7 @@ function getImportWarnings(data: SOPDocumentData | EOPDocumentData): string[] {
  * Mengekstrak metadata teks dari dokumen XML secara cerdas dan tahan multiline
  */
 function extractMetadata(xml: string, fileName: string, isEop: boolean) {
-  const norm = xml
-    .replace(/<w:br\/>/g, '\n')
-    .replace(/<\/w:p>/g, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/[ \t\f\v]+/g, ' ');
+  const norm = structuredXmlText(xml);
 
   const getMatch = (regex: RegExp): string => {
     const m = norm.match(regex);
@@ -262,24 +308,24 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
  * Mampu membaca tabel 7 kolom (Lighting Point), 10 kolom (Trafo), maupun variasi jumlah/urutan kolom lainnya.
  */
 function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
-  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
 
   // Cari SEMUA tabel yang mengandung kata kunci CI Equipment
   const ciCandidates = tbls.filter(
     (t) =>
-      t.includes('CI Name') ||
-      t.includes('Nama CI') ||
-      t.includes('Class Id') ||
-      t.includes('ID Kelas') ||
-      t.includes('Equipment Information') ||
-      t.includes('Informasi Peralatan')
+      containsLabel(t, 'CI Name') ||
+      containsLabel(t, 'Nama CI') ||
+      containsLabel(t, 'Class Id') ||
+      containsLabel(t, 'ID Kelas') ||
+      containsLabel(t, 'Equipment Information') ||
+      containsLabel(t, 'Informasi Peralatan')
   );
 
   // Dari semua kandidat, pilih tabel yang punya baris terbanyak (skip banner 1-2 baris)
   let ciTbl: string | undefined;
   let maxRows = 0;
   for (const candidate of ciCandidates) {
-    const rowCount = (candidate.match(/<w:tr[\s\S]*?<\/w:tr>/g) || []).length;
+    const rowCount = (candidate.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || []).length;
     if (rowCount > maxRows) {
       maxRows = rowCount;
       ciTbl = candidate;
@@ -289,16 +335,16 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   // Tabel data asli minimal harus punya 2 baris (1 header + 1 data)
   if (!ciTbl || maxRows < 2) return [];
 
-  const trs = ciTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const trs = ciTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
 
   const headerIdx = trs.findIndex(
     (tr) =>
-      tr.includes('CI Name') ||
-      tr.includes('Nama CI') ||
-      tr.includes('Class Id') ||
-      tr.includes('ID Kelas') ||
-      tr.includes('Capacity') ||
-      tr.includes('Kapasitas')
+      containsLabel(tr, 'CI Name') ||
+      containsLabel(tr, 'Nama CI') ||
+      containsLabel(tr, 'Class Id') ||
+      containsLabel(tr, 'ID Kelas') ||
+      containsLabel(tr, 'Capacity') ||
+      containsLabel(tr, 'Kapasitas')
   );
 
   const getLines = (cellXml?: string): string[] => {
@@ -327,7 +373,7 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   };
 
   if (headerIdx >= 0) {
-    const headerTcs = trs[headerIdx].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    const headerTcs = trs[headerIdx].match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
     headerTcs.forEach((tc, idx) => {
       const text = getLines(tc).join(' ').toLowerCase();
 
@@ -359,7 +405,7 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   const rawDataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
   if (rawDataRows.length === 0) return [];
 
-  const sampleTcs = rawDataRows[0].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+  const sampleTcs = rawDataRows[0].match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
   const colCount = sampleTcs.length;
 
   // Fallback pemetaan kolom jika baris header tidak memiliki kata kunci standar
@@ -429,7 +475,7 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
   };
 
   const dataRows = rawDataRows.filter((tr) => {
-    const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
     return !isSubheaderRow(tcs);
   });
 
@@ -437,7 +483,7 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
 
   const items = dataRows
     .map((tr, idx) => {
-      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length < 3) return null;
 
       const getColVal = (colIndex: number): string => {
@@ -495,27 +541,27 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
  * Mendukung tabel dengan atau tanpa kolom nomor (No).
  */
 function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
-  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
   const prereqTbl = tbls.find(
     (t) =>
-      t.includes('Check PTW') ||
-      t.includes('Periksa bahwa PTW') ||
-      ((t.includes('Requirement') || t.includes('Persyaratan') || t.includes('Prerequisite') || t.includes('Prasyarat')) &&
-        (t.includes('Time') || t.includes('Waktu') || t.includes('Intial') || t.includes('Initial') || t.includes('Inisial')))
+      containsLabel(t, 'Check PTW') ||
+      containsLabel(t, 'Periksa bahwa PTW') ||
+      ((containsLabel(t, 'Requirement') || containsLabel(t, 'Persyaratan') || containsLabel(t, 'Prerequisite') || containsLabel(t, 'Prasyarat')) &&
+        (containsLabel(t, 'Time') || containsLabel(t, 'Waktu') || containsLabel(t, 'Intial') || containsLabel(t, 'Initial') || containsLabel(t, 'Inisial')))
   );
   if (!prereqTbl) return [];
 
-  const trs = prereqTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const trs = prereqTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
   const headerIdx = trs.findIndex(
     (tr) =>
-      (tr.includes('Requirement') || tr.includes('Persyaratan')) &&
-      (tr.includes('Time') || tr.includes('Waktu') || tr.includes('Intial') || tr.includes('Initial') || tr.includes('Inisial'))
+      (containsLabel(tr, 'Requirement') || containsLabel(tr, 'Persyaratan')) &&
+      (containsLabel(tr, 'Time') || containsLabel(tr, 'Waktu') || containsLabel(tr, 'Intial') || containsLabel(tr, 'Initial') || containsLabel(tr, 'Inisial'))
   );
   const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 0);
 
   const items = dataRows
     .map((tr, idx) => {
-      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length === 0) return null;
 
       // Abaikan jika baris ini adalah baris header
@@ -560,24 +606,24 @@ function parsePrerequisites(xml: string): SOPPrerequisiteItem[] {
  * Mendukung tabel baik yang memiliki kolom No terpisah maupun tanpa kolom No.
  */
 function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
-  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
   const stepTbl = tbls.find(
     (t) =>
-      (t.includes('Action') || t.includes('Tindakan')) &&
-      (t.includes('Expected Outcome') || t.includes('Hasil yang Diharapkan'))
+      (containsLabel(t, 'Action') || containsLabel(t, 'Tindakan')) &&
+      (containsLabel(t, 'Expected Outcome') || containsLabel(t, 'Hasil yang Diharapkan'))
   );
   if (!stepTbl) return [];
 
-  const trs = stepTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const trs = stepTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
   const headerIdx = trs.findIndex(
-    (tr) => tr.includes('Expected Outcome') || tr.includes('Hasil yang Diharapkan')
+    (tr) => containsLabel(tr, 'Expected Outcome') || containsLabel(tr, 'Hasil yang Diharapkan')
   );
   const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
 
   // Deteksi apakah header memiliki kolom No di kolom pertama
   let hasNoCol = false;
   if (headerIdx >= 0) {
-    const headerTcs = trs[headerIdx].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    const headerTcs = trs[headerIdx].match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
     if (headerTcs.length >= 4) {
       const firstColText = cleanText(headerTcs[0] || '').toLowerCase();
       if (/^no\b|^nomor\b|^#/.test(firstColText)) {
@@ -588,7 +634,7 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
 
   const steps = dataRows
     .map((tr, idx) => {
-      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length < 2) return null;
 
       const firstColText = cleanText(tcs[0] || '').replace(/\.$/, '');
@@ -638,23 +684,23 @@ function parseSOPWorkSteps(xml: string): SOPWorkStepItem[] {
  * Mendukung format tabel dengan atau tanpa kolom nomor (No).
  */
 function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
-  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
   const stepTbl = tbls.find(
     (t) =>
-      (t.includes('Action') || t.includes('Tindakan')) &&
-      (t.includes('Expected Outcome') || t.includes('Hasil yang Diharapkan'))
+      (containsLabel(t, 'Action') || containsLabel(t, 'Tindakan')) &&
+      (containsLabel(t, 'Expected Outcome') || containsLabel(t, 'Hasil yang Diharapkan'))
   );
   if (!stepTbl) return [];
 
-  const trs = stepTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const trs = stepTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
   const headerIdx = trs.findIndex(
-    (tr) => tr.includes('Expected Outcome') || tr.includes('Hasil yang Diharapkan')
+    (tr) => containsLabel(tr, 'Expected Outcome') || containsLabel(tr, 'Hasil yang Diharapkan')
   );
   const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
 
   let hasNoCol = false;
   if (headerIdx >= 0) {
-    const headerTcs = trs[headerIdx].match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    const headerTcs = trs[headerIdx].match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
     if (headerTcs.length >= 4) {
       const firstColText = cleanText(headerTcs[0] || '').toLowerCase();
       if (/^no\b|^nomor\b|^#/.test(firstColText)) {
@@ -665,7 +711,7 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
 
   const steps = dataRows
     .map((tr, idx) => {
-      const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+      const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length < 2) return null;
 
       const firstColText = cleanText(tcs[0] || '').replace(/\.$/, '');
@@ -715,25 +761,25 @@ function parseEOPWorkSteps(xml: string): EOPWorkStepItem[] {
  * Mendukung tabel 2 kolom [Name, Number] maupun 3 kolom [No, Name, Number].
  */
 function parseReferencedDocuments(xml: string): SOPReferencedDocItem[] {
-  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
   const refTbl = tbls.find(
     (t) =>
-      (t.includes('Document Name') || t.includes('Nama Dokumen')) &&
-      (t.includes('Document Number') || t.includes('Nomor Dokumen'))
+      (containsLabel(t, 'Document Name') || containsLabel(t, 'Nama Dokumen')) &&
+      (containsLabel(t, 'Document Number') || containsLabel(t, 'Nomor Dokumen'))
   );
   if (!refTbl) return [];
 
-  const trs = refTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const trs = refTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
   const headerIdx = trs.findIndex(
     (tr) =>
-      (tr.includes('Document Name') || tr.includes('Nama Dokumen')) &&
-      (tr.includes('Document Number') || tr.includes('Nomor Dokumen'))
+      (containsLabel(tr, 'Document Name') || containsLabel(tr, 'Nama Dokumen')) &&
+      (containsLabel(tr, 'Document Number') || containsLabel(tr, 'Nomor Dokumen'))
   );
   const dataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
 
   const docs: SOPReferencedDocItem[] = [];
   for (const tr of dataRows) {
-    const tcs = tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || [];
+    const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
     if (tcs.length < 2) continue;
 
     let name = cleanText(tcs[0] || '');
@@ -751,6 +797,81 @@ function parseReferencedDocuments(xml: string): SOPReferencedDocItem[] {
   }
 
   return docs;
+}
+
+function parseEOPEHSRequirementsRobust(xml: string): {
+  ppeEn: string;
+  ppeId: string;
+  commsEn: string;
+  commsId: string;
+  items: Array<{ textEn: string; textId: string }>;
+  additionalItems: Array<{ textEn: string; textId: string }>;
+} {
+  const section = extractPlainSection(xml, 3, 4);
+  const firstNumberedItem = section.search(/(?:^|\n|\t)\s*1[\.\)]\s+/m);
+  const raw = (firstNumberedItem >= 0 ? section.slice(firstNumberedItem) : section)
+    .replace(/^(?:Section|Seksi)\s*3[^\n]*/i, '')
+    .replace(/^\s*(?:Requirements|Persyaratan)\s*:?/im, '')
+    .trim();
+
+  if (!raw || raw.length < 5) {
+    return { ppeEn: '', ppeId: '', commsEn: '', commsId: '', items: [], additionalItems: [] };
+  }
+
+  const items = raw
+    .split(/(?:^|[\n\t]+|\s{2,})(?=\s*\d+[\.\)]\s+)/m)
+    .flatMap((item) => item.split(/\s+(?=\d+[\.\)]\s+[A-Z])/))
+    .map((item) => item.replace(/^\s*\d+[\.\)]\s*/, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const parsed = items.map((item) =>
+    detectLanguage(item) === 'id' ? { textEn: '', textId: item } : { textEn: item, textId: '' }
+  );
+  const commsIndex = parsed.findIndex((item) => /communication|handy[\s-]*talk|komunikasi|\bht\b/i.test(`${item.textEn} ${item.textId}`));
+  const ppeIndex = parsed.findIndex((item) => /personal protective|\bppe\b|alat pelindung|\bapd\b|safety shoes|protective helmet/i.test(`${item.textEn} ${item.textId}`));
+  const comms = commsIndex >= 0 ? parsed[commsIndex] : { textEn: '', textId: '' };
+  const ppe = ppeIndex >= 0 ? parsed[ppeIndex] : { textEn: '', textId: '' };
+
+  return {
+    ppeEn: ppe.textEn,
+    ppeId: ppe.textId,
+    commsEn: comms.textEn,
+    commsId: comms.textId,
+    items: parsed,
+    additionalItems: parsed.filter((_, index) => index !== commsIndex && index !== ppeIndex)
+  };
+}
+
+function parseSOPEHSRequirementsRobust(xml: string): {
+  ppeEn: string;
+  ppeId: string;
+  jewelryEn: string;
+  jewelryId: string;
+  commsEn: string;
+  commsId: string;
+  lotoEn: string;
+  lotoId: string;
+} {
+  const section = extractPlainSection(xml, 6, 7);
+  const firstNumberedItem = section.search(/(?:^|\n|\t)\s*1[\.\)]\s+/m);
+  const raw = firstNumberedItem >= 0 ? section.slice(firstNumberedItem) : section;
+  const items = raw
+    .split(/(?:^|[\n\t]+|\s{2,})(?=\s*\d+[\.\)]\s+)/m)
+    .flatMap((item) => item.split(/\s+(?=\d+[\.\)]\s+[A-Z])/))
+    .map((item) => item.replace(/^\s*\d+[\.\)]\s*/, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .map((item) => detectLanguage(item) === 'id' ? { en: '', id: item } : { en: item, id: '' });
+  const pick = (pattern: RegExp, fallbackIndex: number) =>
+    items.find((item) => pattern.test(`${item.en} ${item.id}`)) || items[fallbackIndex] || { en: '', id: '' };
+  const ppe = pick(/personal protective|\bppe\b|alat pelindung|\bapd\b|safety shoes|protective helmet/i, 0);
+  const jewelry = pick(/jewel|ring|watch|metal object|perhiasan|cincin|jam tangan/i, 1);
+  const comms = pick(/communication|handy[\s-]*talk|komunikasi|\bht\b/i, 2);
+  const loto = pick(/lock[\s-]*out|tag[\s-]*out|\bloto\b|selector switch|saklar pemilih/i, 3);
+  return {
+    ppeEn: ppe.en, ppeId: ppe.id,
+    jewelryEn: jewelry.en, jewelryId: jewelry.id,
+    commsEn: comms.en, commsId: comms.id,
+    lotoEn: loto.en, lotoId: loto.id,
+  };
 }
 
 /**
@@ -818,21 +939,31 @@ function parseEOPExpectedConditions(xml: string): { en: string; id: string } {
   return { en: raw, id: '' };
 }
 
+function parseEOPExpectedConditionsRobust(xml: string): { en: string; id: string } {
+  const section = extractPlainSection(xml, 4, 5);
+  const match = section.match(
+    /(?:Expected\s*Conditions(?:\s*\/\s*Equipment\s*Status)?|Kondisi\s*yang\s*Diharapkan(?:\s*\/\s*Status\s*Peralatan)?)\s*:?\s*([\s\S]*?)(?=\n\s*(?:No\s*)?(?:Action|Tindakan)\b|\n\s*(?:Action|Tindakan)\s+(?:Expected|Hasil)\b|$)/i
+  );
+  const value = match?.[1]?.replace(/\s+/g, ' ').trim() || '';
+  if (!value) return { en: '', id: '' };
+  return detectLanguage(value) === 'id' ? { en: '', id: value } : { en: value, id: '' };
+}
+
 /**
  * Mengekstrak tabel Approval / Pengesahan (4 Pejabat Penandatangan)
  */
 function parseApprovals(xml: string): DocumentSigner[] {
-  const tbls = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>/g) || [];
+  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
   const appTbl = tbls.find(
     (t) =>
-      t.includes('Project Manager') ||
-      t.includes('Chief Engineering') ||
-      t.includes('Facility Manager') ||
-      t.includes('Manajer Proyek')
+      containsLabel(t, 'Project Manager') ||
+      containsLabel(t, 'Chief Engineering') ||
+      containsLabel(t, 'Facility Manager') ||
+      containsLabel(t, 'Manajer Proyek')
   );
   if (!appTbl) return [...DEFAULT_DEFAULT_APPROVERS];
 
-  const trs = appTbl.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const trs = appTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
   const defaultRoles = [
     { roleEn: 'Project Manager', roleId: 'Manajer Proyek', fallbackName: 'Dwi Tasmiyadi' },
     { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', fallbackName: 'Habib Mulyana' },
@@ -908,7 +1039,7 @@ function parseSOPEHSRequirements(xml: string): {
     };
   }
 
-  const trs = match[0].match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+  const trs = match[0].match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
   const items = trs
     .map((tr) => {
       const bilingual = extractBilingualFromXml(tr);
@@ -940,7 +1071,11 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   const prerequisites = parsePrerequisites(xml);
   const workSteps = parseSOPWorkSteps(xml);
   const approvals = parseApprovals(xml);
-  const ehsRequirements = parseSOPEHSRequirements(xml);
+  const robustEhsRequirements = parseSOPEHSRequirementsRobust(xml);
+  const legacyEhsRequirements = parseSOPEHSRequirements(xml);
+  const ehsRequirements = Object.values(robustEhsRequirements).some(Boolean)
+    ? robustEhsRequirements
+    : legacyEhsRequirements;
   const conditionsPair = extractSectionBilingual(
     xml,
     /(?:Conditions\s*\/\s*Equipment\s*status\s*prior\s*to\s*SOP\s*Execution|Kondisi\s*\/\s*Status\s*peralatan\s*sebelum\s*Pelaksanaan\s*SOP)/i,
@@ -1056,8 +1191,11 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
 function parseEOPData(xml: string, fileName: string): EOPDocumentData {
   const meta = extractMetadata(xml, fileName, true);
   const referencedDocuments = parseReferencedDocuments(xml);
-  const ehsRequirements = parseEOPEHSRequirements(xml);
-  const parsedExpectedCond = parseEOPExpectedConditions(xml);
+  const ehsRequirements = parseEOPEHSRequirementsRobust(xml);
+  const robustExpectedCond = parseEOPExpectedConditionsRobust(xml);
+  const parsedExpectedCond = robustExpectedCond.en || robustExpectedCond.id
+    ? robustExpectedCond
+    : parseEOPExpectedConditions(xml);
   const expectedCondPair = extractSectionBilingual(
     xml,
     /(?:Expected\s*Conditions\s*(?:\/\s*Equipment\s*Status)?|Kondisi\s*yang\s*Diharapkan)/i,
@@ -1065,8 +1203,8 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
     [/^expected\s*conditions/i, /^kondisi\s*yang\s*diharapkan/i]
   );
   const expectedCond = {
-    en: expectedCondPair.en || parsedExpectedCond.en,
-    id: expectedCondPair.id || parsedExpectedCond.id,
+    en: parsedExpectedCond.en || expectedCondPair.en,
+    id: parsedExpectedCond.id || expectedCondPair.id,
   };
   const workSteps = parseEOPWorkSteps(xml);
   const approvals = parseApprovals(xml);
@@ -1119,14 +1257,15 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
   }
 
   const xml = await docXmlFile.async('text');
+  const documentText = normalizedXmlText(xml);
 
   // Deteksi Tipe Dokumen:
   // SOP memiliki 14 seksi dan Informasi Peralatan (Equipment Information).
   // EOP memiliki 8 seksi (Section 8 – Additional Information) dan warna banner FF00FF.
   const isEop =
-    (!xml.includes('Section 14') &&
+    (!containsLabel(documentText, 'Section 14') &&
       (xml.includes('FF00FF') || xml.includes('Section 8 – Additional') || /eop/i.test(file.name))) ||
-    /emergency\s*operating\s*procedure/i.test(xml);
+    /emergency\s*operating\s*procedure/i.test(documentText);
 
   if (isEop) {
     const eopData = parseEOPData(xml, file.name);

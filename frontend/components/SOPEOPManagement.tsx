@@ -1316,7 +1316,35 @@ export function SOPEOPManagement() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              {(eopData.ehsRequirements.items || []).map((item, idx) => (
+                <div key={`ordered-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <span className="text-xs font-bold text-slate-700">{idx + 1}. Persyaratan EHS dari Dokumen:</span>
+                  <textarea
+                    rows={2}
+                    value={item.textEn}
+                    onChange={(e) => {
+                      const items = [...(eopData.ehsRequirements.items || [])];
+                      items[idx] = { ...items[idx], textEn: e.target.value };
+                      setEopData({ ...eopData, ehsRequirements: { ...eopData.ehsRequirements, items } });
+                    }}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300"
+                    placeholder="EHS requirement (English)..."
+                  />
+                  <textarea
+                    rows={2}
+                    value={item.textId}
+                    onChange={(e) => {
+                      const items = [...(eopData.ehsRequirements.items || [])];
+                      items[idx] = { ...items[idx], textId: e.target.value };
+                      setEopData({ ...eopData, ehsRequirements: { ...eopData.ehsRequirements, items } });
+                    }}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300"
+                    placeholder="Persyaratan EHS (Bahasa Indonesia)..."
+                  />
+                </div>
+              ))}
+
+              <div className={`${(eopData.ehsRequirements.items || []).length > 0 ? 'hidden' : ''} p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2`}>
                 <span className="text-xs font-bold text-slate-700">1. APD / PPE:</span>
                 <textarea rows={2} value={sopData.ehsRequirements.ppeEn}
                   onChange={(e) => setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, ppeEn: e.target.value } })}
@@ -1335,7 +1363,7 @@ export function SOPEOPManagement() {
                 />
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className={`${(eopData.ehsRequirements.items || []).length > 0 ? 'hidden' : ''} p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2`}>
                 <span className="text-xs font-bold text-slate-700">2. Larangan Perhiasan Logam:</span>
                 <textarea rows={2} value={sopData.ehsRequirements.jewelryEn}
                   onChange={(e) => setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, jewelryEn: e.target.value } })}
@@ -2128,6 +2156,34 @@ export function SOPEOPManagement() {
                   className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300"
                 />
               </div>
+
+              {(eopData.ehsRequirements.items || []).length === 0 && (eopData.ehsRequirements.additionalItems || []).map((item, idx) => (
+                <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <span className="text-xs font-bold text-slate-700">{idx + 3}. Persyaratan EHS Tambahan:</span>
+                  <textarea
+                    rows={2}
+                    value={item.textEn}
+                    onChange={(e) => {
+                      const additionalItems = [...(eopData.ehsRequirements.additionalItems || [])];
+                      additionalItems[idx] = { ...additionalItems[idx], textEn: e.target.value };
+                      setEopData({ ...eopData, ehsRequirements: { ...eopData.ehsRequirements, additionalItems } });
+                    }}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300"
+                    placeholder="Additional EHS requirement (English)..."
+                  />
+                  <textarea
+                    rows={2}
+                    value={item.textId}
+                    onChange={(e) => {
+                      const additionalItems = [...(eopData.ehsRequirements.additionalItems || [])];
+                      additionalItems[idx] = { ...additionalItems[idx], textId: e.target.value };
+                      setEopData({ ...eopData, ehsRequirements: { ...eopData.ehsRequirements, additionalItems } });
+                    }}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300"
+                    placeholder="Persyaratan EHS tambahan (Bahasa Indonesia)..."
+                  />
+                </div>
+              ))}
             </div>
           </div>
 

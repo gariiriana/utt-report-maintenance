@@ -799,6 +799,20 @@ export async function convertEOPToBilingualWithAI(
     if (updated.ehsRequirements.commsEn && needsTranslateToId(updated.ehsRequirements.commsEn, updated.ehsRequirements.commsId)) {
       queue.push({ id: 'ehs_comm_id', text: updated.ehsRequirements.commsEn, toLang: 'id' });
     }
+    (updated.ehsRequirements.additionalItems || []).forEach((item, idx) => {
+      if (item.textEn && needsTranslateToId(item.textEn, item.textId)) {
+        queue.push({ id: `ehs_extra_id_${idx}`, text: item.textEn, toLang: 'id' });
+      } else if (!item.textEn && item.textId) {
+        queue.push({ id: `ehs_extra_en_${idx}`, text: item.textId, toLang: 'en' });
+      }
+    });
+    (updated.ehsRequirements.items || []).forEach((item, idx) => {
+      if (item.textEn && needsTranslateToId(item.textEn, item.textId)) {
+        queue.push({ id: `ehs_item_id_${idx}`, text: item.textEn, toLang: 'id' });
+      } else if (!item.textEn && item.textId) {
+        queue.push({ id: `ehs_item_en_${idx}`, text: item.textId, toLang: 'en' });
+      }
+    });
   }
 
   // 4. Work Steps
@@ -836,6 +850,14 @@ export async function convertEOPToBilingualWithAI(
   if (updated.ehsRequirements) {
     if (translations.has('ehs_ppe_id')) updated.ehsRequirements.ppeId = translations.get('ehs_ppe_id')!;
     if (translations.has('ehs_comm_id')) updated.ehsRequirements.commsId = translations.get('ehs_comm_id')!;
+    (updated.ehsRequirements.additionalItems || []).forEach((item, idx) => {
+      if (translations.has(`ehs_extra_id_${idx}`)) item.textId = translations.get(`ehs_extra_id_${idx}`)!;
+      if (translations.has(`ehs_extra_en_${idx}`)) item.textEn = translations.get(`ehs_extra_en_${idx}`)!;
+    });
+    (updated.ehsRequirements.items || []).forEach((item, idx) => {
+      if (translations.has(`ehs_item_id_${idx}`)) item.textId = translations.get(`ehs_item_id_${idx}`)!;
+      if (translations.has(`ehs_item_en_${idx}`)) item.textEn = translations.get(`ehs_item_en_${idx}`)!;
+    });
   }
 
   if (Array.isArray(updated.workSteps)) {

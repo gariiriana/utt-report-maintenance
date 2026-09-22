@@ -1847,10 +1847,17 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     commsId: 'Perangkat komunikasi seperti handy-talkie (HT) tersedia / siap digunakan.',
   };
 
-  const eopEhsItems: [string, string][] = [
-    [`1. ${eopEhs.ppeEn}`, `1. ${ensureBilingualTranslation(eopEhs.ppeEn, eopEhs.ppeId)}`],
-    [`2. ${eopEhs.commsEn}`, `2. ${ensureBilingualTranslation(eopEhs.commsEn, eopEhs.commsId)}`],
-  ];
+  const orderedEhsItems = eopEhs.items && eopEhs.items.length > 0
+    ? eopEhs.items
+    : [
+        { textEn: eopEhs.ppeEn, textId: eopEhs.ppeId },
+        { textEn: eopEhs.commsEn, textId: eopEhs.commsId },
+        ...(eopEhs.additionalItems || []),
+      ];
+  const eopEhsItems: [string, string][] = orderedEhsItems.map((item, idx): [string, string] => [
+    `${idx + 1}. ${item.textEn || item.textId}`,
+    `${idx + 1}. ${ensureBilingualTranslation(item.textEn, item.textId)}`,
+  ]);
 
   children.push(
     new Table({
