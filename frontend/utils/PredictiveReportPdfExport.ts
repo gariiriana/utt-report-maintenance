@@ -249,6 +249,14 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
           { content: 'Urgensi & Dampak SLA', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
           { content: `[${data.aiAnalysis.urgencyLevel.toUpperCase()}] ${sanitizeText(data.aiAnalysis.slaRiskAssessment)}` },
         ],
+        [
+          { content: 'Bukti, Keyakinan & Verifikasi', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+          { content: sanitizeText(
+            `${data.analysisMetadata?.evidenceReferences?.map(item => `${item.reference}: ${item.observation}`).join(' | ') || `Sumber: ${data.sourceMaintenanceName} / ${data.sourceTicketNumber || data.sourceDocId}`}. ` +
+            `Kualitas bukti: ${data.analysisMetadata?.evidenceQuality || 'Belum dinilai'}; keyakinan: ${data.analysisMetadata?.confidenceLevel || 'Belum dinilai'}. ` +
+            `${data.analysisMetadata?.requiresFieldVerification !== false ? 'Wajib verifikasi engineer lapangan.' : ''}`
+          ) },
+        ],
       ],
     });
 

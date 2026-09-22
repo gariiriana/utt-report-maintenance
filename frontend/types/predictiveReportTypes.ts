@@ -18,6 +18,23 @@ export interface PredictiveSparepart {
   urgency: 'Ready Stock' | 'Indent Procurement' | 'Critical Backup';
 }
 
+export interface PredictiveEvidenceReference {
+  sourceType: 'Corrective Maintenance' | 'Temuan Abnormal' | 'Foto Inspeksi' | 'Pengukuran Lapangan' | 'Dokumen OEM' | 'Lainnya';
+  reference: string;
+  observation: string;
+  usedFor: string;
+}
+
+export interface PredictiveAnalysisMetadata {
+  /** Evidence guard: every AI conclusion must be traceable to this list. */
+  evidenceReferences: PredictiveEvidenceReference[];
+  evidenceQuality: 'Memadai' | 'Terbatas' | 'Tidak Memadai';
+  confidenceLevel: 'Tinggi' | 'Sedang' | 'Rendah';
+  dataLimitations: string[];
+  requiresFieldVerification: boolean;
+  generatedAt: string;
+}
+
 export interface PredictiveReportData {
   id: string; // e.g. "PDM_20260912_XXXX"
   reportNumber: string; // e.g. "PDM/DME-NDC/2026/09/001"
@@ -69,6 +86,9 @@ export interface PredictiveReportData {
     recommendedSpareparts: PredictiveSparepart[];
     followUpTestingMethods: string[]; // e.g. ["Thermography Scanning", "Megger Test", "Vibration Analysis"]
   };
+
+  /** Traceability and uncertainty disclosure for engineering review. */
+  analysisMetadata?: PredictiveAnalysisMetadata;
 
   // ─── Bagian 5: Lembar Pengesahan (Approval Sheet) ────────────────────────
   signatures: {

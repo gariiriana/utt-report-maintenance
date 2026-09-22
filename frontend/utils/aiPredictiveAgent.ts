@@ -9,8 +9,11 @@
 import {
   PredictiveReportData,
   PredictiveParameterDrift,
-  PredictiveSparepart
+  PredictiveSparepart,
+  PredictiveAnalysisMetadata
 } from '@/types/predictiveReportTypes';
+import { auth } from '@/api/firebase';
+import { getApiEndpoint } from '@/utils/apiConfig';
 import {
   PREPARED_BY_SIGNATURES,
   getEngineerSignature,
@@ -21,96 +24,29 @@ import {
 
 // ─── Environment & API Key Management ────────────────────────────────────────
 
-const apiKeysStr = import.meta.env.VITE_NVIDIA_NIM_API_KEYS || '';
-const apiKeys = apiKeysStr.split(',').map((k: string) => k.trim()).filter(Boolean);
-const reasoningModel = import.meta.env.VITE_NVIDIA_NIM_REASONING_MODEL || 'gemini-1.5-flash';
+async function callReliabilityAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Login diperlukan untuk menjalankan analisis predictive.');
 
-let keyIndex = 0;
-function getNextAPIKey(): string {
-  if (apiKeys.length === 0) {
-    throw new Error('API Keys tidak terkonfigurasi. Periksa VITE_NVIDIA_NIM_API_KEYS.');
-  }
-  const key = apiKeys[keyIndex % apiKeys.length];
-  keyIndex++;
-  return key;
-}
-
-class RateLimitError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'RateLimitError';
-  }
-}
-
-async function callGeminiAPI(
-  apiKey: string,
-  model: string,
-  messages: any[],
-  temperature = 0.2,
-  maxTokens = 4096
-): Promise<string> {
-  const payload = {
-    model,
-    messages,
-    max_tokens: maxTokens,
-    temperature,
-    top_p: 0.9,
-    stream: false,
-  };
-
-  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+  const response = await fetch(getApiEndpoint('/ai/chat'), {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${await user.getIdToken()}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
   });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    if (response.status === 429 || errText.includes('RESOURCE_EXHAUSTED')) {
-      throw new RateLimitError(`API rate limit exceeded (${response.status}): ${errText}`);
-    }
-    throw new Error(`AI API error (${response.status}): ${errText}`);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || typeof payload.reply !== 'string') {
+    throw new Error(payload.error || payload.message || 'AI Reliability Engine tidak mengembalikan respons valid.');
   }
-
-  const data = await response.json();
-  if (!data.choices || data.choices.length === 0) {
-    throw new Error('AI API tidak mengembalikan respon.');
-  }
-
-  return data.choices[0].message.content || '';
-}
-
-async function callWithFailover(
-  model: string,
-  messages: any[],
-  temperature = 0.2,
-  maxTokens = 4096
-): Promise<string> {
-  const totalKeys = apiKeys.length;
-  if (totalKeys === 0) {
-    throw new Error('Tidak ada API key yang terkonfigurasi.');
-  }
-
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt < totalKeys; attempt++) {
-    const apiKey = getNextAPIKey();
-    try {
-      return await callGeminiAPI(apiKey, model, messages, temperature, maxTokens);
-    } catch (error: any) {
-      if (error instanceof RateLimitError) {
-        console.warn(`API Key #${(keyIndex - 1) % totalKeys} limit, mencoba key berikutnya... (${attempt + 1}/${totalKeys})`);
-        lastError = error;
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw new Error(`Semua API key mencapai kuota limit harian. ${lastError?.message || ''}`);
+  return payload.reply;
 }
 
 // ─── Input Interface untuk Generator ─────────────────────────────────────────
@@ -127,6 +63,7 @@ export interface GeneratePredictiveInput {
   correctiveActionDone?: string;
   recommendation?: string;
   photoEvidenceBase64?: string;
+  photoCaption?: string;
   userEmail?: string;
   userName?: string;
 }
@@ -143,7 +80,11 @@ export function generatePredictiveReportNumber(): string {
 
 // ─── Fallback Heuristik Deterministic (Offline / Rate Limit Guard) ────────────
 
-function generateDeterministicFallback(input: GeneratePredictiveInput): PredictiveReportData {
+/**
+ * Legacy template retained only for backward-compatible historical rendering.
+ * Never use it to create a new report: it contains illustrative values, not evidence.
+ */
+function generateLegacyTemplate(input: GeneratePredictiveInput): PredictiveReportData {
   const text = `${input.equipmentName} ${input.descriptionOrSymptoms} ${input.correctiveActionDone || ''}`.toLowerCase();
   
   let category: PredictiveReportData['systemCategory'] = 'General Facility';
@@ -292,6 +233,79 @@ function generateDeterministicFallback(input: GeneratePredictiveInput): Predicti
 
 // ─── AI Pipeline Execution ──────────────────────────────────────────────────
 
+function buildEvidenceLimitedReport(input: GeneratePredictiveInput, reason: string): PredictiveReportData {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const hasSymptom = Boolean(input.descriptionOrSymptoms?.trim());
+  const hasAction = Boolean(input.correctiveActionDone?.trim());
+  const evidenceQuality: PredictiveAnalysisMetadata['evidenceQuality'] = hasSymptom && hasAction ? 'Terbatas' : 'Tidak Memadai';
+  const metadata: PredictiveAnalysisMetadata = {
+    evidenceQuality,
+    confidenceLevel: 'Rendah',
+    requiresFieldVerification: true,
+    generatedAt: now.toISOString(),
+    evidenceReferences: [
+      {
+        sourceType: input.sourceCollection === 'findings' ? 'Temuan Abnormal' : 'Corrective Maintenance',
+        reference: `${input.sourceMaintenanceName || 'Dokumen sumber'}${input.sourceTicketNumber ? ` / ${input.sourceTicketNumber}` : ''}`,
+        observation: input.descriptionOrSymptoms || 'Tidak ada deskripsi gejala yang tercatat.',
+        usedFor: 'Identifikasi awal anomali',
+      },
+      ...(input.photoEvidenceBase64 ? [{
+        sourceType: 'Foto Inspeksi' as const,
+        reference: input.photoCaption || 'Foto bukti terlampir',
+        observation: 'Bukti visual tersedia; perlu verifikasi kondisi dan waktu pengambilan di lapangan.',
+        usedFor: 'Verifikasi visual',
+      }] : []),
+    ],
+    dataLimitations: [
+      'Tidak ada tren pengukuran serial dengan timestamp, sehingga nilai parameter dan RUL tidak boleh diestimasi.',
+      'Baseline OEM/as-built, tag aset, dan riwayat umur komponen belum tersedia pada dokumen sumber.',
+      reason,
+    ],
+  };
+
+  return {
+    id: `PDM_${now.getTime()}`,
+    reportNumber: generatePredictiveReportNumber(),
+    createdAt: now,
+    updatedAt: now,
+    createdBy: input.userEmail || 'standby.engineer@dwimitra.com',
+    sourceDocId: input.sourceDocId,
+    sourceCollection: input.sourceCollection,
+    sourceTicketNumber: input.sourceTicketNumber,
+    sourceMaintenanceName: input.sourceMaintenanceName,
+    sourceMaintenanceDate: input.sourceMaintenanceDate || date,
+    equipmentName: input.equipmentName || 'Peralatan belum teridentifikasi',
+    systemCategory: 'General Facility',
+    locationRoom: input.locationRoom || 'Lokasi belum tercatat',
+    healthStatus: 'Caution',
+    currentSymptoms: input.descriptionOrSymptoms || 'Data gejala belum cukup untuk analisis.',
+    measuredParameterDrift: [],
+    photoEvidenceBase64: input.photoEvidenceBase64,
+    photoCaption: input.photoCaption,
+    aiAnalysis: {
+      rootCauseAnalysis: 'Belum dapat dikonfirmasi. Dokumen sumber hanya mendukung hipotesis awal dan memerlukan inspeksi serta pengukuran lapangan.',
+      potentialFailureMode: 'Belum dapat dipastikan tanpa verifikasi teknis terhadap kondisi, baseline, dan riwayat aset.',
+      degradationPattern: 'Tidak dapat ditentukan karena tren parameter bertimestamp belum tersedia.',
+      remainingUsefulLife: 'Tidak dapat diestimasi — data tren pengukuran belum memadai.',
+      urgencyLevel: 'Medium',
+      slaRiskAssessment: 'Dampak SLA belum dapat dikuantifikasi. Verifikasi redundansi dan kondisi unit terkait sebelum menetapkan risiko.',
+    },
+    actionPlan: {
+      immediateAction: input.correctiveActionDone || 'Amankan kondisi, catat parameter aktual, dan lakukan inspeksi oleh engineer kompeten.',
+      plannedOverhaulAction: input.recommendation || 'Tentukan tindakan definitif setelah baseline OEM dan tren pengukuran tervalidasi.',
+      recommendedSpareparts: [],
+      followUpTestingMethods: ['Kumpulkan minimal tiga pembacaan parameter bertimestamp', 'Verifikasi baseline OEM/as-built', 'Inspeksi dan validasi engineer kompeten'],
+    },
+    analysisMetadata: metadata,
+    signatures: {
+      preparedBy: { name: input.userName || 'Standby Engineer', title: '(Engineer)', date },
+      approvedBy: { name: '', title: '(Menunggu review)', date },
+    },
+  };
+}
+
 export async function generatePredictiveReportAI(
   input: GeneratePredictiveInput,
   onProgress?: (message: string) => void
@@ -304,8 +318,10 @@ Tugas Anda adalah menganalisis temuan kerusakan/abnormalitas operasional atau la
 Instruksi Output:
 - Berikan respon HANYA dalam format JSON valid tanpa tanda markdown (tanpa \`\`\`json atau teks pengantar apapun).
 - Gunakan Bahasa Indonesia teknis yang formal, lugas, profesional, dan otoritatif.
-- Sertakan estimasi parameter drift numerik yang realistis untuk tipe peralatan tersebut.
-- Rumuskan Remaining Useful Life (RUL), pola degradasi, serta sparepart yang presisi.
+- HANYA gunakan fakta yang eksplisit ada di DATA SUMBER. Jangan menciptakan angka pengukuran, baseline, tag aset, merek/model, part number, stok, status redundansi, atau nilai SLA.
+- Jika data tren pengukuran bertimestamp, baseline OEM/as-built, atau riwayat komponen tidak tersedia, nyatakan keterbatasan tersebut secara eksplisit. Dalam kondisi itu, measuredParameterDrift WAJIB [], RUL WAJIB "Tidak dapat diestimasi — data tren pengukuran belum memadai", dan rekomendasi sparepart WAJIB [].
+- Bedakan "fakta sumber" dengan "hipotesis teknis". Hipotesis tidak boleh ditulis sebagai kepastian dan wajib meminta verifikasi engineer.
+- Jangan memakai pengetahuan umum, standar, atau nama vendor sebagai sumber faktual kecuali dokumen tersebut diberikan pada DATA SUMBER.
 
 Struktur JSON yang WAJIB dipatuhi:
 {
@@ -334,34 +350,31 @@ Struktur JSON yang WAJIB dipatuhi:
     "followUpTestingMethods": [
       "Metode Pengujian 1", "Metode Pengujian 2"
     ]
+  },
+  "analysisMetadata": {
+    "evidenceReferences": [{ "sourceType": "Corrective Maintenance", "reference": "nomor/judul sumber", "observation": "kutipan fakta dari sumber", "usedFor": "bagian analisis yang didukung" }],
+    "evidenceQuality": "Memadai" | "Terbatas" | "Tidak Memadai",
+    "confidenceLevel": "Tinggi" | "Sedang" | "Rendah",
+    "dataLimitations": ["data yang belum tersedia"],
+    "requiresFieldVerification": true
   }
 }`;
 
   const userPrompt = `Analisis temuan abnormal / Corrective Maintenance berikut untuk fasilitas Data Center NeutraDC Cikarang:
 - Nama Unit / Peralatan: ${input.equipmentName}
 - Ruang / Lokasi: ${input.locationRoom}
-- Kategori / Dokumen Sumber: ${input.sourceMaintenanceName} (${input.sourceCollection})
+- Dokumen Sumber: ${input.sourceMaintenanceName} (${input.sourceCollection})
+- Nomor Referensi: ${input.sourceTicketNumber || 'Tidak tercatat'}
+- Tanggal Sumber: ${input.sourceMaintenanceDate || 'Tidak tercatat'}
 - Gejala / Deskripsi Temuan: ${input.descriptionOrSymptoms}
 - Tindakan CM Yang Sudah Diambil: ${input.correctiveActionDone || 'Pemeriksaan awal lapangan'}
 - Catatan Rekomendasi Awal: ${input.recommendation || 'Perlu pemantauan prediktif lanjutan'}
 
-Hasilkan analisis predictive maintenance RCM yang mendalam dan solutif.`;
+Semua pernyataan harus dapat ditelusuri ke data di atas. Jika data belum cukup untuk prediksi, hasilkan laporan evidence-limited, bukan angka atau detail rekaan.`;
 
   try {
-    if (apiKeys.length === 0) {
-      console.warn('API keys tidak terdeteksi, beralih ke generator heuristik terpercaya.');
-      onProgress?.('Membuat estimasi teknis berbasis aturan keandalan fasilitas...');
-      return generateDeterministicFallback(input);
-    }
-
     onProgress?.('Mengirim data ke AI Reliability Engine...');
-
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ];
-
-    const rawResponse = await callWithFailover(reasoningModel, messages, 0.2, 4096);
+    const rawResponse = await callReliabilityAI(systemPrompt, userPrompt);
 
     onProgress?.('Menyusun struktur laporan prediktif...');
 
@@ -390,33 +403,46 @@ Hasilkan analisis predictive maintenance RCM yang mendalam dan solutif.`;
       sourceMaintenanceDate: input.sourceMaintenanceDate || dateStr,
 
       equipmentName: input.equipmentName || 'Equipment Unit',
-      equipmentTag: parsed.equipmentTag || 'EQ-DC-01',
+      equipmentTag: parsed.equipmentTag || undefined,
       systemCategory: parsed.systemCategory || 'General Facility',
       locationRoom: input.locationRoom || 'Data Center NeutraDC Cikarang',
-      brandModel: parsed.brandModel || 'Industry Standard',
+      brandModel: parsed.brandModel || undefined,
 
       healthStatus: parsed.healthStatus || 'Warning',
       currentSymptoms: parsed.currentSymptoms || input.descriptionOrSymptoms,
-      measuredParameterDrift: parsed.measuredParameterDrift || [],
+      // This input has no structured measurements. Never present model-generated values as readings.
+      measuredParameterDrift: [],
       photoEvidenceBase64: input.photoEvidenceBase64,
       photoCaption: `Foto bukti fisik anomali pada ${input.equipmentName}`,
 
       aiAnalysis: {
-        rootCauseAnalysis: parsed.aiAnalysis?.rootCauseAnalysis || 'Analisis akar masalah terindikasi keausan mekanikal bertahap.',
-        potentialFailureMode: parsed.aiAnalysis?.potentialFailureMode || 'Potensi kegagalan fungsi komponen saat beban puncak.',
-        degradationPattern: parsed.aiAnalysis?.degradationPattern || 'Laju degradasi bertahap pada interval kurva P-F.',
-        remainingUsefulLife: parsed.aiAnalysis?.remainingUsefulLife || '14 Hari Kerja',
+        rootCauseAnalysis: parsed.aiAnalysis?.rootCauseAnalysis || 'Belum dapat dikonfirmasi dari data sumber.',
+        potentialFailureMode: parsed.aiAnalysis?.potentialFailureMode || 'Belum dapat dipastikan dari data sumber.',
+        degradationPattern: parsed.aiAnalysis?.degradationPattern || 'Tidak dapat ditentukan karena tren parameter belum tersedia.',
+        remainingUsefulLife: 'Tidak dapat diestimasi — data tren pengukuran belum memadai.',
         urgencyLevel: parsed.aiAnalysis?.urgencyLevel || 'Medium',
-        slaRiskAssessment: parsed.aiAnalysis?.slaRiskAssessment || 'Risiko downtime terkendali selama redundansi sistem aktif.'
+        slaRiskAssessment: parsed.aiAnalysis?.slaRiskAssessment || 'Dampak SLA belum dapat dikuantifikasi dari data sumber.'
       },
 
       actionPlan: {
         immediateAction: parsed.actionPlan?.immediateAction || 'Lakukan monitoring ketat suhu dan getaran harian.',
         plannedOverhaulAction: parsed.actionPlan?.plannedOverhaulAction || 'Jadwalkan perbaikan terencana dengan tim spesialis DME.',
-        recommendedSpareparts: parsed.actionPlan?.recommendedSpareparts || [],
+        recommendedSpareparts: [],
         followUpTestingMethods: parsed.actionPlan?.followUpTestingMethods || ['Thermography Infrared', 'Visual Inspection']
       },
 
+      analysisMetadata: {
+        evidenceReferences: Array.isArray(parsed.analysisMetadata?.evidenceReferences)
+          ? parsed.analysisMetadata.evidenceReferences
+          : buildEvidenceLimitedReport(input, 'Referensi bukti dari AI tidak lengkap.').analysisMetadata!.evidenceReferences,
+        evidenceQuality: parsed.analysisMetadata?.evidenceQuality || 'Terbatas',
+        confidenceLevel: parsed.analysisMetadata?.confidenceLevel || 'Rendah',
+        dataLimitations: Array.isArray(parsed.analysisMetadata?.dataLimitations)
+          ? parsed.analysisMetadata.dataLimitations
+          : ['Tidak ada tren pengukuran bertimestamp; RUL, parameter drift, dan kebutuhan sparepart memerlukan verifikasi lapangan.'],
+        requiresFieldVerification: true,
+        generatedAt: now.toISOString(),
+      },
       signatures: {
         authorName: 'Rizki Novri Yanda – Data Center Operation',
         preparedBy: {
@@ -465,7 +491,7 @@ Hasilkan analisis predictive maintenance RCM yang mendalam dan solutif.`;
     return result;
   } catch (error: any) {
     console.error('AI Predictive Agent error:', error);
-    onProgress?.('Beralih ke generator presisi standar fasilitas...');
-    return generateDeterministicFallback(input);
+    onProgress?.('Data AI tidak tersedia; membuat laporan dengan batasan bukti yang jelas...');
+    return buildEvidenceLimitedReport(input, 'AI tidak tersedia atau responsnya tidak valid; tidak ada nilai rekaan yang digunakan.');
   }
 }

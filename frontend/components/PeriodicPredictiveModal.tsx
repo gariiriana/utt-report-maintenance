@@ -394,6 +394,19 @@ export const PeriodicPredictiveModal: React.FC<PeriodicPredictiveModalProps> = (
           ) : (
             /* Tampilan Hasil Analisis AI */
             <div className="space-y-5">
+              <div className={`rounded-xl border p-3 text-xs ${
+                reportData.analysisMetadata?.requiresEngineeringReview !== false
+                  ? 'border-amber-200 bg-amber-50 text-amber-900'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              }`}>
+                <strong>Bukti & Batasan Forecast:</strong>{' '}
+                Kualitas bukti <strong>{reportData.analysisMetadata?.evidenceQuality || 'Belum dinilai'}</strong>
+                {' • '}keyakinan <strong>{reportData.analysisMetadata?.confidenceLevel || 'Belum dinilai'}</strong>.
+                {reportData.analysisMetadata?.requiresEngineeringReview !== false && ' Review engineer wajib sebelum keputusan operasional, pengadaan, atau CAPEX.'}
+                {(reportData.analysisMetadata?.sourceSummary || []).length > 0 && <span> Sumber: {reportData.analysisMetadata!.sourceSummary.join(', ')}.</span>}
+                {(reportData.analysisMetadata?.dataLimitations || []).length > 0 && <span> Batasan: {reportData.analysisMetadata!.dataLimitations.join(' ')}</span>}
+              </div>
+
               {/* Ringkasan Skor Indeks Keandalan */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="bg-gradient-to-br from-purple-900 to-indigo-950 text-white p-4 rounded-2xl shadow-sm border border-purple-800/60">
@@ -423,7 +436,7 @@ export const PeriodicPredictiveModal: React.FC<PeriodicPredictiveModalProps> = (
                     {reportData.totalCMEvents} <span className="text-xs font-normal text-slate-500">Kejadian</span>
                   </span>
                   <span className="text-[11px] text-slate-500 mt-2 block">
-                    Semua distabilkan sesuai SLA
+                    Berdasarkan catatan sumber periode
                   </span>
                 </div>
 
@@ -435,7 +448,7 @@ export const PeriodicPredictiveModal: React.FC<PeriodicPredictiveModalProps> = (
                     {reportData.totalAbnormalFindings} <span className="text-xs font-normal text-slate-500">Temuan</span>
                   </span>
                   <span className="text-[11px] text-slate-500 mt-2 block">
-                    Investigasi drift parameter
+                    Perlu verifikasi parameter lapangan
                   </span>
                 </div>
 
@@ -444,10 +457,10 @@ export const PeriodicPredictiveModal: React.FC<PeriodicPredictiveModalProps> = (
                     Bad Actor Equipment
                   </span>
                   <span className="text-2xl font-black text-purple-900 mt-1 block">
-                    {reportData.badActorAssets?.length || 0} <span className="text-xs font-normal text-slate-500">Aset Kritis</span>
+                    {reportData.badActorAssets?.length || 0} <span className="text-xs font-normal text-slate-500">Aset Berulang</span>
                   </span>
                   <span className="text-[11px] text-slate-500 mt-2 block">
-                    Prioritas jadwal overhaul
+                    Urut berdasarkan frekuensi catatan
                   </span>
                 </div>
               </div>

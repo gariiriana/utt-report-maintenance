@@ -655,6 +655,32 @@ export function PredictiveReportModal({
                 </div>
               </div>
 
+              <div className={`rounded-xl border p-3 text-xs ${
+                data.analysisMetadata?.requiresFieldVerification !== false
+                  ? 'border-amber-200 bg-amber-50 text-amber-900'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              }`}>
+                <div className="flex items-center gap-2 font-bold">
+                  <FileCheck className="w-4 h-4" />
+                  Bukti & Batasan Analisis
+                </div>
+                <p className="mt-1">
+                  Kualitas bukti: <strong>{data.analysisMetadata?.evidenceQuality || 'Belum dinilai'}</strong>
+                  {' • '}Keyakinan: <strong>{data.analysisMetadata?.confidenceLevel || 'Belum dinilai'}</strong>
+                  {data.analysisMetadata?.requiresFieldVerification !== false && ' • Wajib verifikasi engineer di lapangan sebelum keputusan operasional.'}
+                </p>
+                {(data.analysisMetadata?.evidenceReferences || []).length > 0 && (
+                  <ul className="mt-2 list-disc pl-4 space-y-1">
+                    {data.analysisMetadata!.evidenceReferences.map((evidence, index) => (
+                      <li key={`${evidence.reference}-${index}`}><strong>{evidence.reference}:</strong> {evidence.observation}</li>
+                    ))}
+                  </ul>
+                )}
+                {(data.analysisMetadata?.dataLimitations || []).length > 0 && (
+                  <p className="mt-2 text-amber-800">Batasan: {data.analysisMetadata!.dataLimitations.join(' ')}</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Akar Masalah (Root Cause Analysis)</label>

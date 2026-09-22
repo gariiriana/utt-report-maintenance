@@ -620,15 +620,18 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
           new TableCell({
             width: { size: 70, type: WidthType.PERCENTAGE },
             borders: borderThin,
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({ text: `Urgensi: ${data.aiAnalysis.urgencyLevel}  |  `, bold: true, size: 18, font: 'Calibri' }),
-                  new TextRun({ text: data.aiAnalysis.slaRiskAssessment, size: 18, font: 'Calibri' }),
-                ],
-              }),
-            ],
+            children: [new Paragraph({ children: [
+              new TextRun({ text: `Urgensi: ${data.aiAnalysis.urgencyLevel}  |  `, bold: true, size: 18, font: 'Calibri' }),
+              new TextRun({ text: data.aiAnalysis.slaRiskAssessment, size: 18, font: 'Calibri' }),
+            ] })],
           }),
+        ],
+      }),
+      new TableRow({
+        cantSplit: true,
+        children: [
+          new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, shading: { type: ShadingType.CLEAR, fill: COLOR_LIGHT_BG }, borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Bukti, Keyakinan & Verifikasi', bold: true, size: 18, font: 'Calibri' })] })] }),
+          new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: `${data.analysisMetadata?.evidenceReferences?.map(item => `${item.reference}: ${item.observation}`).join(' | ') || `Sumber: ${data.sourceMaintenanceName} / ${data.sourceTicketNumber || data.sourceDocId}`}. Kualitas bukti: ${data.analysisMetadata?.evidenceQuality || 'Belum dinilai'}; keyakinan: ${data.analysisMetadata?.confidenceLevel || 'Belum dinilai'}. ${data.analysisMetadata?.requiresFieldVerification !== false ? 'Wajib verifikasi engineer lapangan.' : ''}`, size: 18, font: 'Calibri' })] })] }),
         ],
       }),
     ],

@@ -13,99 +13,28 @@ import {
   PeriodicSparepartForecast,
   PeriodicActionPlan
 } from '@/types/periodicPredictiveTypes';
+import { auth } from '@/api/firebase';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 // ─── Environment & API Key Management ────────────────────────────────────────
 
-const apiKeysStr = import.meta.env.VITE_NVIDIA_NIM_API_KEYS || '';
-const apiKeys = apiKeysStr.split(',').map((k: string) => k.trim()).filter(Boolean);
-const reasoningModel = import.meta.env.VITE_NVIDIA_NIM_REASONING_MODEL || 'gemini-1.5-flash';
+async function callReliabilityAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Login diperlukan untuk menjalankan analisis predictive.');
 
-let keyIndex = 0;
-function getNextAPIKey(): string {
-  if (apiKeys.length === 0) {
-    throw new Error('API Keys tidak terkonfigurasi. Periksa VITE_NVIDIA_NIM_API_KEYS.');
-  }
-  const key = apiKeys[keyIndex % apiKeys.length];
-  keyIndex++;
-  return key;
-}
-
-class RateLimitError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'RateLimitError';
-  }
-}
-
-async function callGeminiAPI(
-  apiKey: string,
-  model: string,
-  messages: any[],
-  temperature = 0.2,
-  maxTokens = 4096
-): Promise<string> {
-  const payload = {
-    model,
-    messages,
-    max_tokens: maxTokens,
-    temperature,
-    top_p: 0.9,
-    stream: false,
-  };
-
-  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+  const response = await fetch(getApiEndpoint('/ai/chat'), {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${await user.getIdToken()}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
   });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    if (response.status === 429 || errText.includes('RESOURCE_EXHAUSTED')) {
-      throw new RateLimitError(`API rate limit exceeded (${response.status}): ${errText}`);
-    }
-    throw new Error(`AI API error (${response.status}): ${errText}`);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || typeof payload.reply !== 'string') {
+    throw new Error(payload.error || payload.message || 'AI Reliability Engine tidak mengembalikan respons valid.');
   }
-
-  const data = await response.json();
-  if (!data.choices || data.choices.length === 0) {
-    throw new Error('AI API tidak mengembalikan respon.');
-  }
-
-  return data.choices[0].message.content || '';
-}
-
-async function callWithFailover(
-  model: string,
-  messages: any[],
-  temperature = 0.2,
-  maxTokens = 4096
-): Promise<string> {
-  const totalKeys = apiKeys.length;
-  if (totalKeys === 0) {
-    throw new Error('Tidak ada API key yang terkonfigurasi.');
-  }
-
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt < totalKeys; attempt++) {
-    const apiKey = getNextAPIKey();
-    try {
-      return await callGeminiAPI(apiKey, model, messages, temperature, maxTokens);
-    } catch (error: any) {
-      if (error instanceof RateLimitError) {
-        console.warn(`API Key #${(keyIndex - 1) % totalKeys} limit, mencoba key berikutnya... (${attempt + 1}/${totalKeys})`);
-        lastError = error;
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw new Error(`Semua API key mencapai kuota limit harian. ${lastError?.message || ''}`);
+  return payload.reply;
 }
 
 // ─── Input & Helper Functions ────────────────────────────────────────────────
@@ -322,11 +251,82 @@ function buildFallbackPeriodicData(input: GeneratePeriodicPredictiveInput): Peri
 
 // ─── Main Generator Function via AI Gemini ───────────────────────────────────
 
+function buildEvidenceConstrainedPeriodicData(input: GeneratePeriodicPredictiveInput, reason: string): PeriodicPredictiveReportData {
+  const { periodType, month = 9, year, cmReports, abnormalFindings = [], sparepartLogs = [], userName = 'Standby Engineer' } = input;
+  const now = new Date();
+  const monthName = periodType === 'monthly' ? MONTH_NAMES_ID[month - 1] : undefined;
+  const periodLabel = periodType === 'monthly' ? `${monthName} ${year}` : `Tahun ${year}`;
+  const categoryCounts: Record<string, number> = {};
+  const assets = new Map<string, { category: string; location: string; incidents: any[] }>();
+
+  cmReports.forEach((record) => {
+    const equipmentName = record.equipmentName || record.incidentName || 'Peralatan tidak teridentifikasi';
+    const category = detectSystemCategory(`${equipmentName} ${record.issue || record.actionTaken || ''}`);
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    const asset = assets.get(equipmentName) || { category, location: record.location || 'Lokasi tidak tercatat', incidents: [] };
+    asset.incidents.push(record);
+    assets.set(equipmentName, asset);
+  });
+
+  const systemAssessments: SystemAssessment[] = Object.entries(categoryCounts).map(([systemName, totalIncidents]) => ({
+    systemName,
+    totalIncidents,
+    healthScore: Math.max(50, 100 - totalIncidents * 5),
+    riskLevel: totalIncidents >= 5 ? 'Critical' : totalIncidents >= 2 ? 'Warning' : 'Healthy',
+    criticalIssues: [`${totalIncidents} catatan CM pada dokumen sumber periode ini.`],
+    aiInsight: 'Screening berbasis frekuensi catatan sumber; bukan diagnosis komponen atau prediksi kegagalan.',
+  }));
+  const badActorAssets: BadActorAsset[] = [...assets.entries()]
+    .sort((a, b) => b[1].incidents.length - a[1].incidents.length)
+    .slice(0, 5)
+    .map(([equipmentName, asset]) => ({
+      equipmentName,
+      systemCategory: asset.category,
+      locationRoom: asset.location,
+      incidentCount: asset.incidents.length,
+      failureModes: asset.incidents.map((item) => item.issue || item.actionTaken).filter(Boolean).slice(0, 3),
+      estimatedRUL: 'Tidak dapat diestimasi — data tren pengukuran belum memadai.',
+      recommendation: 'Verifikasi kondisi dan kumpulkan tren pengukuran sebelum menentukan overhaul atau penggantian.',
+    }));
+  const totalRecords = cmReports.length + abnormalFindings.length;
+  const healthScore = Math.max(50, 100 - Math.min(50, totalRecords * 3));
+
+  return {
+    id: `PPR_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    reportNumber: periodType === 'monthly' ? `PPR/DME-NDC/${year}/${String(month).padStart(2, '0')}/001` : `PPR-ANNUAL/DME-NDC/${year}/001`,
+    periodType, month: periodType === 'monthly' ? month : undefined, monthName, year,
+    title: `Laporan Predictive Maintenance & Reliability Forecast ${periodType === 'monthly' ? 'Bulanan' : 'Tahunan'} — ${periodLabel}`,
+    createdAt: now, updatedAt: now, createdBy: userName,
+    totalCMEvents: cmReports.length, totalAbnormalFindings: abnormalFindings.length, totalSparepartsReplaced: sparepartLogs.length,
+    facilityHealthScore: healthScore,
+    overallStatus: healthScore >= 85 ? 'Optimized' : healthScore >= 70 ? 'Caution Needed' : 'High Risk',
+    executiveSummary: `Screening ${periodLabel} memakai ${cmReports.length} laporan CM dan ${abnormalFindings.length} temuan abnormal. Nilai kesehatan adalah indikator frekuensi catatan, bukan prediksi kegagalan atau SLA. Review engineer wajib sebelum keputusan operasional.`,
+    systemAssessments, badActorAssets, sparepartForecast: [],
+    actionPlan: {
+      immediatePreventive: ['Validasi setiap temuan terhadap dokumen sumber dan inspeksi lapangan.', 'Kumpulkan pengukuran bertimestamp serta baseline OEM/as-built pada aset berulang.'],
+      scheduledOverhauls: [], capexReplacementRecommendations: [],
+    },
+    analysisMetadata: {
+      evidenceQuality: cmReports.length >= 3 ? 'Terbatas' : 'Tidak Memadai',
+      confidenceLevel: 'Rendah',
+      sourceSummary: [`${cmReports.length} laporan CM`, `${abnormalFindings.length} temuan abnormal`, `${sparepartLogs.length} catatan sparepart`],
+      dataLimitations: ['Tidak ada tren parameter serial yang tervalidasi.', 'Tidak ada baseline OEM/as-built dan umur komponen per aset.', reason],
+      requiresEngineeringReview: true,
+      generatedAt: now.toISOString(),
+    },
+    signatures: {
+      preparedBy: { name: userName, title: 'Standby Engineer', date: `${now.getDate()} ${MONTH_NAMES_ID[now.getMonth()]} ${now.getFullYear()}` },
+      verifiedBy: { name: 'QC DME Engineer', title: 'QC & Commissioning DME', date: '' },
+      approvedBy: { name: 'Facility Manager / NeutraDC', title: 'Site Operations Manager', date: '' },
+    },
+  };
+}
+
 export async function generatePeriodicPredictiveReportAI(
   input: GeneratePeriodicPredictiveInput,
   onProgress?: (status: string) => void
 ): Promise<PeriodicPredictiveReportData> {
-  const fallbackData = buildFallbackPeriodicData(input);
+  const fallbackData = buildEvidenceConstrainedPeriodicData(input, 'AI tidak tersedia atau responsnya tidak valid; tidak ada forecast rekaan yang digunakan.');
   const { periodType, month = 9, year, cmReports, abnormalFindings = [] } = input;
   const monthName = periodType === 'monthly' ? MONTH_NAMES_ID[month - 1] : undefined;
 
@@ -347,6 +347,13 @@ Tugas Anda adalah membuat Laporan Predictive Maintenance & Reliability Forecast 
 
 Gunakan pendekatan Reliability Centered Maintenance (RCM), Failure Modes & Effects Analysis (FMEA), serta Remaining Useful Life (RUL) forecasting.
 Bahasa wajib: Bahasa Indonesia formal profesional teknik keandalan fasilitas data center.
+
+Aturan integritas bukti (WAJIB):
+- Gunakan hanya entitas, jumlah insiden, lokasi, issue, dan catatan yang ada di DATA SUMBER.
+- Jangan menciptakan nama aset, failure mode, angka stok, part number, kondisi stok, nilai parameter, nilai SLA, atau RUL.
+- RUL hanya boleh diisi jika DATA SUMBER berisi tren pengukuran bertimestamp dan baseline; selain itu gunakan "Tidak dapat diestimasi — data tren pengukuran belum memadai".
+- Forecast sparepart WAJIB [] apabila riwayat pemakaian dan stok aktual tidak tersedia.
+- Jelaskan bahwa semua rekomendasi adalah hipotesis yang memerlukan review engineer bila bukti terbatas.
 
 Format output WAJIB HANYA berupa JSON valid murni (tanpa pembuka markdown \`\`\`json atau teks pengantar):
 {
@@ -386,6 +393,13 @@ Format output WAJIB HANYA berupa JSON valid murni (tanpa pembuka markdown \`\`\`
     "immediatePreventive": ["Tindakan 1", "Tindakan 2"],
     "scheduledOverhauls": ["Overhaul 1", "Overhaul 2"],
     "capexReplacementRecommendations": ["Rekomendasi CAPEX 1", "Rekomendasi 2"]
+  },
+  "analysisMetadata": {
+    "evidenceQuality": "Memadai" | "Terbatas" | "Tidak Memadai",
+    "confidenceLevel": "Tinggi" | "Sedang" | "Rendah",
+    "sourceSummary": ["ringkasan sumber"],
+    "dataLimitations": ["batasan data"],
+    "requiresEngineeringReview": true
   }
 }
 `.trim();
@@ -401,14 +415,11 @@ ${cmSummaryList || '(Tidak ada insiden CM kritis tercatat)'}
 Sampel Temuan Abnormal:
 ${findingsSummaryList || '(Tidak ada temuan abnormal tercatat)'}
 
-Hasilkan analisis prediktif periodik reliabilitas fasilitas Data Center NeutraDC dalam format JSON sesuai instruksi.
+Hasilkan analisis prediktif periodik yang seluruh klaimnya bisa ditelusuri ke data di atas. Jangan membuat forecast pasti ketika data tidak mencukupi.
 `.trim();
 
   try {
-    const rawResponse = await callWithFailover(reasoningModel, [
-      { role: 'system', content: systemInstruction },
-      { role: 'user', content: userPrompt }
-    ], 0.2, 4096);
+    const rawResponse = await callReliabilityAI(systemInstruction, userPrompt);
 
     let cleanJson = rawResponse.trim();
     if (cleanJson.startsWith('```')) {
@@ -422,16 +433,24 @@ Hasilkan analisis prediktif periodik reliabilitas fasilitas Data Center NeutraDC
       facilityHealthScore: typeof parsed.facilityHealthScore === 'number' ? parsed.facilityHealthScore : fallbackData.facilityHealthScore,
       overallStatus: parsed.overallStatus || fallbackData.overallStatus,
       executiveSummary: parsed.executiveSummary || fallbackData.executiveSummary,
-      systemAssessments: Array.isArray(parsed.systemAssessments) && parsed.systemAssessments.length > 0
-        ? parsed.systemAssessments
-        : fallbackData.systemAssessments,
-      badActorAssets: Array.isArray(parsed.badActorAssets) && parsed.badActorAssets.length > 0
-        ? parsed.badActorAssets
-        : fallbackData.badActorAssets,
-      sparepartForecast: Array.isArray(parsed.sparepartForecast) && parsed.sparepartForecast.length > 0
-        ? parsed.sparepartForecast
-        : fallbackData.sparepartForecast,
+      // Counts and asset identities are derived locally from source records, not generated prose.
+      systemAssessments: fallbackData.systemAssessments,
+      badActorAssets: fallbackData.badActorAssets,
+      // Inventory and consumption quantities are not provided to the model in a verifiable form.
+      sparepartForecast: [],
       actionPlan: parsed.actionPlan || fallbackData.actionPlan,
+      analysisMetadata: {
+        evidenceQuality: parsed.analysisMetadata?.evidenceQuality || 'Terbatas',
+        confidenceLevel: parsed.analysisMetadata?.confidenceLevel || 'Rendah',
+        sourceSummary: Array.isArray(parsed.analysisMetadata?.sourceSummary)
+          ? parsed.analysisMetadata.sourceSummary
+          : fallbackData.analysisMetadata!.sourceSummary,
+        dataLimitations: Array.isArray(parsed.analysisMetadata?.dataLimitations)
+          ? parsed.analysisMetadata.dataLimitations
+          : fallbackData.analysisMetadata!.dataLimitations,
+        requiresEngineeringReview: true,
+        generatedAt: new Date().toISOString(),
+      },
     };
   } catch (err: any) {
     console.warn('AI Periodic Predictive Generation failed or timed out, using high-fidelity heuristic fallback:', err);

@@ -45,6 +45,15 @@ export interface PeriodicActionPlan {
   capexReplacementRecommendations: string[]; // Rekomendasi peremajaan unit (CAPEX tahunan)
 }
 
+export interface PeriodicPredictiveAnalysisMetadata {
+  evidenceQuality: 'Memadai' | 'Terbatas' | 'Tidak Memadai';
+  confidenceLevel: 'Tinggi' | 'Sedang' | 'Rendah';
+  sourceSummary: string[];
+  dataLimitations: string[];
+  requiresEngineeringReview: boolean;
+  generatedAt: string;
+}
+
 export interface PeriodicSignatures {
   preparedBy: {
     name: string;
@@ -99,6 +108,8 @@ export interface PeriodicPredictiveReportData {
 
   // Rencana Tindakan & Rekomendasi CAPEX/OPEX
   actionPlan: PeriodicActionPlan;
+
+  analysisMetadata?: PeriodicPredictiveAnalysisMetadata;
 
   // Lembar Pengesahan
   signatures: PeriodicSignatures;
