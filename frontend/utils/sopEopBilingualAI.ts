@@ -118,6 +118,8 @@ export const TECHNICAL_SOP_DICTIONARY: Record<string, string> = {
   'All lighting fixtures provide adequate and stable illumination': 'Seluruh rumah lampu memberikan pencahayaan yang memadai dan stabil',
   'No abnormal condition is observed during operation.': 'Tidak ditemukan kondisi abnormal selama pengoperasian.',
   'No abnormal condition is observed during operation': 'Tidak ditemukan kondisi abnormal selama pengoperasian',
+  'No abnormal alarm, trip, or fault is detected.': 'Tidak terdeteksi alarm abnormal, trip, atau gangguan.',
+  'No abnormal alarm, trip, or fault is detected': 'Tidak terdeteksi alarm abnormal, trip, atau gangguan',
   'Emergency lighting is available and ready to operate during power failure.': 'Lampu darurat tersedia dan siap beroperasi saat terjadi pemadaman listrik.',
   'Emergency lighting is available and ready to operate during power failure': 'Lampu darurat tersedia dan siap beroperasi saat terjadi pemadaman listrik',
   'Control panels, timers, and sensors operate as configured.': 'Panel kontrol, timer, dan sensor beroperasi sesuai konfigurasi.',
