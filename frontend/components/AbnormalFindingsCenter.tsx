@@ -158,6 +158,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
+  const [recapStartMonth, setRecapStartMonth] = useState<string>('all');
+  const [recapEndMonth, setRecapEndMonth] = useState<string>('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('all');
   const [selectedDocTypeFilter, setSelectedDocTypeFilter] = useState<'all' | 'pdf' | 'excel' | 'hse'>('all');
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState<'all' | 'with_photo' | 'without_photo'>('all');
@@ -1002,6 +1004,25 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     });
   }, [items, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, searchQuery, sortBy]);
 
+  // Rentang ini khusus data yang diunduh sebagai rekap; filter daftar di layar
+  // tetap dapat dipakai bersamaan bila QC perlu mempersempit lagi per akun/tipe.
+  const recapItems = useMemo(() => filteredItems.filter((item) => {
+    const monthKey = getItemMonthData(item).key;
+    if (recapStartMonth !== 'all' && monthKey < recapStartMonth) return false;
+    if (recapEndMonth !== 'all' && monthKey > recapEndMonth) return false;
+    return true;
+  }), [filteredItems, recapStartMonth, recapEndMonth]);
+
+  const recapPeriodLabel = useMemo(() => {
+    const start = availableMonths.find((month) => month.key === recapStartMonth);
+    const end = availableMonths.find((month) => month.key === recapEndMonth);
+    if (start && end) return `${start.label} s.d. ${end.label}`;
+    if (start) return `Mulai ${start.label}`;
+    if (end) return `Sampai ${end.label}`;
+    const activeMonth = availableMonths.find((month) => month.key === selectedMonthFilter);
+    return activeMonth?.label || 'Semua Periode';
+  }, [availableMonths, recapStartMonth, recapEndMonth, selectedMonthFilter]);
+
   // Statistik KPI
   const stats = useMemo(() => {
     const total = items.length;
@@ -1119,19 +1140,21 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
   // Handler: Ekspor Rekap Lengkap Temuan Abnormal ke format Microsoft Word (.DOCX)
   const handleExportWordRecap = async () => {
-    if (filteredItems.length === 0) {
+    if (recapStartMonth !== 'all' && recapEndMonth !== 'all' && recapStartMonth > recapEndMonth) {
+      toast.error('Bulan awal rekap tidak boleh setelah bulan akhir.');
+      return;
+    }
+    if (recapItems.length === 0) {
       toast.error('Tidak ada data temuan abnormal yang sesuai untuk diekspor.');
       return;
     }
 
     const toastId = toast.loading('Menyusun dokumen Word (.docx) rekap temuan abnormal...');
     try {
-      const activeMonthObj = availableMonths.find((m) => m.key === selectedMonthFilter);
-      const periodLabel = activeMonthObj ? activeMonthObj.label : 'Semua Periode';
       const printedBy = `${user?.email || 'Quality Control DME'} (QC DME)`;
 
-      await exportAbnormalRecapToWord(filteredItems, {
-        periodLabel,
+      await exportAbnormalRecapToWord(recapItems, {
+        periodLabel: recapPeriodLabel,
         printedBy,
       });
 
@@ -1144,13 +1167,16 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
   // Handler: Ekspor Rekap Excel Temuan Abnormal ke format .XLSX
   const handleExportExcelRecap = async () => {
-    if (filteredItems.length === 0) {
+    if (recapStartMonth !== 'all' && recapEndMonth !== 'all' && recapStartMonth > recapEndMonth) {
+      toast.error('Bulan awal rekap tidak boleh setelah bulan akhir.');
+      return;
+    }
+    if (recapItems.length === 0) {
       toast.error('Tidak ada data temuan abnormal yang sesuai untuk diekspor.');
       return;
     }
 
-    const activeMonthObj = availableMonths.find((m) => m.key === selectedMonthFilter);
-    const periodLabel = activeMonthObj ? activeMonthObj.label : 'Semua Periode';
+    const periodLabel = recapPeriodLabel;
 
     const toastId = toast.loading('Menyusun spreadsheet rekap temuan abnormal...');
     try {
@@ -1206,7 +1232,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       });
 
       // Data Rows
-      filteredItems.forEach((item, idx) => {
+      recapItems.forEach((item, idx) => {
         const row = worksheet.addRow([
           idx + 1,
           item.createdBy,
@@ -1286,11 +1312,33 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           </div>
 
           {/* Export Actions */}
-          <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-center shrink-0">
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" title="Rentang bulan khusus data rekap yang diekspor">
+              <span className="hidden lg:inline px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Rekap</span>
+              <select
+                value={recapStartMonth}
+                onChange={(event) => setRecapStartMonth(event.target.value)}
+                className="max-w-[128px] bg-white px-2 py-1 text-[11px] font-medium text-slate-700 outline-none"
+                aria-label="Bulan awal rekap abnormal"
+              >
+                <option value="all">Dari semua bulan</option>
+                {availableMonths.map((month) => <option key={month.key} value={month.key}>{month.label}</option>)}
+              </select>
+              <span className="text-[11px] text-slate-400">s.d.</span>
+              <select
+                value={recapEndMonth}
+                onChange={(event) => setRecapEndMonth(event.target.value)}
+                className="max-w-[128px] bg-white px-2 py-1 text-[11px] font-medium text-slate-700 outline-none"
+                aria-label="Bulan akhir rekap abnormal"
+              >
+                <option value="all">Sampai semua bulan</option>
+                {availableMonths.map((month) => <option key={month.key} value={month.key}>{month.label}</option>)}
+              </select>
+            </div>
             <button
               type="button"
               onClick={handleExportWordRecap}
-              disabled={filteredItems.length === 0}
+              disabled={recapItems.length === 0}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer"
               title="Unduh Rekap Lengkap Word (.docx) dengan Detail & Foto Bukti"
             >
@@ -1300,7 +1348,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             <button
               type="button"
               onClick={handleExportExcelRecap}
-              disabled={filteredItems.length === 0}
+              disabled={recapItems.length === 0}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer"
               title="Unduh Rekap Spreadsheet (.xlsx)"
             >
