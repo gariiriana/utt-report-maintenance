@@ -288,8 +288,8 @@ function extractSectionBilingual(
 
 function getImportWarnings(data: SOPDocumentData | EOPDocumentData): string[] {
   const warnings: string[] = [];
-  if (!data.documentTitle) warnings.push('Judul dokumen tidak terbaca.');
-  if (data.referencedDocuments.length === 0) warnings.push('Tabel dokumen referensi tidak terbaca atau memang kosong.');
+  // Empty values are valid DOCX content. Never describe an intentionally
+  // blank title or reference table as an import failure.
   if (data.workSteps.length === 0) warnings.push('Tidak ada langkah kerja yang terbaca; periksa struktur tabel Action / Expected Outcome pada Word.');
   if (data.type === 'SOP' && data.equipmentList.length === 0) warnings.push('Tidak ada data CI Equipment yang terbaca.');
   if (data.type === 'SOP' && data.prerequisites.length === 0) warnings.push('Tidak ada prasyarat yang terbaca.');
