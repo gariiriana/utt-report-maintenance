@@ -2579,8 +2579,8 @@ export function SOPEOPManagement() {
       {/* ──────────────────────────────────────────────────────────────────── */}
       {activeSubTab === 'archive' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col xl:flex-row items-center justify-between gap-3">
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 w-full xl:w-auto">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 sm:w-80">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -2622,7 +2622,7 @@ export function SOPEOPManagement() {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-slate-600">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                 <label className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="font-semibold">Diunggah</span>
                   <input
@@ -2653,9 +2653,8 @@ export function SOPEOPManagement() {
                   </button>
                 )}
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 sm:ml-auto">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -2676,6 +2675,7 @@ export function SOPEOPManagement() {
                 <RotateCcw className={`w-3.5 h-3.5 ${isLoadingArchive ? 'animate-spin' : ''}`} />
                 <span>Muat Ulang</span>
               </button>
+              </div>
             </div>
           </div>
 
