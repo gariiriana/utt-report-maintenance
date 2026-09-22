@@ -426,6 +426,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
     const [predictiveReports, setPredictiveReports] = useState<PredictiveReportData[]>([]);
     const [periodicReports, setPeriodicReports] = useState<PeriodicPredictiveReportData[]>([]);
+    const [manualAbnormalFindings, setManualAbnormalFindings] = useState<any[]>([]);
     const [isPeriodicModalOpen, setIsPeriodicModalOpen] = useState(false);
     const [selectedPeriodicData, setSelectedPeriodicData] = useState<PeriodicPredictiveReportData | null>(null);
 
@@ -457,6 +458,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             setReports([]);
             setPredictiveReports([]);
             setPeriodicReports([]);
+            setManualAbnormalFindings([]);
             setLoading(false);
             return;
         }
@@ -529,10 +531,20 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             }
         );
 
+        // Temuan abnormal yang dicatat manual engineer juga menjadi evidence
+        // saat membuat rekap predictive bulanan/tahunan dari Arsip Standby.
+        const qManualAbnormal = query(collection(db, 'findings'), where('manualAbnormal', '==', true));
+        const unsubscribeManualAbnormal = onSnapshot(
+            qManualAbnormal,
+            (snapshot) => setManualAbnormalFindings(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))),
+            (error) => console.warn('Could not load manual abnormal findings for predictive recap:', error)
+        );
+
         return () => {
             unsubscribe();
             unsubscribePred();
             unsubscribePeriodic();
+            unsubscribeManualAbnormal();
         };
     }, [user]);
 
@@ -3921,7 +3933,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setSelectedPeriodicData(null);
                     }}
                     allCMReports={allCMReports}
-                    allAbnormalFindings={allCMReports.filter(r => r.category === 'abnormal' || r.issue)}
+                    allAbnormalFindings={manualAbnormalFindings}
                     allSparepartLogs={[]}
                     userEmail={user?.email || undefined}
                     userName={user?.displayName || 'Standby Engineer'}

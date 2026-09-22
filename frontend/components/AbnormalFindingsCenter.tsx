@@ -714,7 +714,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           // dan akun bersangkutan sudah dikelola lewat dokumen PM, jangan munculkan sisa duplikatnya sebagai unit terpisah
           const fSpec = normalize(f.specificDetail);
           const fMaint = normalize(f.maintenanceName);
-          if (fSpec || (fMaint && fMaint !== 'temuanlapangan' && fMaint !== normalize(f.partName))) {
+          // Input abnormal manual memang menyimpan maintenanceName dan unit secara terpisah.
+          // Tandai eksplisit agar tetap tampil, tanpa membuka kembali duplikasi temuan PM lama.
+          if (!f.manualAbnormal && (fSpec || (fMaint && fMaint !== 'temuanlapangan' && fMaint !== normalize(f.partName)))) {
             return false;
           }
 
@@ -731,7 +733,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             documentType: 'pdf',
             fileName: `Temuan_${f.partName || 'Unit'}.pdf`,
             maintenanceName: f.maintenanceName || f.partName || 'Temuan Lapangan',
-            maintenanceTime: f.findingDate || '',
+            maintenanceTime: f.findingDate || (f.findingMonth && f.findingYear ? `${f.findingYear}-${String(f.findingMonth).padStart(2, '0')}-01` : ''),
             specificDetail: f.specificDetail || f.partName || '',
             createdBy: (f.createdByEmail || 'engineer').toLowerCase().trim(),
             createdAt,

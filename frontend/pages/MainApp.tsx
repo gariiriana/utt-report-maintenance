@@ -42,13 +42,14 @@ import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
 import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
 import { SOPEOPManagement } from '@/components/SOPEOPManagement';
 import { HSEArchiveHub } from '@/components/HSEArchiveHub';
+import { ManualAbnormalFinding } from '@/components/ManualAbnormalFinding';
 import { AppSidebar } from '@/components/AppSidebar';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings' | 'sop_eop' | 'hse_archive';
+type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings' | 'manual_abnormal' | 'sop_eop' | 'hse_archive';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -63,6 +64,7 @@ export function MainApp() {
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
   const isStandby = userRole === 'standby_engineer';
   const isK2Engineer = userRole === 'Engineer_K2' || userRole === 'engineer_k2';
+  const isEngineerRole = Boolean(userRole && userRole.toLowerCase().includes('engineer'));
 
   // Badge jumlah pengajuan delete & temuan abnormal (khusus akun QC DME & Dwimitra)
   const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
@@ -118,6 +120,7 @@ export function MainApp() {
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'delete_requests', label: 'Pengajuan Hapus', icon: Trash2, color: 'from-rose-600 to-red-600', show: isQcDme },
     { id: 'abnormal_findings', label: 'Temuan Abnormal', icon: AlertTriangle, color: 'from-red-600 to-amber-600', show: canViewAbnormal },
+    { id: 'manual_abnormal', label: 'Input Abnormal Manual', icon: AlertTriangle, color: 'from-rose-600 to-red-700', show: isEngineerRole },
     { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: false },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
@@ -256,6 +259,8 @@ export function MainApp() {
             setNavSearchQuery(query);
             setActiveTab('documents');
           }} />
+        ) : activeTab === 'manual_abnormal' ? (
+          <ManualAbnormalFinding />
         ) : activeTab === 'absen_tbm' ? (
           <AbsenTBM />
         ) : activeTab === 'absen_induction' ? (

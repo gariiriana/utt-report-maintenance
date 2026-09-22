@@ -96,6 +96,28 @@ export function SOPEOPManagement() {
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveFilterType, setArchiveFilterType] = useState<'ALL' | 'SOP' | 'EOP'>('ALL');
+  const [archiveUploadedFrom, setArchiveUploadedFrom] = useState('');
+  const [archiveUploadedTo, setArchiveUploadedTo] = useState('');
+
+  const getArchiveTimestamp = (value: any): number => {
+    if (!value) return 0;
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (value instanceof Date) return value.getTime();
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const getArchiveDateKey = (item: any) => {
+    const time = getArchiveTimestamp(item.createdAt || item.updatedAt);
+    if (!time) return '';
+    const date = new Date(time);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  const formatArchiveDate = (value: any) => {
+    const time = getArchiveTimestamp(value);
+    return time ? new Date(time).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+  };
 
   // State Modal Konfirmasi In-App
   const [deleteModal, setDeleteModal] = useState<{
@@ -184,7 +206,7 @@ export function SOPEOPManagement() {
       snap.forEach((d) => {
         docs.push({ id: d.id, ...d.data() } as any);
       });
-      setArchiveList(docs);
+      setArchiveList(docs.sort((a: any, b: any) => getArchiveTimestamp(b.updatedAt || b.createdAt) - getArchiveTimestamp(a.updatedAt || a.createdAt)));
     } catch (err: any) {
       console.warn('Error fetching SOP/EOP archive:', err);
       // Fallback query if index or timestamp is missing
@@ -194,7 +216,7 @@ export function SOPEOPManagement() {
         snap2.forEach((d) => {
           docs2.push({ id: d.id, ...d.data() } as any);
         });
-        setArchiveList(docs2);
+        setArchiveList(docs2.sort((a: any, b: any) => getArchiveTimestamp(b.updatedAt || b.createdAt) - getArchiveTimestamp(a.updatedAt || a.createdAt)));
       } catch (e2: any) {
         console.warn('Fallback fetch SOP/EOP archive note:', e2);
       }
@@ -714,7 +736,10 @@ export function SOPEOPManagement() {
       (item.documentTitle || '').toLowerCase().includes(q) ||
       (item.author || '').toLowerCase().includes(q) ||
       (item.workLocationEn || '').toLowerCase().includes(q);
-    return matchesType && matchesSearch;
+    const uploadedDate = getArchiveDateKey(item);
+    const matchesFrom = !archiveUploadedFrom || (uploadedDate && uploadedDate >= archiveUploadedFrom);
+    const matchesTo = !archiveUploadedTo || (uploadedDate && uploadedDate <= archiveUploadedTo);
+    return matchesType && matchesSearch && matchesFrom && matchesTo;
   });
 
   const userEmail = (user?.email || '').trim().toLowerCase();
@@ -2554,8 +2579,8 @@ export function SOPEOPManagement() {
       {/* ──────────────────────────────────────────────────────────────────── */}
       {activeSubTab === 'archive' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col xl:flex-row items-center justify-between gap-3">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 w-full xl:w-auto">
               <div className="relative flex-1 sm:w-80">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -2595,6 +2620,38 @@ export function SOPEOPManagement() {
                 >
                   EOP
                 </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-600">
+                <label className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="font-semibold">Diunggah</span>
+                  <input
+                    type="date"
+                    value={archiveUploadedFrom}
+                    onChange={(e) => setArchiveUploadedFrom(e.target.value)}
+                    aria-label="Tanggal unggah mulai"
+                    className="px-2 py-1.5 rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-slate-300"
+                  />
+                </label>
+                <span className="text-slate-400">s.d.</span>
+                <input
+                  type="date"
+                  value={archiveUploadedTo}
+                  onChange={(e) => setArchiveUploadedTo(e.target.value)}
+                  min={archiveUploadedFrom || undefined}
+                  aria-label="Tanggal unggah selesai"
+                  className="px-2 py-1.5 rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-slate-300"
+                />
+                {(archiveUploadedFrom || archiveUploadedTo) && (
+                  <button
+                    type="button"
+                    onClick={() => { setArchiveUploadedFrom(''); setArchiveUploadedTo(''); }}
+                    className="px-2 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 font-bold"
+                    title="Hapus filter tanggal unggah"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2679,6 +2736,8 @@ export function SOPEOPManagement() {
                     <div className="pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100">
                       <span>Penyusun: <strong className="text-slate-700">{item.author || '-'}</strong></span>
                       <span>Revisi: <strong className="text-slate-700">{item.revisionNumber || '00'}</strong></span>
+                      <span>Diunggah: <strong className="text-slate-700">{formatArchiveDate(item.createdAt || item.updatedAt)}</strong></span>
+                      <span>Diperbarui: <strong className="text-slate-700">{formatArchiveDate(item.updatedAt || item.createdAt)}</strong></span>
                     </div>
                   </div>
 

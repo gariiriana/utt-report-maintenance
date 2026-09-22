@@ -44,7 +44,7 @@ interface AppSidebarProps {
 const MENU_SECTIONS = [
   {
     title: 'Monitoring & Kontrol',
-    itemIds: ['admin', 'delete_requests', 'abnormal_findings', 'findings', 'finding_archive'],
+    itemIds: ['admin', 'delete_requests', 'abnormal_findings', 'manual_abnormal', 'findings', 'finding_archive'],
   },
   {
     title: 'Operasional & K3',
