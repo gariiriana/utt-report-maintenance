@@ -335,13 +335,12 @@ export async function exportAbnormalRecapToWord(
       'No',
       'Nama Unit / Peralatan',
       'Nama Maintenance',
-      'Akun Maintenance',
       'Periode',
       'Deskripsi Temuan',
     ].map((text, idx) =>
       new TableCell({
         width: {
-          size: [4, 16, 16, 18, 11, 35][idx],
+          size: [4, 18, 18, 14, 46][idx],
           type: WidthType.PERCENTAGE,
         },
         shading: { type: ShadingType.SOLID, color: COLOR_PRIMARY_RED, fill: COLOR_PRIMARY_RED },
@@ -375,7 +374,6 @@ export async function exportAbnormalRecapToWord(
         String(idx + 1),
         unitName,
         item.maintenanceName,
-        item.createdBy,
         item.maintenanceTime || '-',
         description,
       ].map((text, colIdx) =>
@@ -388,7 +386,7 @@ export async function exportAbnormalRecapToWord(
               : undefined,
           children: [
             new Paragraph({
-              alignment: colIdx === 0 || colIdx === 4 ? AlignmentType.CENTER : AlignmentType.LEFT,
+              alignment: colIdx === 0 || colIdx === 3 ? AlignmentType.CENTER : AlignmentType.LEFT,
               spacing: { before: 30, after: 30 },
               children: [
                 new TextRun({
