@@ -338,11 +338,10 @@ export async function exportAbnormalRecapToWord(
       'Akun Maintenance',
       'Periode',
       'Deskripsi Temuan',
-      'Foto',
     ].map((text, idx) =>
       new TableCell({
         width: {
-          size: [4, 15, 15, 16, 10, 31, 9][idx],
+          size: [4, 16, 16, 18, 11, 35][idx],
           type: WidthType.PERCENTAGE,
         },
         shading: { type: ShadingType.SOLID, color: COLOR_PRIMARY_RED, fill: COLOR_PRIMARY_RED },
@@ -369,7 +368,6 @@ export async function exportAbnormalRecapToWord(
 
   const tableDataRows = items.map((item, idx) => {
     const unitName = item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName;
-    const hasPhoto = Boolean(item.abnormalFinding?.photoBase64 || item.abnormalFinding?.photos?.length);
     const description = item.abnormalFinding?.description || '-';
 
     return new TableRow({
@@ -380,7 +378,6 @@ export async function exportAbnormalRecapToWord(
         item.createdBy,
         item.maintenanceTime || '-',
         description,
-        hasPhoto ? 'Ada' : 'Tidak',
       ].map((text, colIdx) =>
         new TableCell({
           verticalAlign: VerticalAlign.CENTER,
@@ -391,7 +388,7 @@ export async function exportAbnormalRecapToWord(
               : undefined,
           children: [
             new Paragraph({
-              alignment: colIdx === 0 || colIdx === 4 || colIdx === 6 ? AlignmentType.CENTER : AlignmentType.LEFT,
+              alignment: colIdx === 0 || colIdx === 4 ? AlignmentType.CENTER : AlignmentType.LEFT,
               spacing: { before: 30, after: 30 },
               children: [
                 new TextRun({
