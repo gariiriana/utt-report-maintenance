@@ -141,17 +141,29 @@ export function SOPEOPManagement() {
         setCurrentSopDocId(null);
         setActiveSubTab('sop');
         toast.success(
-          `Berkas SOP "${file.name}" berhasil diimpor! (${result.summary.stepCount} Langkah Kerja). Klik "Bilingual (EN + ID)" jika ingin menerjemahkan.`,
+          `Berkas SOP "${file.name}" berhasil diimpor! (${result.summary.stepCount} Langkah Kerja). Periksa data, klik "Bilingual (EN + ID)", lalu "Simpan Cloud" untuk menyimpan.`,
           { duration: 5000 }
         );
+        if (result.warnings.length > 0) {
+          toast.warning('Import SOP selesai dengan data yang perlu diperiksa.', {
+            description: result.warnings.join(' '),
+            duration: 9000,
+          });
+        }
       } else if (result.type === 'EOP' && result.eopData) {
         setEopData(result.eopData);
         setCurrentEopDocId(null);
         setActiveSubTab('eop');
         toast.success(
-          `Berkas EOP "${file.name}" berhasil diimpor! (${result.summary.stepCount} Langkah Kedaruratan). Klik "Bilingual (EN + ID)" jika ingin menerjemahkan.`,
+          `Berkas EOP "${file.name}" berhasil diimpor! (${result.summary.stepCount} Langkah Kedaruratan). Periksa data, klik "Bilingual (EN + ID)", lalu "Simpan Cloud" untuk menyimpan.`,
           { duration: 5000 }
         );
+        if (result.warnings.length > 0) {
+          toast.warning('Import EOP selesai dengan data yang perlu diperiksa.', {
+            description: result.warnings.join(' '),
+            duration: 9000,
+          });
+        }
       }
     } catch (err: any) {
       toast.dismiss(loadingToast);
@@ -1213,17 +1225,27 @@ export function SOPEOPManagement() {
               ))}
             </div>
 
-            <div className="mt-3">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Affected Systems Details / Catatan Rincian Dampak
-              </label>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Affected Systems Details (English)</label>
               <textarea
                 rows={2}
-                value={sopData.affectedSystemsDetails}
-                onChange={(e) => setSopData({ ...sopData, affectedSystemsDetails: e.target.value })}
+                value={sopData.affectedSystemsDetailsEn ?? sopData.affectedSystemsDetails}
+                onChange={(e) => setSopData({ ...sopData, affectedSystemsDetails: e.target.value, affectedSystemsDetailsEn: e.target.value })}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-500 outline-none"
+                placeholder="Describe the impact on affected systems..."
+              />
+              </div>
+              <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan Rincian Dampak (Bahasa Indonesia)</label>
+              <textarea
+                rows={2}
+                value={sopData.affectedSystemsDetailsId || ''}
+                onChange={(e) => setSopData({ ...sopData, affectedSystemsDetailsId: e.target.value })}
                 className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-500 outline-none"
                 placeholder="Rincian dampak sistem apabila ada..."
               />
+              </div>
             </div>
           </div>
 
@@ -1296,6 +1318,9 @@ export function SOPEOPManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-700">1. APD / PPE:</span>
+                <textarea rows={2} value={sopData.ehsRequirements.ppeEn}
+                  onChange={(e) => setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, ppeEn: e.target.value } })}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300" placeholder="PPE requirement (English)..." />
                 <textarea
                   rows={2}
                   value={sopData.ehsRequirements.ppeId}
@@ -1312,6 +1337,9 @@ export function SOPEOPManagement() {
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-700">2. Larangan Perhiasan Logam:</span>
+                <textarea rows={2} value={sopData.ehsRequirements.jewelryEn}
+                  onChange={(e) => setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, jewelryEn: e.target.value } })}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300" placeholder="Jewelry restriction (English)..." />
                 <textarea
                   rows={2}
                   value={sopData.ehsRequirements.jewelryId}
@@ -1328,6 +1356,9 @@ export function SOPEOPManagement() {
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-700">3. Komunikasi & HT:</span>
+                <textarea rows={2} value={sopData.ehsRequirements.commsEn}
+                  onChange={(e) => setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, commsEn: e.target.value } })}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300" placeholder="Communication requirement (English)..." />
                 <textarea
                   rows={2}
                   value={sopData.ehsRequirements.commsId}
@@ -1344,6 +1375,9 @@ export function SOPEOPManagement() {
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-700">4. LOTO (Lockout / Tagout):</span>
+                <textarea rows={2} value={sopData.ehsRequirements.lotoEn}
+                  onChange={(e) => setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, lotoEn: e.target.value } })}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300" placeholder="LOTO requirement (English)..." />
                 <textarea
                   rows={2}
                   value={sopData.ehsRequirements.lotoId}
@@ -1691,13 +1725,14 @@ export function SOPEOPManagement() {
               </h2>
             </div>
 
-            <textarea
-              rows={2}
-              value={sopData.backOutProcedure}
-              onChange={(e) => setSopData({ ...sopData, backOutProcedure: e.target.value })}
-              className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300"
-              placeholder="Contoh: N/A atau rincian langkah pembatalan..."
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <textarea rows={2} value={sopData.backOutProcedureEn ?? sopData.backOutProcedure}
+                onChange={(e) => setSopData({ ...sopData, backOutProcedure: e.target.value, backOutProcedureEn: e.target.value })}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300" placeholder="Back-out procedure (English)..." />
+              <textarea rows={2} value={sopData.backOutProcedureId || ''}
+                onChange={(e) => setSopData({ ...sopData, backOutProcedureId: e.target.value })}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300" placeholder="Prosedur pemulihan (Bahasa Indonesia)..." />
+            </div>
           </div>
 
           {/* Card Seksi 12: Document Information */}
@@ -1802,13 +1837,14 @@ export function SOPEOPManagement() {
               </h2>
             </div>
 
-            <textarea
-              rows={3}
-              value={sopData.additionalInformation}
-              onChange={(e) => setSopData({ ...sopData, additionalInformation: e.target.value })}
-              className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300"
-              placeholder="Catatan tambahan, instruksi khusus atau lampiran..."
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <textarea rows={3} value={sopData.additionalInformationEn ?? sopData.additionalInformation}
+                onChange={(e) => setSopData({ ...sopData, additionalInformation: e.target.value, additionalInformationEn: e.target.value })}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300" placeholder="Additional information (English)..." />
+              <textarea rows={3} value={sopData.additionalInformationId || ''}
+                onChange={(e) => setSopData({ ...sopData, additionalInformationId: e.target.value })}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300" placeholder="Catatan tambahan (Bahasa Indonesia)..." />
+            </div>
           </div>
 
           {/* ─── BOTTOM ACTION BAR (PALING BAWAH DI KANAN) ─── */}
@@ -2059,6 +2095,9 @@ export function SOPEOPManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-700">1. APD / PPE:</span>
+                <textarea rows={2} value={eopData.ehsRequirements.ppeEn}
+                  onChange={(e) => setEopData({ ...eopData, ehsRequirements: { ...eopData.ehsRequirements, ppeEn: e.target.value } })}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300" placeholder="PPE requirement (English)..." />
                 <textarea
                   rows={2}
                   value={eopData.ehsRequirements.ppeId}
@@ -2074,6 +2113,9 @@ export function SOPEOPManagement() {
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-700">2. Komunikasi & HT:</span>
+                <textarea rows={2} value={eopData.ehsRequirements.commsEn}
+                  onChange={(e) => setEopData({ ...eopData, ehsRequirements: { ...eopData.ehsRequirements, commsEn: e.target.value } })}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300" placeholder="Communication requirement (English)..." />
                 <textarea
                   rows={2}
                   value={eopData.ehsRequirements.commsId}
@@ -2410,12 +2452,14 @@ export function SOPEOPManagement() {
               </h2>
             </div>
 
-            <textarea
-              rows={3}
-              value={eopData.additionalInformation}
-              onChange={(e) => setEopData({ ...eopData, additionalInformation: e.target.value })}
-              className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <textarea rows={3} value={eopData.additionalInformationEn ?? eopData.additionalInformation}
+                onChange={(e) => setEopData({ ...eopData, additionalInformation: e.target.value, additionalInformationEn: e.target.value })}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300" placeholder="Additional information (English)..." />
+              <textarea rows={3} value={eopData.additionalInformationId || ''}
+                onChange={(e) => setEopData({ ...eopData, additionalInformationId: e.target.value })}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300" placeholder="Catatan tambahan (Bahasa Indonesia)..." />
+            </div>
           </div>
 
           {/* ─── BOTTOM ACTION BAR (PALING BAWAH DI KANAN) ─── */}

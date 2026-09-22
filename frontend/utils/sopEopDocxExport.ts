@@ -237,6 +237,13 @@ function createBilingualFieldParagraph(
   });
 }
 
+function createBilingualContentParagraph(textEn: string, textId?: string): Paragraph {
+  return new Paragraph({
+    spacing: { after: 0, line: 240 },
+    children: createBilingualRuns(textEn || '-', textId || ensureBilingualTranslation(textEn || '-')),
+  });
+}
+
 function createSpacer(_height?: number): Paragraph {
   return new Paragraph({
     spacing: { after: 0, line: 240 },
@@ -598,7 +605,6 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       ],
     })
   );
-
   const executedByHeaderRow = new TableRow({
     tableHeader: true,
     cantSplit: true,
@@ -756,22 +762,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
                 new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: data.affectedSystemsDetails || '1. Standby Generator will be running if the source in the MV panel shut down.',
-                      size: 18,
-                      color: COLOR_BLACK,
-                      font: FONT_BODY,
-                    }),
-                    new TextRun({ text: '', break: 1 }),
-                    new TextRun({
-                      text: '1. Generator Cadangan akan beroperasi jika sumber pada panel MV padam/dimatikan.',
-                      italics: true,
-                      size: 18,
-                      color: COLOR_GREY_ID,
-                      font: FONT_BODY,
-                    }),
-                  ],
+                  children: createBilingualRuns(
+                    data.affectedSystemsDetailsEn || data.affectedSystemsDetails || '-',
+                    data.affectedSystemsDetailsId,
+                    { sizeEn: 18, sizeId: 18 }
+                  ),
                 }),
               ],
             }),
@@ -887,10 +882,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   };
 
   const ehsItems: [string, string][] = [
-    [`1. ${ehs.ppeEn}`, `1. ${ehs.ppeId}`],
-    [`2. ${ehs.jewelryEn}`, `2. ${ehs.jewelryId}`],
-    [`3. ${ehs.commsEn}`, `3. ${ehs.commsId}`],
-    [`4. ${ehs.lotoEn}`, `4. ${ehs.lotoId}`],
+    [`1. ${ehs.ppeEn}`, `1. ${ensureBilingualTranslation(ehs.ppeEn, ehs.ppeId)}`],
+    [`2. ${ehs.jewelryEn}`, `2. ${ensureBilingualTranslation(ehs.jewelryEn, ehs.jewelryId)}`],
+    [`3. ${ehs.commsEn}`, `3. ${ensureBilingualTranslation(ehs.commsEn, ehs.commsId)}`],
+    [`4. ${ehs.lotoEn}`, `4. ${ensureBilingualTranslation(ehs.lotoEn, ehs.lotoId)}`],
   ];
 
   children.push(
@@ -1209,6 +1204,13 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     })
   );
 
+  if (data.conditionsPriorToExecutionEn || data.conditionsPriorToExecutionId) {
+    children.push(createBilingualContentParagraph(
+      data.conditionsPriorToExecutionEn || '-',
+      data.conditionsPriorToExecutionId
+    ));
+  }
+
   // Exact 4-column widths from master: [4248, 1843, 1842, 1083] = 9016
   const sopStepColWidths = [4248, 1843, 1842, 1083];
 
@@ -1334,15 +1336,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
               borders: CELL_BORDER_DIVIDER_BOTTOM,
               margins: { top: 40, bottom: 40, left: 60, right: 60 },
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: data.backOutProcedure || 'N/A', size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                    new TextRun({ text: '', break: 1 }),
-                    new TextRun({ text: 'T/A', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                  ],
-                }),
-              ],
+              children: [createBilingualContentParagraph(
+                data.backOutProcedureEn || data.backOutProcedure || 'N/A',
+                data.backOutProcedureId
+              )],
             }),
           ],
         }),
@@ -1630,13 +1627,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               margins: { top: 100, bottom: 100, left: 80, right: 80 },
               children: [
                 new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: data.additionalInformation || ' ',
-                      size: 18,
-                      font: FONT_BODY,
-                    }),
-                  ],
+                  children: createBilingualRuns(
+                    data.additionalInformationEn || data.additionalInformation || '-',
+                    data.additionalInformationId,
+                    { sizeEn: 18, sizeId: 18 }
+                  ),
                 }),
               ],
             }),
@@ -1720,7 +1715,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 1: Document Overview
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 1 – Document Overview', undefined, true));
+  children.push(createSectionBanner('Section 1 – Document Overview', 'Seksi 1 – Gambaran Umum Dokumen', true));
   children.push(createSpacer(40));
 
   children.push(
@@ -1754,7 +1749,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 2: Referenced Document / Attachments
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 2 – Referenced Document / Attachments', undefined, true));
+  children.push(createSectionBanner('Section 2 – Referenced Document / Attachments', 'Seksi 2 – Dokumen Referensi / Lampiran', true));
   children.push(createSpacer(40));
 
   // EOP master column widths: [6516, 2500] = 9016
@@ -1831,7 +1826,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 3: Environmental, Health & Safety
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 3 – Environmental, Health & Safety', undefined, true));
+  children.push(createSectionBanner('Section 3 – Environmental, Health & Safety', 'Seksi 3 – Lingkungan, Kesehatan & Keselamatan Kerja', true));
   children.push(createSpacer(40));
 
   children.push(
@@ -1853,8 +1848,8 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   };
 
   const eopEhsItems: [string, string][] = [
-    [`1. ${eopEhs.ppeEn}`, `1. ${eopEhs.ppeId}`],
-    [`2. ${eopEhs.commsEn}`, `2. ${eopEhs.commsId}`],
+    [`1. ${eopEhs.ppeEn}`, `1. ${ensureBilingualTranslation(eopEhs.ppeEn, eopEhs.ppeId)}`],
+    [`2. ${eopEhs.commsEn}`, `2. ${ensureBilingualTranslation(eopEhs.commsEn, eopEhs.commsId)}`],
   ];
 
   children.push(
@@ -1888,7 +1883,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 4: Work Instruction / Procedure
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 4 – Work Instruction / Procedure', undefined, true));
+  children.push(createSectionBanner('Section 4 – Work Instruction / Procedure', 'Seksi 4 – Instruksi / Prosedur Kerja', true));
   children.push(createSpacer(40));
 
   children.push(
@@ -1912,6 +1907,13 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
       ],
     })
   );
+
+  if (data.expectedConditionsEn || data.expectedConditionsId) {
+    children.push(createBilingualContentParagraph(
+      data.expectedConditionsEn || '-',
+      data.expectedConditionsId
+    ));
+  }
 
   // Exact 5-column widths from master: [455, 4785, 2064, 855, 857] = 9016
   const eopStepColWidths = [455, 4785, 2064, 855, 857];
@@ -2024,7 +2026,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 5: Document Information
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 5 – Document Information', undefined, true));
+  children.push(createSectionBanner('Section 5 – Document Information', 'Seksi 5 – Informasi Dokumen', true));
   children.push(createSpacer(40));
 
   // EOP Section 5 uses a clean borderless 4-column table layout matching master document
@@ -2162,7 +2164,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 6: Dry Run
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 6 – Dry Run', undefined, true));
+  children.push(createSectionBanner('Section 6 – Dry Run', 'Seksi 6 – Uji Coba (Dry Run)', true));
   children.push(createSpacer(40));
 
   children.push(
@@ -2251,7 +2253,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // SECTION 7: Approval
   // --------------------------------------------------------------------------
   children.push(new Paragraph({ children: [new PageBreak()] }));
-  children.push(createSectionBanner('Section 7 – Approval', undefined, true));
+  children.push(createSectionBanner('Section 7 – Approval', 'Seksi 7 – Persetujuan', true));
   children.push(createSpacer(40));
 
   const eopDefaultApprovals = [
@@ -2377,7 +2379,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // SECTION 8: Additional Information
   // --------------------------------------------------------------------------
-  children.push(createSectionBanner('Section 8 – Additional Information', undefined, true));
+  children.push(createSectionBanner('Section 8 – Additional Information', 'Seksi 8 – Informasi Tambahan', true));
   children.push(createSpacer(40));
 
   children.push(
@@ -2392,13 +2394,11 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               margins: { top: 100, bottom: 100, left: 80, right: 80 },
               children: [
                 new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: data.additionalInformation || ' ',
-                      size: 18,
-                      font: FONT_BODY,
-                    }),
-                  ],
+                  children: createBilingualRuns(
+                    data.additionalInformationEn || data.additionalInformation || '-',
+                    data.additionalInformationId,
+                    { sizeEn: 18, sizeId: 18 }
+                  ),
                 }),
               ],
             }),

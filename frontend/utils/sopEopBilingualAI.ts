@@ -8,22 +8,10 @@
 // ============================================================================
 
 import { SOPDocumentData, EOPDocumentData } from '@/types/sopEopTypes';
+import { auth } from '@/api/firebase';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 // ─── Environment & API Key Management ────────────────────────────────────────
-
-const apiKeysStr = import.meta.env.VITE_NVIDIA_NIM_API_KEYS || '';
-const apiKeys = apiKeysStr
-  .split(',')
-  .map((k: string) => k.trim())
-  .filter(Boolean);
-
-let keyIndex = 0;
-function getNextAPIKey(): string | null {
-  if (apiKeys.length === 0) return null;
-  const key = apiKeys[keyIndex % apiKeys.length];
-  keyIndex++;
-  return key;
-}
 
 // ─── Kamus Teknis Standar M/E & Fasilitas Data Center (EN <-> ID) ────────────
 
@@ -489,91 +477,36 @@ export function ensureBilingualTranslation(textEn: string, textId?: string): str
 }
 
 /**
- * Panggil Google Gemini AI langsung dengan Multi-Key Round-Robin & Failover.
- * Model utama: 'gemini-3.6-flash' (terbukti cepat & aktif), fallback: 'gemini-flash-latest'.
+ * Panggil AI melalui backend yang telah mengautentikasi pengguna. API key
+ * disimpan server-side dan tidak pernah dimasukkan ke bundle frontend.
  */
-async function callGeminiDirectWithFailover(prompt: string): Promise<string> {
-  const totalKeys = apiKeys.length;
-  if (totalKeys === 0) {
-    throw new Error('Tidak ada Google Gemini API key yang terkonfigurasi pada sistem.');
-  }
+async function callTranslationBackend(prompt: string): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Sesi login diperlukan untuk menjalankan penerjemahan bilingual.');
 
-  const model = import.meta.env.VITE_NVIDIA_NIM_REASONING_MODEL || 'gemini-1.5-flash';
-  let lastError: Error | null = null;
-
-  // Coba semua key dalam pool
-  for (let attempt = 0; attempt < totalKeys * 2; attempt++) {
-    const key = getNextAPIKey();
-    if (!key) continue;
-
-    // 1. Coba endpoint OpenAI-compatible standar yang digunakan konsisten di sistem
-    try {
-      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${key}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+  const token = await user.getIdToken();
+  const response = await fetch(getApiEndpoint('/ai/chat'), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a strict technical SOP/EOP translator. Return only the exact JSON requested by the user prompt. Do not add markdown, commentary, or action tokens.',
         },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.1,
-          max_tokens: 4096
-        })
-      });
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (content) return content;
-      } else {
-        const status = res.status;
-        const errText = await res.text();
-        lastError = new Error(`AI API HTTP ${status}: ${errText.slice(0, 100)}`);
-        if (status === 401 || status === 403 || status === 429) {
-          console.warn(`[BilingualAI] API Key limit/gagal (HTTP ${status}), rotasi ke key berikutnya...`);
-          continue;
-        }
-      }
-    } catch (e: any) {
-      lastError = e;
-    }
-
-    // 2. Fallback ke endpoint native generateContent Google Gemini dengan model resmi
-    const officialModels = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
-    for (const m of officialModels) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: 'application/json'
-            }
-          })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidate) return candidate;
-        } else {
-          const status = res.status;
-          if (status === 401 || status === 403 || status === 429) {
-            break;
-          }
-        }
-      } catch (e: any) {
-        lastError = e;
-      }
-    }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.reply) {
+    throw new Error(payload.error || payload.message || `AI translation failed (HTTP ${response.status}).`);
   }
-
-  throw lastError || new Error('Seluruh API key Google Gemini sedang mencapai batas kuota.');
+  return payload.reply;
 }
 
 /**
@@ -626,7 +559,7 @@ ATURAN MUTLAK:
 Daftar butir:
 ${JSON.stringify(chunk, null, 2)}`;
 
-      const rawJson = await callGeminiDirectWithFailover(prompt);
+      const rawJson = await callTranslationBackend(prompt);
       const cleaned = rawJson.replace(/```json/gi, '').replace(/```/gi, '').trim();
       const parsed: Array<{ id: string; translation: string }> = JSON.parse(cleaned);
 
@@ -699,6 +632,20 @@ export async function convertSOPToBilingualWithAI(
     queue.push({ id: 'cond_en', text: updated.conditionsPriorToExecutionId, toLang: 'en' });
   }
 
+  // 2b. Free-text SOP sections that are also exported bilingually.
+  const affectedEn = updated.affectedSystemsDetailsEn || updated.affectedSystemsDetails;
+  if (affectedEn && needsTranslateToId(affectedEn, updated.affectedSystemsDetailsId)) {
+    queue.push({ id: 'affected_details_id', text: affectedEn, toLang: 'id' });
+  }
+  const backOutEn = updated.backOutProcedureEn || updated.backOutProcedure;
+  if (backOutEn && needsTranslateToId(backOutEn, updated.backOutProcedureId)) {
+    queue.push({ id: 'backout_id', text: backOutEn, toLang: 'id' });
+  }
+  const additionalEn = updated.additionalInformationEn || updated.additionalInformation;
+  if (additionalEn && needsTranslateToId(additionalEn, updated.additionalInformationId)) {
+    queue.push({ id: 'additional_id', text: additionalEn, toLang: 'id' });
+  }
+
   // 3. EHS Requirements
   if (updated.ehsRequirements) {
     if (updated.ehsRequirements.ppeEn && needsTranslateToId(updated.ehsRequirements.ppeEn, updated.ehsRequirements.ppeId)) {
@@ -757,6 +704,9 @@ export async function convertSOPToBilingualWithAI(
 
   if (translations.has('cond_id')) updated.conditionsPriorToExecutionId = translations.get('cond_id')!;
   if (translations.has('cond_en')) updated.conditionsPriorToExecutionEn = translations.get('cond_en')!;
+  if (translations.has('affected_details_id')) updated.affectedSystemsDetailsId = translations.get('affected_details_id')!;
+  if (translations.has('backout_id')) updated.backOutProcedureId = translations.get('backout_id')!;
+  if (translations.has('additional_id')) updated.additionalInformationId = translations.get('additional_id')!;
 
   if (updated.ehsRequirements) {
     if (translations.has('ehs_ppe_id')) updated.ehsRequirements.ppeId = translations.get('ehs_ppe_id')!;
@@ -836,6 +786,11 @@ export async function convertEOPToBilingualWithAI(
     queue.push({ id: 'cond_en', text: updated.expectedConditionsId, toLang: 'en' });
   }
 
+  const additionalEn = updated.additionalInformationEn || updated.additionalInformation;
+  if (additionalEn && needsTranslateToId(additionalEn, updated.additionalInformationId)) {
+    queue.push({ id: 'additional_id', text: additionalEn, toLang: 'id' });
+  }
+
   // 3. EHS Requirements
   if (updated.ehsRequirements) {
     if (updated.ehsRequirements.ppeEn && needsTranslateToId(updated.ehsRequirements.ppeEn, updated.ehsRequirements.ppeId)) {
@@ -876,6 +831,7 @@ export async function convertEOPToBilingualWithAI(
 
   if (translations.has('cond_id')) updated.expectedConditionsId = translations.get('cond_id')!;
   if (translations.has('cond_en')) updated.expectedConditionsEn = translations.get('cond_en')!;
+  if (translations.has('additional_id')) updated.additionalInformationId = translations.get('additional_id')!;
 
   if (updated.ehsRequirements) {
     if (translations.has('ehs_ppe_id')) updated.ehsRequirements.ppeId = translations.get('ehs_ppe_id')!;

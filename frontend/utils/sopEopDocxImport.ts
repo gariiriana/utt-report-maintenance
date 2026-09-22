@@ -31,6 +31,7 @@ export interface ParsedSopEopResult {
     author: string;
     sourceFile: string;
   };
+  warnings: string[];
 }
 
 /**
@@ -137,6 +138,45 @@ function extractBilingualFromXml(elementXml: string): { en: string; id: string }
     en: lines[0],
     id: lines[1]
   };
+}
+
+/** Extract the meaningful bilingual content inside one numbered document section. */
+function extractSectionBilingual(
+  xml: string,
+  startPattern: RegExp,
+  endPattern: RegExp,
+  ignoredPatterns: RegExp[] = []
+): { en: string; id: string } {
+  const startIndex = xml.search(startPattern);
+  if (startIndex < 0) return { en: '', id: '' };
+  const afterStart = xml.slice(startIndex);
+  const endOffset = afterStart.search(endPattern);
+  const sectionXml = endOffset >= 0 ? afterStart.slice(0, endOffset) : afterStart;
+  const paragraphs = sectionXml.match(/<w:p[\s\S]*?<\/w:p>/g) || [];
+  const enLines: string[] = [];
+  const idLines: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    const pair = extractBilingualFromXml(paragraph);
+    for (const [language, value] of [['en', pair.en], ['id', pair.id]] as const) {
+      const normalized = value.replace(/^(?:Section|Seksi)\s*\d+[^:]*:?\s*/i, '').trim();
+      if (!normalized || ignoredPatterns.some((pattern) => pattern.test(normalized))) continue;
+      if (language === 'en') enLines.push(normalized);
+      else idLines.push(normalized);
+    }
+  }
+
+  return { en: enLines.join('\n').trim(), id: idLines.join('\n').trim() };
+}
+
+function getImportWarnings(data: SOPDocumentData | EOPDocumentData): string[] {
+  const warnings: string[] = [];
+  if (!data.documentTitle) warnings.push('Judul dokumen tidak terbaca.');
+  if (data.workSteps.length === 0) warnings.push('Tidak ada langkah kerja yang terbaca; periksa struktur tabel Action / Expected Outcome pada Word.');
+  if (data.type === 'SOP' && data.equipmentList.length === 0) warnings.push('Tidak ada data CI Equipment yang terbaca.');
+  if (data.type === 'SOP' && data.prerequisites.length === 0) warnings.push('Tidak ada prasyarat yang terbaca.');
+  if (data.type === 'EOP' && !data.expectedConditionsEn && !data.expectedConditionsId) warnings.push('Expected Conditions EOP tidak terbaca.');
+  return warnings;
 }
 
 /**
@@ -901,6 +941,12 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   const workSteps = parseSOPWorkSteps(xml);
   const approvals = parseApprovals(xml);
   const ehsRequirements = parseSOPEHSRequirements(xml);
+  const conditionsPair = extractSectionBilingual(
+    xml,
+    /(?:Conditions\s*\/\s*Equipment\s*status\s*prior\s*to\s*SOP\s*Execution|Kondisi\s*\/\s*Status\s*peralatan\s*sebelum\s*Pelaksanaan\s*SOP)/i,
+    /<w:tbl/i,
+    [/^conditions\s*\/\s*equipment/i, /^kondisi\s*\/\s*status/i]
+  );
 
   // Seksi 3: Schedule / Work Information
   const norm = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -927,6 +973,9 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
       affectedSystemsDetails = rawDetails;
     }
   }
+  const affectedSystemsPair = impactMatch?.[1]
+    ? extractBilingualFromXml(impactMatch[1])
+    : { en: affectedSystemsDetails, id: '' };
 
   // Seksi 9: Maintenance Period
   const is6Months = /■\s*6\s*Months|☑\s*6\s*Months|\[x\]\s*6\s*Months/i.test(xml);
@@ -941,6 +990,18 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     const bo = cleanText(backoutMatch[1]);
     if (bo) backOutProcedure = bo;
   }
+  const backOutPair = extractSectionBilingual(
+    xml,
+    /(?:Section\s*11|Seksi\s*11)/i,
+    /(?:Section\s*12|Seksi\s*12)/i,
+    [/^action$/i, /^tindakan$/i, /^back\s*out/i, /^prosedur\s*pemulihan/i]
+  );
+  const additionalPair = extractSectionBilingual(
+    xml,
+    /(?:Section\s*14|Seksi\s*14)/i,
+    /<\/w:body>/i,
+    [/^additional\s*information$/i, /^informasi\s*tambahan$/i]
+  );
 
   return {
     type: 'SOP',
@@ -960,6 +1021,8 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     executedByJobTitle: 'Teknisi Data Center',
     affectedSystems,
     affectedSystemsDetails,
+    affectedSystemsDetailsEn: affectedSystemsPair.en || affectedSystemsDetails,
+    affectedSystemsDetailsId: affectedSystemsPair.id,
     referencedDocuments: parseReferencedDocuments(xml),
     ehsRequirements,
     prerequisites,
@@ -970,16 +1033,20 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
       signatureBase64: ''
     },
     maintenancePeriod,
-    conditionsPriorToExecutionEn: '',
-    conditionsPriorToExecutionId: '',
+    conditionsPriorToExecutionEn: conditionsPair.en,
+    conditionsPriorToExecutionId: conditionsPair.id,
     workSteps,
     backOutProcedure,
+    backOutProcedureEn: backOutPair.en || backOutProcedure,
+    backOutProcedureId: backOutPair.id,
     author: meta.author,
     dateOfCreation: meta.creationDate,
     dateRevision: meta.revisionDate,
     revisionNumber: meta.revisionNumber,
     approvals,
-    additionalInformation: 'N/A T/A'
+    additionalInformation: additionalPair.en || additionalPair.id || 'N/A T/A',
+    additionalInformationEn: additionalPair.en,
+    additionalInformationId: additionalPair.id
   };
 }
 
@@ -990,9 +1057,25 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
   const meta = extractMetadata(xml, fileName, true);
   const referencedDocuments = parseReferencedDocuments(xml);
   const ehsRequirements = parseEOPEHSRequirements(xml);
-  const expectedCond = parseEOPExpectedConditions(xml);
+  const parsedExpectedCond = parseEOPExpectedConditions(xml);
+  const expectedCondPair = extractSectionBilingual(
+    xml,
+    /(?:Expected\s*Conditions\s*(?:\/\s*Equipment\s*Status)?|Kondisi\s*yang\s*Diharapkan)/i,
+    /<w:tbl/i,
+    [/^expected\s*conditions/i, /^kondisi\s*yang\s*diharapkan/i]
+  );
+  const expectedCond = {
+    en: expectedCondPair.en || parsedExpectedCond.en,
+    id: expectedCondPair.id || parsedExpectedCond.id,
+  };
   const workSteps = parseEOPWorkSteps(xml);
   const approvals = parseApprovals(xml);
+  const additionalPair = extractSectionBilingual(
+    xml,
+    /(?:Section\s*8|Seksi\s*8)/i,
+    /<\/w:body>/i,
+    [/^additional\s*information$/i, /^informasi\s*tambahan$/i]
+  );
 
   return {
     type: 'EOP',
@@ -1017,7 +1100,9 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
       signatureBase64: ''
     },
     approvals,
-    additionalInformation: 'N/A T/A'
+    additionalInformation: additionalPair.en || additionalPair.id || 'N/A T/A',
+    additionalInformationEn: additionalPair.en,
+    additionalInformationId: additionalPair.id
   };
 }
 
@@ -1045,6 +1130,7 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
 
   if (isEop) {
     const eopData = parseEOPData(xml, file.name);
+    const warnings = getImportWarnings(eopData);
     return {
       type: 'EOP',
       eopData,
@@ -1054,10 +1140,12 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
         stepCount: eopData.workSteps.length,
         author: eopData.author,
         sourceFile: file.name
-      }
+      },
+      warnings
     };
   } else {
     const sopData = parseSOPData(xml, file.name);
+    const warnings = getImportWarnings(sopData);
     return {
       type: 'SOP',
       sopData,
@@ -1068,7 +1156,8 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
         equipmentCount: sopData.equipmentList.length,
         author: sopData.author,
         sourceFile: file.name
-      }
+      },
+      warnings
     };
   }
 }

@@ -1181,8 +1181,12 @@ VISION CAPABILITY (SUPER-GENIUS):
 	}
 
 	temperature := 0.7
+	maxTokens := 1024
 	if hasCustomSystem {
-		temperature = 0.55 // Natural conversational generation for custom prompts / voice agent
+		// Structured clients such as SOP/EOP bilingual export need complete JSON,
+		// while the system prompt keeps the request narrowly scoped.
+		temperature = 0.1
+		maxTokens = 4096
 	}
 
 	slog.Info("Chat calling AI provider",
@@ -1192,7 +1196,7 @@ VISION CAPABILITY (SUPER-GENIUS):
 	)
 
 	apiKey := s.getNextAPIKey()
-	reply, err := s.callNVIDIA(ctx, apiKey, targetModel, formattedMessages, temperature, 1024, 60*time.Second, nil)
+	reply, err := s.callNVIDIA(ctx, apiKey, targetModel, formattedMessages, temperature, maxTokens, 60*time.Second, nil)
 	if err != nil {
 		return "", err
 	}

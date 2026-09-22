@@ -91,6 +91,8 @@ export interface SOPDocumentData {
   // Section 4 – Affected Equipment / Systems
   affectedSystems: SOPAffectedSystemItem[];
   affectedSystemsDetails: string;
+  affectedSystemsDetailsEn?: string;
+  affectedSystemsDetailsId?: string;
 
   // Section 5 – Referenced Documents / Attachments
   referencedDocuments: SOPReferencedDocItem[];
@@ -129,6 +131,8 @@ export interface SOPDocumentData {
 
   // Section 11 – Back Out Procedures
   backOutProcedure: string;
+  backOutProcedureEn?: string;
+  backOutProcedureId?: string;
 
   // Section 12 – Document Information
   author: string;
@@ -141,6 +145,8 @@ export interface SOPDocumentData {
 
   // Section 14 – Additional Information
   additionalInformation: string;
+  additionalInformationEn?: string;
+  additionalInformationId?: string;
 
   createdAt?: Date | any;
   updatedAt?: Date | any;
@@ -191,6 +197,8 @@ export interface EOPDocumentData {
 
   // Section 8 – Additional Information
   additionalInformation: string;
+  additionalInformationEn?: string;
+  additionalInformationId?: string;
 
   createdAt?: Date | any;
   updatedAt?: Date | any;
@@ -336,6 +344,8 @@ export const DEFAULT_SOP_DATA: SOPDocumentData = {
 
   affectedSystems: DEFAULT_AFFECTED_SYSTEMS,
   affectedSystemsDetails: '1. Standby Generator will be running if the source in the MV panel shut down.\n1. Generator Cadangan akan beroperasi jika sumber pada panel MV padam/dimatikan.',
+  affectedSystemsDetailsEn: 'Standby generator will run if the source at the MV panel is shut down.',
+  affectedSystemsDetailsId: 'Generator cadangan akan beroperasi jika sumber pada panel MV dimatikan.',
 
   referencedDocuments: [
     { name: 'Manual Book Transformer Trafndo', number: 'DOC-TR-MNL-001' },
@@ -478,6 +488,8 @@ export const DEFAULT_SOP_DATA: SOPDocumentData = {
   ],
 
   backOutProcedure: 'N/A (T/A) - Jika timbul anomali kritis, kembalikan konfigurasi feeder penyulang dan aktifkan generator cadangan.',
+  backOutProcedureEn: 'Not applicable. If a critical anomaly occurs, restore the feeder configuration and activate the standby generator.',
+  backOutProcedureId: 'Tidak berlaku. Jika timbul anomali kritis, kembalikan konfigurasi feeder penyulang dan aktifkan generator cadangan.',
 
   author: 'Alif Darmawan',
   dateOfCreation: '07 Sep 2026',
@@ -486,7 +498,9 @@ export const DEFAULT_SOP_DATA: SOPDocumentData = {
 
   approvals: DEFAULT_DEFAULT_APPROVERS,
 
-  additionalInformation: 'Seluruh pekerjaan pemeliharaan transformator wajib mengikuti prosedur keselamatan K3, menggunakan APD lengkap, dan berkoordinasi langsung dengan pihak Facilities Management NeutraDC Cikarang.'
+  additionalInformation: 'Seluruh pekerjaan pemeliharaan transformator wajib mengikuti prosedur keselamatan K3, menggunakan APD lengkap, dan berkoordinasi langsung dengan pihak Facilities Management NeutraDC Cikarang.',
+  additionalInformationEn: 'All transformer maintenance work must follow occupational safety procedures, use complete PPE, and be coordinated directly with NeutraDC Cikarang Facilities Management.',
+  additionalInformationId: 'Seluruh pekerjaan pemeliharaan transformator wajib mengikuti prosedur keselamatan K3, menggunakan APD lengkap, dan berkoordinasi langsung dengan pihak Facilities Management NeutraDC Cikarang.'
 };
 
 export const DEFAULT_EOP_DATA: EOPDocumentData = {
@@ -619,5 +633,7 @@ export const DEFAULT_EOP_DATA: EOPDocumentData = {
 
   approvals: DEFAULT_DEFAULT_APPROVERS,
 
-  additionalInformation: 'Setiap tindakan tanggap darurat (EOP) wajib memprioritaskan keselamatan jiwa (Life Safety), integritas beban kritis data hall, dan didokumentasikan dalam logbook insiden NeutraDC Cikarang.'
+  additionalInformation: 'Setiap tindakan tanggap darurat (EOP) wajib memprioritaskan keselamatan jiwa (Life Safety), integritas beban kritis data hall, dan didokumentasikan dalam logbook insiden NeutraDC Cikarang.',
+  additionalInformationEn: 'Every emergency response action must prioritize life safety, the integrity of critical data-hall loads, and be documented in the NeutraDC Cikarang incident logbook.',
+  additionalInformationId: 'Setiap tindakan tanggap darurat wajib memprioritaskan keselamatan jiwa, integritas beban kritis data hall, dan didokumentasikan dalam logbook insiden NeutraDC Cikarang.'
 };
