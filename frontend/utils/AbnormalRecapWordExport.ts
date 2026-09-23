@@ -116,6 +116,7 @@ async function loadAssetImage(src: string): Promise<Uint8Array> {
 // Skema Warna Standar Dokumen
 const COLOR_PRIMARY_RED = '000000'; // Monokrom formal untuk seluruh rekap
 const COLOR_SECONDARY_BLUE = '000000';
+const COLOR_DME_BLUE = '00599C';
 const COLOR_DARK = '000000';
 const COLOR_MUTED = '000000';
 const COLOR_LIGHT_BG = 'F8FAFC'; // Slate 50
@@ -343,7 +344,7 @@ export async function exportAbnormalRecapToWord(
           size: [4, 18, 18, 14, 46][idx],
           type: WidthType.PERCENTAGE,
         },
-        shading: { type: ShadingType.SOLID, color: COLOR_PRIMARY_RED, fill: COLOR_PRIMARY_RED },
+        shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
         verticalAlign: VerticalAlign.CENTER,
         borders: borderThin,
         children: [
@@ -529,7 +530,7 @@ export async function exportAbnormalRecapToWord(
                   spacing: { before: 20, after: 20 },
                   children: [
                     new TextRun({
-                      text: `Tanggal: ${item.maintenanceTime || '-'}   |   Pelapor: ${item.abnormalFinding?.reportedBy || 'Teknisi Lapangan'}`,
+                      text: `Tanggal: ${item.maintenanceTime || '-'}`,
                       size: 15,
                       color: COLOR_DARK,
                       font: 'Calibri',

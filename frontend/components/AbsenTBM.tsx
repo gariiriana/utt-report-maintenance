@@ -2889,7 +2889,7 @@ export function AbsenTBM() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
       
       {/* ─── Header ────────────────────────────────────────────── */}
       <motion.div
@@ -2916,7 +2916,7 @@ export function AbsenTBM() {
 
       {/* ─── Personnel Panel ────────────────────────────────────── */}
       {/* Galeri dokumentasi foto TBM dengan filter periode dan kategori */}
-      <section className="bg-white/90 border border-sky-100 rounded-2xl overflow-hidden shadow-lg text-slate-800">
+      <section style={{ order: 6 }} className="bg-white/90 border border-sky-100 rounded-2xl overflow-hidden shadow-lg text-slate-800">
         <div className="px-5 py-4 bg-gradient-to-r from-sky-50 via-blue-50/50 to-indigo-50 border-b border-sky-100 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md"><Camera className="w-5 h-5" /></div>
@@ -2990,6 +2990,7 @@ export function AbsenTBM() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
+            style={{ order: 1 }}
           >
             <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 shadow-lg text-slate-800">
               {/* Left Form */}
@@ -3186,7 +3187,7 @@ export function AbsenTBM() {
       </AnimatePresence>
 
       {/* ─── Filters & Actions Bar ──────────────────────────────── */}
-      <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end shadow-lg text-slate-800">
+      <div style={{ order: 2 }} className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end shadow-lg text-slate-800">
         <div>
           <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">TANGGAL MULAI</label>
           <div className="relative">
@@ -3250,7 +3251,7 @@ export function AbsenTBM() {
       </div>
 
       {/* ─── Statistics Cards & Chart Section ───────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div style={{ order: 3 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Side: Summary Cards */}
         <div className="space-y-4 font-sans">
@@ -3395,7 +3396,7 @@ export function AbsenTBM() {
       </div>
 
       {/* ─── Form Section: Checklist Absen TBM ───────────────────── */}
-      <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 space-y-4 shadow-lg text-slate-800">
+      <div style={{ order: 4 }} className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 space-y-4 shadow-lg text-slate-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 bg-violet-500 rounded-full shadow-md shadow-violet-500" />
@@ -3687,7 +3688,7 @@ export function AbsenTBM() {
       </div>
 
       {/* ─── Table/Folder Section: Records List ────────────────── */}
-      <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 space-y-6 shadow-lg text-slate-800">
+      <div style={{ order: 5 }} className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 space-y-6 shadow-lg text-slate-800">
         
         {/* Navigation Breadcrumb & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">

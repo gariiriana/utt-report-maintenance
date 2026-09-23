@@ -3990,15 +3990,26 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               </motion.button>
             )}
 
-            {onEdit && (
+            {document.documentType === 'hse' && userRole !== 'hse' ? (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleEditClick(document)}
+                className="w-full sm:w-auto py-2 sm:py-2.5 px-3 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl transition border border-sky-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+                title="Lihat Laporan HSE"
+              >
+                <Eye className="w-3.5 h-3.5 shrink-0" />
+                <span className="sm:hidden font-bold">Lihat</span>
+              </motion.button>
+            ) : onEdit && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleEditClick(document)}
                 className="w-full sm:w-auto py-2 sm:py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
-                title={isDME ? "View Report" : "Edit Report"}
+                title={document.documentType === 'hse' ? "Edit Laporan HSE" : isDME ? "View Report" : "Edit Report"}
               >
-                {isDME ? (
+                {isDME && document.documentType !== 'hse' ? (
                   <>
                     <Search className="w-3.5 h-3.5 shrink-0" />
                     <span className="sm:hidden font-bold">Lihat</span>
@@ -4139,7 +4150,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
         }
       }
 
-      if (doc.documentType === 'hse') {
+      // Arsip HSE adalah read-only untuk role selain HSE Officer. HSE Officer
+      // diarahkan ke form asli agar dapat mengubah laporan di dalam website.
+      if (doc.documentType === 'hse' && userRole !== 'hse') {
         setPreviewHseDoc({ ...doc, photosData });
       } else if (onEdit) {
         onEdit({ ...doc, photosData });

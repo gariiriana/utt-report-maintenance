@@ -32,6 +32,7 @@ import {
   Crop,
   Brain,
   Users,
+  Layers,
   LayoutGrid,
   List,
   RotateCcw
@@ -47,7 +48,8 @@ import {
   deleteDoc,
   deleteField,
   serverTimestamp,
-  getDocs
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -146,15 +148,22 @@ export function getItemMonthData(item: AbnormalItem): { key: string; label: stri
   return { key, label, date: targetDate };
 }
 
+export function formatWaktuMaintenance(item: AbnormalItem): string {
+  if (!item.maintenanceTime) return '-';
+  if (item.collectionName === 'findings') {
+    const { label } = getItemMonthData(item);
+    return label;
+  }
+  return item.maintenanceTime;
+}
+
 export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFindingsCenterProps) {
   const { user, userRole, companyType } = useAuth();
-  const canDelete = Boolean(
-    user?.email?.toLowerCase() === 'qcdme@dme.com' ||
-    userRole === 'qc_dme' ||
-    userRole === 'admin'
-  );
+  // Aksi hapus di pusat temuan ini sengaja eksklusif untuk satu akun QC DME.
+  const canDelete = user?.email?.toLowerCase() === 'qcdme@dme.com';
 
   const [items, setItems] = useState<AbnormalItem[]>([]);
+  const [sourceCounts, setSourceCounts] = useState({ documents: 0, findings: 0 });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
@@ -176,6 +185,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   // Modal konfirmasi hapus temuan oleh QC DME
   const [deleteTargetItem, setDeleteTargetItem] = useState<AbnormalItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Modal pop-up lihat detail lengkap temuan abnormal
   const [viewingDetailItem, setViewingDetailItem] = useState<AbnormalItem | null>(null);
@@ -213,7 +225,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
   // Handler: Hapus temuan abnormal oleh akun QC DME / Admin
   const handleDeleteAbnormal = async () => {
-    if (!deleteTargetItem) return;
+    if (!deleteTargetItem || !canDelete) return;
     setIsDeleting(true);
     const toastId = toast.loading('Menghapus data temuan abnormal...');
     try {
@@ -242,6 +254,86 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       toast.error(`Gagal menghapus temuan: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const toggleDeleteSelection = (itemId: string) => {
+    setSelectedDeleteIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedDeleteIds((previous) => {
+      const next = new Set(previous);
+      const everyFilteredItemSelected = filteredItems.length > 0 && filteredItems.every((item) => next.has(item.id));
+      filteredItems.forEach((item) => {
+        if (everyFilteredItemSelected) next.delete(item.id);
+        else next.add(item.id);
+      });
+      return next;
+    });
+  };
+
+  const handleBulkDeleteAbnormal = async () => {
+    if (!canDelete) return;
+    const selectedItems = items.filter((item) => selectedDeleteIds.has(item.id));
+    if (selectedItems.length === 0) return;
+
+    setIsBulkDeleting(true);
+    const toastId = toast.loading(`Menghapus ${selectedItems.length} data temuan abnormal...`);
+    try {
+      // Firestore membatasi satu batch menjadi 500 operasi. Pecah per 200 item agar
+      // penghapusan tetap aman jika seluruh daftar temuan dipilih.
+      for (let start = 0; start < selectedItems.length; start += 200) {
+        const batch = writeBatch(db);
+        const batchItems = selectedItems.slice(start, start + 200);
+        const queuedPaths = new Set<string>();
+        const queueDelete = (collectionName: string, documentId: string) => {
+          const path = `${collectionName}/${documentId}`;
+          if (!queuedPaths.has(path)) {
+            batch.delete(doc(db, collectionName, documentId));
+            queuedPaths.add(path);
+          }
+        };
+
+        batchItems.forEach((item) => {
+          if (item.collectionName === 'findings') {
+            queueDelete('findings', item.docId);
+            return;
+          }
+
+          const documentPath = `${item.collectionName}/${item.docId}`;
+          if (!queuedPaths.has(documentPath)) {
+            batch.update(doc(db, item.collectionName, item.docId), {
+              hasAbnormal: false,
+              abnormalFinding: deleteField(),
+              updatedAt: serverTimestamp(),
+            });
+            queuedPaths.add(documentPath);
+          }
+          if (item.findingId) queueDelete('findings', item.findingId);
+        });
+        await batch.commit();
+      }
+
+      await Promise.all(
+        selectedItems
+          .filter((item) => item.collectionName !== 'findings')
+          .map((item) => offlineReportStorage.updateReportAbnormal(item.docId, false, null).catch(() => {}))
+      );
+      setItems((previous) => previous.filter((item) => !selectedDeleteIds.has(item.id)));
+      setSelectedDeleteIds(new Set());
+      setIsBulkDeleteConfirmOpen(false);
+      toast.success(`${selectedItems.length} data temuan abnormal berhasil dihapus.`, { id: toastId });
+    } catch (err: any) {
+      console.error('Error bulk deleting abnormal findings:', err);
+      toast.error(`Gagal menghapus data terpilih: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -762,6 +854,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
       const combined = [...enrichedPdf, ...enrichedExcel, ...enrichedHse, ...standaloneFindings];
       setItems(combined);
+      setSourceCounts({
+        documents: pdfList.length + excelList.length + hseList.length,
+        findings: findingsList.length,
+      });
       setLoading(false);
     };
 
@@ -1271,7 +1367,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           item.createdBy,
           item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName,
           item.maintenanceName,
-          item.maintenanceTime || '-',
+          formatWaktuMaintenance(item),
           item.abnormalFinding?.description || '-',
           item.abnormalFinding?.actionRecommendation || '-',
           item.abnormalFinding?.photoBase64 ? 'Ada (Terlampir)' : 'Tanpa Foto',
@@ -1392,14 +1488,34 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         </div>
 
         {/* Compact KPI Stat Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 pt-3">
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-rose-50/60 border border-rose-100">
             <div className="w-7 h-7 rounded-md bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase text-rose-600 tracking-wider">Total Abnormal</div>
+              <div className="text-[10px] font-semibold uppercase text-rose-600 tracking-wider">Total Ditampilkan</div>
               <div className="text-sm font-bold text-slate-900 leading-tight">{stats.total} <span className="text-[11px] font-normal text-slate-500">Laporan</span></div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+            <div className="w-7 h-7 rounded-md bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
+              <FileText className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase text-slate-600 tracking-wider">Dokumen Abnormal</div>
+              <div className="text-sm font-bold text-slate-900 leading-tight">{sourceCounts.documents} <span className="text-[11px] font-normal text-slate-500">Dokumen</span></div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-violet-50/60 border border-violet-100">
+            <div className="w-7 h-7 rounded-md bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase text-violet-700 tracking-wider">Record Findings</div>
+              <div className="text-sm font-bold text-slate-900 leading-tight">{sourceCounts.findings} <span className="text-[11px] font-normal text-slate-500">Record</span></div>
             </div>
           </div>
 
@@ -1708,6 +1824,33 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         )}
       </div>
 
+      {canDelete && (
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2.5">
+          <div className="flex items-center gap-2 text-xs text-rose-900">
+            <Trash2 className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="font-semibold">Mode pilih hapus QC DME</span>
+            <span className="text-rose-700">{selectedDeleteIds.size} data dipilih</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleSelectAllFiltered}
+              className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white text-[11px] font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+            >
+              {filteredItems.length > 0 && filteredItems.every((item) => selectedDeleteIds.has(item.id)) ? 'Batal Pilih Semua' : 'Pilih Semua Hasil'}
+            </button>
+            <button
+              type="button"
+              disabled={selectedDeleteIds.size === 0}
+              onClick={() => setIsBulkDeleteConfirmOpen(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Hapus Terpilih
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Konten Utama Daftar Temuan Abnormal */}
       {loading ? (
         <div className="py-12 text-center bg-white rounded-xl border border-slate-200/90 shadow-xs flex flex-col items-center justify-center">
@@ -1750,7 +1893,17 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
-                  <th className="py-2.5 px-3 text-center w-10">#</th>
+                  <th className="py-2.5 px-3 text-center w-10">
+                    {canDelete ? (
+                      <input
+                        type="checkbox"
+                        checked={filteredItems.length > 0 && filteredItems.every((item) => selectedDeleteIds.has(item.id))}
+                        onChange={toggleSelectAllFiltered}
+                        className="h-3.5 w-3.5 accent-rose-600 cursor-pointer"
+                        aria-label="Pilih semua data temuan yang tampil"
+                      />
+                    ) : '#'}
+                  </th>
                   <th className="py-2.5 px-3 w-14 text-center">Foto</th>
                   <th className="py-2.5 px-3 min-w-[180px]">Unit & Laporan</th>
                   <th className="py-2.5 px-3 min-w-[220px]">Deskripsi Kelainan</th>
@@ -1769,7 +1922,15 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
                       {/* # Index */}
                       <td className="py-2.5 px-3 text-center text-slate-400 font-medium">
-                        {idx + 1}
+                        {canDelete ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedDeleteIds.has(item.id)}
+                            onChange={() => toggleDeleteSelection(item.id)}
+                            className="h-3.5 w-3.5 accent-rose-600 cursor-pointer"
+                            aria-label={`Pilih ${targetUnit} untuk dihapus`}
+                          />
+                        ) : idx + 1}
                       </td>
 
                       {/* Foto Thumbnail */}
@@ -1853,7 +2014,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                           <Calendar className="w-2.5 h-2.5" />
-                          <span>{item.maintenanceTime || '-'}</span>
+                          <span>{formatWaktuMaintenance(item)}</span>
                         </div>
                       </td>
 
@@ -1966,9 +2127,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400 shrink-0">
+                  <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400 shrink-0">
+                    {canDelete && (
+                      <input
+                        type="checkbox"
+                        checked={selectedDeleteIds.has(item.id)}
+                        onChange={() => toggleDeleteSelection(item.id)}
+                        className="h-3.5 w-3.5 accent-rose-600 cursor-pointer"
+                        aria-label={`Pilih ${targetUnit} untuk dihapus`}
+                      />
+                    )}
                     <Calendar className="w-3 h-3 text-slate-400" />
-                    <span>{item.maintenanceTime || '-'}</span>
+                    <span>{formatWaktuMaintenance(item)}</span>
                   </div>
                 </div>
 
@@ -2383,7 +2553,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                   <div className="col-span-2 sm:col-span-1">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block">Waktu Maintenance</span>
                     <span className="font-semibold text-slate-700">
-                      {viewingDetailItem.maintenanceTime || '-'}
+                      {formatWaktuMaintenance(viewingDetailItem)}
                     </span>
                   </div>
                 </div>
@@ -2622,7 +2792,55 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         )}
       </AnimatePresence>
 
-      {/* Modal Konfirmasi Hapus Temuan (Khusus QC DME / Admin) */}
+      {/* Modal Konfirmasi Hapus Banyak Temuan (khusus qcdme@dme.com) */}
+      <AnimatePresence>
+        {isBulkDeleteConfirmOpen && canDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-rose-100 text-rose-700 rounded-2xl">
+                  <Trash2 className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Hapus Data Terpilih?</h3>
+                  <p className="text-xs text-slate-500">Aksi ini permanen dan hanya tersedia untuk akun QC DME.</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-xl text-xs text-slate-700 leading-relaxed">
+                Sebanyak <strong className="text-rose-700">{selectedDeleteIds.size} data temuan abnormal</strong> akan dihapus. Untuk dokumen laporan, status abnormal dan data temuannya akan dibersihkan dari sistem.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={isBulkDeleting}
+                  onClick={() => setIsBulkDeleteConfirmOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isBulkDeleting}
+                  onClick={handleBulkDeleteAbnormal}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {isBulkDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span>{isBulkDeleting ? 'Menghapus...' : `Ya, Hapus ${selectedDeleteIds.size} Data`}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Konfirmasi Hapus Temuan (khusus qcdme@dme.com) */}
       <AnimatePresence>
         {deleteTargetItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">

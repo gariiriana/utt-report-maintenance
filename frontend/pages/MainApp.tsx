@@ -78,12 +78,15 @@ export function MainApp() {
     // Gunakan getCountFromServer (1 read per query) bukan onSnapshot yang men-download seluruh isi dokumen
     const fetchBadgeCounts = async () => {
       try {
-        const [filesSnap, cmSnap, pdfSnap, excelSnap, hseSnap] = await Promise.allSettled([
+        const [filesSnap, cmSnap, pdfSnap, excelSnap, hseSnap, findingsSnap] = await Promise.allSettled([
           getCountFromServer(query(collection(db, 'files'), where('deleteRequested', '==', true))),
           getCountFromServer(query(collection(db, 'corrective_reports'), where('deleteRequested', '==', true))),
           getCountFromServer(query(collection(db, 'pdf_documents'), where('hasAbnormal', '==', true))),
           getCountFromServer(query(collection(db, 'excel_documents'), where('hasAbnormal', '==', true))),
           getCountFromServer(query(collection(db, 'hse'), where('hasAbnormal', '==', true))),
+          // Pusat Temuan Abnormal juga menampilkan semua finding mandiri.
+          // Badge harus memakai sumber yang sama agar angkanya konsisten.
+          getCountFromServer(collection(db, 'findings')),
         ]);
 
         if (!isMounted) return;
@@ -93,9 +96,10 @@ export function MainApp() {
         const cPdf = pdfSnap.status === 'fulfilled' ? pdfSnap.value.data().count : 0;
         const cExcel = excelSnap.status === 'fulfilled' ? excelSnap.value.data().count : 0;
         const cHse = hseSnap.status === 'fulfilled' ? hseSnap.value.data().count : 0;
+        const cFindings = findingsSnap.status === 'fulfilled' ? findingsSnap.value.data().count : 0;
 
         setPendingDeleteCount(cFiles + cCM);
-        setTotalAbnormalCount(cPdf + cExcel + cHse);
+        setTotalAbnormalCount(cPdf + cExcel + cHse + cFindings);
       } catch (err) {
         console.warn('[MainApp] Error fetching badge counts (quota/offline):', err);
       }
@@ -119,7 +123,7 @@ export function MainApp() {
   const navItems = [
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'delete_requests', label: 'Pengajuan Hapus', icon: Trash2, color: 'from-rose-600 to-red-600', show: isQcDme },
-    { id: 'abnormal_findings', label: 'Temuan Abnormal', icon: AlertTriangle, color: 'from-red-600 to-amber-600', show: canViewAbnormal },
+    { id: 'abnormal_findings', label: 'Temuan Abnormal', icon: AlertTriangle, color: 'from-sky-600 to-blue-700', show: canViewAbnormal },
     { id: 'manual_abnormal', label: 'Input Abnormal Manual', icon: AlertTriangle, color: 'from-rose-600 to-red-700', show: isEngineerRole },
     { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: false },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
