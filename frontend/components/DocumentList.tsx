@@ -40,6 +40,7 @@ import { generateUniversalServiceReportPDF } from '@/service_reports/universalSe
 import { downloadPDFBlob } from '@/utils/pdfDownload';
 import { UploadSRModal } from './UploadSRModal';
 import { AbnormalReportModal } from './AbnormalReportModal';
+import { HSEReportViewer } from './HSEReportViewer';
 import { isServiceReportSupported } from '@/config/serviceReportRegistry';
 import { getDoc } from 'firebase/firestore';
 import { safeStorage } from '@/utils/safeStorage';
@@ -398,6 +399,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [previewHseDoc, setPreviewHseDoc] = useState<ExcelDocument | null>(null);
 
   const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
   const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | 'tbm' | 'induction' | null>(null);
@@ -2028,6 +2030,60 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
     } catch (err) {
       console.error('Export HSE inspection recap PDF error:', err);
       toast.error('Gagal mengunduh Rekapitulasi PDF HSE.', { id: 'export-hse-recap' });
+    } finally {
+      setIsExportingHseRecap(false);
+    }
+  };
+
+  const handleDownloadHseZip = async () => {
+    if (docsForHseRecap.length === 0) {
+      toast.error('Tidak ada laporan HSE pada rentang tanggal ini');
+      return;
+    }
+    setIsExportingHseRecap(true);
+    const variantLabel = hseRecapVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
+    try {
+      toast.loading(`Menyiapkan ZIP Laporan HSE (${variantLabel})...`, { id: 'export-hse-zip' });
+      
+      const zip = new JSZip();
+      const folderName = `Arsip_HSE_${variantLabel}_${new Date().toISOString().split('T')[0]}`;
+      const folder = zip.folder(folderName);
+      
+      for (const doc of docsForHseRecap) {
+        let pdfBlob: Blob | null = null;
+        let fileName = '';
+        
+        try {
+          if (doc.type === 'tbm') {
+            const { blob, fileName: fn } = await generateHSETbmPdfBlob(doc as unknown as HSETbmRecord, { companyVariant: hseRecapVariant });
+            pdfBlob = blob;
+            fileName = fn;
+          } else if (doc.type === 'induction') {
+            const { blob, fileName: fn } = await generateHSESafetyInductionPdfBlob(doc as unknown as HSESafetyInductionRecord, { companyVariant: hseRecapVariant });
+            pdfBlob = blob;
+            fileName = fn;
+          } else {
+            pdfBlob = await generateHSEPdfBlob(doc as any, hseRecapVariant);
+            const title = doc.title || 'Report';
+            fileName = `Inspection_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${doc.id}.pdf`;
+          }
+          
+          if (pdfBlob && folder) {
+            folder.file(fileName, pdfBlob);
+          }
+        } catch (innerErr) {
+          console.error('Failed to generate PDF for doc:', doc.id, innerErr);
+        }
+      }
+      
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      saveAs(zipBlob, `${folderName}.zip`);
+      
+      toast.success(`ZIP Arsip HSE (${variantLabel}) berhasil diunduh!`, { id: 'export-hse-zip' });
+      setIsHseRecapModalOpen(false);
+    } catch (err) {
+      console.error('Export HSE ZIP error:', err);
+      toast.error('Gagal mengunduh ZIP Arsip HSE.', { id: 'export-hse-zip' });
     } finally {
       setIsExportingHseRecap(false);
     }
@@ -3852,10 +3908,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   };
 
   const handleEditClick = async (doc: ExcelDocument) => {
-    if (!onEdit) return;
+    if (doc.documentType !== 'hse' && !onEdit) return;
 
     try {
-      toast.loading('Preparing data for editing...', { id: 'edit-prep' });
+      toast.loading(doc.documentType === 'hse' ? 'Membuka arsip HSE...' : 'Preparing data for editing...', { id: 'edit-prep' });
       let photosData = doc.photosData || [];
 
       // 1. Prioritaskan pembacaan dari IndexedDB lokal
@@ -3903,7 +3959,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
         }
       }
 
-      onEdit({ ...doc, photosData });
+      if (doc.documentType === 'hse') {
+        setPreviewHseDoc({ ...doc, photosData });
+      } else if (onEdit) {
+        onEdit({ ...doc, photosData });
+      }
       toast.dismiss('edit-prep');
     } catch (err) {
       console.error('Failed to prepare data for edit:', err);
@@ -4304,6 +4364,16 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                 <Download className="w-3.5 h-3.5" />
                 <span>Export PDF UTT</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenHseRecapModal('neutradc')}
+                className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-500/20 transition cursor-pointer shrink-0 whitespace-nowrap"
+                title="Export Kumpulan Laporan HSE ke format ZIP"
+              >
+                <FolderArchive className="w-3.5 h-3.5" />
+                <span>Export ZIP Semua Tipe</span>
+              </button>
             </div>
           </div>
         )}
@@ -4695,6 +4765,15 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                 </button>
                 <button
                   type="button"
+                  onClick={handleDownloadHseZip}
+                  disabled={isExportingHseRecap || docsForHseRecap.length === 0}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer shadow-md shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FolderArchive className="w-4 h-4 shrink-0" />
+                  <span>Unduh ZIP ({docsForHseRecap.length} File)</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleDownloadHseInspectionRecap}
                   disabled={isExportingHseRecap || docsForHseRecap.length === 0}
                   className={`flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -4706,12 +4785,12 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                   {isExportingHseRecap ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-                      <span>Menyusun Rekap PDF...</span>
+                      <span>Memproses...</span>
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4 shrink-0" />
-                      <span>Unduh PDF Rekap ({docsForHseRecap.length} Dokumen)</span>
+                      <span>Rekap PDF ({docsForHseRecap.length} Dokumen)</span>
                     </>
                   )}
                 </button>
@@ -4753,6 +4832,35 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                   src={previewPhoto.src}
                   alt={previewPhoto.title}
                   className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-lg"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {previewHseDoc && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative max-w-5xl w-full h-[95vh] bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-700"
+            >
+              <button
+                type="button"
+                onClick={() => setPreviewHseDoc(null)}
+                className="absolute top-3 right-3 sm:top-3.5 sm:right-3.5 z-20 w-8 h-8 rounded-full bg-red-600 hover:bg-red-700 active:scale-95 text-white flex items-center justify-center transition-all shadow-lg cursor-pointer hover:rotate-90 duration-200 border border-red-500"
+                title="Tutup Preview"
+                aria-label="Tutup Preview"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
+              
+              <div className="flex-1 overflow-y-auto">
+                <HSEReportViewer 
+                  reportId={previewHseDoc.id} 
                 />
               </div>
             </motion.div>

@@ -307,8 +307,16 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                     <div className="grid grid-cols-2 gap-3 mb-6">
                                         {report.photos.slice(0, 2).map((photo, idx) => (
                                             <div key={photo.id} className="flex flex-col gap-1.5 p-1 border border-slate-100 rounded bg-slate-50/50">
-                                                <div className="aspect-[4/3] rounded-sm overflow-hidden border border-slate-200">
+                                                <div className="relative aspect-[4/3] rounded-sm overflow-hidden border border-slate-200 group">
                                                     <img src={photo.dataUrl} alt="HSE Photo" className="w-full h-full object-cover" />
+                                                    <a 
+                                                        href={photo.dataUrl} 
+                                                        download={`Foto_${idx + 1}.jpg`}
+                                                        className="absolute top-1 right-1 p-1.5 bg-black/50 hover:bg-green-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Unduh Foto"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" />
+                                                    </a>
                                                 </div>
                                                 {photo.description && (
                                                     <p className="text-[8px] text-slate-600 leading-tight p-1 italic">{photo.description}</p>
@@ -336,8 +344,16 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                     <div className="grid grid-cols-2 gap-3">
                                         {report.photos.slice(2).map((photo, idx) => (
                                             <div key={photo.id} className="flex flex-col gap-1.5 p-1 border border-slate-100 rounded bg-slate-50/50">
-                                                <div className="aspect-[4/3] rounded-sm overflow-hidden border border-slate-200">
+                                                <div className="relative aspect-[4/3] rounded-sm overflow-hidden border border-slate-200 group">
                                                     <img src={photo.dataUrl} alt="HSE Photo" className="w-full h-full object-cover" />
+                                                    <a 
+                                                        href={photo.dataUrl} 
+                                                        download={`Lampiran_${idx + 3}.jpg`}
+                                                        className="absolute top-1 right-1 p-1.5 bg-black/50 hover:bg-green-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Unduh Foto"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" />
+                                                    </a>
                                                 </div>
                                                 {photo.description && (
                                                     <p className="text-[9px] text-slate-600 leading-tight p-1 italic">{photo.description}</p>
