@@ -312,7 +312,7 @@ export function PredictiveReportModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold">Predictive Maintenance Report (PdM)</h3>
+                <h3 className="text-base sm:text-lg font-bold">Predictive Maintenance Report</h3>
                 <span className="px-2 py-0.5 bg-indigo-500/30 text-indigo-300 border border-indigo-400/40 rounded-full text-2xs font-bold uppercase tracking-wider">
                   AI Agent Powered
                 </span>
@@ -708,20 +708,7 @@ export function PredictiveReportModal({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Pola Laju Degradasi (Degradation Pattern)</label>
-                  <textarea
-                    rows={3}
-                    value={data.aiAnalysis.degradationPattern}
-                    onChange={e => setData({
-                      ...data,
-                      aiAnalysis: { ...data.aiAnalysis, degradationPattern: e.target.value }
-                    })}
-                    className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs leading-relaxed"
-                  />
-                </div>
-
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-slate-600 font-semibold mb-1">Evaluasi Risiko Terhadap SLA NeutraDC (99.982% Uptime)</label>
                   <textarea
                     rows={3}

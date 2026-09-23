@@ -238,7 +238,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: 'PREDICTIVE MAINTENANCE REPORT (PdM)',
+                    text: 'PREDICTIVE MAINTENANCE REPORT',
                     bold: true,
                     size: 24,
                     color: COLOR_SECONDARY,
@@ -258,17 +258,21 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
                   }),
                 ],
               }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: `No. Dokumen: ${data.reportNumber}  |  Ref: ${data.sourceTicketNumber || '-'}`,
-                    size: 16,
-                    color: COLOR_MUTED,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
+              ...(data.sourceTicketNumber
+                ? [
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      children: [
+                        new TextRun({
+                          text: `Ref Tiket: ${data.sourceTicketNumber}`,
+                          size: 16,
+                          color: COLOR_MUTED,
+                          font: 'Calibri',
+                        }),
+                      ],
+                    }),
+                  ]
+                : []),
             ],
           }),
           // Logo Kanan: NeutraDC
@@ -574,22 +578,6 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
             width: { size: 70, type: WidthType.PERCENTAGE },
             borders: borderThin,
             children: [new Paragraph({ children: [new TextRun({ text: data.aiAnalysis.potentialFailureMode, size: 18, font: 'Calibri' })] })],
-          }),
-        ],
-      }),
-      new TableRow({
-        cantSplit: true,
-        children: [
-          new TableCell({
-            width: { size: 30, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, fill: COLOR_LIGHT_BG },
-            borders: borderThin,
-            children: [new Paragraph({ children: [new TextRun({ text: 'Pola Laju Degradasi', bold: true, size: 18, font: 'Calibri' })] })],
-          }),
-          new TableCell({
-            width: { size: 70, type: WidthType.PERCENTAGE },
-            borders: borderThin,
-            children: [new Paragraph({ children: [new TextRun({ text: data.aiAnalysis.degradationPattern, size: 18, font: 'Calibri' })] })],
           }),
         ],
       }),

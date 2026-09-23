@@ -90,7 +90,7 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
 
       doc.setFontSize(12);
       doc.setTextColor(153, 27, 27); // Crimson Red
-      doc.text('PREDICTIVE MAINTENANCE REPORT (PdM)', pageW / 2, HEADER_TOP + 8.5, { align: 'center' });
+      doc.text('PREDICTIVE MAINTENANCE REPORT', pageW / 2, HEADER_TOP + 8.5, { align: 'center' });
 
       doc.setFontSize(9);
       doc.setTextColor(0, 89, 156); // NeutraDC Blue
@@ -99,8 +99,11 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(100, 116, 139); // Muted
+      const subHeaderPdf = data.sourceTicketNumber
+        ? `Ref: ${data.sourceTicketNumber}  |  Tgl: ${data.sourceMaintenanceDate}`
+        : `Tanggal: ${data.sourceMaintenanceDate}`;
       doc.text(
-        `No: ${data.reportNumber}  |  Ref: ${data.sourceTicketNumber || '-'}  |  Tgl: ${data.sourceMaintenanceDate}`,
+        subHeaderPdf,
         pageW / 2,
         HEADER_TOP + 17,
         { align: 'center' }
@@ -249,10 +252,6 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
         [
           { content: 'Potensi Modus Kegagalan', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
           { content: sanitizeText(data.aiAnalysis.potentialFailureMode) },
-        ],
-        [
-          { content: 'Pola Laju Degradasi', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-          { content: sanitizeText(data.aiAnalysis.degradationPattern) },
         ],
         [
           { content: 'Estimasi Sisa Umur (RUL)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },

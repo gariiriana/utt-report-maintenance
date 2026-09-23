@@ -33,6 +33,7 @@ import {
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { useAuth } from './AuthContext';
 import {
   parseReportTime,
   formatReportDate,
@@ -117,6 +118,7 @@ export function CMMonthlyRecapModal({
   initialStartDate,
   initialEndDate
 }: CMMonthlyRecapModalProps) {
+  const { user } = useAuth();
   const now = new Date();
   const currentYearStr = now.getFullYear().toString();
   const currentMonthStr = now.getMonth().toString();
@@ -415,7 +417,13 @@ export function CMMonthlyRecapModal({
 
     setExportingDocx(true);
     try {
-      await exportCMMonthlyRecapToDocx(filteredCMReports, periodLabel);
+      const printedBy = user?.email
+        ? `${user.email} (PT Dwimitra Ekatama Mandiri)`
+        : 'PT Dwimitra Ekatama Mandiri';
+      await exportCMMonthlyRecapToDocx(filteredCMReports, {
+        periodLabel,
+        printedBy,
+      });
     } catch (err: any) {
       console.error('Word export error:', err);
     } finally {

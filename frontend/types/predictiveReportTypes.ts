@@ -73,7 +73,7 @@ export interface PredictiveReportData {
   aiAnalysis: {
     rootCauseAnalysis: string; // Analisis penyebab utama terjadinya anomali
     potentialFailureMode: string; // Modus kegagalan jika tidak ditangani
-    degradationPattern: string; // Pola laju degradasi komponen
+    degradationPattern?: string; // Pola laju degradasi komponen (opsional / legacy)
     remainingUsefulLife: string; // Estimasi sisa umur pakai (e.g. "7 - 14 Hari")
     urgencyLevel: 'Emergency' | 'High' | 'Medium' | 'Low';
     slaRiskAssessment: string; // Potensi dampak terhadap uptime beban kritis server

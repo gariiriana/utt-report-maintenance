@@ -21,11 +21,14 @@ import {
   AlignmentType,
   BorderStyle,
   ImageRun,
+  HeadingLevel,
   ShadingType,
   Header,
   Footer,
   PageNumber,
+  NumberFormat,
   PageOrientation,
+  VerticalAlign,
 } from 'docx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -34,6 +37,9 @@ import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressBase64Image } from '@/utils/imageCompression';
+import { db } from '@/api/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { PredictiveReportData } from '@/types/predictiveReportTypes';
 
 // --- HELPER DATES & PARSING ---
 
@@ -394,6 +400,38 @@ async function loadImageAsUint8Array(src: string): Promise<Uint8Array> {
     };
     img.onerror = () => resolve(new Uint8Array());
     img.src = src;
+  });
+}
+
+// Helper mengambil data laporan prediktif yang terikat dengan laporan CM
+async function resolveCMPredictiveReport(report: any): Promise<PredictiveReportData | null> {
+  if (!report) return null;
+  if (report.predictiveReportData) return report.predictiveReportData;
+  if (report.predictiveReportId) {
+    try {
+      const snap = await getDoc(doc(db, 'predictive_reports', report.predictiveReportId));
+      if (snap.exists()) {
+        return snap.data() as PredictiveReportData;
+      }
+    } catch (e) {
+      console.warn('Gagal memuat predictive report terkait CM:', e);
+    }
+  }
+  return null;
+}
+
+// Helper untuk menghitung dimensi asli gambar agar aspect ratio terjaga sempurna
+function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({
+        width: img.naturalWidth || img.width || 600,
+        height: img.naturalHeight || img.height || 450,
+      });
+    };
+    img.onerror = () => resolve({ width: 600, height: 450 });
+    img.src = base64;
   });
 }
 
@@ -780,10 +818,22 @@ export async function exportCMMonthlyRecapToExcel(
 // 2. EKSPOR WORD (.DOCX)
 // ============================================================================
 
+export interface ExportCMWordOptions {
+  periodLabel?: string; // e.g. "Agustus 2026" atau "Semua Periode"
+  printedBy?: string;   // e.g. "PT Dwimitra Ekatama Mandiri"
+}
+
 export async function exportCMMonthlyRecapToDocx(
   rawReports: any[],
-  periodTitle: string = 'Bulanan'
+  periodTitleOrOptions: string | ExportCMWordOptions = 'Bulanan'
 ): Promise<void> {
+  const periodTitle = typeof periodTitleOrOptions === 'object'
+    ? (periodTitleOrOptions.periodLabel || 'Bulanan')
+    : periodTitleOrOptions;
+  const printedBy = typeof periodTitleOrOptions === 'object'
+    ? (periodTitleOrOptions.printedBy || 'PT Dwimitra Ekatama Mandiri')
+    : 'PT Dwimitra Ekatama Mandiri';
+
   const reports = (rawReports || [])
     .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR')
     .sort((a, b) => parseReportTime(a) - parseReportTime(b));
@@ -800,65 +850,105 @@ export async function exportCMMonthlyRecapToDocx(
       loadImageAsUint8Array(logoNeutraDC),
     ]);
 
-    const cellBorderThin = {
-      top: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-      bottom: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-      left: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-      right: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
-    };
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const timeStr = now.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
-    const NAVY_BLUE = '002060';
+    // Theme Colors (Monokrom formal & profesional)
+    const COLOR_PRIMARY = '000000';
+    const COLOR_SECONDARY = '000000';
+    const COLOR_DME_BLUE = '00599C';
+    const COLOR_DARK = '000000';
+    const COLOR_MUTED = '000000';
+    const COLOR_LIGHT_BG = 'F8FAFC'; // Slate 50
+    const COLOR_ROSE_BG = 'FFFFFF';
+    const COLOR_GREEN_BG = 'FFFFFF';
+    const COLOR_BORDER = 'CBD5E1'; // Slate 300
+    const COLOR_WHITE = 'FFFFFF';
 
-    // Header dual logo table
+    const borderThin = {
+      top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+      left: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+      right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+    } as const;
+
+    // Hitung Statistik KPI
+    const totalCM = reports.length;
+    const closedCount = reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
+    const openCount = totalCM - closedCount;
+    const sparepartCount = reports.filter(r => isCMSparepart(r)).length;
+
+    // 1. KOP SURAT RESMI (Tabel 3 Kolom: Logo Dwimitra - Judul - Logo NeutraDC)
     const headerTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
-      borders: {
-        top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-        bottom: { style: BorderStyle.SINGLE, size: 6, color: NAVY_BLUE },
-        left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-        right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-        insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-        insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-      },
+      borders: borderThin,
       rows: [
         new TableRow({
           children: [
+            // Logo Kiri: PT Dwimitra Ekatama Mandiri
             new TableCell({
-              width: { size: 25, type: WidthType.PERCENTAGE },
-              children: logoLeftBytes.length > 0 ? [
-                new Paragraph({
-                  children: [
-                    new ImageRun({
-                      data: logoLeftBytes,
-                      transformation: { width: 130, height: 42 },
-                      type: 'png',
-                    }),
-                  ],
-                }),
-              ] : [new Paragraph('')],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
+              width: { size: 20, type: WidthType.PERCENTAGE },
+              verticalAlign: VerticalAlign.CENTER,
+              borders: borderThin,
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
+                  children: logoLeftBytes.length > 0
+                    ? [new ImageRun({ data: logoLeftBytes, transformation: { width: 110, height: 48 }, type: 'png' })]
+                    : [new TextRun({ text: 'PT DWIMITRA', bold: true, size: 18, color: COLOR_PRIMARY, font: 'Calibri' })],
+                }),
+              ],
+            }),
+            // Judul Tengah Dokumen
+            new TableCell({
+              width: { size: 60, type: WidthType.PERCENTAGE },
+              verticalAlign: VerticalAlign.CENTER,
+              borders: borderThin,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { after: 30 },
                   children: [
                     new TextRun({
-                      text: 'PT DWIMITRA EKATAMA MANDIRI',
+                      text: 'REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM)',
                       bold: true,
-                      size: 22,
-                      color: NAVY_BLUE,
+                      size: 24,
+                      color: COLOR_PRIMARY,
+                      font: 'Calibri',
                     }),
                   ],
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
+                  spacing: { after: 30 },
                   children: [
                     new TextRun({
-                      text: 'DATA CENTER OPERATION & MAINTENANCE SERVICES',
+                      text: 'DATA CENTER NEUTRADc CIKARANG',
+                      bold: true,
+                      size: 18,
+                      color: COLOR_SECONDARY,
+                      font: 'Calibri',
+                    }),
+                  ],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { after: 20 },
+                  children: [
+                    new TextRun({
+                      text: `Periode: ${periodTitle} | Total Pekerjaan CM: ${totalCM} Item`,
                       bold: true,
                       size: 16,
-                      color: '334155',
+                      color: COLOR_DARK,
+                      font: 'Calibri',
                     }),
                   ],
                 }),
@@ -866,395 +956,996 @@ export async function exportCMMonthlyRecapToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: 'NeutraDC (PT Telkom Data Ekosistem) — Cikarang',
+                      text: `Dicetak: ${dateStr}, ${timeStr} WIB oleh ${printedBy}`,
                       size: 14,
-                      color: '64748B',
+                      color: COLOR_MUTED,
+                      font: 'Calibri',
+                      italics: true,
                     }),
                   ],
                 }),
               ],
             }),
+            // Logo Kanan: NeutraDC
             new TableCell({
-              width: { size: 25, type: WidthType.PERCENTAGE },
-              children: logoRightBytes.length > 0 ? [
+              width: { size: 20, type: WidthType.PERCENTAGE },
+              verticalAlign: VerticalAlign.CENTER,
+              borders: borderThin,
+              children: [
                 new Paragraph({
-                  alignment: AlignmentType.RIGHT,
-                  children: [
-                    new ImageRun({
-                      data: logoRightBytes,
-                      transformation: { width: 120, height: 40 },
-                      type: 'png',
-                    }),
-                  ],
+                  alignment: AlignmentType.CENTER,
+                  children: logoRightBytes.length > 0
+                    ? [new ImageRun({ data: logoRightBytes, transformation: { width: 110, height: 48 }, type: 'png' })]
+                    : [new TextRun({ text: 'NEUTRA DC', bold: true, size: 18, color: COLOR_SECONDARY, font: 'Calibri' })],
                 }),
-              ] : [new Paragraph('')],
+              ],
             }),
           ],
         }),
       ],
     });
 
-    // Summary KPI
-    const totalCM = reports.length;
-    const closedCount = reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
-    const openCount = totalCM - closedCount;
-    const sparepartCount = reports.filter(r => isCMSparepart(r)).length;
-    const nonSparepartCount = totalCM - sparepartCount;
-    const dmeSparepartCount = reports.filter(r => r.sparepartType === 'sparepart_dme').length;
-    const consumableCount = reports.filter(r => r.sparepartType === 'consumable').length;
-
-    // Helper to generate a CM Table in Word for a given report list
-    const buildWordCMTable = (sheetReports: any[]): Table => {
-      const tableHeaderCells = [
-        { text: 'No', width: 4 },
-        { text: 'Identitas Pekerjaan', width: 16 },
-        { text: 'Jenis CM / Sparepart', width: 13 },
-        { text: 'Status CM', width: 8 },
-        { text: 'Uraian Masalah', width: 26 },
-        { text: 'Tindakan Perbaikan', width: 33 },
-      ].map(h => new TableCell({
-        width: { size: h.width, type: WidthType.PERCENTAGE },
-        shading: { fill: NAVY_BLUE, type: ShadingType.CLEAR },
-        borders: cellBorderThin,
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ text: h.text, bold: true, size: 16, color: 'FFFFFF' }),
-            ],
-          }),
-        ],
-      }));
-
-      const dataRows = sheetReports.map((report, idx) => {
-        const statusInfo = getTroubleStatusInfo(report);
-        const isClosed = statusInfo.isClosed;
-
-        const dateStr = formatReportDate(report);
-        const timeStr = formatReportTime(report);
-        const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
-        const equipLocStr = `${dateStr}${timeStr !== '-' ? ` | ${timeStr}` : ''}\n${ticketStr}\n${report.equipmentName || report.equipment || '-'} | ${report.location || report.area || 'NeutraDC'}`;
-        const issueStr = report.issue || report.problemAnalysis || report.problem || '-';
-        const actionStr = report.correctiveAction || report.actionTaken || '-';
-        const reportTypeStr = getSparepartCategoryLabel(report);
-        const sparepartsStr = getSparepartsSummary(report);
-
-        return new TableRow({
+    // 2. TABEL RINGKASAN EKSEKUTIF (KPI CARDS DI WORD)
+    const kpiTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: borderThin,
+      rows: [
+        new TableRow({
           children: [
-            // 1. No
+            { label: 'TOTAL PEKERJAAN CM', val: `${totalCM} Item`, color: COLOR_PRIMARY },
+            { label: 'STATUS SELESAI (SOLVED)', val: `${closedCount} Item`, color: '166534' },
+            { label: 'STATUS PENDING / PROSES', val: `${openCount} Item`, color: 'B45309' },
+            { label: 'PENGGANTIAN SPAREPART', val: `${sparepartCount} Item`, color: COLOR_DARK },
+          ].map((kpi) =>
             new TableCell({
-              width: { size: 4, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              verticalAlign: VerticalAlign.CENTER,
+              borders: borderThin,
+              shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: String(idx + 1), size: 16, bold: true })],
-                }),
-              ],
-            }),
-            // 2. Identitas dipadatkan agar laporan dibaca mendatar pada A4 landscape.
-            new TableCell({
-              width: { size: 16, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              children: [
-                new Paragraph({
+                  spacing: { before: 40, after: 20 },
                   children: [
-                    new TextRun({ text: equipLocStr, size: 14, bold: true, color: '0F172A' }),
+                    new TextRun({
+                      text: kpi.label,
+                      bold: true,
+                      size: 14,
+                      color: COLOR_MUTED,
+                      font: 'Calibri',
+                    }),
                   ],
                 }),
-              ],
-            }),
-            // 3. Jenis CM dan sparepart tetap satu konteks, namun status punya kolom sendiri.
-            new TableCell({
-              width: { size: 13, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: reportTypeStr, size: 14, bold: true, color: '1E293B' }),
-                    new TextRun({ text: `\nSparepart: ${sparepartsStr}`, size: 12, color: '334155' }),
-                  ],
-                }),
-              ],
-            }),
-            // 4. Status CM terpisah dari jenis CM.
-            new TableCell({
-              width: { size: 8, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              shading: { fill: isClosed ? 'F0FDF4' : 'FEFCE8', type: ShadingType.CLEAR },
-              children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: statusInfo.label, size: 13, bold: true, color: isClosed ? '166534' : 'B45309' })],
-                }),
-              ],
-            }),
-            // 5. Kolom lebar: uraian masalah.
-            new TableCell({
-              width: { size: 26, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              children: [
-                new Paragraph({
+                  spacing: { before: 10, after: 40 },
                   children: [
-                    new TextRun({ text: issueStr, size: 14, color: '334155' }),
+                    new TextRun({
+                      text: kpi.val,
+                      bold: true,
+                      size: 24,
+                      color: kpi.color,
+                      font: 'Calibri',
+                    }),
                   ],
                 }),
               ],
-            }),
-            // 6. Kolom terlebar: tindakan perbaikan tidak lagi turun huruf per huruf.
-            new TableCell({
-              width: { size: 33, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
+            })
+          ),
+        }),
+      ],
+    });
+
+    // Helper untuk memformat teks sel tabel menjadi paragraf rapi (mendukung enter atau bullet point)
+    // Helper untuk memformat sel 'Uraian Masalah & Tindakan Solusi' (Dipisah garis pemisah horizontal)
+    const buildIssueAndActionCell = (issueStr: string, actionStr: string, isZebra: boolean) => {
+      const issueTrimmed = (issueStr || '-').trim();
+      const actionTrimmed = (actionStr || '-').trim();
+
+      // 1. Parsing baris / bullet uraian masalah
+      let issueLines: string[] = [];
+      if (issueTrimmed && issueTrimmed !== '-') {
+        if (issueTrimmed.includes('\n')) {
+          issueLines = issueTrimmed.split('\n').map(l => l.trim()).filter(Boolean);
+        } else if (issueTrimmed.includes('•')) {
+          issueLines = issueTrimmed.split('•').map(l => l.trim()).filter(Boolean).map(l => `• ${l}`);
+        } else {
+          issueLines = [issueTrimmed];
+        }
+      } else {
+        issueLines = ['-'];
+      }
+
+      // 2. Parsing baris / bullet tindakan solusi
+      let actionLines: string[] = [];
+      if (actionTrimmed && actionTrimmed !== '-') {
+        if (actionTrimmed.includes('\n')) {
+          actionLines = actionTrimmed.split('\n').map(l => l.trim()).filter(Boolean);
+        } else if (actionTrimmed.includes('•')) {
+          actionLines = actionTrimmed.split('•').map(l => l.trim()).filter(Boolean).map(l => `• ${l}`);
+        } else {
+          actionLines = [actionTrimmed];
+        }
+      } else {
+        actionLines = ['-'];
+      }
+
+      const cellParagraphs: Paragraph[] = [];
+
+      // A. Bagian Atas: Uraian Masalah (Kendala)
+      issueLines.forEach((line, idx) => {
+        const isFirst = idx === 0;
+        const isLast = idx === issueLines.length - 1;
+        const children: TextRun[] = [];
+
+        if (isFirst) {
+          children.push(
+            new TextRun({
+              text: 'Kendala: ',
+              bold: true,
+              size: 13,
+              color: '334155',
+              font: 'Calibri',
+            })
+          );
+        }
+        children.push(
+          new TextRun({
+            text: line,
+            size: 14,
+            color: COLOR_DARK,
+            font: 'Calibri',
+          })
+        );
+
+        cellParagraphs.push(
+          new Paragraph({
+            alignment: AlignmentType.LEFT,
+            spacing: {
+              before: isFirst ? 15 : 4,
+              after: isLast ? 8 : 4,
+            },
+            // Garis horizontal pemisah di bawah uraian masalah
+            border: isLast
+              ? {
+                  bottom: {
+                    style: BorderStyle.SINGLE,
+                    size: 6, // 0.75 pt garis solid tegas
+                    color: COLOR_BORDER, // Slate 300
+                    space: 8,
+                  },
+                }
+              : undefined,
+            children,
+          })
+        );
+      });
+
+      // B. Bagian Bawah: Tindakan Solusi
+      actionLines.forEach((line, idx) => {
+        const isFirst = idx === 0;
+        const isLast = idx === actionLines.length - 1;
+        const children: TextRun[] = [];
+
+        if (isFirst) {
+          children.push(
+            new TextRun({
+              text: 'Tindakan Solusi: ',
+              bold: true,
+              size: 13,
+              color: '166534', // Emerald hijau
+              font: 'Calibri',
+            })
+          );
+        }
+        children.push(
+          new TextRun({
+            text: line,
+            size: 14,
+            color: COLOR_DARK,
+            font: 'Calibri',
+          })
+        );
+
+        cellParagraphs.push(
+          new Paragraph({
+            alignment: AlignmentType.LEFT,
+            spacing: {
+              before: isFirst ? 14 : 4,
+              after: isLast ? 15 : 4,
+            },
+            children,
+          })
+        );
+      });
+
+      return new TableCell({
+        width: { size: 42, type: WidthType.PERCENTAGE },
+        verticalAlign: VerticalAlign.CENTER,
+        borders: borderThin,
+        shading: isZebra ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+        children: cellParagraphs,
+      });
+    };
+
+    // 3. TABEL MATRIKS REKAPITULASI CEPAT (SUMMARY MATRIX TABLE)
+    const tableHeaderRow = new TableRow({
+      tableHeader: true,
+      children: [
+        'No',
+        'No. Tiket / Identitas',
+        'Perangkat & Lokasi',
+        'Tanggal & Status',
+        'Uraian Masalah & Tindakan Solusi',
+      ].map((text, idx) =>
+        new TableCell({
+          width: {
+            size: [4, 18, 22, 14, 42][idx],
+            type: WidthType.PERCENTAGE,
+          },
+          shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
+          verticalAlign: VerticalAlign.CENTER,
+          borders: borderThin,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 50, after: 50 },
               children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({ text: actionStr, size: 14, color: '334155' }),
-                  ],
+                new TextRun({
+                  text,
+                  bold: true,
+                  size: 15,
+                  color: COLOR_WHITE,
+                  font: 'Calibri',
                 }),
               ],
             }),
           ],
-        });
+        })
+      ),
+    });
+
+    const tableDataRows = reports.map((report, idx) => {
+      const statusInfo = getTroubleStatusInfo(report);
+      const isClosed = statusInfo.isClosed;
+      const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
+      const equipLocStr = `${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
+      const dateStr = formatReportDate(report);
+      const issueStr = report.issue || report.problem || report.problemAnalysis || '-';
+      const actionStr = report.correctiveAction || report.actionTaken || '-';
+
+      return new TableRow({
+        children: [
+          // 1. No
+          new TableCell({
+            width: { size: 4, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 30, after: 30 },
+                children: [new TextRun({ text: String(idx + 1), size: 15, font: 'Calibri', bold: true })],
+              }),
+            ],
+          }),
+          // 2. Tiket
+          new TableCell({
+            width: { size: 18, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                spacing: { before: 30, after: 30 },
+                children: [new TextRun({ text: ticketStr, size: 15, font: 'Calibri', bold: true })],
+              }),
+            ],
+          }),
+          // 3. Perangkat & Lokasi
+          new TableCell({
+            width: { size: 22, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                spacing: { before: 30, after: 30 },
+                children: [new TextRun({ text: equipLocStr, size: 15, font: 'Calibri' })],
+              }),
+            ],
+          }),
+          // 4. Tanggal & Status
+          new TableCell({
+            width: { size: 14, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 20, after: 10 },
+                children: [new TextRun({ text: dateStr, size: 14, font: 'Calibri' })],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 0, after: 20 },
+                children: [
+                  new TextRun({
+                    text: statusInfo.label,
+                    bold: true,
+                    size: 13,
+                    font: 'Calibri',
+                    color: isClosed ? '166534' : 'B45309',
+                  }),
+                ],
+              }),
+            ],
+          }),
+          // 5. Uraian Masalah & Tindakan Solusi (Satu Sel Kolom dengan Garis Pemisah Horizontal)
+          buildIssueAndActionCell(issueStr, actionStr, idx % 2 === 1),
+        ],
       });
+    });
 
-      return new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [new TableRow({ children: tableHeaderCells }), ...dataRows],
-      });
-    };
+    const summaryMatrixTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [tableHeaderRow, ...tableDataRows],
+    });
 
-    const monthGroups = groupReportsByMonth(reports);
+    // 4. BAGIAN DETAIL PER PEKERJAAN CM (LENGKAP DESKRIPSI, TINDAKAN, STATUS, & FOTO)
+    const detailReportParagraphs: (Paragraph | Table)[] = [];
 
-    // ========================================================================
-    // LAMPIRAN FOTO CM DI WORD (Section / Halaman Terpisah dengan PageBreak)
-    // ========================================================================
-    const wordReportsWithPhotos = await resolveReportsWithPhotos(reports);
-    const photoSectionChildren: (Paragraph | Table)[] = [
+    detailReportParagraphs.push(
       new Paragraph({
-        pageBreakBefore: true,
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 200, after: 100 },
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 400, after: 150 },
         children: [
           new TextRun({
-            text: 'LAMPIRAN DOKUMENTASI FOTO PEKERJAAN',
+            text: 'RINCIAN DETAIL PEKERJAAN CM & TINDAK LANJUT',
             bold: true,
-            size: 24,
-            color: NAVY_BLUE,
+            size: 22,
+            color: COLOR_PRIMARY,
+            font: 'Calibri',
           }),
         ],
       }),
       new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 300 },
+        spacing: { after: 200 },
         children: [
           new TextRun({
-            text: `CORRECTIVE MAINTENANCE (CM) — PERIODE: ${periodTitle.toUpperCase()}`,
-            bold: true,
-            size: 18,
-            color: '334155',
+            text: 'Rincian gangguan teknis, tindakan korektif, status penanganan, dan lampiran dokumentasi fisik per pekerjaan corrective maintenance.',
+            size: 16,
+            color: COLOR_MUTED,
+            font: 'Calibri',
+            italics: true,
           }),
         ],
-      }),
-    ];
+      })
+    );
 
-    if (wordReportsWithPhotos.length === 0) {
-      photoSectionChildren.push(
+    for (let idx = 0; idx < reports.length; idx++) {
+      const report = reports[idx];
+      const statusInfo = getTroubleStatusInfo(report);
+      const isClosed = statusInfo.isClosed;
+      const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
+      const equipLocStr = `${report.equipmentName || report.equipment || '-'} (${report.location || report.area || 'NeutraDC'})`;
+      const dateStr = formatReportDate(report);
+      const timeStr = formatReportTime(report);
+      const isSp = isCMSparepart(report);
+      const issueStr = report.issue || report.problem || report.problemAnalysis || '-';
+      const actionStr = report.correctiveAction || report.actionTaken || '-';
+      const photos = extractPhotosFromReport(report);
+
+      // Header Card Pekerjaan CM
+      detailReportParagraphs.push(
         new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 400 },
+          spacing: { before: 250, after: 80 },
+          shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+          border: {
+            left: { style: BorderStyle.SINGLE, size: 8, color: isClosed ? '166534' : 'B45309' },
+            top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+            right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+          },
+          indent: { left: 120 },
           children: [
             new TextRun({
-              text: '(Tidak terdapat lampiran foto dokumentasi pada data laporan CM periode ini)',
-              italics: true,
-              size: 18,
-              color: '64748B',
+              text: `[${idx + 1}] PEKERJAAN CM: ${ticketStr.toUpperCase()}`,
+              bold: true,
+              size: 19,
+              color: COLOR_PRIMARY,
+              font: 'Calibri',
+            }),
+            new TextRun({
+              text: `   |   STATUS: ${statusInfo.label.toUpperCase()}`,
+              bold: true,
+              size: 15,
+              color: isClosed ? '166534' : 'B45309',
+              font: 'Calibri',
             }),
           ],
         })
       );
-    } else {
-      for (const item of wordReportsWithPhotos) {
-        photoSectionChildren.push(
+
+      // Tabel Metadata Pekerjaan
+      const metaTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: borderThin,
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 25, type: WidthType.PERCENTAGE },
+                shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                borders: borderThin,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [new TextRun({ text: 'Perangkat & Lokasi', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' })],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 75, type: WidthType.PERCENTAGE },
+                borders: borderThin,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [new TextRun({ text: equipLocStr, size: 15, color: COLOR_DARK, font: 'Calibri' })],
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 25, type: WidthType.PERCENTAGE },
+                shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                borders: borderThin,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [new TextRun({ text: 'Tanggal & Pelapor/PIC', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' })],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 75, type: WidthType.PERCENTAGE },
+                borders: borderThin,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [
+                      new TextRun({
+                        text: `Tanggal: ${dateStr}${timeStr !== '-' ? ` (${timeStr})` : ''} | PIC DME: ${report.picDME || report.preparedByName || report.technician || '-'} | PIC NeutraDC: ${report.picTDE || report.acknowledgedBy1Name || report.customerPIC || '-'}`,
+                        size: 15,
+                        color: COLOR_DARK,
+                        font: 'Calibri',
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 25, type: WidthType.PERCENTAGE },
+                shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                borders: borderThin,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [new TextRun({ text: 'Jenis CM & Sparepart', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' })],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 75, type: WidthType.PERCENTAGE },
+                borders: borderThin,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [
+                      new TextRun({
+                        text: `${isSp ? 'Pergantian Sparepart' : 'Non-Sparepart'} (${getSparepartCategoryLabel(report)}) — Sparepart: ${getSparepartsSummary(report)}`,
+                        size: 15,
+                        color: COLOR_DARK,
+                        font: 'Calibri',
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      });
+      detailReportParagraphs.push(metaTable);
+
+      // Callout Box Masalah
+      detailReportParagraphs.push(
+        new Paragraph({
+          spacing: { before: 80, after: 20 },
+          children: [
+            new TextRun({
+              text: 'Deskripsi Gangguan / Indikasi Masalah (Issue):',
+              bold: true,
+              size: 16,
+              color: COLOR_DARK,
+              font: 'Calibri',
+            }),
+          ],
+        }),
+        new Paragraph({
+          spacing: { before: 30, after: 80 },
+          shading: { type: ShadingType.SOLID, color: COLOR_ROSE_BG, fill: COLOR_ROSE_BG },
+          border: {
+            left: { style: BorderStyle.SINGLE, size: 6, color: COLOR_DARK },
+            top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+            right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+          },
+          indent: { left: 100 },
+          children: [
+            new TextRun({
+              text: issueStr,
+              size: 15,
+              color: COLOR_DARK,
+              font: 'Calibri',
+            }),
+          ],
+        })
+      );
+
+      // Callout Box Tindakan Perbaikan
+      detailReportParagraphs.push(
+        new Paragraph({
+          spacing: { before: 40, after: 20 },
+          children: [
+            new TextRun({
+              text: 'Tindakan Perbaikan yang Dilakukan (Action Taken):',
+              bold: true,
+              size: 16,
+              color: COLOR_DARK,
+              font: 'Calibri',
+            }),
+          ],
+        }),
+        new Paragraph({
+          spacing: { before: 30, after: 60 },
+          shading: { type: ShadingType.SOLID, color: COLOR_GREEN_BG, fill: COLOR_GREEN_BG },
+          border: {
+            left: { style: BorderStyle.SINGLE, size: 6, color: COLOR_DARK },
+            top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+            right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+          },
+          indent: { left: 100 },
+          children: [
+            new TextRun({
+              text: actionStr,
+              size: 15,
+              color: COLOR_DARK,
+              font: 'Calibri',
+            }),
+          ],
+        })
+      );
+
+      // Catatan Status Trouble (Penyelesaian / Pending)
+      if (statusInfo.note && statusInfo.note !== '-') {
+        detailReportParagraphs.push(
           new Paragraph({
-            spacing: { before: 300, after: 100 },
+            spacing: { before: 20, after: 80 },
+            children: [
+              new TextRun({ text: 'Catatan Penanganan: ', bold: true, size: 14, font: 'Calibri', color: isClosed ? '166534' : 'B45309' }),
+              new TextRun({ text: statusInfo.note, size: 14, font: 'Calibri', italics: true, color: '334155' }),
+            ],
+          })
+        );
+      }
+
+      // Lampiran Foto Dokumentasi Fisik (Grid 2-Kolom Kompak & Tajam)
+      if (photos.length > 0) {
+        // Resolve images first
+        const resolvedPhotos: { bytes: Uint8Array; width: number; height: number; desc: string }[] = [];
+        for (let pIdx = 0; pIdx < photos.length; pIdx++) {
+          const photo = photos[pIdx];
+          const b64 = await ensureBase64Image(photo.base64);
+          if (b64) {
+            const photoBytes = base64ToUint8Array(b64);
+            if (photoBytes.length > 0) {
+              const dims = await getImageDimensions(b64);
+              resolvedPhotos.push({
+                bytes: photoBytes,
+                width: dims.width,
+                height: dims.height,
+                desc: photo.description || '',
+              });
+            }
+          }
+        }
+
+        if (resolvedPhotos.length === 1) {
+          // Hanya 1 foto: tampilkan terpusat proporsional (hemat ruang tapi tetap jernih & tajam)
+          const p = resolvedPhotos[0];
+          const maxWidth = 340;
+          const maxHeight = 220;
+          let drawW = maxWidth;
+          let drawH = (p.height / p.width) * maxWidth;
+          if (drawH > maxHeight) {
+            drawH = maxHeight;
+            drawW = (p.width / p.height) * maxHeight;
+          }
+
+          detailReportParagraphs.push(
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 60, after: 20 },
+              children: [
+                new ImageRun({
+                  data: p.bytes,
+                  transformation: { width: Math.round(drawW), height: Math.round(drawH) },
+                  type: 'jpg',
+                }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 },
+              children: [
+                new TextRun({
+                  text: `Gambar ${idx + 1}.1: Foto Dokumentasi Pekerjaan — ${ticketStr} ${p.desc ? `(${p.desc})` : ''}`,
+                  italics: true,
+                  size: 13,
+                  color: COLOR_MUTED,
+                  font: 'Calibri',
+                }),
+              ],
+            })
+          );
+        } else if (resolvedPhotos.length > 1) {
+          // 2 atau lebih foto: Grid Tabel 2-Kolom (Side-by-Side). Hemat ruang 60%+ namun tetap besar, jernih & tajam!
+          const photoTableRows: TableRow[] = [];
+          const maxWidth = 295;
+          const maxHeight = 190;
+
+          for (let pIdx = 0; pIdx < resolvedPhotos.length; pIdx += 2) {
+            const p1 = resolvedPhotos[pIdx];
+            const p2 = resolvedPhotos[pIdx + 1];
+
+            // Render cell 1
+            let drawW1 = maxWidth;
+            let drawH1 = (p1.height / p1.width) * maxWidth;
+            if (drawH1 > maxHeight) {
+              drawH1 = maxHeight;
+              drawW1 = (p1.width / p1.height) * maxHeight;
+            }
+
+            const cell1 = new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              borders: borderThin,
+              shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { before: 30, after: 15 },
+                  children: [
+                    new ImageRun({
+                      data: p1.bytes,
+                      transformation: { width: Math.round(drawW1), height: Math.round(drawH1) },
+                      type: 'jpg',
+                    }),
+                  ],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { before: 0, after: 30 },
+                  children: [
+                    new TextRun({
+                      text: `Gambar ${idx + 1}.${pIdx + 1}: ${p1.desc || 'Dokumentasi perbaikan CM'}`,
+                      italics: true,
+                      size: 12,
+                      color: '334155',
+                      font: 'Calibri',
+                    }),
+                  ],
+                }),
+              ],
+            });
+
+            // Render cell 2
+            let cell2: TableCell;
+            if (p2) {
+              let drawW2 = maxWidth;
+              let drawH2 = (p2.height / p2.width) * maxWidth;
+              if (drawH2 > maxHeight) {
+                drawH2 = maxHeight;
+                drawW2 = (p2.width / p2.height) * maxHeight;
+              }
+
+              cell2 = new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                borders: borderThin,
+                shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                verticalAlign: VerticalAlign.CENTER,
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { before: 30, after: 15 },
+                    children: [
+                      new ImageRun({
+                        data: p2.bytes,
+                        transformation: { width: Math.round(drawW2), height: Math.round(drawH2) },
+                        type: 'jpg',
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { before: 0, after: 30 },
+                    children: [
+                      new TextRun({
+                        text: `Gambar ${idx + 1}.${pIdx + 2}: ${p2.desc || 'Dokumentasi perbaikan CM'}`,
+                        italics: true,
+                        size: 12,
+                        color: '334155',
+                        font: 'Calibri',
+                      }),
+                    ],
+                  }),
+                ],
+              });
+            } else {
+              // Jika ganjil, sel kanan kosong rapi
+              cell2 = new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                borders: borderThin,
+                children: [new Paragraph('')],
+              });
+            }
+
+            photoTableRows.push(new TableRow({ children: [cell1, cell2] }));
+          }
+
+          detailReportParagraphs.push(
+            new Paragraph({ spacing: { before: 40, after: 10 } }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: photoTableRows,
+            }),
+            new Paragraph({ spacing: { before: 0, after: 60 } })
+          );
+        }
+      }
+
+      // Bundling Laporan Predictive Maintenance (PdM) 1-to-1 jika ada
+      const pdmData = await resolveCMPredictiveReport(report);
+      if (pdmData) {
+        detailReportParagraphs.push(
+          new Paragraph({
+            spacing: { before: 120, after: 50 },
+            shading: { type: ShadingType.SOLID, color: 'F5F3FF', fill: 'F5F3FF' },
+            border: {
+              left: { style: BorderStyle.SINGLE, size: 8, color: '6D28D9' },
+              top: { style: BorderStyle.SINGLE, size: 1, color: 'DDD6FE' },
+              right: { style: BorderStyle.SINGLE, size: 1, color: 'DDD6FE' },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: 'DDD6FE' },
+            },
+            indent: { left: 80 },
             children: [
               new TextRun({
-                text: `Laporan CM #${item.index} — No. Tiket: ${item.ticketStr}  |  Perangkat: ${item.equipLocStr}  |  Tanggal: ${item.dateStr}`,
+                text: `[🤖 LAMPIRAN ANALISIS PREDIKTIF AI] ${pdmData.reportNumber} — STATUS: ${pdmData.healthStatus.toUpperCase()}`,
                 bold: true,
-                size: 17,
-                color: NAVY_BLUE,
+                size: 16,
+                color: COLOR_DARK,
+                font: 'Calibri',
+              }),
+              new TextRun({
+                text: `   |   Estimasi Sisa Umur (RUL): ${pdmData.aiAnalysis?.remainingUsefulLife || '-'}`,
+                bold: true,
+                size: 15,
+                color: COLOR_DARK,
+                font: 'Calibri',
+              }),
+            ],
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: borderThin,
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 28, type: WidthType.PERCENTAGE },
+                    shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                    borders: borderThin,
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Akar Masalah (Root Cause)', bold: true, size: 15, font: 'Calibri' })] })],
+                  }),
+                  new TableCell({
+                    width: { size: 72, type: WidthType.PERCENTAGE },
+                    borders: borderThin,
+                    children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.rootCauseAnalysis || '-', size: 15, font: 'Calibri' })] })],
+                  }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 28, type: WidthType.PERCENTAGE },
+                    shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                    borders: borderThin,
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Potensi Modus Kegagalan', bold: true, size: 15, font: 'Calibri' })] })],
+                  }),
+                  new TableCell({
+                    width: { size: 72, type: WidthType.PERCENTAGE },
+                    borders: borderThin,
+                    children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.potentialFailureMode || '-', size: 15, font: 'Calibri' })] })],
+                  }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 28, type: WidthType.PERCENTAGE },
+                    shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                    borders: borderThin,
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Rencana Tindakan Definitif', bold: true, size: 15, font: 'Calibri' })] })],
+                  }),
+                  new TableCell({
+                    width: { size: 72, type: WidthType.PERCENTAGE },
+                    borders: borderThin,
+                    children: [new Paragraph({ children: [new TextRun({ text: pdmData.actionPlan?.plannedOverhaulAction || pdmData.actionPlan?.immediateAction || '-', size: 15, font: 'Calibri' })] })],
+                  }),
+                ],
               }),
             ],
           })
         );
+      }
 
-        // Dua foto per baris: cukup besar untuk inspeksi visual, tetap hemat karena
-        // caption berada dalam sel foto dan tidak membentuk baris tambahan.
-        const photoTableRows: TableRow[] = [];
-        for (let pIdx = 0; pIdx < item.photos.length; pIdx += 2) {
-          const group = item.photos.slice(pIdx, pIdx + 2);
-          const photoCells = [0, 1].map((offset) => {
-            const photo = group[offset];
-            const imageBytes = photo ? base64ToUint8Array(photo.base64) : new Uint8Array();
-            return new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: cellBorderThin,
-              shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
-              children: photo && imageBytes.length > 0 ? [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { before: 35, after: 20 },
-                  children: [new ImageRun({ data: imageBytes, transformation: { width: 245, height: 155 }, type: 'jpg' })],
-                }),
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { before: 0, after: 35 },
-                  children: [new TextRun({ text: `Foto ${pIdx + offset + 1}: ${photo.description || 'Dokumentasi perbaikan CM'}`, italics: true, size: 12, color: '334155' })],
-                }),
-              ] : [new Paragraph('')],
-            });
-          });
-          photoTableRows.push(new TableRow({ children: photoCells }));
-        }
-
-        photoSectionChildren.push(
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: photoTableRows,
+      // Garis pembatas tipis antar laporan (kecuali yang terakhir)
+      if (idx < reports.length - 1) {
+        detailReportParagraphs.push(
+          new Paragraph({
+            spacing: { before: 100, after: 150 },
+            border: { bottom: { style: BorderStyle.DASHED, size: 2, color: COLOR_BORDER } },
+            children: [],
           })
         );
       }
     }
 
-    const wordDocChildren: (Paragraph | Table)[] = [
-      headerTable,
-      new Paragraph({ spacing: { before: 200 } }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new TextRun({
-            text: 'BERITA ACARA & REKAPITULASI LAPORAN CORRECTIVE MAINTENANCE (CM)',
-            bold: true,
-            size: 24,
-            color: NAVY_BLUE,
-          }),
-        ],
-      }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 150 },
-        children: [
-          new TextRun({
-            text: `Periode Rekapitulasi: ${periodTitle}`,
-            bold: true,
-            size: 18,
-            color: '475569',
-          }),
-        ],
-      }),
-      new Paragraph({
-        spacing: { after: 180 },
-        children: [
-          new TextRun({
-            text: `Ringkasan Statistik:  Total CM: ${totalCM} Dokumen  |  Solved: ${closedCount}  |  Pending: ${openCount}  |  Sparepart DME/Baut: ${dmeSparepartCount}  |  Consumable Part: ${consumableCount}  |  Non-Sparepart: ${nonSparepartCount}`,
-            size: 16,
-            color: '1E293B',
-            bold: true,
-          }),
-        ],
-      }),
-    ];
-
-    if (monthGroups.length > 1) {
-      // Loop tiap bulan terpisah
-      monthGroups.forEach((group, gIdx) => {
-        const gTotal = group.reports.length;
-        const gClosed = group.reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
-        const gOpen = gTotal - gClosed;
-        const gSp = group.reports.filter(r => isCMSparepart(r)).length;
-
-        wordDocChildren.push(
-          new Paragraph({
-            pageBreakBefore: gIdx > 0,
-            spacing: { before: gIdx > 0 ? 0 : 250, after: 80 },
-            children: [
-              new TextRun({
-                text: `BAGIAN ${gIdx + 1}: REKAPITULASI CM — BULAN ${group.monthLabel.toUpperCase()}`,
-                bold: true,
-                size: 20,
-                color: NAVY_BLUE,
-              }),
-            ],
-          }),
-          new Paragraph({
-            spacing: { after: 160 },
-            children: [
-              new TextRun({
-                text: `Sub-Ringkasan Bulan ${group.monthLabel}:  Total: ${gTotal} CM  |  Solved: ${gClosed}  |  Pending: ${gOpen}  |  Sparepart: ${gSp}`,
-                bold: true,
-                size: 15,
-                color: '475569',
-              }),
-            ],
-          }),
-          buildWordCMTable(group.reports),
-          new Paragraph({ spacing: { before: 200 } })
-        );
-      });
-    } else {
-      // 1 Bulan saja
-      wordDocChildren.push(
-        buildWordCMTable(reports)
-      );
-    }
-
-    // Rekap diekspor tanpa lembar pengesahan / tanda tangan.
-    wordDocChildren.push(...photoSectionChildren);
-
+    // 5. SUSUN DOKUMEN DOCX UTAMA (Format A4 Landscape Resmi)
     const doc = new Document({
+      styles: {
+        default: {
+          document: {
+            run: {
+              font: 'Calibri',
+              size: 20,
+              color: COLOR_DARK,
+            },
+          },
+          heading1: {
+            run: {
+              font: 'Calibri',
+              size: 24,
+              bold: true,
+              color: COLOR_PRIMARY,
+            },
+          },
+        },
+      },
       sections: [
         {
           properties: {
             page: {
               size: {
                 orientation: PageOrientation.LANDSCAPE,
-                width: 16838, // A4 Landscape DXA
+                width: 16838,
                 height: 11906,
               },
               margin: {
                 top: 720,
                 bottom: 720,
-                left: 720,
-                right: 720,
+                left: 900,
+                right: 900,
+              },
+              pageNumbers: {
+                start: 1,
+                formatType: NumberFormat.DECIMAL,
               },
             },
           },
           headers: {
             default: new Header({
-              children: [new Paragraph('')],
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  children: [
+                    new TextRun({
+                      text: 'DOKUMEN RESMI — PT DWIMITRA EKATAMA MANDIRI & NEUTRADc CIKARANG',
+                      size: 14,
+                      color: '94A3B8',
+                      font: 'Calibri',
+                      italics: true,
+                    }),
+                  ],
+                }),
+              ],
             }),
           },
           footers: {
             default: new Footer({
               children: [
                 new Paragraph({
-                  alignment: AlignmentType.RIGHT,
+                  alignment: AlignmentType.CENTER,
                   children: [
-                    new TextRun({ text: 'PT Dwimitra Ekatama Mandiri — Rekapitulasi Laporan CM  |  Halaman ', size: 14, color: '64748B' }),
-                    new TextRun({ children: [PageNumber.CURRENT], size: 14, color: '64748B' }),
+                    new TextRun({
+                      text: `Rekapitulasi Laporan Corrective Maintenance (CM) — Periode: ${periodTitle} — Halaman `,
+                      size: 14,
+                      color: '94A3B8',
+                      font: 'Calibri',
+                    }),
+                    new TextRun({
+                      children: [PageNumber.CURRENT],
+                      size: 14,
+                      color: '94A3B8',
+                      font: 'Calibri',
+                    }),
                   ],
                 }),
               ],
             }),
           },
-          children: wordDocChildren,
+          children: [
+            // Kop Surat
+            headerTable,
+
+            new Paragraph({ spacing: { before: 180, after: 100 } }),
+
+            // KPI Box Table
+            kpiTable,
+
+            new Paragraph({ spacing: { before: 200, after: 100 } }),
+
+            // Heading Matriks Rekap
+            new Paragraph({
+              heading: HeadingLevel.HEADING_1,
+              spacing: { before: 150, after: 100 },
+              children: [
+                new TextRun({
+                  text: 'DAFTAR REKAPITULASI PEKERJAAN CORRECTIVE MAINTENANCE (CM)',
+                  bold: true,
+                  size: 20,
+                  color: COLOR_PRIMARY,
+                  font: 'Calibri',
+                }),
+              ],
+            }),
+
+            // Tabel Matriks
+            summaryMatrixTable,
+
+            // Rincian Detail per Laporan CM
+            ...detailReportParagraphs,
+          ],
         },
       ],
     });
 
     const blob = await Packer.toBlob(doc);
-    const cleanPeriod = periodTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const fileName = `Rekap_CM_${cleanPeriod}_${new Date().toISOString().split('T')[0]}.docx`;
+    const cleanPeriod = periodTitle.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_');
+    const fileName = `Rekap_CM_${cleanPeriod}_${now.toISOString().split('T')[0]}.docx`;
 
     saveAs(blob, fileName);
     toast.success('Dokumen Word Rekap CM berhasil diunduh!', { id: toastId });

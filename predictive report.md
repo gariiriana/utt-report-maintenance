@@ -73,7 +73,6 @@ export interface PredictiveReportData {
   aiAnalysis: {
     rootCauseAnalysis: string; // Analisis penyebab utama terjadinya anomali
     potentialFailureMode: string; // Modus kegagalan jika tidak ditangani
-    degradationPattern: string; // Pola laju degradasi komponen
     remainingUsefulLife: string; // Estimasi sisa umur pakai (e.g. "7 - 14 Hari")
     urgencyLevel: 'Emergency' | 'High' | 'Medium' | 'Low';
     slaRiskAssessment: string; // Potensi dampak terhadap uptime beban kritis server
@@ -160,7 +159,8 @@ Saat AI selesai memproses data, muncul modal antarmuka elegan bertema **Deep Ind
 
 ### Bagian 3: Analisis Prediktif AI (AI Intelligence)
 - **Akar Masalah (Root Cause)**: Analisis teknis mendalam penyebab kerusakan komponen.
-- **Pola Degradasi & Sisa Umur (RUL)**: Prediksi sisa waktu operasional aman (misal: *7 - 14 Hari*).
+- **Potensi Modus Kegagalan (FMEA)**: Analisis progresi eskalasi kegagalan dan dampak cascading.
+- **Estimasi Sisa Umur (RUL)**: Prediksi sisa waktu operasional aman (misal: *7 - 14 Hari*).
 - **Analisis Dampak SLA**: Penjelasan risiko terhadap redundansi $N+1$ dan beban server data hall.
 
 ### Bagian 4: Rencana Tindakan Prediktif (Action Plan)
