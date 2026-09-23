@@ -27,6 +27,7 @@ export function ManualAbnormalFinding() {
     month: String(now.getMonth() + 1),
     year: String(now.getFullYear()),
     description: '',
+    actionRecommendation: '',
   });
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,6 +73,7 @@ export function ManualAbnormalFinding() {
     const maintenanceName = form.maintenanceName.trim();
     const unitName = form.unitName.trim();
     const description = form.description.trim();
+    const actionRecommendation = form.actionRecommendation.trim();
     const month = Number(form.month);
     const year = Number(form.year);
 
@@ -96,13 +98,16 @@ export function ManualAbnormalFinding() {
         findingDate: periodDate,
         remark: description,
         description,
+        actionRecommendation,
+        recommendation: actionRecommendation,
         // Bentuk data ini sengaja mengikuti struktur temuan dari laporan lain,
         // supaya Pusat Temuan Abnormal, rekap, dan ekspor membacanya seragam.
         hasAbnormal: true,
         abnormalFinding: {
           unitName,
           description,
-          actionRecommendation: '',
+          actionRecommendation,
+          recommendation: actionRecommendation,
           reportedBy: (user.email || '').toLowerCase(),
           reportedAt: periodDate,
           findingDate: periodDate,
@@ -124,6 +129,7 @@ export function ManualAbnormalFinding() {
         maintenanceName: '',
         unitName: '',
         description: '',
+        actionRecommendation: '',
       }));
       setPhotoBase64('');
     } catch (error: any) {
@@ -179,6 +185,11 @@ export function ManualAbnormalFinding() {
           <label className="block">
             <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><ClipboardPenLine className="w-4 h-4 text-rose-600" />Temuan Abnormal <span className="text-rose-600">*</span></span>
             <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Jelaskan kondisi abnormal, dampak, dan kebutuhan tindak lanjut..." className="w-full min-h-36 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm resize-y" />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><Wrench className="w-4 h-4 text-amber-600" />Rekomendasi / Tindakan Lanjutan <span className="text-xs font-medium text-slate-400">(opsional)</span></span>
+            <textarea value={form.actionRecommendation} onChange={(e) => setForm({ ...form, actionRecommendation: e.target.value })} placeholder="Contoh: Perlu penggantian contactor & overcurrent relay, flushing strainer, atau monitoring berkala selama 24 jam..." className="w-full min-h-24 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-sm resize-y" />
           </label>
 
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-4 sm:p-5">

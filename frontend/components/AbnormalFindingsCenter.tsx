@@ -922,6 +922,39 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     return Array.from(setAcc).sort();
   }, [items]);
 
+  // Jumlah temuan per akun (untuk badge & label di dropdown akun)
+  const accountStatsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach((it) => {
+      if (it.createdBy) {
+        map.set(it.createdBy, (map.get(it.createdBy) || 0) + 1);
+      }
+    });
+    return map;
+  }, [items]);
+
+  // Menghitung jumlah filter aktif
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (searchQuery.trim()) count++;
+    if (selectedMonthFilter !== 'all') count++;
+    if (selectedAccountFilter !== 'all') count++;
+    if (selectedDocTypeFilter !== 'all') count++;
+    if (selectedPhotoFilter !== 'all') count++;
+    if (sortBy !== 'newest') count++;
+    return count;
+  }, [searchQuery, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, sortBy]);
+
+  // Handler reset semua filter
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedMonthFilter('all');
+    setSelectedAccountFilter('all');
+    setSelectedDocTypeFilter('all');
+    setSelectedPhotoFilter('all');
+    setSortBy('newest');
+  };
+
   // Daftar bulan unik yang tersedia dari data temuan abnormal
   const availableMonths = useMemo(() => {
     const map = new Map<string, { key: string; label: string; date: Date; count: number }>();
@@ -1403,181 +1436,274 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       </div>
 
       {/* Toolbar Filter & View Controls */}
-      <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/90 shadow-xs space-y-2.5">
-        {/* Row 1: Search, Dropdowns, View Switcher */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search Box */}
-          <div className="relative flex-1 min-w-[200px]">
+      <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/90 shadow-xs space-y-3">
+        {/* Row 1: Search Box & View Mode Switcher */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          {/* Search Box - Lega & Responsif */}
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari unit, kendala, laporan, akun..."
-              className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-slate-800 transition"
+              placeholder="Cari unit, kendala kerusakan, dokumen, pelapor, akun..."
+              className="w-full pl-8 pr-7 py-2 text-xs bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 text-slate-800 placeholder-slate-400 transition"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                title="Hapus kata kunci pencarian"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Filter Periode Bulan */}
-          <select
-            value={selectedMonthFilter}
-            onChange={(e) => setSelectedMonthFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer"
-          >
-            <option value="all">Semua Bulan ({items.length})</option>
-            {availableMonths.map((m) => (
-              <option key={m.key} value={m.key}>
-                {m.label} ({m.count})
-              </option>
-            ))}
-          </select>
+          {/* Right Controls: View Switcher (Grid vs Table) + Reset */}
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Tampilan Kartu Ringkas"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-rose-600" />
+                <span className="text-[11px]">Kartu</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === 'table'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Tampilan Tabel Rapat (Cepat Triage)"
+              >
+                <List className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-[11px]">Tabel</span>
+              </button>
+            </div>
 
-          {/* Filter Akun Maintenance */}
-          <select
-            value={selectedAccountFilter}
-            onChange={(e) => setSelectedAccountFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer max-w-[140px] truncate"
-          >
-            <option value="all">Semua Akun ({uniqueAccounts.length})</option>
-            {uniqueAccounts.map((acc) => (
-              <option key={acc} value={acc}>
-                {acc.replace(/@.+$/, '')}
-              </option>
-            ))}
-          </select>
-
-          {/* Filter Tipe Dokumen */}
-          <select
-            value={selectedDocTypeFilter}
-            onChange={(e) => setSelectedDocTypeFilter(e.target.value as any)}
-            className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer"
-          >
-            <option value="all">Semua Tipe</option>
-            <option value="pdf">PDF</option>
-            <option value="excel">Excel</option>
-            <option value="hse">HSE</option>
-          </select>
-
-          {/* Filter Foto */}
-          <select
-            value={selectedPhotoFilter}
-            onChange={(e) => setSelectedPhotoFilter(e.target.value as any)}
-            className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer"
-          >
-            <option value="all">Semua Foto</option>
-            <option value="with_photo">Hanya Berfoto</option>
-            <option value="without_photo">Tanpa Foto</option>
-          </select>
-
-          {/* Sort By */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer"
-          >
-            <option value="newest">Waktu Terkini</option>
-            <option value="oldest">Waktu Terlama</option>
-            <option value="unit_asc">Unit (A - Z)</option>
-          </select>
-
-          {/* View Mode Switcher (Grid vs Table) */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
-                viewMode === 'grid'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Tampilan Kartu Ringkas"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">Kartu</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
-                viewMode === 'table'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Tampilan Tabel Rapat (Cepat Triage)"
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">Tabel</span>
-            </button>
+            {/* Reset Filters Button */}
+            {activeFiltersCount > 0 && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-2.5 py-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                title="Reset Semua Filter"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden sm:inline text-[11px]">Reset</span>
+                <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                  {activeFiltersCount}
+                </span>
+              </button>
+            )}
           </div>
-
-          {/* Reset Filters Button */}
-          {(searchQuery || selectedMonthFilter !== 'all' || selectedAccountFilter !== 'all' || selectedDocTypeFilter !== 'all' || selectedPhotoFilter !== 'all' || sortBy !== 'newest') && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedMonthFilter('all');
-                setSelectedAccountFilter('all');
-                setSelectedDocTypeFilter('all');
-                setSelectedPhotoFilter('all');
-                setSortBy('newest');
-              }}
-              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-              title="Reset Semua Filter"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
 
-        {/* Row 2: Quick Account Chips */}
-        {uniqueAccounts.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 text-xs no-scrollbar">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-              Akun:
+        {/* Row 2: Filter Grid Terstruktur */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1 border-t border-slate-100">
+          {/* Filter Akun Maintenance */}
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Akun Maintenance
+            </label>
+            <select
+              value={selectedAccountFilter}
+              onChange={(e) => setSelectedAccountFilter(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer truncate"
+            >
+              <option value="all">Semua Akun ({uniqueAccounts.length} akun • {items.length} temuan)</option>
+              {uniqueAccounts.map((acc) => {
+                const countAcc = accountStatsMap.get(acc) || 0;
+                return (
+                  <option key={acc} value={acc}>
+                    {acc.replace(/@.+$/, '')} ({countAcc} temuan)
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Filter Periode Bulan */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Periode Bulan
+            </label>
+            <select
+              value={selectedMonthFilter}
+              onChange={(e) => setSelectedMonthFilter(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer truncate"
+            >
+              <option value="all">Semua Bulan ({items.length})</option>
+              {availableMonths.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.label} ({m.count})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter Tipe Dokumen */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Tipe Dokumen
+            </label>
+            <select
+              value={selectedDocTypeFilter}
+              onChange={(e) => setSelectedDocTypeFilter(e.target.value as any)}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer truncate"
+            >
+              <option value="all">Semua Tipe</option>
+              <option value="pdf">PDF (PM Rutin)</option>
+              <option value="excel">Excel (Full)</option>
+              <option value="hse">HSE (Inspeksi)</option>
+            </select>
+          </div>
+
+          {/* Filter Foto */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Status Foto
+            </label>
+            <select
+              value={selectedPhotoFilter}
+              onChange={(e) => setSelectedPhotoFilter(e.target.value as any)}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer truncate"
+            >
+              <option value="all">Semua Foto</option>
+              <option value="with_photo">Hanya Berfoto ({stats.withPhoto})</option>
+              <option value="without_photo">Tanpa Foto ({items.length - stats.withPhoto})</option>
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Urutkan Berdasarkan
+            </label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer truncate"
+            >
+              <option value="newest">Waktu Terkini</option>
+              <option value="oldest">Waktu Terlama</option>
+              <option value="unit_asc">Nama Unit (A - Z)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Row 3: Active Filter Badges (Pills) */}
+        {activeFiltersCount > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100 text-xs">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mr-1">
+              Filter Aktif:
             </span>
+
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">
+                <span>Cari: "{searchQuery}"</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="hover:text-rose-600 cursor-pointer ml-0.5"
+                  title="Hapus filter cari"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {selectedAccountFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[11px] font-medium border border-rose-200">
+                <span>Akun: {selectedAccountFilter.replace(/@.+$/, '')}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAccountFilter('all')}
+                  className="hover:text-rose-900 cursor-pointer ml-0.5"
+                  title="Hapus filter akun"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {selectedMonthFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-medium border border-blue-200">
+                <span>
+                  Bulan: {availableMonths.find((m) => m.key === selectedMonthFilter)?.label || selectedMonthFilter}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonthFilter('all')}
+                  className="hover:text-blue-900 cursor-pointer ml-0.5"
+                  title="Hapus filter bulan"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {selectedDocTypeFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[11px] font-medium border border-amber-200">
+                <span>Tipe: {selectedDocTypeFilter.toUpperCase()}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDocTypeFilter('all')}
+                  className="hover:text-amber-900 cursor-pointer ml-0.5"
+                  title="Hapus filter tipe"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {selectedPhotoFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-medium border border-emerald-200">
+                <span>{selectedPhotoFilter === 'with_photo' ? 'Hanya Berfoto' : 'Tanpa Foto'}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhotoFilter('all')}
+                  className="hover:text-emerald-900 cursor-pointer ml-0.5"
+                  title="Hapus filter foto"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {sortBy !== 'newest' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[11px] font-medium border border-purple-200">
+                <span>Urut: {sortBy === 'oldest' ? 'Waktu Terlama' : 'Unit (A-Z)'}</span>
+                <button
+                  type="button"
+                  onClick={() => setSortBy('newest')}
+                  className="hover:text-purple-900 cursor-pointer ml-0.5"
+                  title="Kembalikan urutan default"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
             <button
               type="button"
-              onClick={() => setSelectedAccountFilter('all')}
-              className={`px-2 py-0.5 rounded-md text-[11px] shrink-0 transition cursor-pointer ${
-                selectedAccountFilter === 'all'
-                  ? 'bg-rose-600 text-white shadow-2xs font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
-              }`}
+              onClick={handleResetFilters}
+              className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold underline underline-offset-2 ml-1 cursor-pointer"
             >
-              Semua ({items.length})
+              Hapus Semua Filter
             </button>
-            {uniqueAccounts.map((acc) => {
-              const countAcc = items.filter((i) => i.createdBy === acc).length;
-              return (
-                <button
-                  key={acc}
-                  type="button"
-                  onClick={() => setSelectedAccountFilter(acc)}
-                  className={`px-2 py-0.5 rounded-md text-[11px] shrink-0 transition cursor-pointer flex items-center gap-1 ${
-                    selectedAccountFilter === acc
-                      ? 'bg-rose-600 text-white shadow-2xs font-semibold'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium'
-                  }`}
-                >
-                  <span>{acc.replace(/@.+$/, '')}</span>
-                  <span className={`text-[10px] px-1 py-0.1 rounded-full ${
-                    selectedAccountFilter === acc ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {countAcc}
-                  </span>
-                </button>
-              );
-            })}
           </div>
         )}
       </div>
@@ -1606,19 +1732,14 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                 : 'Coba ubah kata kunci pencarian atau sesuaikan pilihan filter di atas.'}
             </p>
           </div>
-          {(searchQuery || selectedMonthFilter !== 'all' || selectedAccountFilter !== 'all' || selectedDocTypeFilter !== 'all' || selectedPhotoFilter !== 'all') && (
+          {activeFiltersCount > 0 && (
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedMonthFilter('all');
-                setSelectedAccountFilter('all');
-                setSelectedDocTypeFilter('all');
-                setSelectedPhotoFilter('all');
-              }}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition cursor-pointer"
+              onClick={handleResetFilters}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition cursor-pointer flex items-center gap-1.5 mx-auto"
             >
-              Reset Filter
+              <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
+              <span>Reset Semua Filter</span>
             </button>
           )}
         </div>
