@@ -108,6 +108,7 @@ async function loadAssetImage(src: string): Promise<Uint8Array> {
 
 function createSectionHeading(title: string, stepNumber: string): Paragraph {
   return new Paragraph({
+    keepNext: true,
     spacing: { before: 240, after: 120 },
     children: [
       new TextRun({

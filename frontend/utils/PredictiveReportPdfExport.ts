@@ -68,48 +68,62 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
       loadImageBase64(logoNeutraDC),
     ]);
 
-    let currentY = 12;
+    // Dimensi Kop Surat & Margin Konten
+    const HEADER_TOP = 10;
+    const HEADER_DIVIDER_Y = 30; // Posisi Y garis pemisah kop surat
+    const CONTENT_START_Y = 36; // Konten dimulai aman di bawah garis pemisah kop surat
 
-    // ─── KOP SURAT DUAL LOGO ─────────────────────────────────────────────────
-    if (logoDmeBase64) {
-      doc.addImage(logoDmeBase64, 'PNG', margin, currentY, 32, 13);
-    }
-    if (logoNdcBase64) {
-      doc.addImage(logoNdcBase64, 'PNG', pageW - margin - 32, currentY, 32, 13);
-    }
+    // Helper: Gambar Kop Surat Resmi Dual Logo & Teks Header di halaman aktif
+    const drawHeader = () => {
+      if (logoDmeBase64) {
+        doc.addImage(logoDmeBase64, 'PNG', margin, HEADER_TOP, 32, 13);
+      }
+      if (logoNdcBase64) {
+        doc.addImage(logoNdcBase64, 'PNG', pageW - margin - 32, HEADER_TOP, 32, 13);
+      }
 
-    // Teks Header Tengah
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(15, 23, 42); // Slate 900
-    doc.text('PT DWIMITRA EKATAMA MANDIRI', pageW / 2, currentY + 3.5, { align: 'center' });
+      // Teks Header Tengah
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42); // Slate 900
+      doc.text('PT DWIMITRA EKATAMA MANDIRI', pageW / 2, HEADER_TOP + 3.5, { align: 'center' });
 
-    doc.setFontSize(12);
-    doc.setTextColor(153, 27, 27); // Crimson Red
-    doc.text('PREDICTIVE MAINTENANCE REPORT (PdM)', pageW / 2, currentY + 8.5, { align: 'center' });
+      doc.setFontSize(12);
+      doc.setTextColor(153, 27, 27); // Crimson Red
+      doc.text('PREDICTIVE MAINTENANCE REPORT (PdM)', pageW / 2, HEADER_TOP + 8.5, { align: 'center' });
 
-    doc.setFontSize(9);
-    doc.setTextColor(0, 89, 156); // NeutraDC Blue
-    doc.text('DATA CENTER NEUTRA DC CIKARANG', pageW / 2, currentY + 13, { align: 'center' });
+      doc.setFontSize(9);
+      doc.setTextColor(0, 89, 156); // NeutraDC Blue
+      doc.text('DATA CENTER NEUTRA DC CIKARANG', pageW / 2, HEADER_TOP + 13, { align: 'center' });
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139); // Muted
-    doc.text(`No: ${data.reportNumber}  |  Ref: ${data.sourceTicketNumber || '-'}  |  Tgl: ${data.sourceMaintenanceDate}`, pageW / 2, currentY + 17, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139); // Muted
+      doc.text(
+        `No: ${data.reportNumber}  |  Ref: ${data.sourceTicketNumber || '-'}  |  Tgl: ${data.sourceMaintenanceDate}`,
+        pageW / 2,
+        HEADER_TOP + 17,
+        { align: 'center' }
+      );
 
-    // Garis Pemisah Kop Surat
-    currentY += 20;
-    doc.setDrawColor(0, 89, 156);
-    doc.setLineWidth(0.8);
-    doc.line(margin, currentY, pageW - margin, currentY);
-    currentY += 4;
+      // Garis Pemisah Kop Surat
+      doc.setDrawColor(0, 89, 156);
+      doc.setLineWidth(0.8);
+      doc.line(margin, HEADER_DIVIDER_Y, pageW - margin, HEADER_DIVIDER_Y);
+    };
 
-    // Helper Section Header
-    const printSectionTitle = (title: string, num: string) => {
-      // Check page overflow
-      if (currentY > pageH - 35) {
-        doc.addPage();
-        currentY = 15;
+    let currentY = CONTENT_START_Y;
+
+    // Helper: Tambah halaman baru & set Y awal di bawah kop surat
+    const addNewPage = () => {
+      doc.addPage();
+      currentY = CONTENT_START_Y;
+    };
+
+    // Helper Section Header dengan proteksi overflow halaman
+    const printSectionTitle = (title: string, num: string, minSpaceNeeded = 25) => {
+      if (currentY > pageH - minSpaceNeeded) {
+        addNewPage();
       }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.5);
@@ -117,15 +131,15 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
       doc.text(`${num}. `, margin, currentY);
       doc.setTextColor(0, 89, 156);
       doc.text(title.toUpperCase(), margin + 4.5, currentY);
-      currentY += 3;
+      currentY += 4;
     };
 
     // ─── 1. IDENTITAS PERALATAN ─────────────────────────────────────────────
-    printSectionTitle('Identitas Peralatan & Dokumen Asal', '1');
+    printSectionTitle('Identitas Peralatan & Dokumen Asal', '1', 35);
 
     autoTable(doc, {
       startY: currentY,
-      margin: { left: margin, right: margin },
+      margin: { top: CONTENT_START_Y, left: margin, right: margin, bottom: 14 },
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica' },
       columnStyles: { 0: { cellWidth: 38 }, 2: { cellWidth: 30 } },
@@ -155,7 +169,7 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     currentY = (doc as any).lastAutoTable.finalY + 5;
 
     // ─── 2. KONDISI AKTUAL & GEJALA AWAL ────────────────────────────────────
-    printSectionTitle('Kondisi Aktual & Gejala Awal', '2');
+    printSectionTitle('Kondisi Aktual & Gejala Awal', '2', 40);
 
     // Health Status Box & Symptoms
     const statusColor = data.healthStatus === 'Critical' ? [185, 28, 28] : data.healthStatus === 'Warning' ? [217, 119, 6] : [37, 99, 235];
@@ -187,7 +201,7 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
 
     autoTable(doc, {
       startY: currentY,
-      margin: { left: margin, right: margin },
+      margin: { top: CONTENT_START_Y, left: margin, right: margin, bottom: 14 },
       theme: 'grid',
       styles: { fontSize: 7.5, cellPadding: 1.8, textColor: [15, 23, 42], font: 'helvetica' },
       headStyles: { fillColor: [0, 89, 156], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -200,8 +214,7 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     // Foto Bukti Fisik Anomali (Jika Ada)
     if (data.photoEvidenceBase64) {
       if (currentY > pageH - 65) {
-        doc.addPage();
-        currentY = 15;
+        addNewPage();
       }
       try {
         const photoData = data.photoEvidenceBase64.startsWith('data:image')
@@ -220,11 +233,11 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     }
 
     // ─── 3. ANALISIS PREDIKTIF ──────────────────────────────────────────────
-    printSectionTitle('Analisis Prediktif (Reliability & Risk Insight)', '3');
+    printSectionTitle('Analisis Prediktif (Reliability & Risk Insight)', '3', 50);
 
     autoTable(doc, {
       startY: currentY,
-      margin: { left: margin, right: margin },
+      margin: { top: CONTENT_START_Y, left: margin, right: margin, bottom: 14 },
       theme: 'grid',
       styles: { fontSize: 7.5, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica' },
       columnStyles: { 0: { cellWidth: 45 } },
@@ -263,15 +276,15 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     currentY = (doc as any).lastAutoTable.finalY + 5;
 
     // ─── 4. RENCANA TINDAKAN PREDIKTIF ──────────────────────────────────────
-    // Pindah ke Halaman 2 untuk Bagian 4 (Action Plan) & Bagian 5 (Approval Sheet)
-    doc.addPage();
-    currentY = 15;
+    if (currentY > pageH - 65) {
+      addNewPage();
+    }
 
-    printSectionTitle('Rencana Tindakan Prediktif (Action Plan)', '4');
+    printSectionTitle('Rencana Tindakan Prediktif (Action Plan)', '4', 40);
 
     autoTable(doc, {
       startY: currentY,
-      margin: { left: margin, right: margin },
+      margin: { top: CONTENT_START_Y, left: margin, right: margin, bottom: 14 },
       theme: 'grid',
       styles: { fontSize: 7.5, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica' },
       columnStyles: { 0: { cellWidth: 45 } },
@@ -295,9 +308,12 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
 
     // Tabel Sparepart Kritis
     if (data.actionPlan.recommendedSpareparts && data.actionPlan.recommendedSpareparts.length > 0) {
+      if (currentY > pageH - 35) {
+        addNewPage();
+      }
       autoTable(doc, {
         startY: currentY,
-        margin: { left: margin, right: margin },
+        margin: { top: CONTENT_START_Y, left: margin, right: margin, bottom: 14 },
         theme: 'grid',
         styles: { fontSize: 7, cellPadding: 1.5, textColor: [15, 23, 42], font: 'helvetica' },
         headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -315,12 +331,15 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     }
 
     // ─── 5. LEMBAR PENGESAHAN (APPROVAL SHEET) ──────────────────────────────
-    if (currentY > pageH - 55) {
-      doc.addPage();
-      currentY = 15;
+    // Total tinggi blok pengesahan: Judul (8mm) + AUTHOR BY (8mm) + Tabel Tanda Tangan 6 baris (~95mm) + margin = ~120mm.
+    // Jika sisa halaman tidak mencukupi, pindah ke halaman baru SEBELUM mencetak judul dan AUTHOR BY
+    // sehingga seluruh blok pengesahan (termasuk AUTHOR BY) selalu utuh bersama tabel tanda tangan.
+    const APPROVAL_BLOCK_HEIGHT = 120;
+    if (currentY > pageH - APPROVAL_BLOCK_HEIGHT) {
+      addNewPage();
     }
 
-    printSectionTitle('Lembar Pengesahan Resmi', '5');
+    printSectionTitle('Lembar Pengesahan Resmi', '5', APPROVAL_BLOCK_HEIGHT);
 
     const authorName =
       data.signatures?.authorName ||
@@ -344,15 +363,16 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
       data.signatures?.approvedBy?.title ||
       '(Assistant manager HDC Facility Management)';
 
-    doc.setFontSize(8);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
     doc.text(`AUTHOR BY, ${sanitizeText(authorName)}`, margin, currentY + 1);
-    currentY += 4;
+    currentY += 5;
 
     autoTable(doc, {
       startY: currentY,
-      margin: { left: margin, right: margin },
+      margin: { top: CONTENT_START_Y, left: margin, right: margin, bottom: 14 },
+      pageBreak: 'avoid',
       theme: 'grid',
       styles: { fontSize: 7.5, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica', halign: 'center' },
       body: [
@@ -380,10 +400,11 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
       ],
     });
 
-    // Nomor Halaman di Footer
+    // ─── KOP SURAT HEADER & NOMOR HALAMAN DI SETIAP HALAMAN ────────────────
     const totalPages = doc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
+      drawHeader();
       doc.setFontSize(7);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(148, 163, 184);
