@@ -189,8 +189,8 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
     loadAssetImage(resolvedAppSign),
   ]);
 
-  // Kop Surat Resmi (Tabel 1 baris 3 kolom)
-  const headerTable = new Table({
+  // Helper membuat Kop Surat Resmi Dual Logo (Tabel 1 baris 3 kolom)
+  const createHeaderTable = () => new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: borderNone,
     rows: [
@@ -250,7 +250,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: 'DATA CENTER NEUTRADCS-CIKARANG',
+                    text: 'DATA CENTER NEUTRA DC CIKARANG',
                     bold: true,
                     size: 18,
                     color: COLOR_PRIMARY,
@@ -297,7 +297,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
   });
 
   // Garis Pembatas Header Tebal
-  const dividerLine = new Paragraph({
+  const createDividerLine = () => new Paragraph({
     spacing: { before: 80, after: 180 },
     border: {
       bottom: { style: BorderStyle.SINGLE, size: 18, color: COLOR_PRIMARY },
@@ -955,19 +955,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         },
         headers: {
           default: new Header({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({
-                    text: `Predictive Report — ${data.equipmentName} (${data.reportNumber})`,
-                    size: 14,
-                    color: COLOR_MUTED,
-                    font: 'Calibri',
-                  }),
-                ],
-              }),
-            ],
+            children: [],
           }),
         },
         footers: {
@@ -986,8 +974,8 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
           }),
         },
         children: [
-          headerTable,
-          dividerLine,
+          createHeaderTable(),
+          createDividerLine(),
 
           createSectionHeading('Identitas Peralatan & Dokumen Asal', '1'),
           equipmentTable,
@@ -1005,6 +993,10 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
             pageBreakBefore: true,
             children: [],
           }),
+
+          // Kop Surat Lengkap di Halaman 2
+          createHeaderTable(),
+          createDividerLine(),
 
           createSectionHeading('Rencana Tindakan Prediktif (Action Plan)', '4'),
           actionPlanTable,
