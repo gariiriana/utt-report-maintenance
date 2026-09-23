@@ -43,6 +43,10 @@ const CHECKLIST_LABELS = [
 
 interface HSEReportViewerProps {
     reportId: string;
+    // DocumentList has already fetched these when the user clicked Open.
+    // Passing them through prevents the viewer from reading the same photo
+    // subcollection a second time.
+    prefetchedPhotos?: { id?: string; dataUrl?: string; photoBase64?: string; base64?: string; description?: string; index?: number }[];
 }
 
 interface ReportData {
@@ -61,7 +65,7 @@ interface ReportData {
     siloPdfUrl?: string;
 }
 
-export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
+export function HSEReportViewer({ reportId, prefetchedPhotos }: HSEReportViewerProps) {
     const { user, userRole } = useAuth();
     const [report, setReport] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -85,10 +89,18 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 }
                 const data = docSnap.data() as ReportData;
 
-                const photosSnap = await getDocsFromServer(collection(db, `hse/${cleanId}/photos`));
-                const photos = photosSnap.docs
-                    .map(d => ({ id: d.id, ...d.data() } as any))
-                    .sort((a, b) => (a.index || 0) - (b.index || 0));
+                const photos = prefetchedPhotos?.length
+                    ? prefetchedPhotos
+                        .map((photo, index) => ({
+                            id: photo.id || `${cleanId}_${index}`,
+                            dataUrl: photo.dataUrl || photo.photoBase64 || photo.base64 || '',
+                            description: photo.description || '',
+                            index: photo.index ?? index,
+                        }))
+                        .sort((a, b) => a.index - b.index)
+                    : (await getDocsFromServer(collection(db, `hse/${cleanId}/photos`))).docs
+                        .map(d => ({ id: d.id, ...d.data() } as any))
+                        .sort((a, b) => (a.index || 0) - (b.index || 0));
 
                 const fullReport = { ...data, photos };
                 setReport(fullReport);
@@ -123,7 +135,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
         return () => {
             if (pdfUrl) URL.revokeObjectURL(pdfUrl);
         };
-    }, [reportId]);
+    }, [reportId, prefetchedPhotos]);
 
     const handleDownloadPDF = async () => {
         if (!report) return;

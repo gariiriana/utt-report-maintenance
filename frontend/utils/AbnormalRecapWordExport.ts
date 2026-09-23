@@ -114,13 +114,13 @@ async function loadAssetImage(src: string): Promise<Uint8Array> {
 }
 
 // Skema Warna Standar Dokumen
-const COLOR_PRIMARY_RED = '991B1B'; // Merah Resmi Temuan Abnormal / QC DME
-const COLOR_SECONDARY_BLUE = '00599C'; // Biru NeutraDC
-const COLOR_DARK = '0F172A'; // Slate 900
-const COLOR_MUTED = '64748B'; // Slate 500
+const COLOR_PRIMARY_RED = '000000'; // Monokrom formal untuk seluruh rekap
+const COLOR_SECONDARY_BLUE = '000000';
+const COLOR_DARK = '000000';
+const COLOR_MUTED = '000000';
 const COLOR_LIGHT_BG = 'F8FAFC'; // Slate 50
-const COLOR_ROSE_BG = 'FFF1F2'; // Rose 50
-const COLOR_GREEN_BG = 'F0FDF4'; // Emerald 50
+const COLOR_ROSE_BG = 'FFFFFF';
+const COLOR_GREEN_BG = 'FFFFFF';
 const COLOR_BORDER = 'CBD5E1'; // Slate 300
 const COLOR_WHITE = 'FFFFFF';
 
@@ -286,8 +286,8 @@ export async function exportAbnormalRecapToWord(
         children: [
           { label: 'TOTAL TEMUAN ABNORMAL', val: `${totalFindings} Unit`, color: COLOR_PRIMARY_RED },
           { label: 'AKUN ENGINEER TERLIBAT', val: `${uniqueAccountsCount} Akun`, color: COLOR_SECONDARY_BLUE },
-          { label: 'DENGAN FOTO BUKTI', val: `${withPhotoCount} Unit`, color: '166534' }, // Green 800
-          { label: 'MEMILIKI REKOMENDASI', val: `${withRecoCount} Item`, color: '0369A1' }, // Sky 700
+          { label: 'DENGAN FOTO BUKTI', val: `${withPhotoCount} Unit`, color: COLOR_DARK },
+          { label: 'MEMILIKI REKOMENDASI', val: `${withRecoCount} Item`, color: COLOR_DARK },
         ].map((kpi) =>
           new TableCell({
             width: { size: 25, type: WidthType.PERCENTAGE },
@@ -461,7 +461,7 @@ export async function exportAbnormalRecapToWord(
         indent: { left: 120 },
         children: [
           new TextRun({
-            text: `[#${idx + 1}] TEMUAN: ${unitName.toUpperCase()}`,
+            text: `[${idx + 1}] TEMUAN: ${unitName.toUpperCase()}`,
             bold: true,
             size: 19,
             color: COLOR_PRIMARY_RED,
@@ -471,7 +471,7 @@ export async function exportAbnormalRecapToWord(
             text: `   |   STATUS: KONDISI ABNORMAL`,
             bold: true,
             size: 15,
-            color: 'B91C1C',
+            color: COLOR_DARK,
             font: 'Calibri',
           }),
         ],
@@ -529,7 +529,7 @@ export async function exportAbnormalRecapToWord(
                   spacing: { before: 20, after: 20 },
                   children: [
                     new TextRun({
-                      text: `Tanggal: ${item.maintenanceTime || '-'}   |   Akun Engineer: ${item.createdBy} (${item.abnormalFinding?.reportedBy || 'Teknisi Lapangan'})`,
+                      text: `Tanggal: ${item.maintenanceTime || '-'}   |   Pelapor: ${item.abnormalFinding?.reportedBy || 'Teknisi Lapangan'}`,
                       size: 15,
                       color: COLOR_DARK,
                       font: 'Calibri',
@@ -553,7 +553,7 @@ export async function exportAbnormalRecapToWord(
             text: 'Deskripsi Temuan / Kerusakan Abnormal:',
             bold: true,
             size: 16,
-            color: COLOR_PRIMARY_RED,
+            color: COLOR_DARK,
             font: 'Calibri',
           }),
         ],
@@ -562,17 +562,17 @@ export async function exportAbnormalRecapToWord(
         spacing: { before: 30, after: 80 },
         shading: { type: ShadingType.SOLID, color: COLOR_ROSE_BG, fill: COLOR_ROSE_BG },
         border: {
-          left: { style: BorderStyle.SINGLE, size: 6, color: COLOR_PRIMARY_RED },
-          top: { style: BorderStyle.SINGLE, size: 1, color: 'FECDD3' },
-          right: { style: BorderStyle.SINGLE, size: 1, color: 'FECDD3' },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: 'FECDD3' },
+          left: { style: BorderStyle.SINGLE, size: 6, color: COLOR_DARK },
+          top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+          right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
         },
         indent: { left: 100 },
         children: [
           new TextRun({
             text: descText,
             size: 15,
-            color: '881337', // Rose 900
+            color: COLOR_DARK,
             font: 'Calibri',
           }),
         ],
@@ -588,7 +588,7 @@ export async function exportAbnormalRecapToWord(
             text: 'Rekomendasi / Tindakan Lanjutan:',
             bold: true,
             size: 16,
-            color: '047857', // Emerald 700
+            color: COLOR_DARK,
             font: 'Calibri',
           }),
         ],
@@ -597,17 +597,17 @@ export async function exportAbnormalRecapToWord(
         spacing: { before: 30, after: 100 },
         shading: { type: ShadingType.SOLID, color: COLOR_GREEN_BG, fill: COLOR_GREEN_BG },
         border: {
-          left: { style: BorderStyle.SINGLE, size: 6, color: '059669' },
-          top: { style: BorderStyle.SINGLE, size: 1, color: 'A7F3D0' },
-          right: { style: BorderStyle.SINGLE, size: 1, color: 'A7F3D0' },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: 'A7F3D0' },
+          left: { style: BorderStyle.SINGLE, size: 6, color: COLOR_DARK },
+          top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+          right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
         },
         indent: { left: 100 },
         children: [
           new TextRun({
             text: recoText,
             size: 15,
-            color: '064E3B', // Emerald 900
+            color: COLOR_DARK,
             font: 'Calibri',
           }),
         ],
@@ -656,21 +656,6 @@ export async function exportAbnormalRecapToWord(
           })
         );
       }
-    } else {
-      detailReportParagraphs.push(
-        new Paragraph({
-          spacing: { before: 40, after: 150 },
-          children: [
-            new TextRun({
-              text: 'Catatan: Tidak ada lampiran foto dokumentasi fisik untuk unit ini.',
-              italics: true,
-              size: 14,
-              color: COLOR_MUTED,
-              font: 'Calibri',
-            }),
-          ],
-        })
-      );
     }
 
     // Bundling Laporan Predictive Maintenance (PdM) 1-to-1 jika ada
@@ -692,14 +677,14 @@ export async function exportAbnormalRecapToWord(
               text: `[🤖 LAMPIRAN ANALISIS PREDIKTIF AI] ${pdmData.reportNumber} — STATUS: ${pdmData.healthStatus.toUpperCase()}`,
               bold: true,
               size: 16,
-              color: '5B21B6',
+                color: COLOR_DARK,
               font: 'Calibri',
             }),
             new TextRun({
               text: `   |   Estimasi Sisa Umur (RUL): ${pdmData.aiAnalysis?.remainingUsefulLife || '-'}`,
               bold: true,
               size: 15,
-              color: 'B91C1C',
+              color: COLOR_DARK,
               font: 'Calibri',
             }),
           ],

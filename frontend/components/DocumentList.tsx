@@ -384,6 +384,24 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   const [hseRecapStartDate, setHseRecapStartDate] = useState('');
   const [hseRecapEndDate, setHseRecapEndDate] = useState('');
   const [isExportingHseRecap, setIsExportingHseRecap] = useState(false);
+  const [isExportingHseZip, setIsExportingHseZip] = useState(false);
+  const [zipProgress, setZipProgress] = useState<{
+    isOpen: boolean;
+    current: number;
+    total: number;
+    percent: number;
+    currentFileName: string;
+    currentFolder: string;
+    stage: 'preparing' | 'processing' | 'compressing' | 'completed';
+  }>({
+    isOpen: false,
+    current: 0,
+    total: 0,
+    percent: 0,
+    currentFileName: '',
+    currentFolder: '',
+    stage: 'preparing',
+  });
 
   useEffect(() => {
     if (initialSearchQuery !== undefined) {
@@ -2035,58 +2053,167 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
     }
   };
 
-  const handleDownloadHseZip = async () => {
-    if (docsForHseRecap.length === 0) {
-      toast.error('Tidak ada laporan HSE pada rentang tanggal ini');
+  const getHseCategoryLabel = (hseType?: string): string => {
+    switch (hseType) {
+      case 'tbm':
+        return 'Presensi TBM';
+      case 'induction':
+        return 'Safety Induction';
+      case 'sio':
+        return 'Dokumen SIO';
+      case 'silo':
+        return 'Dokumen SILO';
+      case 'inspection':
+      default:
+        return 'Laporan Inspeksi HSE';
+    }
+  };
+
+  const exportHseDocumentsAsZip = async (
+    targetDocs: ExcelDocument[],
+    customZipName?: string
+  ) => {
+    if (targetDocs.length === 0) {
+      toast.error('Tidak ada dokumen yang dipilih untuk diexport.');
       return;
     }
-    setIsExportingHseRecap(true);
-    const variantLabel = hseRecapVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
+
+    setIsExportingHseZip(true);
+    const totalDocs = targetDocs.length;
+    setZipProgress({
+      isOpen: true,
+      current: 0,
+      total: totalDocs,
+      percent: 0,
+      currentFileName: 'Mempersiapkan data dokumen...',
+      currentFolder: '',
+      stage: 'processing',
+    });
+
     try {
-      toast.loading(`Menyiapkan ZIP Laporan HSE (${variantLabel})...`, { id: 'export-hse-zip' });
-      
       const zip = new JSZip();
-      const folderName = `Arsip_HSE_${variantLabel}_${new Date().toISOString().split('T')[0]}`;
-      const folder = zip.folder(folderName);
-      
-      for (const doc of docsForHseRecap) {
-        let pdfBlob: Blob | null = null;
-        let fileName = '';
-        
-        try {
-          if (doc.type === 'tbm') {
-            const { blob, fileName: fn } = await generateHSETbmPdfBlob(doc as unknown as HSETbmRecord, { companyVariant: hseRecapVariant });
-            pdfBlob = blob;
-            fileName = fn;
-          } else if (doc.type === 'induction') {
-            const { blob, fileName: fn } = await generateHSESafetyInductionPdfBlob(doc as unknown as HSESafetyInductionRecord, { companyVariant: hseRecapVariant });
-            pdfBlob = blob;
-            fileName = fn;
-          } else {
-            pdfBlob = await generateHSEPdfBlob(doc as any, hseRecapVariant);
-            const title = doc.title || 'Report';
-            fileName = `Inspection_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${doc.id}.pdf`;
-          }
-          
-          if (pdfBlob && folder) {
-            folder.file(fileName, pdfBlob);
-          }
-        } catch (innerErr) {
-          console.error('Failed to generate PDF for doc:', doc.id, innerErr);
-        }
+      const dateStr = new Date().toISOString().split('T')[0];
+      const mainFolderName = customZipName || `Arsip_HSE_${dateStr}`;
+      const rootFolder = zip.folder(mainFolderName);
+
+      // Cek apakah target dokumen berasal dari beberapa kategori berbeda
+      const categoriesInDocs = new Set(targetDocs.map(d => d.hseType || 'inspection'));
+      const hasMultipleCategories = categoriesInDocs.size > 1;
+
+      const BATCH_SIZE = 4;
+      let completedCount = 0;
+
+      for (let i = 0; i < targetDocs.length; i += BATCH_SIZE) {
+        const batch = targetDocs.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(async (docData) => {
+            let fileName = '';
+            let monthFolder = '';
+            try {
+              let blob: Blob | null = null;
+
+              if (docData.documentType === 'hse') {
+                const res = await buildHSEBlob(docData, false);
+                blob = res.blob;
+                fileName = res.fileName;
+              } else {
+                const files = await getDocumentExportFiles(docData);
+                if (files.length > 0) {
+                  blob = files[0].blob;
+                  fileName = files[0].name;
+                }
+              }
+
+              // Ambil nama bulan dokumen (contoh: "September 2026")
+              const docDate = getDocumentDate(docData);
+              monthFolder = getMonthYearString(docDate);
+              const categoryLabel = getHseCategoryLabel(docData.hseType);
+
+              // Bersihkan karakter ilegal dari nama file untuk file system ZIP
+              const cleanFileName = (fileName || `Dokumen_${docData.id}.pdf`).replace(/[/\\?%*:|"<>]/g, '_');
+
+              if (blob && rootFolder) {
+                if (hasMultipleCategories) {
+                  // Susun rapih: MainFolder -> Kategori (Laporan Inspeksi HSE) -> Bulan (September 2026) -> File.pdf
+                  rootFolder
+                    .folder(categoryLabel)
+                    ?.folder(monthFolder)
+                    ?.file(cleanFileName, blob);
+                } else {
+                  // Jika satu kategori: MainFolder -> Bulan (September 2026) -> File.pdf
+                  rootFolder
+                    .folder(monthFolder)
+                    ?.file(cleanFileName, blob);
+                }
+              }
+            } catch (docErr) {
+              console.error(`Gagal menyusun PDF untuk ${docData.id}:`, docErr);
+            } finally {
+              completedCount++;
+              const percent = Math.min(Math.round((completedCount / totalDocs) * 90), 90);
+              setZipProgress(prev => ({
+                ...prev,
+                current: completedCount,
+                percent,
+                currentFileName: fileName || docData.fileName || `Dokumen #${completedCount}`,
+                currentFolder: monthFolder,
+                stage: 'processing',
+              }));
+            }
+          })
+        );
       }
-      
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      saveAs(zipBlob, `${folderName}.zip`);
-      
-      toast.success(`ZIP Arsip HSE (${variantLabel}) berhasil diunduh!`, { id: 'export-hse-zip' });
+
+      setZipProgress(prev => ({
+        ...prev,
+        stage: 'compressing',
+        currentFileName: 'Mengompresi ke file ZIP...',
+      }));
+
+      const zipBlob = await zip.generateAsync(
+        {
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 },
+        },
+        (metadata) => {
+          const totalPercent = Math.min(90 + Math.round((metadata.percent / 100) * 10), 100);
+          setZipProgress(prev => ({
+            ...prev,
+            percent: totalPercent,
+            currentFileName: `Kompresi ZIP (${Math.round(metadata.percent)}%)...`,
+          }));
+        }
+      );
+
+      saveAs(zipBlob, `${mainFolderName}.zip`);
+
+      setZipProgress(prev => ({
+        ...prev,
+        stage: 'completed',
+        percent: 100,
+        currentFileName: 'File ZIP berhasil diunduh!',
+      }));
+
+      toast.success(`ZIP berhasil diunduh (${targetDocs.length} dokumen tersusun rapih dalam folder)!`);
       setIsHseRecapModalOpen(false);
+
+      setTimeout(() => {
+        setZipProgress(prev => ({ ...prev, isOpen: false }));
+      }, 1500);
     } catch (err) {
       console.error('Export HSE ZIP error:', err);
-      toast.error('Gagal mengunduh ZIP Arsip HSE.', { id: 'export-hse-zip' });
+      toast.error('Gagal mengunduh ZIP Arsip HSE.');
+      setZipProgress(prev => ({ ...prev, isOpen: false }));
     } finally {
-      setIsExportingHseRecap(false);
+      setIsExportingHseZip(false);
     }
+  };
+
+  const handleDownloadHseZip = async () => {
+    const variantLabel = hseRecapVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
+    const dateStr = new Date().toISOString().split('T')[0];
+    await exportHseDocumentsAsZip(docsForHseRecap, `Arsip_HSE_${variantLabel}_${dateStr}`);
   };
 
   const renderDmeContent = () => {
@@ -3356,6 +3483,29 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               <span className="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 rounded-xl border border-slate-200">
                 {filteredDocuments.filter(d => d.hseType === selectedCategory).length} Dokumen
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const catDocs = filteredDocuments.filter(d => d.hseType === selectedCategory);
+                  const catNameClean = selectedCategory === 'tbm' ? 'TBM' : selectedCategory === 'induction' ? 'Induction' : 'Inspeksi_HSE';
+                  exportHseDocumentsAsZip(catDocs, `Arsip_${catNameClean}_Semua_Bulan_${new Date().toISOString().split('T')[0]}`);
+                }}
+                disabled={isExportingHseZip || filteredDocuments.filter(d => d.hseType === selectedCategory).length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold transition shadow-sm shadow-indigo-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                title="Export seluruh dokumen di kategori ini ke file ZIP berstruktur folder per bulan"
+              >
+                {isExportingHseZip ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mengekspor ({zipProgress.current}/{zipProgress.total || filteredDocuments.filter(d => d.hseType === selectedCategory).length})...</span>
+                  </>
+                ) : (
+                  <>
+                    <FolderArchive className="w-3.5 h-3.5" />
+                    <span>Export ZIP ({filteredDocuments.filter(d => d.hseType === selectedCategory).length} Dokumen)</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
@@ -3427,10 +3577,20 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               >
                 <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan TBM
               </button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
                   Absen TBM Bulan {selectedMonth} ({tbmDocs.length} Dokumen)
                 </span>
+                <button
+                  type="button"
+                  onClick={() => exportHseDocumentsAsZip(tbmDocs, `Arsip_TBM_${selectedMonth.replace(/\s+/g, '_')}`)}
+                  disabled={isExportingHseZip || tbmDocs.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs disabled:opacity-50 cursor-pointer"
+                  title={`Export seluruh file Absen TBM bulan ${selectedMonth} ke file ZIP`}
+                >
+                  <FolderArchive className="w-3.5 h-3.5" />
+                  <span>Export ZIP ({tbmDocs.length})</span>
+                </button>
               </div>
             </div>
 
@@ -3463,10 +3623,20 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               >
                 <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan Induction
               </button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
                   Safety Induction Bulan {selectedMonth} ({inductionDocs.length} Dokumen)
                 </span>
+                <button
+                  type="button"
+                  onClick={() => exportHseDocumentsAsZip(inductionDocs, `Arsip_Induction_${selectedMonth.replace(/\s+/g, '_')}`)}
+                  disabled={isExportingHseZip || inductionDocs.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-2xs disabled:opacity-50 cursor-pointer"
+                  title={`Export seluruh verifikasi Safety Induction bulan ${selectedMonth} ke file ZIP`}
+                >
+                  <FolderArchive className="w-3.5 h-3.5" />
+                  <span>Export ZIP ({inductionDocs.length})</span>
+                </button>
               </div>
             </div>
 
@@ -3518,6 +3688,16 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>PDF UTT ({monthDocs.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => exportHseDocumentsAsZip(monthDocs, `Arsip_Inspeksi_HSE_${selectedMonth.replace(/\s+/g, '_')}`)}
+                disabled={isExportingHseZip || monthDocs.length === 0}
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                title={`Export seluruh file PDF bulan ${selectedMonth} ke dalam ZIP`}
+              >
+                <FolderArchive className="w-3.5 h-3.5" />
+                <span>Export ZIP ({monthDocs.length})</span>
               </button>
             </div>
           </div>
@@ -4368,11 +4548,21 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               <button
                 type="button"
                 onClick={() => handleOpenHseRecapModal('neutradc')}
-                className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-500/20 transition cursor-pointer shrink-0 whitespace-nowrap"
+                disabled={isExportingHseZip}
+                className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-500/20 transition cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
                 title="Export Kumpulan Laporan HSE ke format ZIP"
               >
-                <FolderArchive className="w-3.5 h-3.5" />
-                <span>Export ZIP Semua Tipe</span>
+                {isExportingHseZip ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mengekspor ({zipProgress.current}/{zipProgress.total})...</span>
+                  </>
+                ) : (
+                  <>
+                    <FolderArchive className="w-3.5 h-3.5" />
+                    <span>Export ZIP Semua Tipe</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -4861,8 +5051,103 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               <div className="flex-1 overflow-y-auto">
                 <HSEReportViewer 
                   reportId={previewHseDoc.id} 
+                  prefetchedPhotos={previewHseDoc.photosData}
                 />
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modern Floating ZIP Export Progress Modal */}
+      <AnimatePresence>
+        {zipProgress.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 max-w-md w-full p-6 sm:p-7 relative overflow-hidden"
+            >
+              {/* Header Gradient Glow Line */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600" />
+
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-13 h-13 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 shadow-xs relative">
+                  {zipProgress.stage === 'completed' ? (
+                    <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                  ) : (
+                    <>
+                      <FolderArchive className="w-6 h-6 text-indigo-600" />
+                      <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-xs">
+                        <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-black text-slate-900 leading-tight">
+                    {zipProgress.stage === 'completed'
+                      ? 'Export ZIP Selesai!'
+                      : zipProgress.stage === 'compressing'
+                      ? 'Mengompresi Berkas ZIP...'
+                      : 'Memproses Export Dokumen'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5 truncate">
+                    {zipProgress.stage === 'completed'
+                      ? 'Arsip siap digunakan di perangkat Anda'
+                      : zipProgress.stage === 'compressing'
+                      ? 'Membungkus file PDF ke dalam folder-folder...'
+                      : `Menyusun dokumen ${zipProgress.current} dari ${zipProgress.total} file`}
+                  </p>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-2xl font-black text-indigo-600 tracking-tight">
+                    {zipProgress.percent}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Progress Bar Container */}
+              <div className="space-y-2 mb-4">
+                <div className="w-full bg-slate-100 rounded-full h-3.5 p-0.5 overflow-hidden border border-slate-200/80 shadow-inner">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-sm"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.max(zipProgress.percent, 3)}%` }}
+                    transition={{ ease: "easeOut", duration: 0.15 }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 px-0.5">
+                  <span className="text-slate-700">
+                    {zipProgress.current} / {zipProgress.total} Dokumen Selesai
+                  </span>
+                  <span className="text-indigo-600 font-semibold">
+                    {zipProgress.stage === 'compressing' ? 'Tahap Kompresi' : 'Tahap Render PDF'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Current Active File Info */}
+              <div className="p-3 bg-slate-50/90 rounded-2xl border border-slate-200/70 text-xs text-slate-600 space-y-1">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <FileSpreadsheet className="w-3 h-3 text-slate-400" />
+                  <span>Berkas yang sedang diproses:</span>
+                </div>
+                <p className="text-xs font-semibold text-slate-800 truncate" title={zipProgress.currentFileName}>
+                  {zipProgress.currentFolder ? `📁 ${zipProgress.currentFolder} ➔ ` : ''}
+                  {zipProgress.currentFileName || 'Menyiapkan berkas...'}
+                </p>
+              </div>
+
+              {/* Safety note */}
+              <p className="text-[11px] text-center text-slate-400 mt-4 font-medium">
+                Mohon jangan menutup halaman ini sampai proses unduh selesai.
+              </p>
             </motion.div>
           </div>
         )}
