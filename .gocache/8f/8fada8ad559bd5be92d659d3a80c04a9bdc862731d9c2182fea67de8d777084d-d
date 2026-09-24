@@ -1,0 +1,8 @@
+./archive_repository.go
+./audit_repository.go
+./base_repository.go
+./cache_repository.go
+./finding_repository.go
+./maintenance_progress_repository.go
+./report_repository.go
+./user_repository.go

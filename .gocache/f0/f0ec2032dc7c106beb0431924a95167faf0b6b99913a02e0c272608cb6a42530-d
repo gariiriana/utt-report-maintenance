@@ -1,0 +1,3 @@
+./cdsbalancer.go
+./cluster_watcher.go
+./logging.go

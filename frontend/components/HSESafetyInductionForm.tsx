@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { db } from '@/api/firebase';
 import { collection, addDoc, updateDoc, doc, getDoc, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
-import { compressImage } from '@/utils/imageCompression';
+import { compressBase64Image, compressImage, getBase64SizeKB } from '@/utils/imageCompression';
 import { CameraModal } from '@/components/CameraModal';
 import { exportHSESafetyInductionPDF } from '@/utils/HSESafetyInductionPdfExport';
 import { HSESafetyInductionRecord, HSESafetyInductionParticipant } from '@/types/hseTbmInductionTypes';
@@ -45,6 +45,10 @@ interface HSESafetyInductionFormProps {
 }
 
 type PhotoSlotType = 'fotoInduction' | 'fotoSuratSehat' | 'fotoSertifikatK3';
+
+// Firestore limits each document to 1 MiB. Keep photo documents well below it
+// after base64 encoding so their metadata still has room to be stored.
+const MAX_PHOTO_SIZE_KB = 850;
 
 export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: HSESafetyInductionFormProps) {
   const { user } = useAuth();
@@ -196,6 +200,14 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
     else if (slot === 'fotoSertifikatK3') setFotoSertifikatK3(prev => [...prev, base64]);
   };
 
+  const ensurePhotoSize = (base64: string) => {
+    const sizeKB = getBase64SizeKB(base64);
+    if (sizeKB > MAX_PHOTO_SIZE_KB) {
+      throw new Error(`Ukuran foto setelah kompresi masih ${sizeKB} KB. Maksimal ${MAX_PHOTO_SIZE_KB} KB.`);
+    }
+    return base64;
+  };
+
   // Helper: hapus foto tertentu dari slot
   const removeFromSlot = (slot: PhotoSlotType, index: number) => {
     if (slot === 'fotoInduction') setFotoInduction(prev => prev.filter((_, i) => i !== index));
@@ -216,23 +228,14 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
     for (let fi = 0; fi < files.length; fi++) {
       const file = files[fi];
       try {
-        const base64 = await compressImage(file, { maxWidth: 800, quality: 0.7 });
-        appendToSlot(slot, base64);
+        const base64 = await compressImage(file, { maxWidth: 640, maxHeight: 640, quality: 0.55 });
+        appendToSlot(slot, ensurePhotoSize(base64));
         successCount++;
       } catch (err) {
-        console.warn('Kompresi gagal, membaca file langsung:', err);
-        try {
-          const result = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () => reject(new Error('Gagal membaca file'));
-            reader.readAsDataURL(file);
-          });
-          appendToSlot(slot, result);
-          successCount++;
-        } catch {
-          console.warn('Gagal total membaca file:', file.name);
-        }
+        // Do not fall back to the original file: it can exceed Firestore's
+        // 1 MiB document limit and make the entire report fail to save.
+        console.warn('Foto tidak dapat dikompresi untuk Firestore:', file.name, err);
+        toast.warning(`Foto ${file.name} dilewati karena terlalu besar atau formatnya tidak didukung.`);
       }
     }
     toast.success(`${successCount} foto berhasil diunggah!`, { id: toastId });
@@ -240,10 +243,17 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
   };
 
   // Handle Capture dari CameraModal
-  const handleCameraCapture = (base64: string) => {
-    if (activeCameraSlot) appendToSlot(activeCameraSlot, base64);
-    setActiveCameraSlot(null);
-    toast.success('Foto dari kamera berhasil diambil!');
+  const handleCameraCapture = async (base64: string) => {
+    try {
+      const compressed = await compressBase64Image(base64, { maxWidth: 640, maxHeight: 640, quality: 0.55 });
+      if (activeCameraSlot) appendToSlot(activeCameraSlot, ensurePhotoSize(compressed));
+      toast.success('Foto dari kamera berhasil diambil!');
+    } catch (error) {
+      console.error('Foto kamera tidak dapat disiapkan untuk Firestore:', error);
+      toast.error('Foto kamera terlalu besar atau tidak dapat diproses. Silakan ambil ulang foto.');
+    } finally {
+      setActiveCameraSlot(null);
+    }
   };
 
   // Reset Form
@@ -330,6 +340,7 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
         time: record.time,
         jabatan: record.jabatan,
         catatan: record.catatan,
+        lokasi: 'Data Center NeutraDC Cikarang',
         // Simpan jumlah foto saja (bukan base64) untuk referensi cepat
         fotoInductionCount: fotoInduction.length,
         fotoSuratSehatCount: fotoSuratSehat.length,

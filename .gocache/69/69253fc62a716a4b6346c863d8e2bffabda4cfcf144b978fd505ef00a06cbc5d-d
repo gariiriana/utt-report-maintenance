@@ -1,0 +1,8 @@
+./clusterresolver.go
+./config.go
+./configbuilder.go
+./configbuilder_childname.go
+./logging.go
+./resource_resolver.go
+./resource_resolver_dns.go
+./resource_resolver_eds.go

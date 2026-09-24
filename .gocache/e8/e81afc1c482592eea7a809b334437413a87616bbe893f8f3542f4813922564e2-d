@@ -1,0 +1,4 @@
+./deprecation.pb.go
+./deprecation.pb.validate.go
+./resource.pb.go
+./resource.pb.validate.go

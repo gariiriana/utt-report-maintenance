@@ -1,0 +1,4 @@
+./logging.go
+./serviceconfig.go
+./watch_service.go
+./xds_resolver.go

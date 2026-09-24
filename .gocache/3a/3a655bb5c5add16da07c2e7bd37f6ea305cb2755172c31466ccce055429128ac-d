@@ -1,0 +1,6 @@
+./auxiliary.go
+./auxiliary_go123.go
+./doc.go
+./helpers.go
+./storage_client.go
+./version.go

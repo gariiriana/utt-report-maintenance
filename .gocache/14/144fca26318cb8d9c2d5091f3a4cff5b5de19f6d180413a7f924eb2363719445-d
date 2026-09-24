@@ -1,0 +1,3 @@
+./bootstrap.go
+./logging.go
+./template.go

@@ -1,0 +1,4 @@
+./cookie.pb.go
+./cookie.pb.validate.go
+./path_transformation.pb.go
+./path_transformation.pb.validate.go

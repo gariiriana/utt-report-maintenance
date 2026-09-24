@@ -1,0 +1,7 @@
+./cloud-function.go
+./cloud-run.go
+./detector.go
+./gce.go
+./gke.go
+./types.go
+./version.go

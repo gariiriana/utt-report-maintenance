@@ -1,0 +1,5 @@
+./ads_stream.go
+./errors.go
+./name.go
+./type.go
+./version.go

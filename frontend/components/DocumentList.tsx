@@ -3583,7 +3583,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                 </span>
                 <button
                   type="button"
-                  onClick={() => exportHseDocumentsAsZip(tbmDocs, `Arsip_TBM_${selectedMonth.replace(/\s+/g, '_')}`)}
+                  onClick={() => exportHseDocumentsAsZip(tbmDocs, `Arsip_TBM_${(selectedMonth || '').replace(/\s+/g, '_')}`)}
                   disabled={isExportingHseZip || tbmDocs.length === 0}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs disabled:opacity-50 cursor-pointer"
                   title={`Export seluruh file Absen TBM bulan ${selectedMonth} ke file ZIP`}
@@ -3629,7 +3629,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                 </span>
                 <button
                   type="button"
-                  onClick={() => exportHseDocumentsAsZip(inductionDocs, `Arsip_Induction_${selectedMonth.replace(/\s+/g, '_')}`)}
+                  onClick={() => exportHseDocumentsAsZip(inductionDocs, `Arsip_Induction_${(selectedMonth || '').replace(/\s+/g, '_')}`)}
                   disabled={isExportingHseZip || inductionDocs.length === 0}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-2xs disabled:opacity-50 cursor-pointer"
                   title={`Export seluruh verifikasi Safety Induction bulan ${selectedMonth} ke file ZIP`}
@@ -3691,7 +3691,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
               </button>
               <button
                 type="button"
-                onClick={() => exportHseDocumentsAsZip(monthDocs, `Arsip_Inspeksi_HSE_${selectedMonth.replace(/\s+/g, '_')}`)}
+                onClick={() => exportHseDocumentsAsZip(monthDocs, `Arsip_Inspeksi_HSE_${(selectedMonth || '').replace(/\s+/g, '_')}`)}
                 disabled={isExportingHseZip || monthDocs.length === 0}
                 className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
                 title={`Export seluruh file PDF bulan ${selectedMonth} ke dalam ZIP`}

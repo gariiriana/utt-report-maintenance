@@ -1,0 +1,13 @@
+./alert_policy_client.go
+./auxiliary.go
+./auxiliary_go123.go
+./doc.go
+./group_client.go
+./helpers.go
+./metric_client.go
+./notification_channel_client.go
+./query_client.go
+./service_monitoring_client.go
+./snooze_client.go
+./uptime_check_client.go
+./version.go

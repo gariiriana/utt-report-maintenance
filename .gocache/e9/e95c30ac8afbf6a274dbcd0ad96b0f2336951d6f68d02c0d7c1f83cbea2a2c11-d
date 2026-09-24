@@ -1,0 +1,11 @@
+./aggregation_result.pb.go
+./bloom_filter.pb.go
+./common.pb.go
+./document.pb.go
+./explain_stats.pb.go
+./firestore.pb.go
+./firestore_grpc.pb.go
+./pipeline.pb.go
+./query.pb.go
+./query_profile.pb.go
+./write.pb.go

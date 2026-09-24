@@ -1,0 +1,7 @@
+./auxiliary.go
+./auxiliary_go123.go
+./doc.go
+./firestore_client.go
+./helpers.go
+./info.go
+./version.go

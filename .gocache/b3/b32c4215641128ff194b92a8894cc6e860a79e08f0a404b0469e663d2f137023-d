@@ -1,0 +1,21 @@
+# test log
+getenv TEST_ENV_STR_1
+getenv TEST_ENV_STR_MISSING
+getenv TEST_ENV_STR_EMPTY
+getenv TEST_REQ_1
+getenv TEST_REQ_MISSING
+getenv TEST_INT_1
+getenv TEST_INT_MISSING
+getenv TEST_INT_BAD
+getenv TEST_BOOL
+getenv TEST_BOOL
+getenv TEST_BOOL
+getenv TEST_BOOL
+getenv TEST_BOOL
+getenv TEST_BOOL
+getenv TEST_BOOL
+getenv TEST_DUR
+getenv TEST_DUR_MISS
+getenv TEST_DUR_BAD
+getenv TEST_SLICE
+getenv TEST_SLICE_MISS
