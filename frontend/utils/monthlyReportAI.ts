@@ -12,6 +12,7 @@
 import {
   FullMonthlyReportData,
   convertReportToBilingual,
+  convertMonthlyCmReportsToBilingual,
   findBulletTranslation,
   buildDynamicCalibrationTable30,
   buildDynamicValidationMethodsTable31,
@@ -874,6 +875,34 @@ export async function convertReportToBilingualWithAI(
     });
   }
 
+  // Scan the dynamic Corrective Maintenance table as well. CM records are
+  // created from Firestore and were previously omitted from the bilingual AI
+  // pass, leaving Indonesian technician notes in Maintenance Objectives.
+  if (Array.isArray(data.cmReportsTable)) {
+    data.cmReportsTable.forEach((cm, idx) => {
+      const fields: Array<[string, string | undefined]> = [
+        ['incidentName', cm.incidentName],
+        ['equipmentName', cm.equipmentName],
+        ['location', cm.location],
+        ['summaryProblemAnalysis', cm.summaryProblemAnalysis]
+      ];
+      fields.forEach(([field, value]) => {
+        const text = String(value || '').trim();
+        if (text) {
+          // The monthly data engine may already have added a fallback
+          // English line. Send the Indonesian/source line to AI so it can
+          // replace the fallback with a proper technical translation.
+          const sourceText = text.includes('\n')
+            ? text.split('\n').slice(1).join('\n').trim()
+            : text;
+          if (sourceText) {
+            itemsToTranslate.push({ id: `cm_${field}_${idx}`, originalText: sourceText });
+          }
+        }
+      });
+    });
+  }
+
   // Scan Task Performance Tables (Tabel 2 - 17) for custom/dynamic bullets needing translation
   if (Array.isArray(data.taskPerformanceTables)) {
     data.taskPerformanceTables.forEach((tTable, tIdx) => {
@@ -1007,6 +1036,18 @@ Format Jawaban HANYA berupa JSON array valid tanpa tanda kutip markdown pembungk
         });
       }
 
+      // Apply AI translations to Corrective Maintenance records.
+      if (Array.isArray(updated.cmReportsTable)) {
+        updated.cmReportsTable.forEach((cm, idx) => {
+          (['incidentName', 'equipmentName', 'location', 'summaryProblemAnalysis'] as const).forEach(field => {
+            const key = `cm_${field}_${idx}`;
+            if (transMap.has(key)) {
+              cm[field] = transMap.get(key)!;
+            }
+          });
+        });
+      }
+
       // Apply AI translations to taskPerformanceTables if any were translated
       if (Array.isArray(updated.taskPerformanceTables)) {
         updated.taskPerformanceTables.forEach((tTable, tIdx) => {
@@ -1041,5 +1082,112 @@ Format Jawaban HANYA berupa JSON array valid tanpa tanda kutip markdown pembungk
     console.warn('AI Agent translation fallback to built-in template dictionary:', err);
   }
 
+  // Always run the CM fallback after the AI attempt. It is idempotent for
+  // already bilingual values and protects export when the AI response is
+  // incomplete or the endpoint is temporarily unavailable.
+  if (Array.isArray(updated.cmReportsTable)) {
+    updated.cmReportsTable = convertMonthlyCmReportsToBilingual(updated.cmReportsTable);
+  }
+
+  return updated;
+}
+
+/**
+ * Translates only the Monthly Report CM problem-analysis column.
+ *
+ * CM reports are entered in Indonesian, while Table 19 must always show an
+ * English technical summary first and the original Indonesian text below it.
+ * Keeping this focused routine separate from the full-report bilingual action
+ * means every newly generated/synchronised month gets the correct structure.
+ */
+export async function translateMonthlyCmSummariesWithAI(
+  data: FullMonthlyReportData,
+  onStatusUpdate?: (status: string) => void
+): Promise<FullMonthlyReportData> {
+  const updated: FullMonthlyReportData = JSON.parse(JSON.stringify(data));
+  const cmReports = updated.cmReportsTable || [];
+  if (cmReports.length === 0) return updated;
+
+  const looksEnglish = (text: string) => /\b(the|and|with|for|performed|inspection|maintenance|replacement|repair|condition|system|unit|found|performed)\b/i.test(text);
+  const sourceTextFromSummary = (value: string) => {
+    const raw = String(value || '').replace(/\r\n/g, '\n').trim();
+    if (!raw) return '';
+    const lines = raw.split('\n').map(line => line.trim()).filter(Boolean);
+    // Existing valid bilingual data: retain line 2+ as the Indonesian source.
+    if (lines.length > 1 && looksEnglish(lines[0])) {
+      return lines.slice(1).join('\n');
+    }
+    return raw;
+  };
+
+  const tasks = cmReports
+    .map((cm, index) => ({ id: `cm_summary_${index}`, source: sourceTextFromSummary(cm.summaryProblemAnalysis) }))
+    .filter(item => item.source && item.source !== '-');
+
+  if (tasks.length === 0) return updated;
+
+  onStatusUpdate?.(`Menerjemahkan ${tasks.length} Summary Corrective Report ke Bahasa Inggris...`);
+  const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+  const chatUrl = apiBaseUrl.endsWith('/api') ? `${apiBaseUrl}/ai/chat` : `${apiBaseUrl}/api/ai/chat`;
+  const translations = new Map<string, string>();
+
+  // Smaller batches avoid losing CM records behind the old global 40-item cap.
+  const batches = Array.from({ length: Math.ceil(tasks.length / 8) }, (_, index) => tasks.slice(index * 8, index * 8 + 8));
+  await Promise.all(batches.map(async (batch) => {
+    const prompt = `
+You are a senior data-center maintenance technical translator.
+Translate each Indonesian Corrective Maintenance problem-analysis note into formal, clear technical English.
+Keep the technical meaning, equipment identifiers, error codes, measurements, and bullet structure intact.
+Return ONLY a valid JSON array; do not add markdown or explanations:
+[
+  { "id": "cm_summary_0", "english": "Technical English translation" }
+]
+
+Notes to translate:
+${JSON.stringify(batch.map(item => ({ id: item.id, indonesian: item.source })), null, 2)}
+    `.trim();
+
+    try {
+      const response = await fetch(chatUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'Return only a valid JSON array. Translate Indonesian maintenance notes into formal technical English.' },
+            { role: 'user', content: prompt }
+          ]
+        })
+      });
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      const reply = typeof payload === 'string' ? payload : (payload.reply || payload.content || payload.message || '');
+      const clean = String(reply).replace(/```json/gi, '').replace(/```/g, '').trim();
+      const arrayStart = clean.indexOf('[');
+      const arrayEnd = clean.lastIndexOf(']');
+      const parsed = JSON.parse(arrayStart >= 0 && arrayEnd >= arrayStart ? clean.slice(arrayStart, arrayEnd + 1) : clean);
+      if (!Array.isArray(parsed)) return;
+
+      parsed.forEach((item: { id?: string; english?: string }) => {
+        const english = String(item?.english || '').replace(/\r\n/g, '\n').trim();
+        if (item?.id && english) translations.set(item.id, english);
+      });
+    } catch (error) {
+      console.warn('CM summary translation batch failed:', error);
+    }
+  }));
+
+  cmReports.forEach((cm, index) => {
+    const id = `cm_summary_${index}`;
+    const indonesian = sourceTextFromSummary(cm.summaryProblemAnalysis);
+    const english = translations.get(id);
+    if (english && indonesian) {
+      cm.summaryProblemAnalysis = `${english}\n${indonesian}`;
+    }
+  });
+
+  onStatusUpdate?.(translations.size > 0
+    ? 'Summary Corrective Report sudah disusun English-first + Bahasa Indonesia.'
+    : 'Penerjemahan AI belum tersedia; teks asli tetap dipertahankan.');
   return updated;
 }

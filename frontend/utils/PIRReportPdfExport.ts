@@ -132,6 +132,22 @@ export async function generatePIRReportPDF(data: PIRReportData) {
 
     y = (doc as any).lastAutoTable.finalY;
 
+    // Ticket SLA/SLG yang diwajibkan dari PIR
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['SLA/SLG TICKET NUMBER', 'SLA/SLG TICKET STATUS']],
+      body: [[
+        data.slaTicketNumber || (data as any).ticketNumber || 'N/A',
+        (data.slaTicketStatus || (data as any).ticketStatus || 'OPEN').toUpperCase()
+      ]],
+      headStyles: { fillColor: HEADER_FILL, textColor: [40, 40, 40], fontStyle: 'bold', fontSize: 9, lineWidth: 0.2, lineColor: TABLE_BORDER },
+      bodyStyles: { textColor: [30, 30, 30], fontSize: 9, lineWidth: 0.2, lineColor: TABLE_BORDER },
+      columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 81 } }
+    });
+
+    y = (doc as any).lastAutoTable.finalY;
+
     // Table 2: POSTMORTEM OWNER NAME AND TITLE | DATE COMPLETED
     autoTable(doc, {
       startY: y,

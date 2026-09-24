@@ -53,3 +53,5 @@ downloads/
 *.log
 backend/*.log
 
+# Temporary
+tmp/

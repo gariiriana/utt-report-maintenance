@@ -830,9 +830,6 @@ export async function exportCMMonthlyRecapToDocx(
   const periodTitle = typeof periodTitleOrOptions === 'object'
     ? (periodTitleOrOptions.periodLabel || 'Bulanan')
     : periodTitleOrOptions;
-  const printedBy = typeof periodTitleOrOptions === 'object'
-    ? (periodTitleOrOptions.printedBy || 'PT Dwimitra Ekatama Mandiri')
-    : 'PT Dwimitra Ekatama Mandiri';
 
   const reports = (rawReports || [])
     .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR')
@@ -851,16 +848,6 @@ export async function exportCMMonthlyRecapToDocx(
     ]);
 
     const now = new Date();
-    const dateStr = now.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-    const timeStr = now.toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
     // Theme Colors (Monokrom formal & profesional)
     const COLOR_PRIMARY = '000000';
     const COLOR_SECONDARY = '000000';
@@ -956,11 +943,10 @@ export async function exportCMMonthlyRecapToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `Dicetak: ${dateStr}, ${timeStr} WIB oleh ${printedBy}`,
+                      text: 'Dokumen Resmi Rekapitulasi Corrective Maintenance (CM)',
                       size: 14,
                       color: COLOR_MUTED,
                       font: 'Calibri',
-                      italics: true,
                     }),
                   ],
                 }),
@@ -1056,19 +1042,18 @@ export async function exportCMMonthlyRecapToDocx(
         issueLines = ['-'];
       }
 
-      // 2. Parsing baris / bullet tindakan solusi
-      let actionLines: string[] = [];
-      if (actionTrimmed && actionTrimmed !== '-') {
-        if (actionTrimmed.includes('\n')) {
-          actionLines = actionTrimmed.split('\n').map(l => l.trim()).filter(Boolean);
-        } else if (actionTrimmed.includes('•')) {
-          actionLines = actionTrimmed.split('•').map(l => l.trim()).filter(Boolean).map(l => `• ${l}`);
-        } else {
-          actionLines = [actionTrimmed];
-        }
-      } else {
-        actionLines = ['-'];
-      }
+      // 2. Normalisasi tindakan solusi menjadi daftar bernomor yang konsisten.
+      // Input lama dapat berisi bullet, strip, ataupun nomor dari teknisi.
+      const actionLines = (actionTrimmed && actionTrimmed !== '-' ? actionTrimmed : '-')
+        .replace(/\r\n?/g, '\n')
+        .replace(/•\s*/g, '\n')
+        .split(/\n+/)
+        .map((line) => line
+          .trim()
+          .replace(/^\s*(?:[-–—]\s*|\d+\s*[).:-]\s*)/, '')
+          .trim())
+        .filter(Boolean);
+      if (actionLines.length === 0) actionLines.push('-');
 
       const cellParagraphs: Paragraph[] = [];
 
@@ -1121,40 +1106,42 @@ export async function exportCMMonthlyRecapToDocx(
         );
       });
 
-      // B. Bagian Bawah: Tindakan Solusi
-      actionLines.forEach((line, idx) => {
-        const isFirst = idx === 0;
-        const isLast = idx === actionLines.length - 1;
-        const children: TextRun[] = [];
-
-        if (isFirst) {
-          children.push(
+      // B. Bagian Bawah: Tindakan Solusi (nomor 1)., 2)., 3)., dst.)
+      cellParagraphs.push(
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 14, after: 2 },
+          children: [
             new TextRun({
-              text: 'Tindakan Solusi: ',
+              text: 'Tindakan Solusi:',
               bold: true,
               size: 13,
-              color: '166534', // Emerald hijau
+              color: '166534',
               font: 'Calibri',
-            })
-          );
-        }
-        children.push(
-          new TextRun({
-            text: line,
-            size: 14,
-            color: COLOR_DARK,
-            font: 'Calibri',
-          })
-        );
+            }),
+          ],
+        })
+      );
+
+      actionLines.forEach((line, idx) => {
+        const isLast = idx === actionLines.length - 1;
 
         cellParagraphs.push(
           new Paragraph({
             alignment: AlignmentType.LEFT,
+            indent: { left: 180, hanging: 120 },
             spacing: {
-              before: isFirst ? 14 : 4,
-              after: isLast ? 15 : 4,
+              before: 0,
+              after: isLast ? 15 : 2,
             },
-            children,
+            children: [
+              new TextRun({
+                text: `${idx + 1}). ${line}`,
+                size: 14,
+                color: COLOR_DARK,
+                font: 'Calibri',
+              }),
+            ],
           })
         );
       });
@@ -1302,6 +1289,7 @@ export async function exportCMMonthlyRecapToDocx(
     detailReportParagraphs.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_1,
+        pageBreakBefore: true,
         spacing: { before: 400, after: 150 },
         children: [
           new TextRun({
@@ -1327,6 +1315,56 @@ export async function exportCMMonthlyRecapToDocx(
       })
     );
 
+    // Data tindakan dari form kadang membawa CRLF/baris kosong berulang.
+    // Normalisasi menjadi satu line break agar Word tidak membuat jarak vertikal
+    // yang terlalu lebar di dalam kotak Issue dan Action Taken.
+    const buildCompactDetailRuns = (value: unknown, size: number, color: string, bold = false): TextRun[] => {
+      const lines = String(value || '-')
+        .replace(/\r\n?/g, '\n')
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const safeLines = lines.length > 0 ? lines : ['-'];
+
+      return safeLines.flatMap((line, lineIdx) => [
+        ...(lineIdx > 0 ? [new TextRun({ break: 1 })] : []),
+        new TextRun({ text: line, size, color, bold, font: 'Calibri' }),
+      ]);
+    };
+
+    // Hanya jadikan Action Taken sebagai daftar bernomor bila input memang
+    // memakai penanda poin (bullet, strip, atau nomor). Paragraf biasa tetap
+    // dipertahankan sebagai teks biasa agar formatnya tidak dipaksakan.
+    const buildNumberedActionRuns = (value: unknown, size: number, color: string): TextRun[] | null => {
+      const lines = String(value || '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/\u2022\s*/g, '\n\u2022 ')
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const pointMarker = /^\s*(?:\u2022|[-–—*]|\d+\s*[).:-])\s*/;
+
+      if (!lines.some((line) => pointMarker.test(line))) return null;
+
+      const points: string[] = [];
+      lines.forEach((line) => {
+        const isPoint = pointMarker.test(line);
+        const cleanLine = line.replace(pointMarker, '').trim();
+        if (!cleanLine) return;
+
+        if (isPoint || points.length === 0) {
+          points.push(cleanLine);
+        } else {
+          points[points.length - 1] += ` ${cleanLine}`;
+        }
+      });
+
+      return points.flatMap((point, pointIdx) => [
+        ...(pointIdx > 0 ? [new TextRun({ break: 1 })] : []),
+        new TextRun({ text: `${pointIdx + 1}). ${point}`, size, color, font: 'Calibri' }),
+      ]);
+    };
+
     for (let idx = 0; idx < reports.length; idx++) {
       const report = reports[idx];
       const statusInfo = getTroubleStatusInfo(report);
@@ -1343,6 +1381,10 @@ export async function exportCMMonthlyRecapToDocx(
       // Header Card Pekerjaan CM
       detailReportParagraphs.push(
         new Paragraph({
+          // Setiap laporan CM harus dimulai dari halaman baru agar header,
+          // metadata, tindakan, dan dokumentasinya tetap menjadi satu blok.
+          pageBreakBefore: idx > 0,
+          keepNext: true,
           spacing: { before: 250, after: 80 },
           shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
           border: {
@@ -1442,7 +1484,7 @@ export async function exportCMMonthlyRecapToDocx(
                 children: [
                   new Paragraph({
                     spacing: { before: 20, after: 20 },
-                    children: [new TextRun({ text: 'Jenis CM & Sparepart', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' })],
+                    children: [new TextRun({ text: 'Jenis CM', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' })],
                   }),
                 ],
               }),
@@ -1454,7 +1496,7 @@ export async function exportCMMonthlyRecapToDocx(
                     spacing: { before: 20, after: 20 },
                     children: [
                       new TextRun({
-                        text: `${isSp ? 'Pergantian Sparepart' : 'Non-Sparepart'} (${getSparepartCategoryLabel(report)}) — Sparepart: ${getSparepartsSummary(report)}`,
+                        text: `${isSp ? 'Pergantian Sparepart' : 'Non-Sparepart'} (${getSparepartCategoryLabel(report).replace(/\s*\(Wajib SLA\)/i, '')})`,
                         size: 15,
                         color: COLOR_DARK,
                         font: 'Calibri',
@@ -1484,7 +1526,7 @@ export async function exportCMMonthlyRecapToDocx(
           ],
         }),
         new Paragraph({
-          spacing: { before: 30, after: 80 },
+          spacing: { before: 30, after: 80, line: 240 },
           shading: { type: ShadingType.SOLID, color: COLOR_ROSE_BG, fill: COLOR_ROSE_BG },
           border: {
             left: { style: BorderStyle.SINGLE, size: 6, color: COLOR_DARK },
@@ -1493,18 +1535,12 @@ export async function exportCMMonthlyRecapToDocx(
             bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
           },
           indent: { left: 100 },
-          children: [
-            new TextRun({
-              text: issueStr,
-              size: 15,
-              color: COLOR_DARK,
-              font: 'Calibri',
-            }),
-          ],
+          children: buildCompactDetailRuns(issueStr, 15, COLOR_DARK, true),
         })
       );
 
       // Callout Box Tindakan Perbaikan
+      const numberedActionRuns = buildNumberedActionRuns(actionStr, 15, COLOR_DARK);
       detailReportParagraphs.push(
         new Paragraph({
           spacing: { before: 40, after: 20 },
@@ -1519,7 +1555,7 @@ export async function exportCMMonthlyRecapToDocx(
           ],
         }),
         new Paragraph({
-          spacing: { before: 30, after: 60 },
+          spacing: { before: 30, after: 60, line: 240 },
           shading: { type: ShadingType.SOLID, color: COLOR_GREEN_BG, fill: COLOR_GREEN_BG },
           border: {
             left: { style: BorderStyle.SINGLE, size: 6, color: COLOR_DARK },
@@ -1528,14 +1564,7 @@ export async function exportCMMonthlyRecapToDocx(
             bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
           },
           indent: { left: 100 },
-          children: [
-            new TextRun({
-              text: actionStr,
-              size: 15,
-              color: COLOR_DARK,
-              font: 'Calibri',
-            }),
-          ],
+          children: numberedActionRuns || buildCompactDetailRuns(actionStr, 15, COLOR_DARK),
         })
       );
 
@@ -1713,7 +1742,7 @@ export async function exportCMMonthlyRecapToDocx(
               });
             }
 
-            photoTableRows.push(new TableRow({ children: [cell1, cell2] }));
+            photoTableRows.push(new TableRow({ cantSplit: true, children: [cell1, cell2] }));
           }
 
           detailReportParagraphs.push(

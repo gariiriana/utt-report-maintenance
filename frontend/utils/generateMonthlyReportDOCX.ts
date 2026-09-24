@@ -802,8 +802,10 @@ export async function generateMonthlyReportDOCX(
         // Bullet line is English (regular); non-bullet line below it is Indonesian (italic)
         isItalic = !/^[•\-\*]/.test(trimmed) && trimmed.length > 0;
       } else {
-        // Standard 2-line dual-language: line 0 is English, line 1+ is Indonesian
-        isItalic = idx >= 1 || /^(periksa|melakukan|sistem|tidak|lanjutkan|kondisi|terdapat|ganti|sesuaikan|lakukan|teramat|inspeksi|pengujian|saat ini|pemeliharaan)/i.test(trimmed);
+        // Standard dual-language structure: line 0 is English, line 1+ is Indonesian.
+        // Do not infer language from a few Indonesian words: that can make
+        // mixed source text look like the English line in the export.
+        isItalic = idx >= 1;
       }
 
       return new Paragraph({
@@ -1251,11 +1253,11 @@ export async function generateMonthlyReportDOCX(
     ] : cmItems.map(row => new TableRow({
       children: [
         new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.no), size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.incidentName || "-", bold: true, size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.equipmentName || "-", size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.location || "-", size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.incidentDate || "-", size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.summaryProblemAnalysis || "-", size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: formatBilingualCell(row.incidentName, "-", false) }),
+        new TableCell({ borders: borderThin, children: formatBilingualCell(row.equipmentName, "-", false) }),
+        new TableCell({ borders: borderThin, children: formatBilingualCell(row.location, "-", false) }),
+        new TableCell({ borders: borderThin, children: formatBilingualCell(row.incidentDate, "-", true) }),
+        new TableCell({ borders: borderThin, children: formatBilingualCell(row.summaryProblemAnalysis, "-", false) }),
       ]
     })))
   ];

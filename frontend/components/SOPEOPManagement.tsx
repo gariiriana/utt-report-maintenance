@@ -2,7 +2,7 @@
 // FILE: frontend/components/SOPEOPManagement.tsx
 // Deskripsi: Modul Manajemen SOP & EOP Khusus Akun PT Dwimitra Ekatama Mandiri.
 //            Menyediakan Form interaktif SOP (14 Seksi), Form interaktif EOP (8 Seksi),
-//            Penyimpanan Arsip Cloud di Firestore, serta Ekspor 1:1 ke Word (.docx).
+//            Penyimpanan Arsip Cloud di Firestore, serta Ekspor Dokumen ke Word (.docx) dan PDF (.pdf).
 // ============================================================================
 
 import { useState, useEffect, useRef } from 'react';
@@ -58,6 +58,7 @@ import {
   DEFAULT_EOP_DATA
 } from '@/types/sopEopTypes';
 import { exportSOPToDocx, exportEOPToDocx } from '@/utils/sopEopDocxExport';
+import { exportSOPToPdf, exportEOPToPdf } from '@/utils/sopEopPdfExport';
 import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI } from '@/utils/sopEopBilingualAI';
 import { importSopEopFromDocx } from '@/utils/sopEopDocxImport';
 
@@ -75,6 +76,7 @@ export function SOPEOPManagement() {
   const [sopData, setSopData] = useState<SOPDocumentData>(() => ({ ...DEFAULT_SOP_DATA }));
   const [currentSopDocId, setCurrentSopDocId] = useState<string | null>(null);
   const [isExportingSop, setIsExportingSop] = useState(false);
+  const [isExportingSopPdf, setIsExportingSopPdf] = useState(false);
   const [isSavingSop, setIsSavingSop] = useState(false);
   const [isBilingualSop, setIsBilingualSop] = useState(false);
 
@@ -82,6 +84,7 @@ export function SOPEOPManagement() {
   const [eopData, setEopData] = useState<EOPDocumentData>(() => ({ ...DEFAULT_EOP_DATA }));
   const [currentEopDocId, setCurrentEopDocId] = useState<string | null>(null);
   const [isExportingEop, setIsExportingEop] = useState(false);
+  const [isExportingEopPdf, setIsExportingEopPdf] = useState(false);
   const [isSavingEop, setIsSavingEop] = useState(false);
   const [isBilingualEop, setIsBilingualEop] = useState(false);
 
@@ -254,6 +257,20 @@ export function SOPEOPManagement() {
       toast.error(`Gagal mengekspor Word SOP: ${err?.message || err}`);
     } finally {
       setIsExportingSop(false);
+    }
+  };
+
+  const handleExportSopPdf = async () => {
+    try {
+      setIsExportingSopPdf(true);
+      toast.info('Menyiapkan berkas PDF SOP...');
+      await exportSOPToPdf(sopData);
+      toast.success('Dokumen SOP (.pdf) berhasil diekspor!');
+    } catch (err: any) {
+      console.error('Gagal mengekspor SOP PDF:', err);
+      toast.error(`Gagal mengekspor PDF SOP: ${err?.message || err}`);
+    } finally {
+      setIsExportingSopPdf(false);
     }
   };
 
@@ -492,6 +509,20 @@ export function SOPEOPManagement() {
     }
   };
 
+  const handleExportEopPdf = async () => {
+    try {
+      setIsExportingEopPdf(true);
+      toast.info('Menyiapkan berkas PDF EOP...');
+      await exportEOPToPdf(eopData);
+      toast.success('Dokumen EOP (.pdf) berhasil diekspor!');
+    } catch (err: any) {
+      console.error('Gagal mengekspor EOP PDF:', err);
+      toast.error(`Gagal mengekspor PDF EOP: ${err?.message || err}`);
+    } finally {
+      setIsExportingEopPdf(false);
+    }
+  };
+
   const handleBilingualEop = async () => {
     try {
       setIsBilingualEop(true);
@@ -633,6 +664,20 @@ export function SOPEOPManagement() {
       toast.success(`Berhasil mengunduh dokumen ${item.type} (.docx)`);
     } catch (err: any) {
       toast.error(`Gagal mengunduh: ${err?.message || err}`);
+    }
+  };
+
+  const handleDownloadArchivePdf = async (item: any) => {
+    try {
+      toast.info(`Menyiapkan PDF ${item.type}: ${item.documentTitle}...`);
+      if (item.type === 'SOP') {
+        await exportSOPToPdf(item);
+      } else {
+        await exportEOPToPdf(item);
+      }
+      toast.success(`Berhasil mengunduh dokumen ${item.type} (.pdf)`);
+    } catch (err: any) {
+      toast.error(`Gagal mengunduh PDF: ${err?.message || err}`);
     }
   };
 
@@ -1926,6 +1971,16 @@ export function SOPEOPManagement() {
                 <Download className="w-4 h-4" />
                 <span>{isExportingSop ? 'Mengekspor Word...' : 'Ekspor Word (.docx)'}</span>
               </button>
+
+              <button
+                type="button"
+                onClick={handleExportSopPdf}
+                disabled={isExportingSopPdf}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-rose-700 to-red-700 hover:from-rose-800 hover:to-red-800 shadow-md shadow-rose-600/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>{isExportingSopPdf ? 'Mengekspor PDF...' : 'Ekspor PDF (.pdf)'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -2569,6 +2624,16 @@ export function SOPEOPManagement() {
                 <Download className="w-4 h-4" />
                 <span>{isExportingEop ? 'Mengekspor Word...' : 'Ekspor Word (.docx)'}</span>
               </button>
+
+              <button
+                type="button"
+                onClick={handleExportEopPdf}
+                disabled={isExportingEopPdf}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-fuchsia-700 to-purple-700 hover:from-fuchsia-800 hover:to-purple-800 shadow-md shadow-fuchsia-600/20 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>{isExportingEopPdf ? 'Mengekspor PDF...' : 'Ekspor PDF (.pdf)'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -2760,6 +2825,20 @@ export function SOPEOPManagement() {
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Word (.docx)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadArchivePdf(item)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all ${
+                          item.type === 'SOP'
+                            ? 'bg-rose-700 hover:bg-rose-800'
+                            : 'bg-fuchsia-700 hover:bg-fuchsia-800'
+                        }`}
+                        title="Download Dokumen PDF (.pdf)"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>PDF (.pdf)</span>
                       </button>
 
                       <button

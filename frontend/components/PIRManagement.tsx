@@ -40,6 +40,7 @@ import {
 import { useAuth } from './AuthContext';
 import { PIRReportData } from '@/types/pirReportTypes';
 import { PIRReportFormModal } from './PIRReportFormModal';
+import { SLAForm, SLAPrefillData } from './SLAForm';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { exportPIRReportToDocx } from '@/utils/docxReportExport';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
@@ -68,6 +69,7 @@ export function PIRManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
+  const [slaPrefill, setSlaPrefill] = useState<SLAPrefillData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
@@ -157,6 +159,24 @@ export function PIRManagement() {
   const handleOpenEdit = (id: string) => {
     setEditingId(id);
     setShowModal(true);
+  };
+
+  const handleCreateSLAFromPIR = (report: PIRReportData) => {
+    if (report.slaReportId) {
+      toast.info('Laporan PIR ini sudah tertaut dengan Form SLA/SLG.');
+      return;
+    }
+
+    setSlaPrefill({
+      ticketName: report.incidentName || 'Post Incident Report',
+      ticketNumber: report.slaTicketNumber || (report as any).ticketNumber || report.incidentId || '',
+      ticketStatus: report.slaTicketStatus || ((report as any).ticketStatus === 'closed' ? 'closed' : 'open'),
+      location: (report as any).location || (isK2User ? 'K2 Data Centres' : 'Neutra DC Cikarang'),
+      timeOrder: report.incidentDate || '',
+      pirReportId: report.id,
+      remark: report.resolution || report.summary || '',
+      equipmentName: report.incidentName || '',
+    });
   };
 
   const handleExportPDF = async (report: PIRReportData) => {
@@ -371,6 +391,13 @@ export function PIRManagement() {
                           <span className="truncate">{(report as any).location}</span>
                         </div>
                       )}
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">Tiket: {report.slaTicketNumber || (report as any).ticketNumber || '-'}</span>
+                        <span className={`ml-auto px-1.5 py-0.5 rounded text-[9px] font-black ${(report.slaTicketStatus || (report as any).ticketStatus) === 'closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {((report.slaTicketStatus || (report as any).ticketStatus || 'open') as string).toUpperCase()}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Summary Snippet */}
@@ -390,7 +417,17 @@ export function PIRManagement() {
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="pt-4 mt-4 border-t border-slate-100 grid grid-cols-4 gap-1.5">
+                  <div className="pt-4 mt-4 border-t border-slate-100 grid grid-cols-5 gap-1.5">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleCreateSLAFromPIR(report)}
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold transition cursor-pointer ${report.slaReportId ? 'bg-emerald-50 text-emerald-700' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'}`}
+                      title={report.slaReportId ? 'SLA/SLG PIR sudah dibuat' : 'Wajib membuat SLA/SLG dari PIR ini'}
+                    >
+                      <FileText className="w-4 h-4 mb-0.5" />
+                      <span>{report.slaReportId ? 'SLA Ada' : 'Buat SLA'}</span>
+                    </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -465,15 +502,31 @@ export function PIRManagement() {
       {showModal && (
         <PIRReportFormModal
           editId={editingId}
-          onSuccess={() => {
+          onSuccess={(_, savedReport) => {
             setShowModal(false);
             setEditingId(undefined);
+            if (savedReport) handleCreateSLAFromPIR(savedReport);
           }}
           onCancel={() => {
             setShowModal(false);
             setEditingId(undefined);
           }}
         />
+      )}
+
+      {slaPrefill && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/45 p-3 sm:p-6">
+          <div className="max-w-6xl mx-auto my-4 sm:my-8">
+            <SLAForm
+              prefillData={slaPrefill}
+              onSuccess={() => setSlaPrefill(null)}
+              onCancel={() => {
+                setSlaPrefill(null);
+                toast.warning('SLA/SLG PIR belum dibuat. Gunakan tombol “Buat SLA” pada kartu PIR untuk melanjutkan.');
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}

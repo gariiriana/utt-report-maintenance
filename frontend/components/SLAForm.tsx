@@ -118,10 +118,13 @@ interface PhotoItem {
 
 export interface SLAPrefillData {
   ticketName?: string;
+  ticketNumber?: string;
+  ticketStatus?: 'open' | 'closed';
   location?: string;
   timeOrder?: string;
   priority?: 'Critical' | 'High' | 'Medium' | 'Low';
   cmReportId?: string;
+  pirReportId?: string;
   remark?: string;
   equipmentName?: string;
 }
@@ -156,12 +159,15 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
   // Form State
   const [formData, setFormData] = useState({
     ticketName: prefillData?.ticketName || '',
+    ticketNumber: prefillData?.ticketNumber || '',
+    ticketStatus: (prefillData?.ticketStatus || 'open') as 'open' | 'closed',
     location: prefillData?.location || '',
     priority: (prefillData?.priority || 'Medium') as 'Critical' | 'High' | 'Medium' | 'Low',
     picDME: '',
     picTDE: '',
     remark: prefillData?.remark || '',
     cmReportId: prefillData?.cmReportId || '',
+    pirReportId: prefillData?.pirReportId || '',
 
     // Response Time (Step 1) - Target < 5 Menit
     timeOrder: '',
@@ -233,12 +239,15 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
 
             setFormData({
               ticketName: data.ticketName || '',
+              ticketNumber: data.ticketNumber || '',
+              ticketStatus: data.ticketStatus === 'closed' ? 'closed' : 'open',
               location: data.location || '',
               priority: currentPrio,
               picDME: data.picDME || '',
               picTDE: data.picTDE || '',
               remark: data.remark || '',
               cmReportId: data.cmReportId || '',
+              pirReportId: data.pirReportId || '',
               timeOrder: data.timeOrder || '',
               actualTimeResponse: data.actualTimeResponse || '',
               targetResponseMin: data.targetResponseMin || 5,
@@ -276,11 +285,14 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       setFormData(prev => ({
         ...prev,
         ticketName: prefillData.ticketName || prev.ticketName,
+        ticketNumber: prefillData.ticketNumber || prev.ticketNumber,
+        ticketStatus: prefillData.ticketStatus || prev.ticketStatus,
         location: prefillData.location || prev.location,
         timeOrder: prefillData.timeOrder || prev.timeOrder,
         priority: finalPriority,
         remark: prefillData.remark || prev.remark,
         cmReportId: prefillData.cmReportId || prev.cmReportId,
+        pirReportId: prefillData.pirReportId || prev.pirReportId,
       }));
 
       if (matchedCatalog) {
@@ -580,6 +592,11 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
 
     // Step 1 Validation: Response Time (needed when moving to Step 2 or beyond)
     if (targetStep >= 2) {
+      if (formData.pirReportId && !formData.ticketNumber?.trim()) {
+        toast.error('Nomor Tiket wajib diisi untuk SLA/SLG yang berasal dari PIR');
+        setCurrentStep(1);
+        return false;
+      }
       if (!formData.location?.trim()) {
         toast.error('Mohon lengkapi Lokasi Gangguan di Step 1');
         setCurrentStep(1);
@@ -703,6 +720,8 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       let finalReport: any = {
         reportType: 'SLA',
         ticketName: (formData.ticketName || '').trim() || 'Work Order',
+        ticketNumber: (formData.ticketNumber || '').trim(),
+        ticketStatus: formData.ticketStatus || 'open',
         location: (formData.location || '').trim() || 'Neutra DC Cikarang',
         priority: formData.priority || 'Medium',
         picDME: (formData.picDME || '').trim() || 'On Duty DME',
@@ -712,7 +731,8 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
         // Core calculations mapping for normal display compatibility
         issue: `[SLA / SLG] ${(formData.ticketName || '').trim() || 'Work Order'} (${formData.priority || 'Medium'})`,
         actionTaken: (formData.resolutionRemark || '').trim() || (formData.remark || '').trim() || 'Pemeliharaan corrective diselesaikan sesuai target SLA.',
-        status: 'Resolved',
+        status: formData.ticketStatus === 'closed' ? 'Resolved' : 'Open',
+        troubleStatus: formData.ticketStatus || 'open',
         spareParts: '',
         quarter: `Q${Math.floor(new Date().getMonth() / 3) + 1}`,
         year: new Date().getFullYear().toString(),
@@ -760,6 +780,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
 
         // Linked CM Report
         cmReportId: (formData as any).cmReportId || prefillData?.cmReportId || '',
+        pirReportId: (formData as any).pirReportId || prefillData?.pirReportId || '',
 
         // Metadata
         reportedBy: user.uid,
@@ -812,6 +833,18 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
           });
         } catch (cmLinkErr) {
           console.warn('Could not update reverse slaReportId on CM doc:', cmLinkErr);
+        }
+      }
+
+      // Two-way link untuk SLA/SLG yang diwajibkan dari Post Incident Report.
+      if (finalReport.pirReportId && slaDocId) {
+        try {
+          await updateDoc(doc(db, 'corrective_reports', finalReport.pirReportId), {
+            slaReportId: slaDocId,
+            hasSLA: true,
+          });
+        } catch (pirLinkErr) {
+          console.warn('Could not update reverse slaReportId on PIR doc:', pirLinkErr);
         }
       }
 
@@ -1270,6 +1303,30 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
                       <option value="Low">Low (Target 48 Jam / 2880m)</option>
                     </select>
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm text-slate-400 font-medium mb-1.5">Nomor Tiket</label>
+                  <input
+                    type="text"
+                    value={formData.ticketNumber}
+                    onChange={(e) => setFormData({ ...formData, ticketNumber: e.target.value })}
+                    placeholder="Contoh: INC-2026-001234"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 outline-none shadow-sm text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-400 font-medium mb-1.5">Status Tiket</label>
+                  <select
+                    value={formData.ticketStatus}
+                    onChange={(e) => setFormData({ ...formData, ticketStatus: e.target.value as 'open' | 'closed' })}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 outline-none shadow-sm text-sm font-semibold"
+                  >
+                    <option value="open">OPEN — Masih dalam penanganan</option>
+                    <option value="closed">CLOSED — Sudah selesai</option>
+                  </select>
                 </div>
               </div>
 

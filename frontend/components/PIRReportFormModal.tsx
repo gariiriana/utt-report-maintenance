@@ -63,7 +63,7 @@ function cleanPayloadForFirestore<T extends Record<string, any>>(obj: T): Partia
 }
 
 interface PIRReportFormModalProps {
-  onSuccess: (savedId?: string) => void;
+  onSuccess: (savedId?: string, savedReport?: PIRReportData) => void;
   onCancel: (canceledId?: string) => void;
   editId?: string;
 }
@@ -297,6 +297,11 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         setCurrentStep(1);
         return false;
       }
+      if (!formData.slaTicketNumber?.trim()) {
+        toast.error('Nomor Tiket SLA/SLG wajib diisi di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
       if (!formData.postmortemOwner?.trim()) {
         toast.error('Mohon isi Postmortem Owner Name & Title di Step 1');
         setCurrentStep(1);
@@ -405,8 +410,11 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       issue: formData.incidentName || 'Postmortem Incident Report',
       location: resolvedCompanyType === 'k2' ? 'K2 Data Centres' : 'Neutra DC Cikarang',
       ticketName: formData.incidentName || 'Postmortem Incident Report',
+      ticketNumber: formData.slaTicketNumber.trim(),
+      ticketStatus: formData.slaTicketStatus,
       actionTaken: formData.resolution || '-',
-      status: 'Resolved',
+      status: formData.slaTicketStatus === 'closed' ? 'Resolved' : 'Open',
+      troubleStatus: formData.slaTicketStatus,
       reportAuthors: author,
       reportedBy: uid,
       reportedByEmail: email,
@@ -460,7 +468,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         });
       }
 
-      onSuccess(savedDocId);
+      onSuccess(savedDocId, { ...formData, ...(docPayload as PIRReportData), id: savedDocId });
     } catch (err: any) {
       console.error('Error saving PIR report:', err);
       const errMsg = err?.message || err?.toString() || '';
@@ -507,7 +515,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         } catch { /* ignore */ }
       }
 
-      onSuccess(exportedDocId);
+      onSuccess(exportedDocId, { ...formData, ...(docPayload as PIRReportData), id: exportedDocId });
     } catch (err) {
       console.error('Error auto-saving PIR report on export:', err);
     } finally {
@@ -643,6 +651,33 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   placeholder="Contoh: #95369"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+              <div>
+                <label className="block text-xs font-bold text-blue-800 uppercase mb-1">NOMOR TIKET SLA/SLG *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.slaTicketNumber}
+                  onChange={(e) => setFormData({ ...formData, slaTicketNumber: e.target.value })}
+                  placeholder="Contoh: INC-2026-001234"
+                  className="w-full px-3 py-2 border border-blue-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                />
+                <p className="text-[11px] text-blue-700 mt-1">Wajib; otomatis diteruskan ke Form SLA/SLG setelah PIR disimpan.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-blue-800 uppercase mb-1">STATUS TIKET SLA/SLG *</label>
+                <select
+                  value={formData.slaTicketStatus}
+                  onChange={(e) => setFormData({ ...formData, slaTicketStatus: e.target.value as 'open' | 'closed' })}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                >
+                  <option value="open">OPEN — Masih dalam penanganan</option>
+                  <option value="closed">CLOSED — Sudah ditutup / selesai</option>
+                </select>
+                <p className="text-[11px] text-blue-700 mt-1">Status ini ikut tercetak pada export SLA/SLG.</p>
               </div>
             </div>
 

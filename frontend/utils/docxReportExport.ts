@@ -1255,7 +1255,7 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
 
           createBoxSection(
             'TIKET INCIDENT & LOKASI',
-            `Nama Tiket : ${report.ticketName || 'N/A'}\nLokasi     : ${report.location || 'N/A'}\nWaktu Order: ${formatSLAOrderDateTime(report.timeOrder || report.startOrder)}\nPriority   : ${report.priority || 'Medium'}\nPIC DME    : ${picDMEVal}\nPIC TDE    : ${picTDEVal}`
+            `Nama Tiket   : ${report.ticketName || 'N/A'}\nNomor Tiket  : ${report.ticketNumber || '-'}\nStatus Tiket : ${(report.ticketStatus || report.troubleStatus || 'open').toString().toUpperCase()}\nLokasi       : ${report.location || 'N/A'}\nWaktu Order  : ${formatSLAOrderDateTime(report.timeOrder || report.startOrder)}\nPriority     : ${report.priority || 'Medium'}\nPIC DME      : ${picDMEVal}\nPIC TDE      : ${picTDEVal}`
           ),
           new Paragraph({ spacing: { after: 180 } }),
 
@@ -1330,6 +1330,8 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
     ['Incident Name', resolvedIncidentName],
     ['Incident Date', data.incidentDate],
     ['Incident ID', data.incidentId || (data.id ? data.id.slice(0, 8) : undefined)],
+    ['SLA/SLG Ticket Number', data.slaTicketNumber || (data as any).ticketNumber],
+    ['SLA/SLG Ticket Status', (data.slaTicketStatus || (data as any).ticketStatus || '').toUpperCase()],
     ['Postmortem Owner', resolvedOwner],
     ['Date Completed', data.dateCompleted],
     ['Report Authors', data.reportAuthors],

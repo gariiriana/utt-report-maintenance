@@ -27,6 +27,7 @@ import {
   ShadingType,
   Header,
   Footer,
+  PageBreak,
   PageNumber,
   NumberFormat,
   PageOrientation,
@@ -154,7 +155,6 @@ export async function exportAbnormalRecapToWord(
   options: ExportAbnormalWordOptions = {}
 ): Promise<void> {
   const periodLabel = options.periodLabel || 'Semua Periode';
-  const printedBy = options.printedBy || 'Quality Control DME (qcdme@dme.com)';
 
   // 1. Muat Logo Dwimitra (Kiri) dan Logo NeutraDC (Kanan)
   const [dmeLogo, neutraLogo] = await Promise.all([
@@ -163,15 +163,6 @@ export async function exportAbnormalRecapToWord(
   ]);
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-  const timeStr = now.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 
   // Hitung Statistik
   const totalFindings = items.length;
@@ -249,11 +240,10 @@ export async function exportAbnormalRecapToWord(
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: `Dicetak: ${dateStr}, ${timeStr} WIB oleh ${printedBy}`,
+                    text: 'Dokumen Resmi Rekapitulasi Temuan Kondisi Abnormal',
                     size: 14,
                     color: COLOR_MUTED,
                     font: 'Calibri',
-                    italics: true,
                   }),
                 ],
               }),
@@ -416,6 +406,7 @@ export async function exportAbnormalRecapToWord(
   detailReportParagraphs.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
+      pageBreakBefore: true,
       spacing: { before: 400, after: 150 },
       children: [
         new TextRun({
@@ -447,10 +438,25 @@ export async function exportAbnormalRecapToWord(
     const descText = item.abnormalFinding?.description || '-';
     const recoText = item.abnormalFinding?.actionRecommendation || 'Belum ada rekomendasi tindakan khusus.';
     const photoB64 = item.abnormalFinding?.photoBase64;
+    const hasPhoto = Boolean(photoB64);
+
+    // Pakai PageBreak eksplisit (bukan hanya paragraph property) karena Word
+    // dapat mengabaikan pageBreakBefore saat blok sebelumnya berisi foto.
+    if (hasPhoto && idx > 0) {
+      detailReportParagraphs.push(
+        new Paragraph({
+          children: [new PageBreak()],
+        })
+      );
+    }
 
     // Header Card Unit Temuan
     detailReportParagraphs.push(
       new Paragraph({
+        // Satu temuan abnormal dimulai dari halaman baru supaya header,
+        // metadata, tindak lanjut, dan fotonya tidak terpisah antar halaman.
+        // Temuan tanpa foto tetap mengalir normal.
+        keepNext: true,
         spacing: { before: 250, after: 80 },
         shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
         border: {

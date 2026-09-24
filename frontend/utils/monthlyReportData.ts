@@ -110,6 +110,52 @@ export interface MonthlyCmReportItem {
   summaryProblemAnalysis: string;
 }
 
+/**
+ * Lightweight fallback translator for the dynamic CM table.
+ *
+ * The AI bilingual pass can translate free-form technician notes. This
+ * fallback keeps the report usable when the AI endpoint is unavailable and
+ * covers the recurring technical phrases used by the CM forms.
+ */
+const MONTHLY_CM_EXACT_TRANSLATIONS: Record<string, string> = {
+  'pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional.':
+    'Air filter cleaning and temperature sensor calibration to restore normal operation.',
+  'pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional':
+    'Air filter cleaning and temperature sensor calibration to restore normal operation.'
+};
+
+function translateMonthlyCmTextFallback(value: string): string {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const exact = MONTHLY_CM_EXACT_TRANSLATIONS[raw.toLowerCase()];
+  // Do not use word-for-word replacement here. It produces mixed sentences
+  // such as "Dilakukan inspection"; free-form CM notes are translated by the
+  // dedicated AI pass in monthlyReportAI instead.
+  return exact || raw;
+}
+
+/** Ensure CM text uses the standard English-first / Indonesian-second format. */
+export function convertMonthlyCmReportsToBilingual(items: MonthlyCmReportItem[]): MonthlyCmReportItem[] {
+  const ensureField = (value: string, translate = true): string => {
+    const raw = String(value || '').replace(/\r\n/g, '\n').trim();
+    if (!raw || raw.includes('\n')) return raw;
+    if (!translate) return raw;
+    const english = translateMonthlyCmTextFallback(raw);
+    return english && english !== raw ? `${english}\n${raw}` : raw;
+  };
+
+  return (items || []).map(item => ({
+    ...item,
+    incidentName: ensureField(item.incidentName),
+    // Equipment names and locations are commonly asset identifiers. Keep
+    // them intact unless they contain an obvious Indonesian phrase.
+    equipmentName: ensureField(item.equipmentName),
+    location: ensureField(item.location),
+    incidentDate: String(item.incidentDate || '').trim(),
+    summaryProblemAnalysis: ensureField(item.summaryProblemAnalysis)
+  }));
+}
+
 export interface PrimaryGoalItem {
   id?: string;
   no?: string;
@@ -4359,16 +4405,18 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   // ══════════════════════════════════════════════════════════════════════════
   // 5.C-2 CORRECTIVE MAINTENANCE (CM) REPORTS TABLE
   // ══════════════════════════════════════════════════════════════════════════
-  const cmReportsTable: MonthlyCmReportItem[] = monthCmReports.length > 0 ? monthCmReports : [
-    {
-      no: '1.',
-      incidentName: 'Alarm High Temp CRAC Unit',
-      equipmentName: 'CRAC Unit 03',
-      location: 'Server Room Fl. 2',
-      incidentDate: `12 ${monthNameEn} ${year}`,
-      summaryProblemAnalysis: 'Pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional.'
-    }
-  ];
+  const cmReportsTable: MonthlyCmReportItem[] = convertMonthlyCmReportsToBilingual(
+    monthCmReports.length > 0 ? monthCmReports : [
+      {
+        no: '1.',
+        incidentName: 'Alarm High Temp CRAC Unit',
+        equipmentName: 'CRAC Unit 03',
+        location: 'Server Room Fl. 2',
+        incidentDate: `12 ${monthNameEn} ${year}`,
+        summaryProblemAnalysis: 'Pembersihan filter udara dan kalibrasi sensor temperatur untuk pemulihan normal operasional.'
+      }
+    ]
+  );
 
   // ══════════════════════════════════════════════════════════════════════════
   // 5.D SERVICE CREDIT MATRIX (SESUAI FOTO 2)
@@ -5212,6 +5260,13 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
     ];
   }
 
+  // 9.C Bab 4: Corrective Maintenance table (English first, Indonesian below)
+  // This was previously skipped by the bilingual converter, so CM data
+  // remained Indonesian even though the rest of the report was bilingual.
+  if (Array.isArray(updated.cmReportsTable)) {
+    updated.cmReportsTable = convertMonthlyCmReportsToBilingual(updated.cmReportsTable);
+  }
+
   // Ensure service credit matrix matches official Photo 2
   if (!Array.isArray(updated.serviceCreditMatrix) || updated.serviceCreditMatrix.length === 0 || updated.serviceCreditMatrix.some(m => m.credit?.toLowerCase().includes('kontrak'))) {
     updated.serviceCreditMatrix = [
@@ -5752,12 +5807,9 @@ export async function fetchMonthCmReports(month: number, year: number): Promise<
         });
       }
     });
-    return list;
+    return convertMonthlyCmReportsToBilingual(list);
   } catch (err) {
     console.error('Error fetching monthly CM reports:', err);
     return [];
   }
 }
-
-
-

@@ -36,6 +36,9 @@ export interface PIRReportData {
     incidentName: string;                   // Nama Insiden
     incidentDate: string;                   // Tanggal Kejadian (ISO String)
     incidentId: string;                     // Nomor ID Insiden Tiket
+    slaTicketNumber: string;                // Nomor tiket khusus SLA/SLG yang wajib dibuat dari PIR
+    slaTicketStatus: 'open' | 'closed';     // Status tiket SLA/SLG saat PIR dibuat
+    slaReportId?: string;                   // Tautan dua arah ke Form SLA/SLG hasil PIR
     postmortemOwner: string;                // Penanggung Jawab Postmortem (Lead Engineer)
     dateCompleted: string;                  // Tanggal Laporan Dibatalkan/Diselesaikan
     reportAuthors: string;                  // Penulis Dokumen Laporan PIR
@@ -105,6 +108,8 @@ export const INITIAL_PIR_REPORT_DATA: PIRReportData = {
     incidentName: '',
     incidentDate: '',
     incidentId: '',
+    slaTicketNumber: '',
+    slaTicketStatus: 'open',
     postmortemOwner: '',
     dateCompleted: '',
     reportAuthors: '',

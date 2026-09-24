@@ -158,9 +158,16 @@ interface CorrectiveReport {
     incidentName?: string;
     incidentDate?: string;
     incidentId?: string;
+    ticketNumber?: string;
+    ticketStatus?: 'open' | 'closed';
+    slaReportId?: string;
+    hasSLA?: boolean;
+    slaTicketNumber?: string;
+    slaTicketStatus?: 'open' | 'closed';
     postmortemOwner?: string;
     severityLevel?: string;
     summary?: string;
+    resolution?: string;
 
     // CM fields
     equipmentName?: string;
@@ -1324,7 +1331,19 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     const allCMReports = reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR');
     const allSLAReports = reports.filter(r => r.reportType === 'SLA' && !r.deleteRequested);
-    const allPIRReports = reports.filter(r => r.reportType === 'PIR');
+    const allPIRReports = reports.filter(r => r.reportType === 'PIR' && !r.deleteRequested);
+
+    // PIR wajib memiliki SLA/SLG. Gunakan relasi dua arah agar data PIR lama
+    // tetap terdeteksi walaupun field reverse-link belum pernah tersimpan.
+    const unlinkedPIRReports = allPIRReports
+        .filter(pir => {
+            if (!pir.id) return false;
+            return !allSLAReports.some(sla =>
+                (sla as any).pirReportId === pir.id ||
+                ((pir as any).slaReportId && sla.id === (pir as any).slaReportId)
+            );
+        })
+        .sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
 
     // Filter Laporan Predictive Maintenance berdasarkan periode dan pencarian teks
     const filteredPredictiveReports = predictiveReports.filter((pred) => {
@@ -1476,6 +1495,18 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return true;
     }).sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
 
+    const periodFilteredUnlinkedPIRReports = unlinkedPIRReports.filter((pir) => {
+        if (selectedDay === 'all' && selectedMonth === 'all' && selectedYear === 'all') return true;
+        const reportTimestamp = getReportIncidentTime(pir);
+        if (reportTimestamp > 0) {
+            const reportDate = new Date(reportTimestamp);
+            if (selectedDay !== 'all' && reportDate.getDate().toString() !== selectedDay) return false;
+            if (selectedMonth !== 'all' && reportDate.getMonth().toString() !== selectedMonth) return false;
+            if (selectedYear !== 'all' && reportDate.getFullYear().toString() !== selectedYear) return false;
+        }
+        return true;
+    }).sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
+
     const handleCreateSLAFromCM = (cm: CorrectiveReport) => {
         lastInteractedReportIdRef.current = cm.id || null;
         if (cm.id) {
@@ -1509,6 +1540,30 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }, 50);
+    };
+
+    // PIR wajib memiliki SLA/SLG. Data nomor dan status tiket PIR diteruskan
+    // ke form SLA agar relasi dua arah tersimpan saat SLA selesai dibuat.
+    const handleCreateSLAFromPIR = (pir: any) => {
+        if (pir?.slaReportId) {
+            toast.info('Laporan PIR ini sudah tertaut dengan Form SLA/SLG.');
+            return;
+        }
+
+        setEditingReportId(null);
+        setPrefillSlaData({
+            ticketName: pir.incidentName || pir.issue || 'Post Incident Report',
+            ticketNumber: pir.slaTicketNumber || pir.ticketNumber || pir.incidentId || '',
+            ticketStatus: pir.slaTicketStatus || (pir.ticketStatus === 'closed' ? 'closed' : 'open'),
+            location: pir.location || 'Neutra DC Cikarang',
+            timeOrder: pir.incidentDate || '',
+            pirReportId: pir.id,
+            remark: pir.resolution || pir.summary || '',
+            equipmentName: pir.incidentName || '',
+        });
+        setReportFormType('sla');
+        setActiveFormTab('sla');
+        setShowForm(true);
     };
 
     // Navigasi langsung dari Report CM ke Form SLA yang sesuai
@@ -1862,8 +1917,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     ) : (
                         <PIRReportFormModal
                             key={`pir_${formKey}`}
-                            onSuccess={() => {
+                            onSuccess={(_, savedPIR) => {
                                 setFormKey(prev => prev + 1);
+                                if (savedPIR) handleCreateSLAFromPIR(savedPIR);
                             }}
                             onCancel={() => {
                                 setFormKey(prev => prev + 1);
@@ -1973,6 +2029,17 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             <span>⚠️</span>
                         </span>
                     )}
+                    {unlinkedPIRReports.length > 0 && (
+                        <span className={`ml-1 px-2 py-0.5 text-[10px] font-extrabold rounded-full flex items-center gap-1 shadow-2xs ${archiveFolder === 'sla'
+                            ? 'bg-orange-300 text-slate-950 font-black'
+                            : 'bg-orange-500 text-white animate-pulse'
+                            }`}
+                            title={`${unlinkedPIRReports.length} Report PIR Belum Ada SLA / SLG`}
+                        >
+                            <span>PIR {unlinkedPIRReports.length} Belum SLA</span>
+                            <span>⚠️</span>
+                        </span>
+                    )}
                 </button>
                 <button
                     type="button"
@@ -2048,7 +2115,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             >
                                 <PIRReportFormModal
                                     editId={editingReportId || undefined}
-                                    onSuccess={(savedId) => handleCloseForm(savedId || editingReportId || undefined)}
+                                    onSuccess={(savedId, savedPIR) => {
+                                        if (savedPIR) {
+                                            handleCreateSLAFromPIR(savedPIR);
+                                            return;
+                                        }
+                                        handleCloseForm(savedId || editingReportId || undefined);
+                                    }}
                                     onCancel={(canceledId) => handleCloseForm(canceledId || editingReportId || undefined)}
                                 />
                             </motion.div>
@@ -2175,6 +2248,121 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             >
                                                                 <Zap className="w-3.5 h-3.5 fill-current" />
                                                                 <span>+ Buat Form SLA</span>
+                                                                <ArrowRight className="w-3 h-3 ml-0.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+
+                    {/* Banner terpisah: Report PIR yang belum memiliki SLA / SLG */}
+                    {(() => {
+                        const isPeriodFiltered = selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all';
+                        const displayPendingPIRs = isPeriodFiltered ? periodFilteredUnlinkedPIRReports : unlinkedPIRReports;
+
+                        if (archiveFolder !== 'sla' || unlinkedPIRReports.length === 0) return null;
+
+                        return (
+                            <div className="mb-6 bg-gradient-to-r from-orange-500/15 via-orange-500/5 to-white border border-orange-300 rounded-2xl p-4 sm:p-5 shadow-sm transition">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-start sm:items-center gap-3">
+                                        <div className="p-2.5 bg-orange-500 text-white rounded-xl shadow-md shadow-orange-500/20 shrink-0">
+                                            <AlertTriangle className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                                                    {isPeriodFiltered ? (
+                                                        <span>{displayPendingPIRs.length} Report PIR Belum Dibuatkan SLA / SLG pada Periode Ini <span className="text-xs font-normal text-slate-500">(Total: {unlinkedPIRReports.length})</span></span>
+                                                    ) : (
+                                                        <span>{unlinkedPIRReports.length} Report PIR Belum Dibuatkan SLA / SLG</span>
+                                                    )}
+                                                </h3>
+                                                <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 text-[10px] font-extrabold uppercase border border-orange-300 shadow-2xs">
+                                                    Wajib Ditindaklanjuti
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-600 mt-0.5">
+                                                Data PIR yang sudah masuk dan belum memiliki Form SLA/SLG. Klik tombol untuk meneruskan data PIR ke form SLA/SLG.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsPendingSlaExpanded(prev => !prev)}
+                                        className="self-start sm:self-auto px-3.5 py-2 bg-white hover:bg-orange-50 border border-orange-300 text-orange-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                    >
+                                        <span>{isPendingSlaExpanded ? 'Sembunyikan Daftar' : `Tinjau ${displayPendingPIRs.length} PIR`}</span>
+                                        {isPendingSlaExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    </button>
+                                </div>
+
+                                {isPendingSlaExpanded && (
+                                    <div className="mt-4 pt-4 border-t border-orange-200/80">
+                                        {displayPendingPIRs.length === 0 ? (
+                                            <p className="text-xs text-slate-500 italic py-2">Tidak ada PIR pada filter periode ini yang menunggu SLA/SLG.</p>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                {displayPendingPIRs.map((pir, idx) => (
+                                                    <div
+                                                        key={pir.id}
+                                                        className="bg-white rounded-xl border border-orange-200/90 p-4 shadow-xs hover:border-orange-400 hover:shadow-md transition flex flex-col justify-between"
+                                                    >
+                                                        <div>
+                                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-black shadow-2xs">
+                                                                        #{displayPendingPIRs.length - idx}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-extrabold text-orange-800 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200 uppercase tracking-wider">
+                                                                        Belum Ada SLA / SLG
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                                                                    <Calendar className="w-3 h-3 text-slate-400" />
+                                                                    {pir.incidentDate || (pir.reportedAt?.toDate ? pir.reportedAt.toDate().toLocaleDateString('id-ID') : '-')}
+                                                                </span>
+                                                            </div>
+
+                                                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 mb-1" title={pir.incidentName || pir.issue}>
+                                                                {pir.incidentName || pir.issue || 'Post Incident Report'}
+                                                            </h4>
+
+                                                            <div className="space-y-1 text-[11px] text-slate-600 mb-3">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                                    <span className="truncate">{pir.location || 'Neutra DC Cikarang'}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <AlertCircle className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                                                                    <span>Tiket: <strong>{pir.slaTicketNumber || pir.ticketNumber || pir.incidentId || 'Belum diisi'}</strong></span>
+                                                                    <span className={`uppercase font-bold ${pir.slaTicketStatus === 'closed' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                                        {pir.slaTicketStatus === 'closed' ? 'CLOSED' : 'OPEN'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {(pir.summary || pir.resolution) && (
+                                                                <p className="text-[11px] text-slate-600 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3 leading-relaxed">
+                                                                    "{pir.summary || pir.resolution}"
+                                                                </p>
+                                                            )}
+                                                        </div>
+
+                                                        {isAuthorizedRole && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleCreateSLAFromPIR(pir)}
+                                                                className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
+                                                            >
+                                                                <Zap className="w-3.5 h-3.5 fill-current" />
+                                                                <span>+ Buat SLA dari PIR</span>
                                                                 <ArrowRight className="w-3 h-3 ml-0.5" />
                                                             </button>
                                                         )}

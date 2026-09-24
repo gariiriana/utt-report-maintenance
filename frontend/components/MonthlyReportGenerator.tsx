@@ -77,6 +77,7 @@ import {
   generatePrimaryGoalsFromEquipments,
   getEquipmentPrimaryGoal,
   fetchMonthCmReports,
+  convertMonthlyCmReportsToBilingual,
   getDefaultExecutiveSummaryParagraphs
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
@@ -84,7 +85,8 @@ import {
   generateRecommendationsFromFindings,
   generateTestingAndValidation,
   generateChallengesAndMitigations,
-  convertReportToBilingualWithAI
+  convertReportToBilingualWithAI,
+  translateMonthlyCmSummariesWithAI
 } from '@/utils/monthlyReportAI';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -405,8 +407,25 @@ export function MonthlyReportGenerator() {
       if (cmItems.length === 0) {
         toast.info(`Tidak ditemukan laporan CM di database untuk ${reportData.monthName} ${yearNum}.`, { id: toastId });
       } else {
-        setReportData(prev => prev ? ({ ...prev, cmReportsTable: cmItems }) : prev);
-        toast.success(`Berhasil menyinkronkan ${cmItems.length} Laporan CM dari database!`, { id: toastId });
+        const translatedCmData = await translateMonthlyCmSummariesWithAI(
+          { ...reportData, cmReportsTable: cmItems },
+          (status) => toast.loading(status, { id: toastId })
+        );
+        setReportData(prev => {
+          if (!prev) return prev;
+          // Keep the selected report language mode when a user re-syncs CM.
+          const isBilingual = Boolean(
+            prev.coverTitle?.includes('\n') ||
+            prev.kpiMetricsTable19?.some(item => String(item.activity || '').includes('\n'))
+          );
+          return {
+            ...prev,
+            cmReportsTable: isBilingual
+              ? convertMonthlyCmReportsToBilingual(translatedCmData.cmReportsTable || cmItems)
+              : (translatedCmData.cmReportsTable || cmItems)
+          };
+        });
+        toast.success(`Berhasil menyinkronkan ${cmItems.length} Laporan CM dan menerjemahkan Summary Report!`, { id: toastId });
       }
     } catch (err: any) {
       console.error('Error syncing CM reports:', err);
@@ -822,6 +841,12 @@ export function MonthlyReportGenerator() {
             parsed.reportTitle = titleToUse;
             parsed.fileName = cleanFileName;
             setReportData(parsed);
+            void translateMonthlyCmSummariesWithAI(parsed).then((translated) => {
+              setReportData(prev => prev && prev.monthNumber === parsed.monthNumber && prev.year === parsed.year
+                ? { ...prev, cmReportsTable: translated.cmReportsTable }
+                : prev
+              );
+            });
             setIsSavedLocally(true);
             setGenerating(false);
             // Simpan kembali cache yang sudah dibersihkan dan disinkronkan ke IndexedDB
@@ -850,6 +875,12 @@ export function MonthlyReportGenerator() {
       data.reportTitle = titleToUse;
       data.fileName = cleanFileName;
       setReportData(data);
+      void translateMonthlyCmSummariesWithAI(data).then((translated) => {
+        setReportData(prev => prev && prev.monthNumber === data.monthNumber && prev.year === data.year
+          ? { ...prev, cmReportsTable: translated.cmReportsTable }
+          : prev
+        );
+      });
       setIsSavedLocally(true);
       // Simpan ke IndexedDB (kapasitas ratusan MB, aman dari QuotaExceededError)
       try {
