@@ -582,11 +582,25 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     setActivePredictiveItem(item);
     setIsLoadingPredictive(true);
     const toastId = toast.loading('Mempersiapkan Laporan Predictive Maintenance...');
+    // Older predictive records may have been created before photo propagation
+    // was added. Carry the source Temuan Abnormal photo into the report when
+    // opening an existing record as well as when generating a new one.
+    const sourcePhoto = item.abnormalFinding?.photoBase64
+      || item.abnormalFinding?.photos?.find((photo: any) => photo?.base64)?.base64
+      || undefined;
+    const sourcePhotoCaption = (item.abnormalFinding as any)?.photoDescription
+      || item.abnormalFinding?.photos?.find((photo) => photo?.description)?.description
+      || 'Foto bukti temuan abnormal';
+    const attachSourcePhoto = (report: PredictiveReportData): PredictiveReportData => (
+      report.photoEvidenceBase64 || !sourcePhoto
+        ? report
+        : { ...report, photoEvidenceBase64: sourcePhoto, photoCaption: report.photoCaption || sourcePhotoCaption }
+    );
 
     try {
       // 1. Cek jika sudah memiliki laporan prediktif yang tersimpan di memory / item
       if (item.predictiveReportData) {
-        setActivePredictiveData(item.predictiveReportData);
+        setActivePredictiveData(attachSourcePhoto(item.predictiveReportData));
         setPredictiveModalOpen(true);
         toast.dismiss(toastId);
         return;
@@ -596,7 +610,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       if (item.predictiveReportId) {
         const pSnap = await getDoc(doc(db, 'predictive_reports', item.predictiveReportId));
         if (pSnap.exists()) {
-          const pData = pSnap.data() as PredictiveReportData;
+          const pData = attachSourcePhoto(pSnap.data() as PredictiveReportData);
           setActivePredictiveData(pData);
           setPredictiveModalOpen(true);
           toast.dismiss(toastId);
@@ -606,7 +620,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
       // 3. Jika belum ada laporan prediktif, generate via AI Reliability Agent
       toast.loading('AI Agent sedang menganalisis temuan abnormal untuk PdM...', { id: toastId });
-      const photoB64 = item.abnormalFinding?.photoBase64 || (item.abnormalFinding?.photos && item.abnormalFinding.photos[0]?.base64) || undefined;
+      const photoB64 = sourcePhoto;
       const equipName = item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName || 'Critical Equipment';
       const desc = item.abnormalFinding?.description || 'Terdeteksi kondisi abnormal pada peralatan fasilitas.';
 
@@ -621,6 +635,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         descriptionOrSymptoms: desc,
         recommendation: item.abnormalFinding?.actionRecommendation || undefined,
         photoEvidenceBase64: photoB64,
+        photoCaption: sourcePhoto ? sourcePhotoCaption : undefined,
         userEmail: user?.email || undefined,
         userName: user?.displayName || undefined,
       }, (msg) => {

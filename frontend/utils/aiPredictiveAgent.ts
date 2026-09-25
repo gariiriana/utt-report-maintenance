@@ -168,7 +168,7 @@ function generateLegacyTemplate(input: GeneratePredictiveInput): PredictiveRepor
     currentSymptoms: input.descriptionOrSymptoms || 'Terindikasi anomali kerja operasional saat pemantauan berkala.',
     measuredParameterDrift: defaultDrift,
     photoEvidenceBase64: input.photoEvidenceBase64,
-    photoCaption: `Foto bukti fisik anomali pada ${input.equipmentName}`,
+    photoCaption: input.photoCaption || `Foto bukti fisik anomali pada ${input.equipmentName}`,
 
     aiAnalysis: {
       rootCauseAnalysis: `Berdasarkan evaluasi teknis mendalam terhadap indikasi "${input.descriptionOrSymptoms}", akar masalah teridentifikasi pada penurunan performa material dan integritas komponen akibat siklus pembebanan kontinu 24/7 di Data Center NeutraDC Cikarang. Stres operasional berkelanjutan memicu akumulasi resistansi kontak abnormal, keausan mekanis permukaan (fretting wear), serta degradasi dielektrik insulasi yang berakibat pada kenaikan rugi-rugi disipasi daya lokal dan penyimpangan titik kerja unit dari kurva efisiensi desain OEM.`,
@@ -433,7 +433,7 @@ Jawaban harus terperinci dan mencakup Root Cause Analysis, Potential Failure Mod
       currentSymptoms: input.descriptionOrSymptoms || fallbackTemplate.currentSymptoms,
       measuredParameterDrift: [],
       photoEvidenceBase64: input.photoEvidenceBase64,
-      photoCaption: `Foto bukti fisik anomali pada ${input.equipmentName}`,
+      photoCaption: input.photoCaption || `Foto bukti fisik anomali pada ${input.equipmentName}`,
 
       aiAnalysis: {
         rootCauseAnalysis: parsed.aiAnalysis?.rootCauseAnalysis || fallbackTemplate.aiAnalysis.rootCauseAnalysis,

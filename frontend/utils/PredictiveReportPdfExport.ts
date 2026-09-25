@@ -16,24 +16,35 @@ import { toast } from 'sonner';
 /** Helper konversi gambar URL ke base64 */
 async function loadImageBase64(src: string): Promise<string> {
   if (!src) return '';
-  if (src.startsWith('data:image')) return src;
+  const imageSource = src.trim();
+  if (!imageSource) return '';
+  // Temuan Abnormal may provide a data URL, a Storage URL, or raw base64.
+  const normalizedSource = imageSource.startsWith('data:image') || /^(?:https?:|blob:|\/|\.\/)/i.test(imageSource)
+    ? imageSource
+    : `data:image/jpeg;base64,${imageSource}`;
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth || img.width;
-      canvas.height = img.naturalHeight || img.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        }
+        resolve(ctx ? canvas.toDataURL('image/png') : '');
+      } catch {
+        // CORS-protected/invalid images are treated as absent; the export
+        // continues without reserving a photo slot.
+        resolve('');
       }
-      resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => resolve('');
-    img.src = src;
+    img.src = normalizedSource;
   });
 }
 
@@ -207,16 +218,17 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
 
     currentY = (doc as any).lastAutoTable.finalY + 4;
 
-    // Foto Bukti Fisik Anomali (Jika Ada)
-    if (data.photoEvidenceBase64) {
+    // Resolve/validate the image before changing pagination. Invalid or empty
+    // sources must not create an unnecessary blank photo page.
+    const photoData = data.photoEvidenceBase64
+      ? await loadImageBase64(data.photoEvidenceBase64)
+      : '';
+    if (photoData) {
       if (currentY > pageH - 65) {
         addNewPage();
       }
       try {
-        const photoData = data.photoEvidenceBase64.startsWith('data:image')
-          ? data.photoEvidenceBase64
-          : `data:image/jpeg;base64,${data.photoEvidenceBase64}`;
-        doc.addImage(photoData, 'JPEG', margin + (contentW - 65) / 2, currentY, 65, 42);
+        doc.addImage(photoData, 'PNG', margin + (contentW - 65) / 2, currentY, 65, 42);
         currentY += 44;
         doc.setFontSize(7);
         doc.setTextColor(100, 116, 139);
@@ -249,10 +261,6 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
         [
           { content: 'Estimasi Sisa Umur (RUL)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
           { content: sanitizeText(data.aiAnalysis.remainingUsefulLife), styles: { textColor: alertRed, fontStyle: 'bold' } },
-        ],
-        [
-          { content: 'Urgensi & Dampak SLA', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-          { content: `[${data.aiAnalysis.urgencyLevel.toUpperCase()}] ${sanitizeText(data.aiAnalysis.slaRiskAssessment)}` },
         ],
         [
           { content: 'Bukti, Keyakinan & Verifikasi', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },

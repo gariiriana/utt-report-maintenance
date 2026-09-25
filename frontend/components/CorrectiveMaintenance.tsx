@@ -2823,9 +2823,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     }`}>
                                                         Status: {pred.healthStatus || 'Caution'}
                                                     </span>
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                                        {pred.aiAnalysis?.urgencyLevel || 'Medium'} Urgency
-                                                    </span>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">

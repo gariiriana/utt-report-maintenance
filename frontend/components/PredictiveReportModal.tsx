@@ -590,42 +590,19 @@ export function PredictiveReportModal({
                   </h4>
                 </div>
 
-                <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-                  {/* Tingkat Urgensi */}
-                  <div className="flex items-center gap-1.5 bg-white border border-indigo-200/90 px-2.5 py-1 rounded-xl shadow-2xs">
-                    <span className="text-xs text-indigo-700 font-semibold whitespace-nowrap">Tingkat Urgensi:</span>
-                    <select
-                      value={data.aiAnalysis.urgencyLevel}
-                      onChange={e => setData({
-                        ...data,
-                        aiAnalysis: { ...data.aiAnalysis, urgencyLevel: e.target.value as any }
-                      })}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-extrabold outline-none cursor-pointer ${
-                        data.aiAnalysis.urgencyLevel === 'Emergency' ? 'bg-red-50 text-red-700 font-black' :
-                        data.aiAnalysis.urgencyLevel === 'High' ? 'bg-amber-50 text-amber-800 font-black' :
-                        data.aiAnalysis.urgencyLevel === 'Medium' ? 'bg-yellow-50 text-yellow-800 font-bold' :
-                        'bg-emerald-50 text-emerald-800 font-bold'
-                      }`}
-                    >
-                      <option value="Emergency">Emergency</option>
-                      <option value="High">High</option>
-                      <option value="Medium">Medium</option>
-                      <option value="Low">Low</option>
-                    </select>
-                  </div>
-
+                <div className="w-full sm:w-auto">
                   {/* Estimasi Sisa Umur Pakai (RUL) */}
-                  <div className="flex items-center gap-1.5 bg-white border border-red-200/90 px-2.5 py-1 rounded-xl shadow-2xs">
-                    <Clock className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                    <span className="text-xs text-slate-700 font-semibold whitespace-nowrap" title="Remaining Useful Life">Sisa Umur (RUL):</span>
-                    <input
-                      type="text"
+                  <div className="flex items-start gap-1.5 bg-white border border-red-200/90 px-2.5 py-1.5 rounded-xl shadow-2xs w-full sm:w-[32rem]">
+                    <Clock className="w-3.5 h-3.5 text-red-500 shrink-0 mt-1" />
+                    <span className="text-xs text-slate-700 font-semibold whitespace-nowrap pt-1" title="Remaining Useful Life">Sisa Umur (RUL):</span>
+                    <textarea
+                      rows={2}
                       value={data.aiAnalysis.remainingUsefulLife}
                       onChange={e => setData({
                         ...data,
                         aiAnalysis: { ...data.aiAnalysis, remainingUsefulLife: e.target.value }
                       })}
-                      className="w-28 sm:w-32 px-2 py-0.5 bg-red-50/70 border border-red-300 text-red-700 font-bold rounded-lg text-xs text-center focus:ring-1 focus:ring-red-400 outline-none"
+                      className="min-w-0 flex-1 resize-y px-2 py-1 bg-red-50/70 border border-red-300 text-red-700 font-bold rounded-lg text-xs leading-relaxed focus:ring-1 focus:ring-red-400 outline-none"
                       placeholder="14 – 21 Hari"
                       title="Estimasi Sisa Umur Pakai (Remaining Useful Life / RUL)"
                     />

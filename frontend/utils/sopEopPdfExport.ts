@@ -24,14 +24,27 @@ const COLOR_BANNER_EOP: [number, number, number] = [255, 0, 255]; // #FF00FF Pur
 const COLOR_SUBTITLE_BANNER: [number, number, number] = [224, 224, 224]; // #E0E0E0
 const COLOR_BLACK: [number, number, number] = [0, 0, 0];
 const COLOR_GREY_ID: [number, number, number] = [89, 89, 89]; // #595959 Corporate translation grey
-const COLOR_DIVIDER: [number, number, number] = [215, 215, 215];
-const COLOR_BOX_BORDER: [number, number, number] = [160, 160, 160];
+// Word master uses black table rules. The old light-grey rules were one of
+// the most visible differences between DOCX and PDF exports.
+const COLOR_DIVIDER: [number, number, number] = [0, 0, 0];
+const COLOR_BOX_BORDER: [number, number, number] = [0, 0, 0];
 
-// Margins & Dimensions (A4 Portrait = 210 x 297 mm)
-const PAGE_MARGIN = 14;
-const CONTENT_WIDTH = 182; // 210 - 28 mm
-const TOP_CONTENT_Y = 26; // Safe start below header
-const BOTTOM_SAFE_Y = 278; // Safe limit above footer
+// Margins & dimensions mirror the DOCX section properties exactly.
+// The DOCX uses 1 inch (1440 dxa) side margins.  Its printable width is
+// 9016 dxa = 15.9 cm, so PDF must not use jsPDF's much wider default canvas.
+// Keeping this as the single source of PDF geometry prevents the two exports
+// from drifting apart again when table columns are adjusted.
+const PAGE_MARGIN = 25.4;
+const CONTENT_WIDTH = 159;
+const TOP_CONTENT_Y_SOP = 25.4;
+const TOP_CONTENT_Y_EOP = 30;
+// Kept as the common autoTable fallback. EOP overrides its first-page and
+// forced-break position below to retain the slightly deeper master margin.
+const TOP_CONTENT_Y = TOP_CONTENT_Y_SOP;
+const BOTTOM_SAFE_Y = 272;
+const PDF_REFERENCE_WIDTH = 182;
+const scaledWidth = (width: number) => (width / PDF_REFERENCE_WIDTH) * CONTENT_WIDTH;
+const docxWidth = (widthDxa: number) => (widthDxa / 9016) * CONTENT_WIDTH;
 
 // ----------------------------------------------------------------------------
 // HELPER FUNCTIONS
@@ -89,31 +102,32 @@ function renderSectionBanner(
   curY: number,
   titleEn: string,
   titleId: string,
-  isEOP: boolean
+  isEOP: boolean,
+  topContentY = isEOP ? TOP_CONTENT_Y_EOP : TOP_CONTENT_Y_SOP
 ): number {
   if (curY + 12 > BOTTOM_SAFE_Y) {
     doc.addPage();
-    curY = TOP_CONTENT_Y;
+    curY = topContentY;
   }
 
   const bannerColor = isEOP ? COLOR_BANNER_EOP : COLOR_BANNER_SOP;
 
   doc.setFillColor(...bannerColor);
-  doc.rect(PAGE_MARGIN, curY, CONTENT_WIDTH, 8.2, 'F');
+  doc.rect(PAGE_MARGIN, curY, CONTENT_WIDTH, 10.5, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  doc.text(titleEn, PAGE_MARGIN + CONTENT_WIDTH / 2, curY + 3.8, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text(titleEn, PAGE_MARGIN + CONTENT_WIDTH / 2, curY + 4.4, { align: 'center' });
 
   if (titleId) {
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
+    doc.setFontSize(10);
     doc.setTextColor(...COLOR_SUBTITLE_BANNER);
-    doc.text(titleId, PAGE_MARGIN + CONTENT_WIDTH / 2, curY + 6.9, { align: 'center' });
+    doc.text(titleId, PAGE_MARGIN + CONTENT_WIDTH / 2, curY + 8.1, { align: 'center' });
   }
 
-  return curY + 10.5;
+  return curY + 12.5;
 }
 
 /**
@@ -135,30 +149,32 @@ function drawAllHeadersAndFooters(
 
     // 1. Left Title Badges
     doc.setFillColor(...bannerColor);
-    doc.rect(PAGE_MARGIN, 7.5, 68, 5.5, 'F');
+    // Word's text highlight is long enough for the complete document title.
+    // Reserve the same visual title band so it never clips in the PDF viewer.
+    doc.rect(PAGE_MARGIN, 7.5, isEOP ? 118 : 112, 6.6, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(titleText, PAGE_MARGIN + 1.5, 11.5);
+    doc.setFontSize(14);
+    doc.text(titleText, PAGE_MARGIN + 1.5, 12.35);
 
     doc.setFillColor(...bannerColor);
-    doc.rect(PAGE_MARGIN, 13.8, 44, 5, 'F');
+    doc.rect(PAGE_MARGIN, 14.7, 55, 6.2, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.8);
-    doc.text(subtitleText, PAGE_MARGIN + 1.5, 17.5);
+    doc.setFontSize(14);
+    doc.text(subtitleText, PAGE_MARGIN + 1.5, 19.4);
 
     // 2. Right Logos
     if (dmeLogo) {
       try {
-        doc.addImage(dmeLogo, 'JPEG', 148, 7.5, 22, 11);
+        doc.addImage(dmeLogo, 'JPEG', 158, 7.5, 26.5, 11.1);
       } catch {
         // ignore
       }
     }
     if (ndcLogo) {
       try {
-        doc.addImage(ndcLogo, 'JPEG', 174, 7.5, 22, 11);
+        doc.addImage(ndcLogo, 'JPEG', 189, 7.5, 20.6, 10.6);
       } catch {
         // ignore
       }
@@ -167,13 +183,13 @@ function drawAllHeadersAndFooters(
     // Divider line under header
     doc.setDrawColor(...COLOR_DIVIDER);
     doc.setLineWidth(0.25);
-    doc.line(PAGE_MARGIN, 21, PAGE_MARGIN + CONTENT_WIDTH, 21);
+    doc.line(PAGE_MARGIN, 22, PAGE_MARGIN + CONTENT_WIDTH, 22);
 
     // 3. Center Footer
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(...COLOR_GREY_ID);
-    doc.text(`Page ${p} of ${totalPages}`, 105, 290, { align: 'center' });
+    doc.text(`Page ${p} of ${totalPages}`, 105, 284.5, { align: 'center' });
   }
 }
 
@@ -206,20 +222,22 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     theme: 'plain',
     body: [
       [
-        { content: 'Document Title\nJudul Dokumen', styles: { fontStyle: 'bold', textColor: COLOR_BLACK } },
+        { content: 'Document Title\nJudul Dokumen', styles: { fontStyle: 'normal', textColor: COLOR_BLACK } },
         { content: `: ${data.documentTitle || '-'}\n: ${data.documentTitle || '-'}`, styles: { textColor: COLOR_BLACK } },
       ],
       [
-        { content: 'Document Purpose\nTujuan Dokumen', styles: { fontStyle: 'bold', textColor: COLOR_BLACK } },
+        { content: 'Document Purpose\nTujuan Dokumen', styles: { fontStyle: 'normal', textColor: COLOR_BLACK } },
         { content: `: ${data.documentPurposeEn || '-'}\n: ${data.documentPurposeId || ensureBilingualTranslation(data.documentPurposeEn || '-')}`, styles: { textColor: COLOR_BLACK } },
       ],
       [
-        { content: 'Work Location\nLokasi Kerja', styles: { fontStyle: 'bold', textColor: COLOR_BLACK } },
+        { content: 'Work Location\nLokasi Kerja', styles: { fontStyle: 'normal', textColor: COLOR_BLACK } },
         { content: `: ${data.workLocationEn || 'Neutra DC Cikarang'}\n: ${data.workLocationId || 'Neutra DC Cikarang'}`, styles: { textColor: COLOR_BLACK } },
       ],
     ],
-    styles: { font: 'helvetica', fontSize: 8, cellPadding: { top: 1.2, bottom: 1.2, left: 0.5, right: 0.5 }, valign: 'top' },
-    columnStyles: { 0: { cellWidth: 46 }, 1: { cellWidth: 136 } },
+    // DOCX field values use 10pt English / 9pt Indonesian. A 9.5pt PDF
+    // baseline preserves the same wrapping and page count in the browser.
+    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: { top: 1.2, bottom: 1.2, left: 0.5, right: 0.5 }, valign: 'top' },
+    columnStyles: { 0: { cellWidth: docxWidth(2280) }, 1: { cellWidth: docxWidth(6736) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -281,14 +299,15 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
+    // Equipment is the master table that uses a full box grid.
     theme: 'grid',
     head: [equipHeadRow],
     body: equipBodyRows,
     headStyles: {
-      fillColor: [248, 250, 252],
+      fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
       fontStyle: 'bold',
-      fontSize: 7,
+      fontSize: 9,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
       halign: 'center',
@@ -296,7 +315,7 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7,
+      fontSize: 9,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
@@ -320,16 +339,16 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
       [
         {
           content: `SOP Execution Date: ${data.executionDate || '-'}\nTanggal Pelaksanaan SOP: ${data.executionDate || '-'}`,
-          styles: { fontStyle: 'bold', textColor: COLOR_BLACK },
+          styles: { fontStyle: 'normal', textColor: COLOR_BLACK },
         },
         {
           content: `Reference Ticket Number: ${data.referenceTicketNumber || '-'}\nNomor Tiket Referensi: ${data.referenceTicketNumber || '-'}`,
-          styles: { fontStyle: 'bold', textColor: COLOR_BLACK },
+          styles: { fontStyle: 'normal', textColor: COLOR_BLACK },
         },
       ],
     ],
-    styles: { font: 'helvetica', fontSize: 7.8, cellPadding: { top: 1, bottom: 1.5, left: 0.5, right: 0.5 } },
-    columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
+    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: { top: 1, bottom: 1.5, left: 0.5, right: 0.5 } },
+    columnStyles: { 0: { cellWidth: docxWidth(4450) }, 1: { cellWidth: docxWidth(4566) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 1;
@@ -340,26 +359,26 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     theme: 'plain',
     head: [
       [
-        { content: 'Executed by (Name)\nDilaksanakan oleh (Nama)', styles: { fontStyle: 'bold' } },
-        { content: 'Job title\nJabatan', styles: { fontStyle: 'bold' } },
+        { content: 'Executed by (Name)\nDilaksanakan oleh (Nama)', styles: { fontStyle: 'normal' } },
+        { content: 'Job title\nJabatan', styles: { fontStyle: 'normal' } },
       ],
     ],
     body: [[safeStr(data.executedByName), safeStr(data.executedByJobTitle)]],
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 10,
       lineWidth: { bottom: 0.25 },
       lineColor: COLOR_DIVIDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 9,
       lineWidth: { bottom: 0.25 },
       lineColor: COLOR_DIVIDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
     },
-    columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
+    columnStyles: { 0: { cellWidth: docxWidth(4395) }, 1: { cellWidth: docxWidth(4621) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -376,7 +395,8 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     affTableBody.push(
       rowItems.map((item) => {
         if (!item) return '';
-        const check = item.checked ? '☒' : '☐';
+        // jsPDF core fonts cannot encode the Word checkbox glyph reliably.
+        const check = item.checked ? '[x]' : '[ ]';
         return `${check} ${item.labelEn}\n    ${item.labelId}`;
       })
     );
@@ -386,10 +406,27 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     autoTable(doc, {
       startY: curY,
       margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
-      theme: 'plain',
+      // Do not split a short checklist between two pages.  Splitting here was
+      // the cause of the incomplete-looking table in archived SOP exports.
+      pageBreak: 'avoid',
+      // Word renders this as a visible three-column checklist table.
+      theme: 'grid',
       body: affTableBody,
-      styles: { font: 'helvetica', fontSize: 7.5, cellPadding: { top: 1.2, bottom: 1.2, left: 1, right: 1 }, textColor: COLOR_BLACK },
-      columnStyles: { 0: { cellWidth: 61 }, 1: { cellWidth: 61 }, 2: { cellWidth: 60 } },
+      styles: {
+        font: 'helvetica',
+        fontSize: 9,
+        cellPadding: { top: 1.2, bottom: 1.2, left: 1, right: 1 },
+        textColor: COLOR_BLACK,
+        lineWidth: 0.2,
+        lineColor: COLOR_BOX_BORDER,
+      },
+      // Exact DOCX column widths: [3005, 3227, 2784] dxa.  The former
+      // three equal widths squeezed the middle column and broke its text.
+      columnStyles: {
+        0: { cellWidth: docxWidth(3005) },
+        1: { cellWidth: docxWidth(3227) },
+        2: { cellWidth: docxWidth(2784) },
+      },
     });
     curY = (doc as any).lastAutoTable.finalY + 2;
   }
@@ -438,26 +475,26 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     theme: 'plain',
     head: [
       [
-        { content: 'Document Name\nNama Dokumen', styles: { fontStyle: 'bold' } },
-        { content: 'Document Number\nNomor Dokumen', styles: { fontStyle: 'bold' } },
+        { content: 'Document Name\nNama Dokumen', styles: { fontStyle: 'normal' } },
+        { content: 'Document Number\nNomor Dokumen', styles: { fontStyle: 'normal' } },
       ],
     ],
     body: refDocs.map((rd) => [safeStr(rd.name), safeStr(rd.number)]),
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 10,
       lineWidth: { bottom: 0.25 },
       lineColor: COLOR_DIVIDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.5,
-      lineWidth: { bottom: 0.25 },
-      lineColor: COLOR_DIVIDER,
+      fontSize: 9,
+      lineWidth: 0.2,
+      lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
     },
-    columnStyles: { 0: { cellWidth: 126 }, 1: { cellWidth: 56 } },
+    columnStyles: { 0: { cellWidth: docxWidth(6516) }, 1: { cellWidth: docxWidth(2500) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -488,21 +525,23 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
-    theme: 'plain',
-    head: [[{ content: 'Requirements\nPersyaratan', styles: { fontStyle: 'bold' } }]],
+    pageBreak: 'avoid',
+    // Word displays the EHS requirements as a visible checklist table.
+    theme: 'grid',
+    head: [[{ content: 'Requirements\nPersyaratan', styles: { fontStyle: 'normal' } }]],
     body: ehsList.map(([en, id]) => [`${en}\n${id}`]),
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
-      lineWidth: { bottom: 0.25 },
-      lineColor: COLOR_DIVIDER,
+      fontSize: 10,
+      lineWidth: 0.2,
+      lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.5,
-      lineWidth: { bottom: 0.25 },
-      lineColor: COLOR_DIVIDER,
+      fontSize: 9,
+      lineWidth: 0.2,
+      lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
     },
   });
@@ -527,12 +566,13 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
-    theme: 'grid',
+    // DOCX uses horizontal divider rules for procedure rows, not a boxed grid.
+    theme: 'plain',
     head: [
       [
-        { content: 'Requirements\nPersyaratan', styles: { fontStyle: 'bold' } },
-        { content: 'Time\nWaktu', styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: 'Initial\nInisial', styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: 'Requirements\nPersyaratan', styles: { fontStyle: 'normal' } },
+        { content: 'Time\nWaktu', styles: { fontStyle: 'normal', halign: 'center' } },
+        { content: 'Initial\nInisial', styles: { fontStyle: 'normal', halign: 'center' } },
       ],
     ],
     body: prereqs.map((pr) => [
@@ -541,20 +581,20 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
       safeStr(pr.initial).replace(/^-$/, ''),
     ]),
     headStyles: {
-      fillColor: [248, 250, 252],
+      fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
       fontSize: 7.8,
-      lineWidth: 0.2,
+      lineWidth: { bottom: 0.25 },
       lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
       fontSize: 7.5,
-      lineWidth: 0.2,
+      lineWidth: { bottom: 0.25 },
       lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1.5, right: 1.5 },
     },
-    columnStyles: { 0: { cellWidth: 124 }, 1: { cellWidth: 36, halign: 'center' }, 2: { cellWidth: 22, halign: 'center' } },
+    columnStyles: { 0: { cellWidth: scaledWidth(124) }, 1: { cellWidth: scaledWidth(36), halign: 'center' }, 2: { cellWidth: scaledWidth(22), halign: 'center' } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -570,13 +610,16 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
-    theme: 'plain',
+    // Keep the same visible row boundaries as the DOCX EHS checklist.
+    // Without a grid, this was the table that appeared to be missing in PDF.
+    pageBreak: 'avoid',
+    theme: 'grid',
     head: [
       [
-        { content: 'Job Title:\nJabatan:', styles: { fontStyle: 'bold' } },
-        { content: 'Name:\nNama:', styles: { fontStyle: 'bold' } },
-        { content: 'Signature:\nTanda Tangan:', styles: { fontStyle: 'bold' } },
-        { content: 'Date:\nTanggal:', styles: { fontStyle: 'bold' } },
+        { content: 'Job Title:\nJabatan:', styles: { fontStyle: 'normal' } },
+        { content: 'Name:\nNama:', styles: { fontStyle: 'normal' } },
+        { content: 'Signature:\nTanda Tangan:', styles: { fontStyle: 'normal' } },
+        { content: 'Date:\nTanggal:', styles: { fontStyle: 'normal' } },
       ],
     ],
     body: hasDryRunValues && dryRun ? [
@@ -601,7 +644,7 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
       fontSize: 7.5,
       cellPadding: { top: 2, bottom: 2, left: 1, right: 1 },
     },
-    columnStyles: { 0: { cellWidth: 45.5 }, 1: { cellWidth: 45.5 }, 2: { cellWidth: 45.5 }, 3: { cellWidth: 45.5 } },
+    columnStyles: { 0: { cellWidth: scaledWidth(45.5) }, 1: { cellWidth: scaledWidth(45.5) }, 2: { cellWidth: scaledWidth(45.5) }, 3: { cellWidth: scaledWidth(45.5) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -624,8 +667,8 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
         `${is6Months ? '☐' : '■'} Annual\n    Tahunan`,
       ],
     ],
-    styles: { font: 'helvetica', fontSize: 8, fontStyle: 'bold', cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 }, textColor: COLOR_BLACK },
-    columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
+    styles: { font: 'helvetica', fontSize: 10, fontStyle: 'normal', cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 }, textColor: COLOR_BLACK },
+    columnStyles: { 0: { cellWidth: scaledWidth(91) }, 1: { cellWidth: scaledWidth(91) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -646,14 +689,14 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
       [
         {
           content: 'Conditions / Equipment status prior to SOP Execution:\nKondisi / Status peralatan sebelum Pelaksanaan SOP:',
-          styles: { fontStyle: 'bold', fontSize: 7.8, textColor: COLOR_BLACK },
+          styles: { fontStyle: 'normal', fontSize: 9, textColor: COLOR_BLACK },
         },
       ],
       ...(data.conditionsPriorToExecutionEn || data.conditionsPriorToExecutionId ? [
         [
           {
             content: formatBilingualCell(data.conditionsPriorToExecutionEn, data.conditionsPriorToExecutionId),
-            styles: { fontSize: 7.5, textColor: COLOR_BLACK, cellPadding: { top: 0.5, bottom: 2, left: 0.5, right: 0.5 } },
+            styles: { fontSize: 9, textColor: COLOR_BLACK, cellPadding: { top: 0.5, bottom: 2, left: 0.5, right: 0.5 } },
           },
         ],
       ] : []),
@@ -662,7 +705,7 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
 
   curY = (doc as any).lastAutoTable.finalY + 2;
 
-  const sopStepColWidths = { 0: 88, 1: 44, 2: 30, 3: 20 };
+  const sopStepColWidths = { 0: docxWidth(4248), 1: docxWidth(1843), 2: docxWidth(1842), 3: docxWidth(1083) };
   const sopStepRows = (data.workSteps || []).map((st, i) => {
     const stepNo = st.no || i + 1;
     const cleanActionEn = (st.actionEn || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim() || '-';
@@ -681,26 +724,27 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
+    // The rendered Word master shows a full grid for its work-step table.
     theme: 'grid',
     head: [
       [
-        { content: 'Action\nTindakan', styles: { fontStyle: 'bold' } },
-        { content: 'Expected Outcome\nHasil yang Diharapkan', styles: { fontStyle: 'bold' } },
-        { content: 'Time\nWaktu', styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: 'Initial\nInisial', styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: 'Action\nTindakan', styles: { fontStyle: 'normal' } },
+        { content: 'Expected Outcome\nHasil yang Diharapkan', styles: { fontStyle: 'normal' } },
+        { content: 'Time\nWaktu', styles: { fontStyle: 'normal', halign: 'center' } },
+        { content: 'Initial\nInisial', styles: { fontStyle: 'normal', halign: 'center' } },
       ],
     ],
     body: sopStepRows.length > 0 ? sopStepRows : [['1. -\n1. -', '-\n-', '', '']],
     headStyles: {
-      fillColor: [248, 250, 252],
+      fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 10,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.2,
+      fontSize: 9,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1.5, right: 1.5 },
@@ -725,7 +769,7 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
     theme: 'plain',
-    head: [[{ content: 'Action\nTindakan', styles: { fontStyle: 'bold' } }]],
+    head: [[{ content: 'Action\nTindakan', styles: { fontStyle: 'normal' } }]],
     body: [
       [formatBilingualCell(data.backOutProcedureEn || data.backOutProcedure || 'N/A', data.backOutProcedureId)],
     ],
@@ -758,20 +802,20 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
     theme: 'plain',
     body: [
       [
-        { content: 'Author\nPenulis', styles: { fontStyle: 'bold' } },
+        { content: 'Author\nPenulis', styles: { fontStyle: 'normal' } },
         { content: `: ${data.author || 'Alif Darmawan'}\n: ${data.author || 'Alif Darmawan'}` },
-        { content: 'Date of Creation\nTanggal Pembuatan', styles: { fontStyle: 'bold' } },
+        { content: 'Date of Creation\nTanggal Pembuatan', styles: { fontStyle: 'normal' } },
         { content: `: ${data.dateOfCreation || '07 Sep 2026'}\n: ${data.dateOfCreation || '07 Sep 2026'}` },
       ],
       [
-        { content: 'Date Revision\nTanggal Revisi', styles: { fontStyle: 'bold' } },
+        { content: 'Date Revision\nTanggal Revisi', styles: { fontStyle: 'normal' } },
         { content: `: ${data.dateRevision || 'N/A'}\n: ${data.dateRevision || 'T/A'}` },
-        { content: 'Revision Number\nNomor Revisi', styles: { fontStyle: 'bold' } },
+        { content: 'Revision Number\nNomor Revisi', styles: { fontStyle: 'normal' } },
         { content: `: ${data.revisionNumber || '-'}\n: ${data.revisionNumber || '-'}` },
       ],
     ],
-    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 }, textColor: COLOR_BLACK },
-    columnStyles: { 0: { cellWidth: 36 }, 1: { cellWidth: 55 }, 2: { cellWidth: 42 }, 3: { cellWidth: 49 } },
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 }, textColor: COLOR_BLACK },
+    columnStyles: { 0: { cellWidth: docxWidth(2200) }, 1: { cellWidth: docxWidth(2308) }, 2: { cellWidth: docxWidth(2200) }, 3: { cellWidth: docxWidth(2308) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -796,6 +840,7 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
+    // Approval is the one master table that remains fully boxed.
     theme: 'grid',
     head: [
       [
@@ -812,21 +857,21 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
       '',
     ]),
     headStyles: {
-      fillColor: [248, 250, 252],
+      fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 10,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.5,
+      fontSize: 9,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 2, bottom: 2, left: 1.5, right: 1.5 },
       valign: 'middle',
     },
-    columnStyles: { 0: { cellWidth: 54 }, 1: { cellWidth: 54 }, 2: { cellWidth: 40 }, 3: { cellWidth: 34 } },
+    columnStyles: { 0: { cellWidth: scaledWidth(54) }, 1: { cellWidth: scaledWidth(54) }, 2: { cellWidth: scaledWidth(40) }, 3: { cellWidth: scaledWidth(34) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -845,7 +890,7 @@ export async function exportSOPToPdf(data: SOPDocumentData): Promise<void> {
         {
           content: formatBilingualCell(data.additionalInformationEn || data.additionalInformation || '-', data.additionalInformationId),
           styles: {
-            fontSize: 7.8,
+            fontSize: 10,
             textColor: COLOR_BLACK,
             lineWidth: 0.25,
             lineColor: COLOR_BOX_BORDER,
@@ -881,7 +926,7 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
     compress: true,
   });
 
-  let curY = TOP_CONTENT_Y;
+  let curY = TOP_CONTENT_Y_EOP;
 
   // --------------------------------------------------------------------------
   // SECTION 1: Document Overview
@@ -894,20 +939,20 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
     theme: 'plain',
     body: [
       [
-        { content: 'Document Title\nJudul Dokumen', styles: { fontStyle: 'bold', textColor: COLOR_BLACK } },
+        { content: 'Document Title\nJudul Dokumen', styles: { fontStyle: 'normal', textColor: COLOR_BLACK } },
         { content: `: ${data.documentTitle || '-'}\n: ${data.documentTitle || '-'}`, styles: { textColor: COLOR_BLACK } },
       ],
       [
-        { content: 'Document Purpose\nTujuan Dokumen', styles: { fontStyle: 'bold', textColor: COLOR_BLACK } },
+        { content: 'Document Purpose\nTujuan Dokumen', styles: { fontStyle: 'normal', textColor: COLOR_BLACK } },
         { content: `: ${data.documentPurposeEn || '-'}\n: ${data.documentPurposeId || ensureBilingualTranslation(data.documentPurposeEn || '-')}`, styles: { textColor: COLOR_BLACK } },
       ],
       [
-        { content: 'Work Location\nLokasi Kerja', styles: { fontStyle: 'bold', textColor: COLOR_BLACK } },
+        { content: 'Work Location\nLokasi Kerja', styles: { fontStyle: 'normal', textColor: COLOR_BLACK } },
         { content: `: ${data.workLocationEn || 'Neutra DC Cikarang'}\n: ${data.workLocationId || 'Neutra DC Cikarang'}`, styles: { textColor: COLOR_BLACK } },
       ],
     ],
-    styles: { font: 'helvetica', fontSize: 8, cellPadding: { top: 1.2, bottom: 1.2, left: 0.5, right: 0.5 }, valign: 'top' },
-    columnStyles: { 0: { cellWidth: 46 }, 1: { cellWidth: 136 } },
+    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: { top: 1.2, bottom: 1.2, left: 0.5, right: 0.5 }, valign: 'top' },
+    columnStyles: { 0: { cellWidth: docxWidth(2280) }, 1: { cellWidth: docxWidth(6736) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -927,26 +972,26 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
     theme: 'plain',
     head: [
       [
-        { content: 'Document Name\nNama Dokumen', styles: { fontStyle: 'bold' } },
-        { content: 'Document Number\nNomor Dokumen', styles: { fontStyle: 'bold' } },
+        { content: 'Document Name\nNama Dokumen', styles: { fontStyle: 'normal' } },
+        { content: 'Document Number\nNomor Dokumen', styles: { fontStyle: 'normal' } },
       ],
     ],
     body: refDocs.map((rd) => [safeStr(rd.name), safeStr(rd.number)]),
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
-      lineWidth: { bottom: 0.25 },
-      lineColor: COLOR_DIVIDER,
+      fontSize: 10,
+      lineWidth: 0.2,
+      lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.5,
-      lineWidth: { bottom: 0.25 },
-      lineColor: COLOR_DIVIDER,
+      fontSize: 9,
+      lineWidth: 0.2,
+      lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
     },
-    columnStyles: { 0: { cellWidth: 126 }, 1: { cellWidth: 56 } },
+    columnStyles: { 0: { cellWidth: docxWidth(6516) }, 1: { cellWidth: docxWidth(2500) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -979,21 +1024,24 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
-    theme: 'plain',
-    head: [[{ content: 'Requirements\nPersyaratan', styles: { fontStyle: 'bold' } }]],
+    head: [[{ content: 'Requirements\nPersyaratan', styles: { fontStyle: 'normal' } }]],
     body: eopEhsItems.map(([en, id]) => [`${en}\n${id}`]),
+    // Keep the same visible row boundaries as the DOCX EHS checklist.
+    // Without a grid, this was the table that appeared to be missing in PDF.
+    pageBreak: 'avoid',
+    theme: 'grid',
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
-      lineWidth: { bottom: 0.25 },
-      lineColor: COLOR_DIVIDER,
+      fontSize: 10,
+      lineWidth: 0.2,
+      lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.5,
-      lineWidth: { bottom: 0.25 },
-      lineColor: COLOR_DIVIDER,
+      fontSize: 9,
+      lineWidth: 0.2,
+      lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
     },
   });
@@ -1013,14 +1061,14 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
       [
         {
           content: 'Expected Conditions / Equipment Status:\nKondisi yang Diharapkan / Status Peralatan:',
-          styles: { fontStyle: 'bold', fontSize: 7.8, textColor: COLOR_BLACK },
+          styles: { fontStyle: 'normal', fontSize: 9, textColor: COLOR_BLACK },
         },
       ],
       ...(data.expectedConditionsEn || data.expectedConditionsId ? [
         [
           {
             content: formatBilingualCell(data.expectedConditionsEn, data.expectedConditionsId),
-            styles: { fontSize: 7.5, textColor: COLOR_BLACK, cellPadding: { top: 0.5, bottom: 2, left: 0.5, right: 0.5 } },
+            styles: { fontSize: 9, textColor: COLOR_BLACK, cellPadding: { top: 0.5, bottom: 2, left: 0.5, right: 0.5 } },
           },
         ],
       ] : []),
@@ -1049,38 +1097,39 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
   autoTable(doc, {
     startY: curY,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: TOP_CONTENT_Y, bottom: 16 },
+    // Match the rendered DOCX work-step grid on every continued page.
     theme: 'grid',
     head: [
       [
-        { content: 'No', styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: 'Action\nTindakan', styles: { fontStyle: 'bold' } },
-        { content: 'Expected Outcome\nHasil yang Diharapkan', styles: { fontStyle: 'bold' } },
-        { content: 'Time\nWaktu', styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: 'Name\nNama', styles: { fontStyle: 'bold', halign: 'center' } },
+        { content: 'No', styles: { fontStyle: 'normal', halign: 'center' } },
+        { content: 'Action\nTindakan', styles: { fontStyle: 'normal' } },
+        { content: 'Expected Outcome\nHasil yang Diharapkan', styles: { fontStyle: 'normal' } },
+        { content: 'Time\nWaktu', styles: { fontStyle: 'normal', halign: 'center' } },
+        { content: 'Name\nNama', styles: { fontStyle: 'normal', halign: 'center' } },
       ],
     ],
     body: eopStepRows.length > 0 ? eopStepRows : [['1.', '-\n-', '-\n-', '', '']],
     headStyles: {
-      fillColor: [248, 250, 252],
+      fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 10,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.2,
+      fontSize: 9,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 1.5, bottom: 1.5, left: 1.5, right: 1.5 },
       valign: 'top',
     },
     columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 84 },
-      2: { cellWidth: 48 },
-      3: { cellWidth: 20, halign: 'center' },
-      4: { cellWidth: 20, halign: 'center' },
+      0: { cellWidth: docxWidth(455), halign: 'center' },
+      1: { cellWidth: docxWidth(4785) },
+      2: { cellWidth: docxWidth(2064) },
+      3: { cellWidth: docxWidth(855), halign: 'center' },
+      4: { cellWidth: docxWidth(857), halign: 'center' },
     },
   });
 
@@ -1097,20 +1146,20 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
     theme: 'plain',
     body: [
       [
-        { content: 'Author\nPenulis', styles: { fontStyle: 'bold' } },
+        { content: 'Author\nPenulis', styles: { fontStyle: 'normal' } },
         { content: `: ${data.author || 'Alif Darmawan'}\n: ${data.author || 'Alif Darmawan'}` },
-        { content: 'Date of Creation\nTanggal Pembuatan', styles: { fontStyle: 'bold' } },
+        { content: 'Date of Creation\nTanggal Pembuatan', styles: { fontStyle: 'normal' } },
         { content: `: ${data.dateOfCreation || '07 Sep 2026'}\n: ${data.dateOfCreation || '07 Sep 2026'}` },
       ],
       [
-        { content: 'Next Date Revision\nTanggal Revisi Berikutnya', styles: { fontStyle: 'bold' } },
+        { content: 'Next Date Revision\nTanggal Revisi Berikutnya', styles: { fontStyle: 'normal' } },
         { content: `: ${data.nextDateRevision || 'N/A'}\n: ${data.nextDateRevision === 'N/A' || !data.nextDateRevision ? 'T/A' : data.nextDateRevision}` },
-        { content: 'Revision Number\nNomor Revisi', styles: { fontStyle: 'bold' } },
+        { content: 'Revision Number\nNomor Revisi', styles: { fontStyle: 'normal' } },
         { content: `: ${data.revisionNumber || '00'}\n: ${data.revisionNumber || '00'}` },
       ],
     ],
-    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 }, textColor: COLOR_BLACK },
-    columnStyles: { 0: { cellWidth: 36 }, 1: { cellWidth: 55 }, 2: { cellWidth: 42 }, 3: { cellWidth: 49 } },
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 }, textColor: COLOR_BLACK },
+    columnStyles: { 0: { cellWidth: docxWidth(2200) }, 1: { cellWidth: docxWidth(2308) }, 2: { cellWidth: docxWidth(2200) }, 3: { cellWidth: docxWidth(2308) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -1129,10 +1178,10 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
     theme: 'plain',
     head: [
       [
-        { content: 'Job Title:\nJabatan:', styles: { fontStyle: 'bold' } },
-        { content: 'Name:\nNama:', styles: { fontStyle: 'bold' } },
-        { content: 'Signature:\nTanda Tangan:', styles: { fontStyle: 'bold' } },
-        { content: 'Date:\nTanggal:', styles: { fontStyle: 'bold' } },
+        { content: 'Job Title:\nJabatan:', styles: { fontStyle: 'normal' } },
+        { content: 'Name:\nNama:', styles: { fontStyle: 'normal' } },
+        { content: 'Signature:\nTanda Tangan:', styles: { fontStyle: 'normal' } },
+        { content: 'Date:\nTanggal:', styles: { fontStyle: 'normal' } },
       ],
     ],
     body: hasDryRunValues && eopDryRun ? [
@@ -1148,16 +1197,16 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 10,
       lineWidth: { bottom: 0.25 },
       lineColor: COLOR_DIVIDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.5,
+      fontSize: 9,
       cellPadding: { top: 2, bottom: 2, left: 1, right: 1 },
     },
-    columnStyles: { 0: { cellWidth: 45.5 }, 1: { cellWidth: 45.5 }, 2: { cellWidth: 45.5 }, 3: { cellWidth: 45.5 } },
+    columnStyles: { 0: { cellWidth: docxWidth(2254) }, 1: { cellWidth: docxWidth(2254) }, 2: { cellWidth: docxWidth(2254) }, 3: { cellWidth: docxWidth(2254) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -1166,7 +1215,7 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
   // SECTION 7: Approval (NEW PAGE matching Master EOP)
   // --------------------------------------------------------------------------
   doc.addPage();
-  curY = TOP_CONTENT_Y;
+  curY = TOP_CONTENT_Y_EOP;
 
   curY = renderSectionBanner(doc, curY, 'Section 7 – Approval', 'Seksi 7 – Persetujuan', true);
 
@@ -1198,21 +1247,21 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
       '',
     ]),
     headStyles: {
-      fillColor: [248, 250, 252],
+      fillColor: [255, 255, 255],
       textColor: COLOR_BLACK,
-      fontSize: 7.8,
+      fontSize: 10,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
     },
     bodyStyles: {
       textColor: COLOR_BLACK,
-      fontSize: 7.5,
+      fontSize: 9,
       lineWidth: 0.2,
       lineColor: COLOR_BOX_BORDER,
       cellPadding: { top: 2, bottom: 2, left: 1.5, right: 1.5 },
       valign: 'middle',
     },
-    columnStyles: { 0: { cellWidth: 54 }, 1: { cellWidth: 54 }, 2: { cellWidth: 40 }, 3: { cellWidth: 34 } },
+    columnStyles: { 0: { cellWidth: scaledWidth(54) }, 1: { cellWidth: scaledWidth(54) }, 2: { cellWidth: scaledWidth(40) }, 3: { cellWidth: scaledWidth(34) } },
   });
 
   curY = (doc as any).lastAutoTable.finalY + 4;
@@ -1231,7 +1280,7 @@ export async function exportEOPToPdf(data: EOPDocumentData): Promise<void> {
         {
           content: formatBilingualCell(data.additionalInformationEn || data.additionalInformation || '-', data.additionalInformationId),
           styles: {
-            fontSize: 7.8,
+            fontSize: 10,
             textColor: COLOR_BLACK,
             lineWidth: 0.25,
             lineColor: COLOR_BOX_BORDER,

@@ -82,27 +82,33 @@ function base64ToUint8Array(base64: string): Uint8Array {
 // Helper load gambar aset lokal ke Uint8Array
 async function loadAssetImage(src: string): Promise<Uint8Array> {
   if (!src) return new Uint8Array();
-  if (src.startsWith('data:image')) {
-    return base64ToUint8Array(src);
-  }
+  const imageSource = src.trim();
+  if (!imageSource) return new Uint8Array();
+  const normalizedSource = imageSource.startsWith('data:image') || /^(?:https?:|blob:|\/|\.\/)/i.test(imageSource)
+    ? imageSource
+    : `data:image/jpeg;base64,${imageSource}`;
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth || 600;
-      canvas.height = img.naturalHeight || 400;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 600;
+        canvas.height = img.naturalHeight || 400;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(new Uint8Array());
+          return;
+        }
         ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL('image/png');
-        resolve(base64ToUint8Array(dataUrl));
-      } else {
+        resolve(base64ToUint8Array(canvas.toDataURL('image/png')));
+      } catch {
+        // CORS-protected/invalid images are treated as absent.
         resolve(new Uint8Array());
       }
     };
     img.onerror = () => resolve(new Uint8Array());
-    img.src = src;
+    img.src = normalizedSource;
   });
 }
 
@@ -497,7 +503,9 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
   // Foto Bukti Fisik Anomali
   const photoParagraphs: Paragraph[] = [];
   if (data.photoEvidenceBase64) {
-    const photoBytes = base64ToUint8Array(data.photoEvidenceBase64);
+    // Support the same data-URL/raw-base64/Storage-URL variants as the PDF
+    // renderer. When no valid image resolves, no photo paragraphs are added.
+    const photoBytes = await loadAssetImage(data.photoEvidenceBase64);
     if (photoBytes.length > 0) {
       photoParagraphs.push(
         new Paragraph({
@@ -507,7 +515,7 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
             new ImageRun({
               data: photoBytes,
               transformation: { width: 320, height: 210 },
-              type: 'jpg',
+              type: 'png',
             }),
           ],
         }),
@@ -578,25 +586,6 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
             width: { size: 70, type: WidthType.PERCENTAGE },
             borders: borderThin,
             children: [new Paragraph({ children: [new TextRun({ text: data.aiAnalysis.remainingUsefulLife, bold: true, color: 'B91C1C', size: 18, font: 'Calibri' })] })],
-          }),
-        ],
-      }),
-      new TableRow({
-        cantSplit: true,
-        children: [
-          new TableCell({
-            width: { size: 30, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, fill: COLOR_LIGHT_BG },
-            borders: borderThin,
-            children: [new Paragraph({ children: [new TextRun({ text: 'Tingkat Urgensi & SLA Risk', bold: true, size: 18, font: 'Calibri' })] })],
-          }),
-          new TableCell({
-            width: { size: 70, type: WidthType.PERCENTAGE },
-            borders: borderThin,
-            children: [new Paragraph({ children: [
-              new TextRun({ text: `Urgensi: ${data.aiAnalysis.urgencyLevel}  |  `, bold: true, size: 18, font: 'Calibri' }),
-              new TextRun({ text: data.aiAnalysis.slaRiskAssessment, size: 18, font: 'Calibri' }),
-            ] })],
           }),
         ],
       }),
