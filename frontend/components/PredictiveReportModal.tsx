@@ -465,28 +465,6 @@ export function PredictiveReportModal({
                   </h4>
                 </div>
 
-                {/* Health Status Selector */}
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="font-semibold text-slate-500">Status Kesehatan:</span>
-                  {(['Caution', 'Warning', 'Critical'] as const).map((st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setData({ ...data, healthStatus: st })}
-                      className={`px-2.5 py-1 rounded-lg text-2xs font-bold uppercase transition cursor-pointer ${
-                        data.healthStatus === st
-                          ? st === 'Critical'
-                            ? 'bg-red-600 text-white'
-                            : st === 'Warning'
-                            ? 'bg-amber-600 text-white'
-                            : 'bg-blue-600 text-white'
-                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div>
