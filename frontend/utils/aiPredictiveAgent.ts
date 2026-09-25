@@ -84,7 +84,7 @@ export function generatePredictiveReportNumber(): string {
  * Deprecated compatibility template. New report generation below uses the
  * evidence-limited fallback so no illustrative readings are emitted.
  */
-function generateLegacyTemplate(input: GeneratePredictiveInput): PredictiveReportData {
+export function generateLegacyTemplate(input: GeneratePredictiveInput): PredictiveReportData {
   const text = `${input.equipmentName} ${input.descriptionOrSymptoms} ${input.correctiveActionDone || ''}`.toLowerCase();
   
   let category: PredictiveReportData['systemCategory'] = 'General Facility';
@@ -175,7 +175,7 @@ function generateLegacyTemplate(input: GeneratePredictiveInput): PredictiveRepor
       potentialFailureMode: `Apabila anomali ini dibiarkan tanpa stabilisasi terarah, modus kegagalan diperkirakan akan bereskalasi dari deviasi parameter menuju kegagalan fungsional menyeluruh (functional failure). Eskalasi dapat berupa thermal runaway pada titik sambungan kritis, trip proteksi arus lebih/undervoltage secara mendadak, atau kerusakan katastropik mekanikal yang memicu hilangnya suplai daya/pendinginan pada jalur terkait secara seketika.`,
       remainingUsefulLife: isHighSeverity ? '7 - 14 Hari Kalender (Perlu Intervensi Segera)' : '21 - 30 Hari Kalender (Kondisi Waspada)',
       urgencyLevel: isHighSeverity ? 'High' : 'Medium',
-      slaRiskAssessment: `Tingkat risiko terhadap target ketersediaan 99.982% Data Center NeutraDC berada dalam status kewaspadaan tinggi. Meskipun skenario redundansi (N+1 / 2N) saat ini masih aktif menopang beban server, hilangnya margin keandalan pada unit ini mengeliminasi tingkat toleransi kesalahan (fault tolerance). Gangguan simultan pada unit pasangan akan langsung berdampak pada parameter lingkungan data hall dan berisiko memicu pelanggaran SLA layanan.`
+      slaRiskAssessment: `Tingkat risiko terhadap target ketersediaan 99.982% Data Center NeutraDC berada dalam status kewaspadaan tinggi. Meskipun skenario redundansi (N+1 / 2N) saat ini masih aktif menopang beban server, hilangnya margin keandalan pada unit ini mengeliminasi tingkat toleransi kesalahan (fault tolerance). Gangguan simultan pada unit pasangan akan langsung berdampak pada parameter lingkungan data hall dan berisiko memicu gangguan keandalan layanan.`
     },
 
     actionPlan: {
@@ -288,7 +288,7 @@ export function buildEvidenceLimitedReport(input: GeneratePredictiveInput, reaso
       potentialFailureMode: 'Modus kegagalan belum dapat dipastikan dari satu catatan temuan. Setelah mekanisme anomali tervalidasi di lapangan, tim dapat menyusun failure mode, P-F interval, dan dampak ke subsistem terkait berdasarkan konfigurasi aktual.',
       remainingUsefulLife: 'Belum dapat diestimasi; data tren, jam operasi, dan baseline penerimaan tidak tersedia.',
       urgencyLevel: 'Medium',
-      slaRiskAssessment: 'Dampak terhadap SLA belum dapat dikuantifikasi dari dokumen sumber. Status redundansi, beban aktual, jalur distribusi, dan unit cadangan harus diverifikasi sebelum menyimpulkan risiko layanan atau adanya single point of failure.',
+      slaRiskAssessment: 'Dampak terhadap keandalan operasional belum dapat dikuantifikasi dari dokumen sumber. Status redundansi, beban aktual, jalur distribusi, dan unit cadangan harus diverifikasi sebelum menyimpulkan risiko layanan atau adanya single point of failure.',
     },
     actionPlan: {
       immediateAction: input.correctiveActionDone || 'Verifikasi kembali kondisi yang dicatat pada temuan, dokumentasikan parameter aktual, dan eskalasi sesuai prosedur operasi apabila ditemukan kondisi tidak aman.',
@@ -315,9 +315,9 @@ Tugas Anda adalah menganalisis temuan kerusakan/anomali operasional atau laporan
 
 PRINSIP INTEGRITAS DATA — PRIORITAS TERTINGGI:
 - Gunakan HANYA fakta yang tercantum dalam DATA SUMBER di bawah. Jangan mengisi celah data dengan asumsi, pengalaman umum, atau angka ilustratif.
-- Jangan menciptakan nilai ukur, baseline, merk/model, equipment tag, nomor part, kuantitas, jam operasi, tren, konfigurasi N+1/2N, status unit cadangan, SLA aktual, atau hasil inspeksi yang tidak tersedia di sumber.
+- Jangan menciptakan nilai ukur, baseline, merk/model, equipment tag, nomor part, kuantitas, jam operasi, tren, konfigurasi N+1/2N, status unit cadangan, target ketersediaan aktual, atau hasil inspeksi yang tidak tersedia di sumber.
 - Pisahkan tegas **Fakta terverifikasi** dari **Hipotesis teknis yang perlu diverifikasi**. Hipotesis boleh menjelaskan mekanisme kegagalan yang relevan, tetapi wajib memakai kata "kemungkinan", "perlu diverifikasi", atau "belum dapat dipastikan" dan tidak boleh dipresentasikan sebagai fakta.
-- Jika data tidak cukup untuk root cause, failure mode, RUL, atau dampak SLA, nyatakan keterbatasannya secara eksplisit dan sebutkan data/pengujian yang diperlukan. Jangan membuat estimasi waktu atau tingkat risiko palsu.
+- Jika data tidak cukup untuk root cause, failure mode, RUL, atau dampak keandalan operasional, nyatakan keterbatasannya secara eksplisit dan sebutkan data/pengujian yang diperlukan. Jangan membuat estimasi waktu atau tingkat risiko palsu.
 - Isi measuredParameterDrift HANYA bila DATA SUMBER memuat nilai aktual DAN baseline/rujukan yang jelas; selain itu gunakan array kosong. Isi recommendedSpareparts HANYA bila nama/nomor part serta kuantitas disebut dalam sumber atau dokumen OEM yang disertakan; selain itu gunakan array kosong.
 - Setiap evidenceReferences.observation wajib berupa fakta atau kutipan ringkas dari DATA SUMBER, bukan hasil rekaan. Rekomendasi pengujian boleh bersifat usulan, bukan klaim bahwa pengujian sudah dilakukan.
 
@@ -328,7 +328,7 @@ KRITERIA DAN PANDUAN JAWABAN (WAJIB DIPATUHI):
    - Pada "rootCauseAnalysis": Jelaskan secara mendalam mekanisme fisika/elektrikal/mekanikal terjadinya anomali (misal: fretting wear, dielectric insulation breakdown, micro-pitting kontak, thermal runaway, harmonic stress, kavitasi, unbalance) dalam konteks pengoperasian kontinu 24/7 di Data Center NeutraDC Cikarang (minimal 2 paragraf berbobot).
    - Pada "potentialFailureMode": Jelaskan secara kronologis tahapan progresi kegagalan (P-F Interval Curve), potensi efek domino (cascading failure) ke subsistem hilir data hall/server rack, serta skenario terburuk jika penanganan tertunda (minimal 2 paragraf berbobot).
    - Pada "remainingUsefulLife": Berikan estimasi sisa umur pakai hanya jika sumber memiliki tren bertimestamp, jam operasi, dan parameter pendukung. Jika tidak, tulis "Belum dapat diestimasi" beserta data yang diperlukan.
-   - Pada "slaRiskAssessment": Berikan analisis mendalam mengenai risiko terhadap komitmen Uptime SLA NeutraDC (99.982% availability), arsitektur redundansi fasilitas (N+1 / 2N), serta potensi single point of failure (SPOF) sementara jika unit cadangan ikut terbebani.
+   - Pada "slaRiskAssessment": Berikan analisis mendalam mengenai risiko terhadap komitmen Uptime ketersediaan NeutraDC (99.982% availability), arsitektur redundansi fasilitas (N+1 / 2N), serta potensi single point of failure (SPOF) sementara jika unit cadangan ikut terbebani. JANGAN gunakan kata atau singkatan SLA.
    - Pada "immediateAction": Berikan prosedur teknis mitigasi taktis 0-48 jam yang sangat spesifik dan aplikatif di lapangan.
    - Pada "plannedOverhaulAction": Berikan langkah-langkah terencana maintenance window 1-3 minggu yang terperinci.
    - Pada "recommendedSpareparts": Jangan mengarang part name, part number, kuantitas, atau urgensi. Gunakan array kosong bila belum ada rujukan sumber/OEM.
@@ -352,7 +352,7 @@ Struktur JSON yang WAJIB dipatuhi:
     "potentialFailureMode": "Uraian tahapan progresi modus kegagalan dan dampak cascading failure (2-3 paragraf berbobot)",
     "remainingUsefulLife": "Estimasi sisa umur pakai operasional dengan justifikasi teknis (e.g. '7 - 14 Hari Kalender')",
     "urgencyLevel": "Emergency" | "High" | "Medium" | "Low",
-    "slaRiskAssessment": "Analisis dampak mendalam ke SLA ketersediaan 99.982% NeutraDC dan skenario redundansi N+1 / 2N"
+    "slaRiskAssessment": "Analisis dampak mendalam ke target ketersediaan 99.982% NeutraDC dan skenario redundansi N+1 / 2N"
   },
   "actionPlan": {
     "immediateAction": "Prosedur taktis pencegahan dan pengawasan ketat jangka pendek (1 - 7 hari) yang terperinci",
@@ -385,7 +385,7 @@ Struktur JSON yang WAJIB dipatuhi:
 
 BATAS DATA: daftar di atas adalah satu-satunya bukti yang boleh dipakai. Tidak ada data pengukuran, tren, baseline OEM, riwayat jam operasi, konfigurasi redundansi, ataupun nomor part lain yang boleh diasumsikan tersedia. Susun laporan profesional yang evidence-based: gunakan analisis teknis sebagai hipotesis bersyarat bila bukti tidak cukup, bukan sebagai fakta.
 
-Jawaban harus terperinci dan mencakup Root Cause Analysis, Potential Failure Mode, RUL, dan SLA Risk Assessment sesuai tingkat bukti yang benar-benar tersedia.`;
+Jawaban harus terperinci dan mencakup Root Cause Analysis, Potential Failure Mode, RUL, dan Evaluasi Risiko Operasional sesuai tingkat bukti yang benar-benar tersedia.`;
 
   try {
     onProgress?.('Mengirim data ke AI Reliability Engine...');

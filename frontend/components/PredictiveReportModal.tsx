@@ -664,7 +664,7 @@ export function PredictiveReportModal({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-slate-600 font-semibold mb-1">Evaluasi Risiko Terhadap SLA NeutraDC (99.982% Uptime)</label>
+                  <label className="block text-slate-600 font-semibold mb-1">Evaluasi Risiko Operasional NeutraDC (99.982% Uptime)</label>
                   <textarea
                     rows={3}
                     value={data.aiAnalysis.slaRiskAssessment}
