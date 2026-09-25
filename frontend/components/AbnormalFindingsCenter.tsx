@@ -149,11 +149,15 @@ export function getItemMonthData(item: AbnormalItem): { key: string; label: stri
 }
 
 export function formatWaktuMaintenance(item: AbnormalItem): string {
-  if (!item.maintenanceTime) return '-';
-  if (item.collectionName === 'findings') {
-    const { label } = getItemMonthData(item);
-    return label;
+  // Tanggal temuan yang diedit adalah sumber tampilan utama. Jangan kembali
+  // menampilkan maintenanceTime lama dari laporan induk.
+  const findingDate = item.abnormalFinding?.findingDate;
+  if (findingDate) {
+    const isoDate = String(findingDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+    return String(findingDate);
   }
+  if (!item.maintenanceTime) return '-';
   return item.maintenanceTime;
 }
 
@@ -1993,7 +1997,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                       <td className="py-2.5 px-3">
                         <div
                           onClick={() => setViewingDetailItem(item)}
-                          className="text-slate-800 font-medium line-clamp-2 cursor-pointer hover:text-rose-700 transition"
+                          className="text-slate-800 font-medium whitespace-pre-wrap break-words cursor-pointer hover:text-rose-700 transition"
                           title="Klik untuk melihat detail lengkap"
                         >
                           {abnormal.description || 'Tidak ada deskripsi rinci.'}
@@ -2003,7 +2007,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                       {/* Rekomendasi */}
                       <td className="py-2.5 px-3">
                         {abnormal.actionRecommendation ? (
-                          <div className="text-[11px] text-amber-900 bg-amber-50/70 border border-amber-200/80 rounded px-2 py-1 line-clamp-2">
+                          <div className="text-[11px] text-amber-900 bg-amber-50/70 border border-amber-200/80 rounded px-2 py-1 whitespace-pre-wrap break-words">
                             {abnormal.actionRecommendation}
                           </div>
                         ) : (
@@ -2229,7 +2233,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     {/* Deskripsi Kelainan */}
                     <div
                       onClick={() => setViewingDetailItem(item)}
-                      className="p-2 bg-rose-50/60 hover:bg-rose-50 border border-rose-100 rounded-lg cursor-pointer transition text-xs text-slate-800 font-medium line-clamp-2"
+                      className="p-2 bg-rose-50/60 hover:bg-rose-50 border border-rose-100 rounded-lg cursor-pointer transition text-xs text-slate-800 font-medium whitespace-pre-wrap break-words"
                       title="Klik untuk melihat detail lengkap di pop-up"
                     >
                       {abnormal.description || 'Tidak ada deskripsi rinci.'}
@@ -2237,7 +2241,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
                     {/* Rekomendasi */}
                     {abnormal.actionRecommendation ? (
-                      <div className="text-[11px] text-amber-950 bg-amber-50/70 border border-amber-200/80 rounded-md px-2 py-1 line-clamp-1">
+                      <div className="text-[11px] text-amber-950 bg-amber-50/70 border border-amber-200/80 rounded-md px-2 py-1 whitespace-pre-wrap break-words">
                         <span className="font-semibold text-amber-900">Rekomendasi: </span>
                         {abnormal.actionRecommendation}
                       </div>
