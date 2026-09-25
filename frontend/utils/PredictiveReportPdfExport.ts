@@ -174,20 +174,13 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
     // ─── 2. KONDISI AKTUAL & GEJALA AWAL ────────────────────────────────────
     printSectionTitle('Kondisi Aktual & Gejala Awal', '2', 40);
 
-    // Health Status Box & Symptoms
-    const statusColor = data.healthStatus === 'Critical' ? [185, 28, 28] : data.healthStatus === 'Warning' ? [217, 119, 6] : [37, 99, 235];
-    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-    doc.roundedRect(margin, currentY, 32, 5.5, 1.2, 1.2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text(`STATUS: ${data.healthStatus.toUpperCase()}`, margin + 16, currentY + 3.8, { align: 'center' });
-
+    // Status kesehatan sengaja tidak dicetak di berkas export. Laporan tetap
+    // fokus pada bukti observasi, analisis, dan rencana tindakan.
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
-    const symptomsLines = doc.splitTextToSize(`Gejala Terdeteksi: ${sanitizeText(data.currentSymptoms)}`, contentW - 36);
-    doc.text(symptomsLines, margin + 35, currentY + 3.8);
+    const symptomsLines = doc.splitTextToSize(`Gejala Terdeteksi: ${sanitizeText(data.currentSymptoms)}`, contentW);
+    doc.text(symptomsLines, margin, currentY + 3.8);
 
     currentY += Math.max(8, symptomsLines.length * 4 + 2);
 
@@ -200,7 +193,7 @@ export async function exportPredictiveReportToPdf(data: PredictiveReportData): P
           sanitizeText(d.nominalBaseline),
           sanitizeText(d.unit || '-'),
         ])
-      : [['Observasi Fisik & Operasional', { content: 'Abnormal', styles: { textColor: alertRed, fontStyle: 'bold' as const } }, 'Normal Baseline', 'Status']];
+      : [['Data pengukuran', 'Belum tersedia', 'Belum tersedia', 'Verifikasi lapangan diperlukan']];
 
     autoTable(doc, {
       startY: currentY,

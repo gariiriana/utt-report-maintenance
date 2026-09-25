@@ -1,7 +1,7 @@
 // ============================================================================
 // FILE: ManualAbnormalFinding.tsx
-// Deskripsi: Input ringkas temuan abnormal manual oleh engineer. Periode dicatat
-//            sebagai bulan/tahun, tanpa meminta tanggal kejadian dari pengguna.
+// Deskripsi: Input temuan abnormal manual oleh engineer dengan tanggal kejadian
+//            lengkap (tanggal, bulan, dan tahun).
 // ============================================================================
 
 import { useState } from 'react';
@@ -24,6 +24,7 @@ export function ManualAbnormalFinding() {
   const [form, setForm] = useState({
     maintenanceName: '',
     unitName: '',
+    day: String(now.getDate()),
     month: String(now.getMonth() + 1),
     year: String(now.getFullYear()),
     description: '',
@@ -74,19 +75,20 @@ export function ManualAbnormalFinding() {
     const unitName = form.unitName.trim();
     const description = form.description.trim();
     const actionRecommendation = form.actionRecommendation.trim();
+    const day = Number(form.day);
     const month = Number(form.month);
     const year = Number(form.year);
+    const selectedDate = new Date(year, month - 1, day);
 
-    if (!maintenanceName || !unitName || !description || !Number.isInteger(month) || !Number.isInteger(year)) {
-      toast.error('Nama maintenance, nama unit, bulan, tahun, dan temuan abnormal wajib diisi.');
+    if (!maintenanceName || !unitName || !description || !Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)
+      || day < 1 || day > 31 || selectedDate.getFullYear() !== year || selectedDate.getMonth() !== month - 1 || selectedDate.getDate() !== day) {
+      toast.error('Nama maintenance, nama unit, tanggal, bulan, tahun, dan temuan abnormal wajib diisi dengan benar.');
       return;
     }
 
     setIsSaving(true);
     try {
-      // findingDate dibuat sistem pada hari pertama periode hanya untuk kompatibilitas
-      // filter/rekap lama; pengguna tidak pernah diminta memasukkan tanggal.
-      const periodDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const periodDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const payload: Record<string, any> = {
         manualAbnormal: true,
         source: 'manual_abnormal',
@@ -128,6 +130,7 @@ export function ManualAbnormalFinding() {
         ...current,
         maintenanceName: '',
         unitName: '',
+        day: String(new Date().getDate()),
         description: '',
         actionRecommendation: '',
       }));
@@ -149,14 +152,18 @@ export function ManualAbnormalFinding() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900">Input Temuan Abnormal Manual</h1>
-            <p className="text-sm text-slate-500">Catat kondisi abnormal per periode maintenance. Tidak ada input tanggal.</p>
+            <p className="text-sm text-slate-500">Catat kondisi abnormal berdasarkan tanggal kejadian yang lengkap.</p>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-5 sm:p-7 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <label className="block">
+              <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><CalendarDays className="w-4 h-4 text-rose-600" />Tanggal <span className="text-rose-600">*</span></span>
+              <input required type="number" min="1" max="31" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm" />
+            </label>
             <label className="block">
               <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><Wrench className="w-4 h-4 text-rose-600" />Nama Maintenance <span className="text-rose-600">*</span></span>
               <input required value={form.maintenanceName} onChange={(e) => setForm({ ...form, maintenanceName: e.target.value })} placeholder="Contoh: PM Bulanan UPS" className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm" />

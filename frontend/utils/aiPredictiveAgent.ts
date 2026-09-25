@@ -81,8 +81,8 @@ export function generatePredictiveReportNumber(): string {
 // ─── Fallback Heuristik Deterministic (Offline / Rate Limit Guard) ────────────
 
 /**
- * Legacy template retained only for backward-compatible historical rendering.
- * Never use it to create a new report: it contains illustrative values, not evidence.
+ * Deprecated compatibility template. New report generation below uses the
+ * evidence-limited fallback so no illustrative readings are emitted.
  */
 function generateLegacyTemplate(input: GeneratePredictiveInput): PredictiveReportData {
   const text = `${input.equipmentName} ${input.descriptionOrSymptoms} ${input.correctiveActionDone || ''}`.toLowerCase();
@@ -258,8 +258,8 @@ export function buildEvidenceLimitedReport(input: GeneratePredictiveInput, reaso
       }] : []),
     ],
     dataLimitations: [
-      'Data tren serial bertimestamp belum terekam penuh; analisis menggunakan pemodelan heuristik keandalan data center.',
-      'Baseline spesifikasi OEM dan riwayat jam kerja unit perlu diverifikasi berkala oleh tim pemeliharaan.',
+      'Data tren serial bertimestamp, baseline OEM, jam operasi, dan konfigurasi redundansi tidak tersedia pada dokumen sumber.',
+      'Tidak ada nilai pengukuran atau nomor suku cadang yang dapat divalidasi dari data sumber yang diterima.',
       reason,
     ],
   };
@@ -279,22 +279,22 @@ export function buildEvidenceLimitedReport(input: GeneratePredictiveInput, reaso
     systemCategory: 'General Facility',
     locationRoom: input.locationRoom || 'Data Center NeutraDC Cikarang',
     healthStatus: 'Caution',
-    currentSymptoms: input.descriptionOrSymptoms || 'Gejala operasional teramati memerlukan investigasi prediktif.',
+    currentSymptoms: input.descriptionOrSymptoms || 'Tidak ada gejala teknis yang dicatat pada dokumen sumber.',
     measuredParameterDrift: [],
     photoEvidenceBase64: input.photoEvidenceBase64,
     photoCaption: input.photoCaption,
     aiAnalysis: {
-      rootCauseAnalysis: `Berdasarkan observasi kondisi operasional "${input.descriptionOrSymptoms || 'Anomali peralatan'}", akar permasalahan terindikasi pada kelelahan komponen elektromekanikal dan pergeseran parameter nominal akibat beban operasional 24/7. Fenomena ini umumnya diakibatkan oleh degradasi insulasi termal, resistansi kontak meningkat pada sambungan terminasi, atau ketidakseimbangan mekanis mikro.`,
-      potentialFailureMode: 'Potensi kegagalan berupa pemutusan sirkuit proteksi otomatis (nuisance trip), kenaikan suhu lokal (hotspot), peningkatan vibrasi mekanis, atau degradasi efisiensi transfer daya/pendinginan yang dapat merembet ke modul hilir.',
-      remainingUsefulLife: '14 - 21 Hari Operasional (Wajib Verifikasi Pengukuran Lapangan)',
+      rootCauseAnalysis: `Fakta yang tersedia hanya mencatat: "${input.descriptionOrSymptoms || 'tidak ada gejala teknis yang dicatat'}". Akar penyebab belum dapat ditetapkan secara engineering tanpa inspeksi, riwayat gangguan, data tren, dan baseline OEM. Investigasi perlu dimulai dari verifikasi kondisi yang tercatat pada dokumen sumber, lalu pengukuran parameter yang relevan pada unit tersebut.`,
+      potentialFailureMode: 'Modus kegagalan belum dapat dipastikan dari satu catatan temuan. Setelah mekanisme anomali tervalidasi di lapangan, tim dapat menyusun failure mode, P-F interval, dan dampak ke subsistem terkait berdasarkan konfigurasi aktual.',
+      remainingUsefulLife: 'Belum dapat diestimasi; data tren, jam operasi, dan baseline penerimaan tidak tersedia.',
       urgencyLevel: 'Medium',
-      slaRiskAssessment: 'Tingkat risiko SLA 99.982% NeutraDC berada pada kategori TERKENDALI selama sistem redundansi (N+1) beroperasi optimal. Perlu pengawasan berkala agar tidak terjadi kehilangan fungsi proteksi ganda.',
+      slaRiskAssessment: 'Dampak terhadap SLA belum dapat dikuantifikasi dari dokumen sumber. Status redundansi, beban aktual, jalur distribusi, dan unit cadangan harus diverifikasi sebelum menyimpulkan risiko layanan atau adanya single point of failure.',
     },
     actionPlan: {
-      immediateAction: input.correctiveActionDone || 'Amankan area kerja, catat parameter operasional aktual, periksa kekencangan baut terminasi, dan monitor suhu dengan thermal gun.',
-      plannedOverhaulAction: input.recommendation || 'Jadwalkan inspeksi menyeluruh saat maintenance window, lakukan pengujian insulasi dan pembersihan total unit.',
+      immediateAction: input.correctiveActionDone || 'Verifikasi kembali kondisi yang dicatat pada temuan, dokumentasikan parameter aktual, dan eskalasi sesuai prosedur operasi apabila ditemukan kondisi tidak aman.',
+      plannedOverhaulAction: input.recommendation || 'Susun scope inspeksi berbasis hasil verifikasi lapangan dan dokumen OEM sebelum menetapkan pekerjaan overhaul atau penggantian komponen.',
       recommendedSpareparts: [],
-      followUpTestingMethods: ['Thermography Infrared Scanning', 'Pengukuran Tegangan & Arus Beban', 'Inspeksi Visual & Pengencangan Koneksi'],
+      followUpTestingMethods: ['Inspeksi visual terstruktur dan verifikasi terhadap dokumen OEM', 'Pencatatan parameter operasi sesuai jenis peralatan', 'Analisis tren setelah data pengukuran mencukupi'],
     },
     analysisMetadata: metadata,
     signatures: {
@@ -313,17 +313,25 @@ export async function generatePredictiveReportAI(
   const systemPrompt = `Anda adalah Senior Lead Reliability & Predictive Maintenance Specialist untuk Fasilitas Data Center Tier III/IV NeutraDC Cikarang (bekerja untuk PT Dwimitra Ekatama Mandiri / PT United Transworld Trading).
 Tugas Anda adalah menganalisis temuan kerusakan/anomali operasional atau laporan Corrective Maintenance (CM), lalu menyusun LAPORAN PREDICTIVE MAINTENANCE (PdM) yang SANGAT PROFESIONAL, KOMPREHENSIF, MENDALAM, DAN BERBOBOT TEKNIS TINGGI berbasis standar keandalan (RCM, FMEA, P-F Interval, ISO 14224, IEEE, dan Uptime Institute Data Center Guidelines).
 
+PRINSIP INTEGRITAS DATA — PRIORITAS TERTINGGI:
+- Gunakan HANYA fakta yang tercantum dalam DATA SUMBER di bawah. Jangan mengisi celah data dengan asumsi, pengalaman umum, atau angka ilustratif.
+- Jangan menciptakan nilai ukur, baseline, merk/model, equipment tag, nomor part, kuantitas, jam operasi, tren, konfigurasi N+1/2N, status unit cadangan, SLA aktual, atau hasil inspeksi yang tidak tersedia di sumber.
+- Pisahkan tegas **Fakta terverifikasi** dari **Hipotesis teknis yang perlu diverifikasi**. Hipotesis boleh menjelaskan mekanisme kegagalan yang relevan, tetapi wajib memakai kata "kemungkinan", "perlu diverifikasi", atau "belum dapat dipastikan" dan tidak boleh dipresentasikan sebagai fakta.
+- Jika data tidak cukup untuk root cause, failure mode, RUL, atau dampak SLA, nyatakan keterbatasannya secara eksplisit dan sebutkan data/pengujian yang diperlukan. Jangan membuat estimasi waktu atau tingkat risiko palsu.
+- Isi measuredParameterDrift HANYA bila DATA SUMBER memuat nilai aktual DAN baseline/rujukan yang jelas; selain itu gunakan array kosong. Isi recommendedSpareparts HANYA bila nama/nomor part serta kuantitas disebut dalam sumber atau dokumen OEM yang disertakan; selain itu gunakan array kosong.
+- Setiap evidenceReferences.observation wajib berupa fakta atau kutipan ringkas dari DATA SUMBER, bukan hasil rekaan. Rekomendasi pengujian boleh bersifat usulan, bukan klaim bahwa pengujian sudah dilakukan.
+
 KRITERIA DAN PANDUAN JAWABAN (WAJIB DIPATUHI):
 1. **Bahasa & Tone**: Gunakan Bahasa Indonesia teknis teknik keandalan data center yang baku, formal, berbobot, terstruktur rapi, dan otoritatif.
 2. **Kualitas & Panjang Jawaban**:
-   - Berikan analisis yang MENDALAM, MANTAP, dan LENGKAP (bukan kalimat singkat 1 baris!).
+   - Berikan analisis yang MENDALAM, MANTAP, dan LENGKAP (bukan kalimat singkat 1 baris!), namun kedalaman penjelasan tidak boleh mengalahkan integritas data.
    - Pada "rootCauseAnalysis": Jelaskan secara mendalam mekanisme fisika/elektrikal/mekanikal terjadinya anomali (misal: fretting wear, dielectric insulation breakdown, micro-pitting kontak, thermal runaway, harmonic stress, kavitasi, unbalance) dalam konteks pengoperasian kontinu 24/7 di Data Center NeutraDC Cikarang (minimal 2 paragraf berbobot).
    - Pada "potentialFailureMode": Jelaskan secara kronologis tahapan progresi kegagalan (P-F Interval Curve), potensi efek domino (cascading failure) ke subsistem hilir data hall/server rack, serta skenario terburuk jika penanganan tertunda (minimal 2 paragraf berbobot).
-   - Pada "remainingUsefulLife": Berikan estimasi sisa umur pakai yang terukur dan realistis secara teknik (misal: "7 - 14 Hari Kalender", "14 - 21 Hari Operasional pada beban 65%") lengkap dengan justifikasi parameter penyebabnya.
+   - Pada "remainingUsefulLife": Berikan estimasi sisa umur pakai hanya jika sumber memiliki tren bertimestamp, jam operasi, dan parameter pendukung. Jika tidak, tulis "Belum dapat diestimasi" beserta data yang diperlukan.
    - Pada "slaRiskAssessment": Berikan analisis mendalam mengenai risiko terhadap komitmen Uptime SLA NeutraDC (99.982% availability), arsitektur redundansi fasilitas (N+1 / 2N), serta potensi single point of failure (SPOF) sementara jika unit cadangan ikut terbebani.
    - Pada "immediateAction": Berikan prosedur teknis mitigasi taktis 0-48 jam yang sangat spesifik dan aplikatif di lapangan.
    - Pada "plannedOverhaulAction": Berikan langkah-langkah terencana maintenance window 1-3 minggu yang terperinci.
-   - Pada "recommendedSpareparts": Berikan rekomendasi suku cadang spesifik dengan estimasi part name, estimasi part number, kuantitas, dan tingkat urgensi (Ready Stock / Indent Procurement / Critical Backup).
+   - Pada "recommendedSpareparts": Jangan mengarang part name, part number, kuantitas, atau urgensi. Gunakan array kosong bila belum ada rujukan sumber/OEM.
    - Pada "followUpTestingMethods": Berikan minimal 3-4 metode pengujian NDT lanjutan yang akurat (seperti Thermography Infrared FLIR, Vibration Spectrum Analysis ISO 10816, Megger Insulation Test, dsb).
 3. **Format Output**:
    - Berikan respon HANYA dalam format JSON valid tanpa tanda markdown (tanpa \`\`\`json atau teks pengantar apapun).
@@ -375,7 +383,9 @@ Struktur JSON yang WAJIB dipatuhi:
 - Tindakan CM Yang Sudah Diambil: ${input.correctiveActionDone || 'Pemeriksaan awal lapangan'}
 - Catatan Rekomendasi Awal: ${input.recommendation || 'Perlu pemantauan prediktif lanjutan'}
 
-Susun laporan analisis prediktif (PdM) yang sangat profesional, komprehensif, dan mendalam sesuai standar keandalan Tier III/IV NeutraDC Cikarang. Jawaban harus panjang, terperinci, dan mencakup penjelasan teknis lengkap pada Root Cause Analysis, Potential Failure Mode, Realistic RUL, dan SLA Risk Assessment.`;
+BATAS DATA: daftar di atas adalah satu-satunya bukti yang boleh dipakai. Tidak ada data pengukuran, tren, baseline OEM, riwayat jam operasi, konfigurasi redundansi, ataupun nomor part lain yang boleh diasumsikan tersedia. Susun laporan profesional yang evidence-based: gunakan analisis teknis sebagai hipotesis bersyarat bila bukti tidak cukup, bukan sebagai fakta.
+
+Jawaban harus terperinci dan mencakup Root Cause Analysis, Potential Failure Mode, RUL, dan SLA Risk Assessment sesuai tingkat bukti yang benar-benar tersedia.`;
 
   try {
     onProgress?.('Mengirim data ke AI Reliability Engine...');
@@ -394,8 +404,9 @@ Susun laporan analisis prediktif (PdM) yang sangat profesional, komprehensif, da
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
 
-    // Fallback data jika parsial
-    const fallbackTemplate = generateLegacyTemplate(input);
+    // Semua field yang tidak dapat dibuktikan memakai fallback berbasis bukti,
+    // bukan template ilustratif dengan angka/komponen yang dibuat-buat.
+    const fallbackTemplate = buildEvidenceLimitedReport(input, 'Respons AI tidak menyediakan data pendukung yang dapat diverifikasi untuk field ini.');
 
     const result: PredictiveReportData = {
       id: `PDM_${now.getTime()}`,
@@ -406,21 +417,21 @@ Susun laporan analisis prediktif (PdM) yang sangat profesional, komprehensif, da
 
       sourceDocId: input.sourceDocId,
       sourceCollection: input.sourceCollection,
-      sourceTicketNumber: input.sourceTicketNumber || 'CM-' + now.getTime().toString().slice(-4),
+      sourceTicketNumber: input.sourceTicketNumber,
       sourceMaintenanceName: input.sourceMaintenanceName,
       sourceMaintenanceDate: input.sourceMaintenanceDate || dateStr,
 
       equipmentName: input.equipmentName || 'Equipment Unit',
-      equipmentTag: parsed.equipmentTag || fallbackTemplate.equipmentTag,
-      systemCategory: parsed.systemCategory || fallbackTemplate.systemCategory,
+      equipmentTag: undefined,
+      systemCategory: ['Fuel System', 'HVAC / Cooling', 'Electrical Distribution', 'UPS & Battery', 'Fire Protection', 'General Facility'].includes(parsed.systemCategory)
+        ? parsed.systemCategory
+        : fallbackTemplate.systemCategory,
       locationRoom: input.locationRoom || 'Data Center NeutraDC Cikarang',
-      brandModel: parsed.brandModel || fallbackTemplate.brandModel,
+      brandModel: undefined,
 
-      healthStatus: parsed.healthStatus || 'Warning',
-      currentSymptoms: parsed.currentSymptoms || input.descriptionOrSymptoms,
-      measuredParameterDrift: Array.isArray(parsed.measuredParameterDrift) && parsed.measuredParameterDrift.length > 0
-        ? parsed.measuredParameterDrift
-        : fallbackTemplate.measuredParameterDrift,
+      healthStatus: ['Critical', 'Warning', 'Caution'].includes(parsed.healthStatus) ? parsed.healthStatus : 'Caution',
+      currentSymptoms: input.descriptionOrSymptoms || fallbackTemplate.currentSymptoms,
+      measuredParameterDrift: [],
       photoEvidenceBase64: input.photoEvidenceBase64,
       photoCaption: `Foto bukti fisik anomali pada ${input.equipmentName}`,
 
@@ -435,30 +446,17 @@ Susun laporan analisis prediktif (PdM) yang sangat profesional, komprehensif, da
       actionPlan: {
         immediateAction: parsed.actionPlan?.immediateAction || fallbackTemplate.actionPlan.immediateAction,
         plannedOverhaulAction: parsed.actionPlan?.plannedOverhaulAction || fallbackTemplate.actionPlan.plannedOverhaulAction,
-        recommendedSpareparts: Array.isArray(parsed.actionPlan?.recommendedSpareparts) && parsed.actionPlan.recommendedSpareparts.length > 0
-          ? parsed.actionPlan.recommendedSpareparts
-          : fallbackTemplate.actionPlan.recommendedSpareparts,
+        recommendedSpareparts: [],
         followUpTestingMethods: Array.isArray(parsed.actionPlan?.followUpTestingMethods) && parsed.actionPlan.followUpTestingMethods.length > 0
           ? parsed.actionPlan.followUpTestingMethods
           : fallbackTemplate.actionPlan.followUpTestingMethods
       },
 
       analysisMetadata: {
-        evidenceReferences: Array.isArray(parsed.analysisMetadata?.evidenceReferences)
-          ? parsed.analysisMetadata.evidenceReferences
-          : [
-              {
-                sourceType: input.sourceCollection === 'findings' ? 'Temuan Abnormal' : 'Corrective Maintenance',
-                reference: `${input.sourceMaintenanceName} (${input.sourceTicketNumber || 'Ref'})`,
-                observation: input.descriptionOrSymptoms,
-                usedFor: 'Root Cause & Failure Mode Analysis',
-              },
-            ],
-        evidenceQuality: parsed.analysisMetadata?.evidenceQuality || 'Memadai',
-        confidenceLevel: parsed.analysisMetadata?.confidenceLevel || 'Tinggi',
-        dataLimitations: Array.isArray(parsed.analysisMetadata?.dataLimitations)
-          ? parsed.analysisMetadata.dataLimitations
-          : ['Pengukuran berkala dan thermography scanning lanjutan direkomendasikan untuk validasi dinamika beban.'],
+        evidenceReferences: fallbackTemplate.analysisMetadata!.evidenceReferences,
+        evidenceQuality: fallbackTemplate.analysisMetadata!.evidenceQuality,
+        confidenceLevel: fallbackTemplate.analysisMetadata!.confidenceLevel,
+        dataLimitations: fallbackTemplate.analysisMetadata!.dataLimitations,
         requiresFieldVerification: true,
         generatedAt: now.toISOString(),
       },
@@ -510,7 +508,7 @@ Susun laporan analisis prediktif (PdM) yang sangat profesional, komprehensif, da
     return result;
   } catch (err: any) {
     console.error('generatePredictiveReportAI error:', err);
-    onProgress?.('AI Cloud mengalami kendala, menggunakan model keandalan deterministik...');
-    return generateLegacyTemplate(input);
+    onProgress?.('AI Cloud mengalami kendala, membuat laporan berbasis bukti yang tersedia...');
+    return buildEvidenceLimitedReport(input, 'Analisis AI tidak tersedia; tidak ada kesimpulan teknis tambahan yang dibuat tanpa bukti.');
   }
 }

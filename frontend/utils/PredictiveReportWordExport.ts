@@ -396,25 +396,9 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
   });
 
   // ─── Bagian 2: Kondisi Aktual & Gejala Awal ──────────────────────────────
-  const healthStatusColor = data.healthStatus === 'Critical' ? 'B91C1C' : data.healthStatus === 'Warning' ? 'D97706' : '2563EB';
-
   const conditionParagraphs: Paragraph[] = [
     new Paragraph({
-      spacing: { before: 80, after: 60 },
-      children: [
-        new TextRun({ text: 'Status Kesehatan Peralatan: ', bold: true, size: 18, font: 'Calibri' }),
-        new TextRun({
-          text: ` ${data.healthStatus.toUpperCase()} `,
-          bold: true,
-          size: 18,
-          color: COLOR_WHITE,
-          shading: { type: ShadingType.CLEAR, fill: healthStatusColor },
-          font: 'Calibri',
-        }),
-      ],
-    }),
-    new Paragraph({
-      spacing: { before: 60, after: 120 },
+      spacing: { before: 80, after: 120 },
       children: [
         new TextRun({ text: 'Gejala Terdeteksi: ', bold: true, size: 18, font: 'Calibri' }),
         new TextRun({ text: data.currentSymptoms, size: 18, font: 'Calibri', color: COLOR_DARK }),
@@ -485,19 +469,19 @@ export async function exportPredictiveReportToDocx(data: PredictiveReportData): 
         children: [
           new TableCell({
             borders: borderThin,
-            children: [new Paragraph({ children: [new TextRun({ text: 'Observasi Visual & Operasional', size: 18, font: 'Calibri' })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: 'Data pengukuran', size: 18, font: 'Calibri' })] })],
           }),
           new TableCell({
             borders: borderThin,
-            children: [new Paragraph({ children: [new TextRun({ text: 'Abnormal / Deviasi', bold: true, color: 'B91C1C', size: 18, font: 'Calibri' })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: 'Belum tersedia', size: 18, font: 'Calibri' })] })],
           }),
           new TableCell({
             borders: borderThin,
-            children: [new Paragraph({ children: [new TextRun({ text: 'Normal Fit', size: 18, font: 'Calibri' })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: 'Belum tersedia', size: 18, font: 'Calibri' })] })],
           }),
           new TableCell({
             borders: borderThin,
-            children: [new Paragraph({ children: [new TextRun({ text: 'Status', size: 18, font: 'Calibri' })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: 'Verifikasi lapangan diperlukan', size: 18, font: 'Calibri' })] })],
           }),
         ],
       })

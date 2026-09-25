@@ -48,6 +48,7 @@ export function AbnormalReportModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [unitName, setUnitName] = useState('');
+  const [findingDate, setFindingDate] = useState('');
   const [description, setDescription] = useState('');
   const [actionRecommendation, setActionRecommendation] = useState('');
   const [photoBase64, setPhotoBase64] = useState('');
@@ -66,6 +67,12 @@ export function AbnormalReportModal({
       const existing = (docItem.abnormalFinding as any) || {};
       const targetUnit = existing.unitName || existing.partName || docItem.specificDetail || docItem.maintenanceName || '';
       setUnitName(targetUnit);
+
+      const rawFindingDate = existing.findingDate || existing.reportedAt || (docItem as any).maintenanceTime || '';
+      const normalizedFindingDate = typeof rawFindingDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawFindingDate)
+        ? rawFindingDate.slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+      setFindingDate(normalizedFindingDate);
 
       // Support multi-format field (description / remark / notes)
       let initialDesc = existing.description || existing.remark || existing.notes || '';
@@ -228,6 +235,10 @@ export function AbnormalReportModal({
     try {
       const targetUnitName = unitName.trim() || docItem.specificDetail || docItem.maintenanceName || 'Unit';
       const existingAf = (docItem.abnormalFinding as any) || {};
+      const validFindingDate = /^\d{4}-\d{2}-\d{2}$/.test(findingDate) ? findingDate : new Date().toISOString().slice(0, 10);
+      const findingDateParts = validFindingDate.split('-').map(Number);
+      const findingYear = findingDateParts[0];
+      const findingMonth = findingDateParts[1];
 
       const abnormalPayload: AbnormalFinding = {
         unitName: targetUnitName,
@@ -239,8 +250,10 @@ export function AbnormalReportModal({
         photoBase64: photoBase64 || undefined,
         photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : (existingAf.photos || []),
         reportedBy: user?.displayName || user?.email || existingAf.reportedBy || 'Engineer',
-        reportedAt: existingAf.reportedAt || new Date().toISOString(),
-        findingDate: existingAf.findingDate || (docItem.maintenanceTime ? docItem.maintenanceTime.split('T')[0] : new Date().toISOString().split('T')[0]),
+        reportedAt: validFindingDate,
+        findingDate: validFindingDate,
+        findingMonth,
+        findingYear,
         partNumber: existingAf.partNumber || '-',
         brandName: existingAf.brandName || '-',
         quantity: existingAf.quantity || '1 Unit',
@@ -262,10 +275,15 @@ export function AbnormalReportModal({
         if (colName === 'findings') {
           await setDoc(doc(db, 'findings', docItem.id), {
             partName: targetUnitName,
+            unitName: targetUnitName,
             remark: description.trim(),
             description: description.trim(),
             actionRecommendation: actionRecommendation.trim() || '',
             recommendation: actionRecommendation.trim() || '',
+            findingDate: validFindingDate,
+            reportedAt: validFindingDate,
+            findingMonth,
+            findingYear,
             photoBase64: photoBase64 || '',
             photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : [],
             updatedAt: serverTimestamp(),
@@ -289,7 +307,10 @@ export function AbnormalReportModal({
             partNumber: cleanAbnormal.partNumber || '-',
             brandName: cleanAbnormal.brandName || '-',
             quantity: cleanAbnormal.quantity || '1 Unit',
-            findingDate: cleanAbnormal.findingDate || new Date().toISOString().split('T')[0],
+            findingDate: validFindingDate,
+            findingMonth,
+            findingYear,
+            reportedAt: validFindingDate,
             remark: description.trim(),
             description: description.trim(),
             actionRecommendation: actionRecommendation.trim() || '',
@@ -450,6 +471,22 @@ export function AbnormalReportModal({
                 placeholder="Contoh: PAC LT.2 COMPRESSOR 1, CHILLER 02, TRAFO 1"
                 className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-medium text-slate-800 transition"
               />
+            </div>
+
+            {/* Field: Tanggal Temuan (Tanggal, Bulan, Tahun) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Tanggal Temuan <span className="text-rose-600 font-black">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={findingDate}
+                onChange={(e) => setFindingDate(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-medium text-slate-800 transition"
+                title="Tanggal, bulan, dan tahun temuan abnormal"
+              />
+              <p className="mt-1 text-[10px] text-slate-400">Tanggal ini akan dipakai untuk rekapitulasi dan urutan export.</p>
             </div>
 
             {/* Field: Deskripsi Kelainan / Kondisi Abnormal (Wajib) */}

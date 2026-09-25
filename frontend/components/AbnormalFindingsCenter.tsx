@@ -1135,12 +1135,23 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
   // Rentang ini khusus data yang diunduh sebagai rekap; filter daftar di layar
   // tetap dapat dipakai bersamaan bila QC perlu mempersempit lagi per akun/tipe.
-  const recapItems = useMemo(() => filteredItems.filter((item) => {
-    const monthKey = getItemMonthData(item).key;
-    if (recapStartMonth !== 'all' && monthKey < recapStartMonth) return false;
-    if (recapEndMonth !== 'all' && monthKey > recapEndMonth) return false;
-    return true;
-  }), [filteredItems, recapStartMonth, recapEndMonth]);
+  const recapItems = useMemo(() => filteredItems
+    .filter((item) => {
+      const monthKey = getItemMonthData(item).key;
+      if (recapStartMonth !== 'all' && monthKey < recapStartMonth) return false;
+      if (recapEndMonth !== 'all' && monthKey > recapEndMonth) return false;
+      return true;
+    })
+    // Rekap adalah dokumen kronologis: urutan export tidak boleh mengikuti
+    // pilihan urutan daftar di layar (default-nya memang terbaru lebih dahulu).
+    .sort((a, b) => {
+      const dateDifference = getItemMonthData(a).date.getTime() - getItemMonthData(b).date.getTime();
+      if (dateDifference !== 0) return dateDifference;
+
+      const unitA = a.abnormalFinding?.unitName || a.specificDetail || a.maintenanceName;
+      const unitB = b.abnormalFinding?.unitName || b.specificDetail || b.maintenanceName;
+      return unitA.localeCompare(unitB, 'id');
+    }), [filteredItems, recapStartMonth, recapEndMonth]);
 
   const recapPeriodLabel = useMemo(() => {
     const start = availableMonths.find((month) => month.key === recapStartMonth);

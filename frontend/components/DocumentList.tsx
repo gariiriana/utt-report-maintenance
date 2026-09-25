@@ -65,6 +65,8 @@ export interface AbnormalFinding {
   brandName?: string;
   quantity?: string;
   findingDate?: string;
+  findingMonth?: number;
+  findingYear?: number;
   remark?: string;
   photos?: { base64: string; description?: string }[];
 }
