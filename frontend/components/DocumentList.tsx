@@ -69,6 +69,7 @@ export interface AbnormalFinding {
   findingYear?: number;
   remark?: string;
   photos?: { base64: string; description?: string }[];
+  findingId?: string;
 }
 
 export interface ExcelDocument {
@@ -86,6 +87,7 @@ export interface ExcelDocument {
   photosData: PhotoData[];
   documentType: 'excel' | 'pdf' | 'hse';
   collectionName?: 'pdf_documents' | 'excel_documents' | 'hse' | 'findings';
+  findingId?: string;
   companyType?: 'neutra' | 'bri' | 'k2';
   hasAbnormal?: boolean;
   abnormalFinding?: AbnormalFinding | null;
@@ -635,8 +637,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           photosWithImage: data.photosWithImage || 0,
           photosData: [], // Optimized: photosData is lazily loaded on edit
           documentType: 'excel',
+          collectionName: 'excel_documents',
+          findingId: data.findingId || data.abnormalFinding?.findingId || undefined,
           hasAbnormal: data.hasAbnormal || false,
-          abnormalFinding: data.abnormalFinding || null,
+          abnormalFinding: data.abnormalFinding ? { ...data.abnormalFinding, findingId: data.findingId || data.abnormalFinding.findingId || undefined } : null,
           atsCustomerInfo: data.atsCustomerInfo,
           atsReportData: data.atsReportData,
           atsTimeSpent: data.atsTimeSpent,
@@ -666,8 +670,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           photosWithImage: data.photosWithImage || 0,
           photosData: [], // Optimized: photosData is lazily loaded on edit
           documentType: 'pdf',
+          collectionName: 'pdf_documents',
+          findingId: data.findingId || data.abnormalFinding?.findingId || undefined,
           hasAbnormal: data.hasAbnormal || false,
-          abnormalFinding: data.abnormalFinding || null,
+          abnormalFinding: data.abnormalFinding ? { ...data.abnormalFinding, findingId: data.findingId || data.abnormalFinding.findingId || undefined } : null,
           atsCustomerInfo: data.atsCustomerInfo,
           atsReportData: data.atsReportData,
           atsTimeSpent: data.atsTimeSpent,
@@ -717,8 +723,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
           photosWithImage: data.photos?.length || 0,
           photosData: [],
           documentType: 'hse',
+          collectionName: 'hse',
+          findingId: data.findingId || data.abnormalFinding?.findingId || undefined,
           hasAbnormal: data.hasAbnormal || false,
-          abnormalFinding: data.abnormalFinding || null,
+          abnormalFinding: data.abnormalFinding ? { ...data.abnormalFinding, findingId: data.findingId || data.abnormalFinding.findingId || undefined } : null,
           hseType,
           maintenanceType: data.maintenanceType || (hseType === 'tbm' ? 'TBM' : hseType === 'induction' ? 'INDUCTION' : 'OTHER'),
           totalSDM: data.totalSDM,

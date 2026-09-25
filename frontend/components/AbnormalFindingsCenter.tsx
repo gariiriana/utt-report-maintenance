@@ -162,7 +162,7 @@ export function formatWaktuMaintenance(item: AbnormalItem): string {
 }
 
 export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFindingsCenterProps) {
-  const { user, userRole, companyType } = useAuth();
+  const { user, companyType } = useAuth();
   // Aksi hapus di pusat temuan ini sengaja eksklusif untuk satu akun QC DME.
   const canDelete = user?.email?.toLowerCase() === 'qcdme@dme.com';
 
@@ -218,7 +218,11 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     documentType: item.documentType,
     collectionName: item.collectionName,
     hasAbnormal: item.hasAbnormal,
-    abnormalFinding: item.abnormalFinding,
+    findingId: item.findingId || (item.abnormalFinding as any)?.findingId,
+    abnormalFinding: item.abnormalFinding ? {
+      ...item.abnormalFinding,
+      findingId: item.findingId || (item.abnormalFinding as any)?.findingId
+    } : item.abnormalFinding,
     createdBy: item.createdBy,
     createdAt: item.createdAt,
     fileSize: 0,
@@ -707,13 +711,15 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         const sSpec = normalize(it.specificDetail);
         const sMaint = normalize(it.maintenanceName);
 
-        const matched = findingsList.find(f => {
+        // Cari SEMUA finding di findingsList yang cocok dengan dokumen induk ini
+        const matchingCandidates = findingsList.filter(f => {
           if (!f || matchedFindingIds.has(f.id)) return false;
 
           // 1. Strict ID matching (prioritas utama)
+          if (it.findingId && f.id && it.findingId === f.id) return true;
           if (it.docId && f.docId && it.docId === f.docId) return true;
           if (it.docId && f.reportId && it.docId === f.reportId) return true;
-          if (it.findingId && f.id && it.findingId === f.id) return true;
+          if (it.docId && f.id && it.docId === f.id) return true;
 
           // 2. Creator matching
           const fCreated = normalize(f.createdByEmail);
@@ -747,9 +753,19 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           return false;
         });
 
-        if (matched) {
-          matchedFindingIds.add(matched.id);
+        // Tandai SEMUA candidates yang cocok ke matchedFindingIds agar tidak ada sisa temuan yang lolos ke standaloneFindings!
+        matchingCandidates.forEach(cand => matchedFindingIds.add(cand.id));
 
+        // Pilih candidate yang paling terbaru (updatedAt atau createdAt terbaru)
+        const matched = matchingCandidates.length > 0
+          ? [...matchingCandidates].sort((a, b) => {
+              const timeA = a.updatedAt?.toDate?.()?.getTime?.() || (a.updatedAt instanceof Date ? a.updatedAt.getTime() : 0) || a.createdAt?.toDate?.()?.getTime?.() || (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+              const timeB = b.updatedAt?.toDate?.()?.getTime?.() || (b.updatedAt instanceof Date ? b.updatedAt.getTime() : 0) || b.createdAt?.toDate?.()?.getTime?.() || (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+              return timeB - timeA;
+            })[0]
+          : null;
+
+        if (matched) {
           const hasOwnPhoto = Boolean(
             it.abnormalFinding?.photoBase64 || 
             (it.abnormalFinding?.photos && it.abnormalFinding.photos.length > 0)
@@ -803,6 +819,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               partNumber: realPartNumber,
               brandName: realBrandName,
               quantity: realQuantity,
+              findingId: matched.id,
             }
           };
         }
@@ -816,60 +833,97 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
       // Standalone findings: HANYA temuan mandiri tanpa dokumen induk PM (misal dari form input temuan lepas)
       // Jangan pernah melipatgandakan temuan PM yang sudah memiliki dokumen atau dokumennya sudah Normal/dihapus!
-      const standaloneFindings: AbnormalItem[] = findingsList
+      const allEnrichedDocs = [...enrichedPdf, ...enrichedExcel, ...enrichedHse];
+      const rawStandaloneFindings = findingsList
         .filter(f => {
           if (!f || matchedFindingIds.has(f.id)) return false;
 
           // Jika finding memiliki docId/reportId atau terikat ke dokumen yang sudah dihapus/Normal -> JANGAN tampilkan
           if (f.docId || f.reportId) return false;
 
+          // Cek apakah finding ini sudah terwakili oleh salah satu item dokumen yang aktif
+          const fSpec = normalize(f.specificDetail || f.partName);
+          const fMaint = normalize(f.maintenanceName);
+          const fCreated = normalize(f.createdByEmail);
+
+          const isRepresentedInDocs = allEnrichedDocs.some(docIt => {
+            const dSpec = normalize(docIt.specificDetail || docIt.abnormalFinding?.unitName);
+            const dMaint = normalize(docIt.maintenanceName);
+            const dCreated = normalize(docIt.createdBy);
+
+            const creatorOk = !fCreated || !dCreated || dCreated === fCreated || dCreated.includes(fCreated) || fCreated.includes(dCreated);
+            const specOk = dSpec && fSpec && (dSpec === fSpec || dSpec.includes(fSpec) || fSpec.includes(dSpec));
+            const maintOk = dMaint && fMaint && (dMaint === fMaint || dMaint.includes(fMaint) || fMaint.includes(dMaint));
+
+            return creatorOk && specOk && maintOk;
+          });
+
+          if (isRepresentedInDocs) return false;
+
           // Jika finding memiliki specificDetail atau maintenanceName PM (dibuat dari form laporan PM),
           // dan akun bersangkutan sudah dikelola lewat dokumen PM, jangan munculkan sisa duplikatnya sebagai unit terpisah
-          const fSpec = normalize(f.specificDetail);
-          const fMaint = normalize(f.maintenanceName);
-          // Input abnormal manual memang menyimpan maintenanceName dan unit secara terpisah.
-          // Tandai eksplisit agar tetap tampil, tanpa membuka kembali duplikasi temuan PM lama.
           if (!f.manualAbnormal && (fSpec || (fMaint && fMaint !== 'temuanlapangan' && fMaint !== normalize(f.partName)))) {
             return false;
           }
 
           return true;
-        })
-        .map(f => {
-          const createdAt = f.createdAt?.toDate ? f.createdAt.toDate() : (f.createdAt ? new Date(f.createdAt) : new Date());
-          const photoB64 = (f.photos && f.photos[0]?.base64) || f.photoBase64 || '';
-          return {
-            id: `finding_${f.id}`,
-            docId: f.id,
-            findingId: f.id,
-            collectionName: 'findings',
-            documentType: 'pdf',
-            fileName: `Temuan_${f.partName || 'Unit'}.pdf`,
-            maintenanceName: f.maintenanceName || f.partName || 'Temuan Lapangan',
-            maintenanceTime: f.findingDate || (f.findingMonth && f.findingYear ? `${f.findingYear}-${String(f.findingMonth).padStart(2, '0')}-01` : ''),
-            specificDetail: f.specificDetail || f.partName || '',
-            createdBy: (f.createdByEmail || 'engineer').toLowerCase().trim(),
-            createdAt,
-            hasAbnormal: true,
+        });
+
+      // Deduplikasi antarsesama standalone findings:
+      // Jika ada 2 finding lepas dengan unit + maintenance + creator yang sama (misal terduplikasi akibat edit manual sebelumnya),
+      // hanya pertahankan 1 temuan yang paling baru (updatedAt atau createdAt terbaru)!
+      const standaloneMap = new Map<string, any>();
+      rawStandaloneFindings.forEach(f => {
+        const key = `${normalize(f.createdByEmail)}_${normalize(f.maintenanceName)}_${normalize(f.specificDetail || f.partName)}`;
+        const existing = standaloneMap.get(key);
+        if (!existing) {
+          standaloneMap.set(key, f);
+        } else {
+          const timeExisting = existing.updatedAt?.toDate?.()?.getTime?.() || (existing.updatedAt instanceof Date ? existing.updatedAt.getTime() : 0) || existing.createdAt?.toDate?.()?.getTime?.() || (existing.createdAt instanceof Date ? existing.createdAt.getTime() : 0);
+          const timeCurrent = f.updatedAt?.toDate?.()?.getTime?.() || (f.updatedAt instanceof Date ? f.updatedAt.getTime() : 0) || f.createdAt?.toDate?.()?.getTime?.() || (f.createdAt instanceof Date ? f.createdAt.getTime() : 0);
+          if (timeCurrent > timeExisting) {
+            standaloneMap.set(key, f);
+          }
+        }
+      });
+
+      const deduplicatedFindings = Array.from(standaloneMap.values());
+      const standaloneFindings: AbnormalItem[] = deduplicatedFindings.map(f => {
+        const createdAt = f.createdAt?.toDate ? f.createdAt.toDate() : (f.createdAt ? new Date(f.createdAt) : new Date());
+        const photoB64 = (f.photos && f.photos[0]?.base64) || f.photoBase64 || '';
+        return {
+          id: `finding_${f.id}`,
+          docId: f.id,
+          findingId: f.id,
+          collectionName: 'findings',
+          documentType: 'pdf',
+          fileName: `Temuan_${f.partName || 'Unit'}.pdf`,
+          maintenanceName: f.maintenanceName || f.partName || 'Temuan Lapangan',
+          maintenanceTime: f.findingDate || (f.findingMonth && f.findingYear ? `${f.findingYear}-${String(f.findingMonth).padStart(2, '0')}-01` : ''),
+          specificDetail: f.specificDetail || f.partName || '',
+          createdBy: (f.createdByEmail || 'engineer').toLowerCase().trim(),
+          createdAt,
+          hasAbnormal: true,
+          partName: f.partName,
+          partNumber: f.partNumber,
+          brandName: f.brandName,
+          quantity: f.quantity,
+          abnormalFinding: {
+            unitName: f.partName || f.specificDetail || 'Unit',
+            description: f.remark || f.description || `Temuan abnormal pada: ${f.partName || 'Peralatan'}`,
+            actionRecommendation: f.actionRecommendation || (f.partName ? `Perlu perbaikan / penggantian ${f.partName}${f.brandName ? ` (${f.brandName})` : ''}` : ''),
+            photoBase64: photoB64 || undefined,
+            photos: f.photos || (photoB64 ? [{ base64: photoB64, description: 'Bukti Temuan Abnormal' }] : []),
+            reportedBy: f.createdByEmail || 'Engineer',
+            reportedAt: f.findingDate || createdAt,
             partName: f.partName,
             partNumber: f.partNumber,
             brandName: f.brandName,
             quantity: f.quantity,
-            abnormalFinding: {
-              unitName: f.partName || f.specificDetail || 'Unit',
-              description: f.remark || f.description || `Temuan abnormal pada: ${f.partName || 'Peralatan'}`,
-              actionRecommendation: f.actionRecommendation || (f.partName ? `Perlu perbaikan / penggantian ${f.partName}${f.brandName ? ` (${f.brandName})` : ''}` : ''),
-              photoBase64: photoB64 || undefined,
-              photos: f.photos || (photoB64 ? [{ base64: photoB64, description: 'Bukti Temuan Abnormal' }] : []),
-              reportedBy: f.createdByEmail || 'Engineer',
-              reportedAt: f.findingDate || createdAt,
-              partName: f.partName,
-              partNumber: f.partNumber,
-              brandName: f.brandName,
-              quantity: f.quantity,
-            }
-          };
-        });
+            findingId: f.id,
+          }
+        };
+      });
 
       const combined = [...enrichedPdf, ...enrichedExcel, ...enrichedHse, ...standaloneFindings];
       setItems(combined);
@@ -892,6 +946,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           return {
             id: `pdf_${d.id}`,
             docId: d.id,
+            findingId: data.findingId || data.abnormalFinding?.findingId || undefined,
             collectionName: 'pdf_documents',
             documentType: 'pdf',
             fileName: data.fileName || `${data.maintenanceName || 'Laporan'}.pdf`,
@@ -903,7 +958,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             createdAt,
             updatedAt,
             hasAbnormal: true,
-            abnormalFinding: data.abnormalFinding || {
+            abnormalFinding: data.abnormalFinding ? {
+              ...data.abnormalFinding,
+              findingId: data.findingId || data.abnormalFinding.findingId || undefined,
+            } : {
               unitName: data.specificDetail || data.maintenanceName || 'Unit',
               description: 'Temuan abnormal tercatat pada dokumen ini.'
             },
@@ -936,6 +994,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           return {
             id: `excel_${d.id}`,
             docId: d.id,
+            findingId: data.findingId || data.abnormalFinding?.findingId || undefined,
             collectionName: 'excel_documents',
             documentType: 'excel',
             fileName: data.fileName || `${data.maintenanceName || 'Laporan'}.xlsx`,
@@ -947,7 +1006,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             createdAt,
             updatedAt,
             hasAbnormal: true,
-            abnormalFinding: data.abnormalFinding || {
+            abnormalFinding: data.abnormalFinding ? {
+              ...data.abnormalFinding,
+              findingId: data.findingId || data.abnormalFinding.findingId || undefined,
+            } : {
               unitName: data.specificDetail || data.maintenanceName || 'Unit',
               description: 'Temuan abnormal tercatat pada dokumen ini.'
             },
@@ -980,6 +1042,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           return {
             id: `hse_${d.id}`,
             docId: d.id,
+            findingId: data.findingId || data.abnormalFinding?.findingId || undefined,
             collectionName: 'hse',
             documentType: 'hse',
             fileName: `HSE_${data.aktivitas || 'Inspeksi'}_${data.date || ''}.pdf`,
@@ -990,7 +1053,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             createdAt,
             updatedAt,
             hasAbnormal: true,
-            abnormalFinding: data.abnormalFinding || {
+            abnormalFinding: data.abnormalFinding ? {
+              ...data.abnormalFinding,
+              findingId: data.findingId || data.abnormalFinding.findingId || undefined,
+            } : {
               unitName: data.lokasi || data.aktivitas || 'HSE Area',
               description: 'Temuan abnormal tercatat pada dokumen HSE ini.'
             },
@@ -2931,7 +2997,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           document={editingModalDoc}
           onSuccess={(updated) => {
             setItems(prev => prev.map(it => {
-              if (it.docId === editingModalDoc.id) {
+              const isMatch = it.docId === editingModalDoc.id
+                || (editingModalDoc.findingId && it.findingId === editingModalDoc.findingId);
+              if (isMatch) {
                 return {
                   ...it,
                   hasAbnormal: Boolean(updated.hasAbnormal ?? it.hasAbnormal),

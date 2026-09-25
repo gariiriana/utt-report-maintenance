@@ -240,6 +240,10 @@ export function AbnormalReportModal({
       const findingYear = findingDateParts[0];
       const findingMonth = findingDateParts[1];
 
+      const resolvedFindingId = (docItem as any).findingId
+        || existingAf.findingId
+        || (docItem.collectionName === 'findings' ? docItem.id : docItem.id);
+
       const abnormalPayload: AbnormalFinding = {
         unitName: targetUnitName,
         partName: targetUnitName,
@@ -257,11 +261,13 @@ export function AbnormalReportModal({
         partNumber: existingAf.partNumber || '-',
         brandName: existingAf.brandName || '-',
         quantity: existingAf.quantity || '1 Unit',
+        findingId: resolvedFindingId,
       };
 
       // Sanitize data agar tidak ada undefined values yang ditolak Firestore
       const cleanAbnormal = JSON.parse(JSON.stringify(abnormalPayload));
-      const colName = docItem.collectionName === 'findings'
+      const isFindingCollection = docItem.collectionName === 'findings';
+      const colName = isFindingCollection
         ? 'findings'
         : (docItem.documentType === 'excel'
           ? 'excel_documents'
@@ -272,10 +278,12 @@ export function AbnormalReportModal({
       // 1. Simpan ke Firestore: MURNI OPERASI WRITE (0 Cloud Reads!)
       // Menggunakan setDoc dengan merge: true sehingga tidak perlu melakukan query getDocs/getDoc sebelumnya
       try {
-        if (colName === 'findings') {
+        if (isFindingCollection) {
+          // UPDATE LANGSUNG DOKUMEN DI KOLEKSI 'findings' (tidak boleh membuat dokumen baru di pdf_documents!)
           await setDoc(doc(db, 'findings', docItem.id), {
             partName: targetUnitName,
             unitName: targetUnitName,
+            specificDetail: docItem.specificDetail || targetUnitName,
             remark: description.trim(),
             description: description.trim(),
             actionRecommendation: actionRecommendation.trim() || '',
@@ -285,25 +293,28 @@ export function AbnormalReportModal({
             findingMonth,
             findingYear,
             photoBase64: photoBase64 || '',
-            photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : [],
-            updatedAt: serverTimestamp(),
-          }, { merge: true });
-        } else {
-          // Write ke dokumen induk (0 Reads, Pure Write)
-          await setDoc(doc(db, colName, docItem.id), {
+            photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : (existingAf.photos || []),
             hasAbnormal: true,
             abnormalFinding: cleanAbnormal,
             updatedAt: serverTimestamp(),
           }, { merge: true });
+        } else {
+          // Write ke dokumen induk (0 Reads, Pure Write) beserta referensi findingId yang tepat
+          await setDoc(doc(db, colName, docItem.id), {
+            hasAbnormal: true,
+            abnormalFinding: cleanAbnormal,
+            findingId: resolvedFindingId,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
 
-          // SINKRONISASI KE KOLEKSI 'findings' (0 Reads, Pure Write via setDoc merge)
-          const targetFindingId = (docItem as any).findingId || docItem.id;
+          // SINKRONISASI KE KOLEKSI 'findings' (0 Reads, Pure Write via setDoc merge pada resolvedFindingId)
           const findingDataToSave = {
             docId: docItem.id,
             reportId: docItem.id,
             maintenanceName: docItem.maintenanceName || 'Maintenance',
             specificDetail: docItem.specificDetail || targetUnitName,
             partName: targetUnitName,
+            unitName: targetUnitName,
             partNumber: cleanAbnormal.partNumber || '-',
             brandName: cleanAbnormal.brandName || '-',
             quantity: cleanAbnormal.quantity || '1 Unit',
@@ -316,13 +327,21 @@ export function AbnormalReportModal({
             actionRecommendation: actionRecommendation.trim() || '',
             recommendation: actionRecommendation.trim() || '',
             photoBase64: photoBase64 || '',
-            photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : [],
+            photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : (existingAf.photos || []),
             createdBy: user?.uid || 'engineer',
             createdByEmail: (user?.email || docItem.createdBy || 'engineer').toLowerCase().trim(),
+            hasAbnormal: true,
+            abnormalFinding: cleanAbnormal,
             updatedAt: serverTimestamp(),
           };
 
-          await setDoc(doc(db, 'findings', targetFindingId), findingDataToSave, { merge: true });
+          await setDoc(doc(db, 'findings', resolvedFindingId), findingDataToSave, { merge: true });
+
+          // Jika ada findingId sebelumnya yang berbeda dengan resolvedFindingId, bersihkan dokumen duplikat lama
+          const previousFindingId = (docItem as any).findingId || existingAf.findingId;
+          if (previousFindingId && previousFindingId !== resolvedFindingId) {
+            deleteDoc(doc(db, 'findings', previousFindingId)).catch(() => {});
+          }
         }
         cloudSaved = true;
       } catch (cloudErr: any) {
@@ -357,24 +376,30 @@ export function AbnormalReportModal({
     const toastId = toast.loading('Mengembalikan status unit ke Normal...');
 
     try {
-      const colName = docItem.collectionName === 'findings'
+      const isFindingCollection = docItem.collectionName === 'findings';
+      const colName = isFindingCollection
         ? 'findings'
         : (docItem.documentType === 'excel'
           ? 'excel_documents'
           : (docItem.documentType === 'hse' ? 'hse' : 'pdf_documents'));
 
-      if (colName === 'findings') {
+      if (isFindingCollection) {
         await deleteDoc(doc(db, 'findings', docItem.id));
       } else {
         await setDoc(doc(db, colName, docItem.id), {
           hasAbnormal: false,
           abnormalFinding: deleteField(),
+          findingId: deleteField(),
           updatedAt: serverTimestamp(),
         }, { merge: true });
 
-        // Hapus temuan terkait di koleksi findings (0 Reads, langsung delete via deterministic ID)
-        const targetFindingId = (docItem as any).findingId || docItem.id;
+        // Hapus temuan terkait di koleksi findings
+        const existingAf = (docItem.abnormalFinding as any) || {};
+        const targetFindingId = (docItem as any).findingId || existingAf?.findingId || docItem.id;
         deleteDoc(doc(db, 'findings', targetFindingId)).catch(() => {});
+        if (targetFindingId !== docItem.id) {
+          deleteDoc(doc(db, 'findings', docItem.id)).catch(() => {});
+        }
       }
 
       // Update offline IndexedDB
