@@ -39,6 +39,7 @@ export interface PIRReportData {
     slaTicketNumber: string;                // Nomor tiket khusus SLA/SLG yang wajib dibuat dari PIR
     slaTicketStatus: 'open' | 'closed';     // Status tiket SLA/SLG saat PIR dibuat
     slaReportId?: string;                   // Tautan dua arah ke Form SLA/SLG hasil PIR
+    hasSLA?: boolean;                       // Flag penanda apakah Form SLA/SLG sudah dibuat
     postmortemOwner: string;                // Penanggung Jawab Postmortem (Lead Engineer)
     dateCompleted: string;                  // Tanggal Laporan Dibatalkan/Diselesaikan
     reportAuthors: string;                  // Penulis Dokumen Laporan PIR

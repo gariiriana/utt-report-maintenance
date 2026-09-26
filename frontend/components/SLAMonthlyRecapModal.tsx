@@ -363,6 +363,17 @@ export function SLAMonthlyRecapModal({
     }).sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
   }, [internalReports, filterMode, startDate, endDate, selectedMonth, selectedYear, searchQuery]);
 
+  // Helper mendeteksi apakah laporan SLA dilahirkan dari PIR
+  const isSLAFromPIRItem = (r: CorrectiveReportItem): boolean => {
+    if (r.pirReportId && String(r.pirReportId).trim() !== '') return true;
+    const text = `${r.ticketName || ''} ${r.issue || ''} ${r.remark || ''}`.toLowerCase();
+    if (text.includes('post incident') || text.includes('[pir]')) return true;
+    return false;
+  };
+
+  const pirCount = useMemo(() => filteredSLAReports.filter(r => isSLAFromPIRItem(r)).length, [filteredSLAReports]);
+  const cmCount = filteredSLAReports.length - pirCount;
+
   // Calculate SLG Performance Summary
   const summaryKpi = useMemo(() => {
     const total = filteredSLAReports.length;
@@ -1009,9 +1020,17 @@ export function SLAMonthlyRecapModal({
                     <Layers className="w-4 h-4 text-slate-500" />
                     <span>Daftar Order / Tiket SLA Periode {periodLabel} ({filteredSLAReports.length})</span>
                   </h4>
-                  <span className="text-[11px] text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                      {cmCount} Dari CM
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                      {pirCount} Dari PIR
+                    </span>
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">
                     {monthGroups.length > 1 ? 'Dikelompokkan per bulan' : 'Urutan insiden terbaru di atas'}
                   </span>
+                  </div>
                 </div>
 
                 <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
@@ -1054,7 +1073,18 @@ export function SLAMonthlyRecapModal({
                                   <tr key={report.id || `${mg.monthKey}-${idx}`} className="hover:bg-slate-50 transition">
                                     <td className="px-3 py-2 text-center font-bold text-slate-500">{idx + 1}</td>
                                     <td className="px-3 py-2 font-bold text-slate-900 max-w-[200px] truncate" title={report.ticketName}>
-                                      {report.ticketName || report.issue || 'Work Order'}
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        {isSLAFromPIRItem(report) ? (
+                                          <span className="px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0" title="Dilahirkan dari Report PIR">
+                                            PIR
+                                          </span>
+                                        ) : (
+                                          <span className="px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded bg-blue-100 text-blue-800 border border-blue-300 shrink-0" title="Dilahirkan dari Report CM">
+                                            CM
+                                          </span>
+                                        )}
+                                        <span className="truncate">{report.ticketName || report.issue || 'Work Order'}</span>
+                                      </div>
                                     </td>
                                     <td className="px-3 py-2">
                                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1097,7 +1127,18 @@ export function SLAMonthlyRecapModal({
                               <tr key={report.id || idx} className="hover:bg-slate-50 transition">
                                 <td className="px-3 py-2 text-center font-bold text-slate-500">{idx + 1}</td>
                                 <td className="px-3 py-2 font-bold text-slate-900 max-w-[200px] truncate" title={report.ticketName}>
-                                  {report.ticketName || report.issue || 'Work Order'}
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    {isSLAFromPIRItem(report) ? (
+                                      <span className="px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0" title="Dilahirkan dari Report PIR">
+                                        PIR
+                                      </span>
+                                    ) : (
+                                      <span className="px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded bg-blue-100 text-blue-800 border border-blue-300 shrink-0" title="Dilahirkan dari Report CM">
+                                        CM
+                                      </span>
+                                    )}
+                                    <span className="truncate">{report.ticketName || report.issue || 'Work Order'}</span>
+                                  </div>
                                 </td>
                                 <td className="px-3 py-2">
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${

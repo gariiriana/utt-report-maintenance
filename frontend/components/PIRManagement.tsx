@@ -35,6 +35,8 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  deleteField,
+  getDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
@@ -161,10 +163,27 @@ export function PIRManagement() {
     setShowModal(true);
   };
 
-  const handleCreateSLAFromPIR = (report: PIRReportData) => {
+  const handleCreateSLAFromPIR = async (report: PIRReportData) => {
     if (report.slaReportId) {
-      toast.info('Laporan PIR ini sudah tertaut dengan Form SLA/SLG.');
-      return;
+      try {
+        const slaDocSnap = await getDoc(doc(db, 'corrective_reports', report.slaReportId));
+        if (slaDocSnap.exists() && slaDocSnap.data().reportType === 'SLA' && !slaDocSnap.data().deleteRequested) {
+          toast.info('Laporan PIR ini sudah tertaut dengan Form SLA/SLG yang aktif.');
+          return;
+        } else {
+          // Dokumen SLA lama sudah dihapus atau tidak aktif, bersihkan link lama
+          if (report.id) {
+            await updateDoc(doc(db, 'corrective_reports', report.id), {
+              slaReportId: deleteField(),
+              hasSLA: false,
+            });
+            report.slaReportId = undefined;
+            report.hasSLA = false;
+          }
+        }
+      } catch (e) {
+        console.warn('Gagal verifikasi SLA:', e);
+      }
     }
 
     setSlaPrefill({

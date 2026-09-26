@@ -17,6 +17,7 @@ import {
   deleteDoc,
   deleteField,
   getDocs,
+  getDoc,
   orderBy,
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
@@ -460,6 +461,36 @@ export function DeleteRequestsManager() {
           }
           await deleteDoc(doc(db, 'files', item.realDocId));
         } else {
+          if (item.collectionName === 'corrective_reports') {
+            try {
+              const docSnap = await getDoc(doc(db, 'corrective_reports', item.realDocId));
+              if (docSnap.exists()) {
+                const rData = docSnap.data();
+                if (rData.reportType === 'SLA') {
+                  if (rData.pirReportId) {
+                    await updateDoc(doc(db, 'corrective_reports', rData.pirReportId), {
+                      slaReportId: deleteField(),
+                      hasSLA: false,
+                    }).catch(() => null);
+                  }
+                  if (rData.cmReportId) {
+                    await updateDoc(doc(db, 'corrective_reports', rData.cmReportId), {
+                      slaReportId: deleteField(),
+                      hasSLA: false,
+                    }).catch(() => null);
+                  }
+                } else if (rData.reportType === 'PIR') {
+                  if (rData.slaReportId) {
+                    await updateDoc(doc(db, 'corrective_reports', rData.slaReportId), {
+                      pirReportId: deleteField(),
+                    }).catch(() => null);
+                  }
+                }
+              }
+            } catch (unlinkErr) {
+              console.warn('Error unlinking references before delete:', unlinkErr);
+            }
+          }
           await deleteDoc(doc(db, item.collectionName, item.realDocId));
         }
       }

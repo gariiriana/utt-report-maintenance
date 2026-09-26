@@ -428,6 +428,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir' | 'predictive'>('cm_pdf');
     const [selectedCMType, setSelectedCMType] = useState<'all' | 'sparepart_all' | 'non_sparepart' | 'sparepart_dme' | 'consumable' | 'pending_sparepart_type'>('all');
+    const [selectedSLASource, setSelectedSLASource] = useState<'all' | 'cm' | 'pir'>('all');
     const [selectedTroubleStatus, setSelectedTroubleStatus] = useState<'all' | 'closed' | 'open' | 'unmarked'>('all');
     const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
     const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
@@ -689,6 +690,32 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                 for (const slaId of slaIdsToDelete) {
                     await deleteDoc(doc(db, 'corrective_reports', slaId));
+                }
+
+
+                // If deleting an SLA directly, unlink reverse references on PIR/CM
+                if (selectedReportForDelete.reportType === 'SLA') {
+                    const pirId = (selectedReportForDelete as any).pirReportId;
+                    if (pirId) {
+                        await updateDoc(doc(db, 'corrective_reports', pirId), {
+                            slaReportId: deleteField(),
+                            hasSLA: false,
+                        }).catch(e => console.warn('Could not unlink PIR on SLA delete:', e));
+                    }
+                    const linkedCmId = (selectedReportForDelete as any).cmReportId;
+                    if (linkedCmId) {
+                        await updateDoc(doc(db, 'corrective_reports', linkedCmId), {
+                            slaReportId: deleteField(),
+                            hasSLA: false,
+                        }).catch(e => console.warn('Could not unlink CM on SLA delete:', e));
+                    }
+                } else if (selectedReportForDelete.reportType === 'PIR') {
+                    const linkedSlaId = (selectedReportForDelete as any).slaReportId;
+                    if (linkedSlaId) {
+                        await updateDoc(doc(db, 'corrective_reports', linkedSlaId), {
+                            pirReportId: deleteField(),
+                        }).catch(e => console.warn('Could not unlink SLA on PIR delete:', e));
+                    }
                 }
 
                 // Delete the CM document itself
@@ -1086,6 +1113,19 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return false;
     };
 
+    // Helper untuk mendeteksi apakah Form SLA/SLG dilahirkan dari Report PIR atau Report CM
+    const isSLAFromPIR = (sla: CorrectiveReport): boolean => {
+        if ((sla as any).pirReportId && String((sla as any).pirReportId).trim() !== '') return true;
+        if (reports.some(p => p.reportType === 'PIR' && ((p as any).slaReportId === sla.id || p.id === (sla as any).pirReportId))) return true;
+        const text = `${sla.ticketName || ''} ${sla.issue || ''} ${sla.remark || ''}`.toLowerCase();
+        if (text.includes('post incident') || text.includes('[pir]')) return true;
+        return false;
+    };
+
+    const isSLAFromCM = (sla: CorrectiveReport): boolean => {
+        return !isSLAFromPIR(sla);
+    };
+
     // Filter Logic and Sorting by Incident Date (Newest First)
     const filteredReports = reports.filter((report) => {
         // Admin pending delete filter
@@ -1098,9 +1138,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             if (archiveFolder === 'cm_pdf' && (report.reportType === 'SLA' || report.reportType === 'PIR')) {
                 return false;
             }
-            if (archiveFolder === 'sla' && report.reportType !== 'SLA') {
-                return false;
+            if (archiveFolder === 'sla') {
+                if (report.reportType !== 'SLA') return false;
+                if (selectedSLASource === 'cm' && !isSLAFromCM(report)) return false;
+                if (selectedSLASource === 'pir' && !isSLAFromPIR(report)) return false;
+
             }
+
+
+
             if (archiveFolder === 'pir' && report.reportType !== 'PIR') {
                 return false;
             }
@@ -1332,6 +1378,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const allCMReports = reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR');
     const allSLAReports = reports.filter(r => r.reportType === 'SLA' && !r.deleteRequested);
     const allPIRReports = reports.filter(r => r.reportType === 'PIR' && !r.deleteRequested);
+    const slaFromCMReports = allSLAReports.filter(s => isSLAFromCM(s));
+    const slaFromPIRReports = allSLAReports.filter(s => isSLAFromPIR(s));
 
     // PIR wajib memiliki SLA/SLG. Gunakan relasi dua arah agar data PIR lama
     // tetap terdeteksi walaupun field reverse-link belum pernah tersimpan.
@@ -1544,10 +1592,33 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     // PIR wajib memiliki SLA/SLG. Data nomor dan status tiket PIR diteruskan
     // ke form SLA agar relasi dua arah tersimpan saat SLA selesai dibuat.
-    const handleCreateSLAFromPIR = (pir: any) => {
-        if (pir?.slaReportId) {
-            toast.info('Laporan PIR ini sudah tertaut dengan Form SLA/SLG.');
+    const handleCreateSLAFromPIR = async (pir: any) => {
+        // Cek apakah SLA aktif yang sah benar-benar ada di allSLAReports
+        const existingSLA = allSLAReports.find(sla =>
+            (sla as any).pirReportId === pir.id ||
+            (Boolean((pir as any).slaReportId) && sla.id === (pir as any).slaReportId)
+        );
+
+        if (existingSLA) {
+            handleNavigateToSLA(existingSLA);
             return;
+        }
+
+        // Simpan posisi scroll sebelum membuka form
+        savedScrollYRef.current = window.scrollY;
+
+        // Jika dokumen PIR memiliki referensi slaReportId yang sudah tidak ada / invalid / dihapus:
+        if (pir?.slaReportId && pir.id) {
+            try {
+                await updateDoc(doc(db, 'corrective_reports', pir.id), {
+                    slaReportId: deleteField(),
+                    hasSLA: false,
+                });
+                pir.slaReportId = undefined;
+                pir.hasSLA = false;
+            } catch (err) {
+                console.warn('Gagal mereset orphan slaReportId pada dokumen PIR:', err);
+            }
         }
 
         setEditingReportId(null);
@@ -1564,6 +1635,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         setReportFormType('sla');
         setActiveFormTab('sla');
         setShowForm(true);
+
+        setTimeout(() => {
+            if (formContainerRef.current) {
+                formContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }, 50);
     };
 
     // Navigasi langsung dari Report CM ke Form SLA yang sesuai
@@ -1619,6 +1698,33 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }, 150);
 
         toast.success(`Membuka Laporan CM: ${cm.incidentName || cm.equipmentName || cm.issue || 'Report CM'}`);
+    };
+
+    // Navigasi langsung dari Form SLA kembali ke Report PIR yang sesuai
+    const handleNavigateToPIR = (pir: CorrectiveReport) => {
+        if (!pir.id) return;
+        setArchiveFolder('pir');
+        setShowForm(false);
+        setEditingReportId(null);
+        setReportFormType(null);
+        setPrefillSlaData(null);
+
+        if (searchQuery && !(pir.ticketName || pir.issue || pir.location || '').toLowerCase().includes(searchQuery.toLowerCase())) {
+            setSearchQuery('');
+        }
+
+        setTimeout(() => {
+            const el = document.getElementById(`cm-report-card-${pir.id}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('ring-4', 'ring-orange-500', 'shadow-2xl');
+                setTimeout(() => {
+                    el.classList.remove('ring-4', 'ring-orange-500', 'shadow-2xl');
+                }, 3000);
+            }
+        }, 150);
+
+        toast.success(`Membuka Report PIR: ${pir.ticketName || pir.issue || 'Report PIR'}`);
     };
 
     const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
@@ -2378,6 +2484,65 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                     {!loading && (
                         <div className="mb-6 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col gap-3">
+                            {/* Sub-Kategori SLA: Pemisah Sumber SLA dari Report CM vs Report PIR */}
+                            {archiveFolder === 'sla' && (
+                                <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 w-fit max-w-full overflow-x-auto scrollbar-thin">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedSLASource('all')}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                                            selectedSLASource === 'all'
+                                                ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-extrabold'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                                        }`}
+                                    >
+                                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                                        <span>Semua SLA / SLG</span>
+                                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                            selectedSLASource === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
+                                        }`}>
+                                            {allSLAReports.length}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedSLASource('cm')}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                                            selectedSLASource === 'cm'
+                                                ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                                        }`}
+                                    >
+                                        <FileText className={`w-3.5 h-3.5 ${selectedSLASource === 'cm' ? 'text-white' : 'text-blue-600'}`} />
+                                        <span>Dari Report CM</span>
+                                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                            selectedSLASource === 'cm' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'
+                                        }`}>
+                                            {slaFromCMReports.length}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedSLASource('pir')}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                                            selectedSLASource === 'pir'
+                                                ? 'bg-amber-600 text-white shadow-xs font-extrabold'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                                        }`}
+                                    >
+                                        <AlertTriangle className={`w-3.5 h-3.5 ${selectedSLASource === 'pir' ? 'text-white' : 'text-amber-600'}`} />
+                                        <span>Dari Report PIR</span>
+                                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                            selectedSLASource === 'pir' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'
+                                        }`}>
+                                            {slaFromPIRReports.length}
+                                        </span>
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Baris 1: Pencarian Cepat + Tombol Aksi Utama */}
                             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
                                 <div className="relative flex-1 max-w-md">
@@ -2597,6 +2762,23 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         );
                                     })()}
 
+                                    {/* Filter Asal Sumber SLA (Khusus tab SLA) */}
+                                    {archiveFolder === 'sla' && (
+                                        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
+                                            <select
+                                                value={selectedSLASource}
+                                                onChange={(e) => setSelectedSLASource(e.target.value as 'all' | 'cm' | 'pir')}
+                                                title="Filter Sumber SLA/SLG"
+                                                aria-label="Filter Sumber SLA/SLG"
+                                                className="px-2.5 py-1.5 bg-transparent text-slate-800 text-xs font-semibold outline-none cursor-pointer"
+                                            >
+                                                <option value="all">Semua Sumber ({allSLAReports.length})</option>
+                                                <option value="cm">📄 Dari Report CM ({slaFromCMReports.length})</option>
+                                                <option value="pir">⚠️ Dari Report PIR ({slaFromPIRReports.length})</option>
+                                            </select>
+                                        </div>
+                                    )}
+
                                     {/* Filter Status Approval */}
                                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
                                         <select
@@ -2615,7 +2797,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     </div>
 
                                     {/* Reset Filter Button */}
-                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all' || selectedTroubleStatus !== 'all') && (
+                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all' || selectedTroubleStatus !== 'all' || (archiveFolder === 'sla' && selectedSLASource !== 'all')) && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -2624,6 +2806,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 setSelectedYear('all');
                                                 setSelectedCMType('all');
                                                 setSelectedTroubleStatus('all');
+                                                setSelectedSLASource('all');
                                                 setSearchQuery('');
                                                 setAdminDeleteFilter('all');
                                             }}
@@ -3225,6 +3408,39 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-600 uppercase tracking-wider">
                                                         SLA / SLG
                                                     </div>
+                                                    {isSLAFromPIR(report) ? (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                                                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                                            <span>Sumber: Report PIR</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black bg-blue-50 text-blue-800 border border-blue-300 shadow-2xs">
+                                                            <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                            <span>Sumber: Report CM</span>
+                                                        </span>
+                                                    )}
+                                                    {(() => {
+                                                        if (!isSLAFromPIR(report)) return null;
+                                                        const linkedPIR = report.id ? reports.find(p => p.reportType === 'PIR' && ((p as any).slaReportId === report.id || p.id === (report as any).pirReportId)) : null;
+                                                        if (linkedPIR) {
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleNavigateToPIR(linkedPIR);
+                                                                    }}
+                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 hover:text-amber-900 border border-amber-300 shadow-2xs transition cursor-pointer group"
+                                                                    title={`Klik untuk langsung menuju Report PIR: ${linkedPIR.ticketName || linkedPIR.issue || 'Report PIR'}`}
+                                                                >
+                                                                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                                                    <span>PIR: {linkedPIR.ticketName ? (linkedPIR.ticketName.length > 24 ? linkedPIR.ticketName.slice(0, 24) + '...' : linkedPIR.ticketName) : (linkedPIR.issue || 'Terkait PIR')}</span>
+                                                                    <ExternalLink className="w-3 h-3 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                                                                </button>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                     {(() => {
                                                         const linkedCM = report.id ? slaToCMMap.get(report.id) : null;
                                                         if (linkedCM) {
@@ -3275,6 +3491,25 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                     <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                                                     <span>Buka CM</span>
                                                                     <ArrowRight className="w-3 h-3 text-blue-500 shrink-0" />
+                                                                </button>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                    {(() => {
+                                                        if (!isSLAFromPIR(report)) return null;
+                                                        const linkedPIR = report.id ? reports.find(p => p.reportType === 'PIR' && ((p as any).slaReportId === report.id || p.id === (report as any).pirReportId)) : null;
+                                                        if (linkedPIR) {
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleNavigateToPIR(linkedPIR)}
+                                                                    className="h-8 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition shadow-2xs cursor-pointer"
+                                                                    title={`Buka Report PIR terkait: ${linkedPIR.ticketName || linkedPIR.issue}`}
+                                                                >
+                                                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                                                    <span>Buka PIR</span>
+                                                                    <ArrowRight className="w-3 h-3 text-amber-600 shrink-0" />
                                                                 </button>
                                                             );
                                                         }
