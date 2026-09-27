@@ -187,6 +187,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     photosRestore: [] as PhotoItem[],
 
     // Resolution Time (Step 4) - Target Dynamic based on Priority (Critical 2h, High 4h, Medium 6h, Low 48h)
+    actualTimeResolution: '',
     targetResolutionMin: 360,
     photosResolution: [] as PhotoItem[],
     resolutionRemark: '',
@@ -259,6 +260,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
               finishOrder: data.finishOrder || '',
               targetRestoreMin: 180,
               photosRestore: migratePhotos(data, 'photosRestore', 'photoRestore'),
+              actualTimeResolution: data.actualTimeResolution || data.finishResolution || data.finishOrder || '',
               targetResolutionMin: data.targetResolutionMin || expectedTarget,
               photosResolution: migratePhotos(data, 'photosResolution', 'photoResolution'),
               resolutionRemark: data.resolutionRemark || '',
@@ -475,7 +477,11 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     const responseTime = calculateDiffMinutes(formData.timeOrder, formData.actualTimeResponse);
     const onsiteTime = calculateDiffMinutes(formData.timeOrder, formData.actualTimeOnsite);
     const restoreTime = calculateDiffMinutes(formData.startOrder || formData.timeOrder, formData.finishOrder);
-    const resolutionTime = calculateDiffMinutes(formData.startOrder || formData.timeOrder, formData.finishOrder);
+    
+    // Resolution Time (RSP): Dihitung dari Waktu Mulai (startOrder/timeOrder) hingga Waktu Penyelesaian/Tiket Closed (actualTimeResolution)
+    // Fallback ke finishOrder jika data lama belum memiliki actualTimeResolution
+    const resolutionEndTime = formData.actualTimeResolution || formData.finishOrder;
+    const resolutionTime = calculateDiffMinutes(formData.startOrder || formData.timeOrder, resolutionEndTime);
 
     const defaultTargetByPrio = formData.priority === 'Critical' ? 120 : formData.priority === 'High' ? 240 : formData.priority === 'Low' ? 2880 : 360;
     const targetRT = Number(formData.targetResponseMin) || 5;
@@ -507,7 +513,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       restoreComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? restoreTime <= targetRST : true,
       slgScoreRST: safeScoreRST,
       resolutionTimeMin: resolutionTime,
-      resolutionComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? resolutionTime <= targetRSP : true,
+      resolutionComply: (formData.startOrder || formData.timeOrder) && resolutionEndTime ? resolutionTime <= targetRSP : true,
       slgScoreRSP: safeScoreRSP,
       totalIncidentSlgScore: safeTotalSlg,
     });
@@ -520,6 +526,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     formData.startOrder,
     formData.finishOrder,
     formData.targetRestoreMin,
+    formData.actualTimeResolution,
     formData.targetResolutionMin
   ]);
 
@@ -644,6 +651,11 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
 
     // Step 4 Validation: Resolution (needed when submitting final form)
     if (targetStep >= 5) {
+      if (!formData.actualTimeResolution && !formData.finishOrder) {
+        toast.error('Mohon isi Waktu Penyelesaian Gangguan (Tiket Closed) di Step 4');
+        setCurrentStep(4);
+        return false;
+      }
       if (formData.photosResolution.length === 0) {
         toast.error('Mohon unggah minimal 1 Bukti Foto Resolution Time di Step 4');
         setCurrentStep(4);
@@ -764,6 +776,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
         photoRestore: photosRest[0]?.photo || '',
 
         // SLA 4: Resolution
+        actualTimeResolution: formData.actualTimeResolution || formData.finishOrder || '',
         actualResolutionTimeMin: Number(calcs.resolutionTimeMin) || 0,
         targetResolutionMin: Number(formData.targetResolutionMin) || (formData.priority === 'Critical' ? 120 : formData.priority === 'High' ? 240 : formData.priority === 'Low' ? 2880 : 360),
         resolutionComply: Boolean(calcs.resolutionComply),
@@ -1871,9 +1884,56 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
                 <p className="text-slate-500 text-xs">Target resolusi permanen otomatis berdasarkan prioritas: Critical (2 Jam), High (4 Jam), Medium (6 Jam), Low (48 Jam).</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Resolusi (Menit - Otomatis Prioritas {formData.priority})</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">Waktu Mulai Pekerjaan (Start Order)</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      disabled
+                      type="datetime-local"
+                      value={formData.startOrder || formData.timeOrder}
+                      title="Waktu Mulai Pekerjaan"
+                      placeholder="Otomatis dari Start Order"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed shadow-inner"
+                    />
+                  </div>
+                  <span className="text-[11px] text-slate-400 mt-1 block italic">Otomatis dari Waktu Principle Onsite / Order</span>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm text-slate-700 font-medium">Waktu Tiket Closed / Selesai *</label>
+                    {formData.finishOrder && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, actualTimeResolution: formData.finishOrder }));
+                          toast.info('Waktu penyelesaian disamakan dengan Waktu Pulih Layanan.');
+                        }}
+                        className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer underline transition"
+                      >
+                        Sama dg Waktu Pulih
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative group">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition" />
+                    <input
+                      required
+                      type="datetime-local"
+                      value={formData.actualTimeResolution}
+                      onChange={(e) => setFormData({ ...formData, actualTimeResolution: e.target.value })}
+                      title="Waktu Penyelesaian Gangguan / Tiket Closed"
+                      placeholder="Pilih waktu selesai tiket closed"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
+                    />
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">Waktu tiket closed / problem solving tuntas permanen</span>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Resolusi (Menit - Prioritas {formData.priority})</label>
                   <input
                     disabled
                     type="number"
@@ -1885,6 +1945,29 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
                   <span className="text-[11px] text-slate-500 mt-1 block">Target Otomatis Sesuai Prioritas: {formData.priority}</span>
                 </div>
               </div>
+
+              {(formData.startOrder || formData.timeOrder) && (formData.actualTimeResolution || formData.finishOrder) && (
+                <div className={`p-4 rounded-xl border flex items-center justify-between transition ${
+                  calcs.resolutionComply
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
+                    : 'bg-red-500/10 border-red-500/30 text-red-700'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <div>
+                      <span className="text-xs uppercase font-bold block">Durasi Penyelesaian Tiket (Resolution Time)</span>
+                      <span className="text-lg font-extrabold">{calcs.resolutionTimeMin} Menit</span>
+                    </div>
+                  </div>
+                  <div className={`px-4 py-1.5 rounded-full text-xs font-bold border ${
+                    calcs.resolutionComply
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-red-50 border-red-200 text-red-700'
+                  }`}>
+                    {calcs.resolutionComply ? 'COMPLY (Memenuhi)' : 'NOT COMPLY (Tidak Memenuhi)'}
+                  </div>
+                </div>
+              )}
 
               {/* Resolution Remark */}
               <div>

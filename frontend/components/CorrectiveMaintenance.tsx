@@ -143,6 +143,7 @@ interface CorrectiveReport {
     restoreComply?: boolean;
     photoRestore?: string;
     photosRestore?: Array<{ photo: string; description?: string }>;
+    actualTimeResolution?: string;
     actualResolutionTimeMin?: number;
     targetResolutionMin?: number;
     resolutionComply?: boolean;

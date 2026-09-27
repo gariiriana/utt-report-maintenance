@@ -3117,7 +3117,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         r.ticketName || r.issue || 'WO',
         r.location || '-',
         formatDateHour(r.startOrder || r.actualTimeOnsite),
-        formatDateHour(r.finishOrder),
+        formatDateHour(r.actualTimeResolution || r.finishResolution || r.finishOrder),
         formatMinToHHMM(r.actualResolutionTimeMin),
         formatMinToHHMM(targetResolution),
         comply ? 'M' : 'TM',

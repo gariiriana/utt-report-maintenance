@@ -581,7 +581,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.getCell('D8').value = report.priority;
   wsRes.getCell('E8').value = report.location;
   wsRes.getCell('F8').value = formatExcelDate(report.startOrder || report.timeOrder);
-  wsRes.getCell('G8').value = formatExcelDate(report.finishOrder);
+  wsRes.getCell('G8').value = formatExcelDate(report.actualTimeResolution || report.finishResolution || report.finishOrder);
   wsRes.getCell('H8').value = actualReso;
   wsRes.getCell('I8').value = targetRSP;
   wsRes.getCell('J8').value = { formula: 'IF(H8<=I8,"M","TM")', result: isResoComply ? 'M' : 'TM' };
@@ -1875,7 +1875,7 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
       wsReso.getCell(`C${rowNum}`).value = r.priority || 'Medium';
       wsReso.getCell(`D${rowNum}`).value = r.location || '-';
       wsReso.getCell(`E${rowNum}`).value = formatExcelDate(r.startOrder || r.timeOrder);
-      wsReso.getCell(`F${rowNum}`).value = formatExcelDate(r.finishOrder);
+      wsReso.getCell(`F${rowNum}`).value = formatExcelDate(r.actualTimeResolution || r.finishResolution || r.finishOrder);
       wsReso.getCell(`G${rowNum}`).value = r.actualResolutionTimeMin ?? 0;
       wsReso.getCell(`H${rowNum}`).value = targetRSP;
       wsReso.getCell(`I${rowNum}`).value = { formula: `IF(G${rowNum}<=H${rowNum},"M","TM")`, result: comply ? 'M' : 'TM' };

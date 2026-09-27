@@ -51,6 +51,7 @@ export interface CorrectiveReportItem {
   onsiteComply?: boolean;
   startOrder?: string;
   finishOrder?: string;
+  actualTimeResolution?: string;
   actualRestoreTimeMin?: number;
   targetRestoreMin?: number;
   restoreComply?: boolean;

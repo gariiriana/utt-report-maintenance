@@ -53,6 +53,7 @@ export interface CorrectiveReport {
   actualTimeOnsite?: string;
   startOrder?: string;
   finishOrder?: string;
+  actualTimeResolution?: string;
 }
 
 function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
