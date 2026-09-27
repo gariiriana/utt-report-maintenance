@@ -1572,6 +1572,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
         setEditingReportId(null);
         setPrefillSlaData({
+            slaSource: 'cm',
             ticketName: cm.incidentName || cm.equipmentName || cm.issue || 'Corrective Maintenance',
             location: cm.location || 'Neutra DC Cikarang',
             timeOrder: cm.incidentDate || (cm.reportedAt?.toDate ? cm.reportedAt.toDate().toLocaleDateString('id-ID') : ''),
@@ -1624,6 +1625,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
         setEditingReportId(null);
         setPrefillSlaData({
+            slaSource: 'pir',
             ticketName: pir.incidentName || pir.issue || 'Post Incident Report',
             ticketNumber: pir.slaTicketNumber || pir.ticketNumber || pir.incidentId || '',
             ticketStatus: pir.slaTicketStatus || (pir.ticketStatus === 'closed' ? 'closed' : 'open'),
@@ -2013,6 +2015,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
                             <SLAForm
                                 key={`sla_${formKey}`}
+                                availableCMReports={cmRequiringSLAReports}
+                                availablePIRReports={unlinkedPIRReports}
                                 onSuccess={() => {
                                     setFormKey(prev => prev + 1);
                                 }}
@@ -2210,6 +2214,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     editId={editingReportId || undefined}
                                     prefillData={prefillSlaData || undefined}
                                     availableCMReports={cmRequiringSLAReports}
+                                    availablePIRReports={unlinkedPIRReports}
                                     onSuccess={(savedId) => handleCloseForm(savedId || editingReportId || undefined)}
                                     onCancel={(canceledId) => handleCloseForm(canceledId || editingReportId || undefined)}
                                 />
