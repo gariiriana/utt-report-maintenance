@@ -7,7 +7,7 @@
 //            - Notifikasi otomatis ke Firestore setelah temuan disimpan
 // ============================================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -23,6 +23,7 @@ import {
   CalendarDays,
   ImagePlus,
   Scissors,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -35,10 +36,29 @@ import { useAuth } from './AuthContext';
 import { ImageEditor } from '@/components/ImageEditor';
 import { sendFileNotification } from '@/utils/notificationService';
 import { FindingPhoto } from '../types/finding';
+import { ManualAbnormalFinding } from '@/components/ManualAbnormalFinding';
 
-export function FindingManagement() {
+export interface FindingManagementProps {
+  initialSubTab?: 'part' | 'abnormal';
+  onSubTabChange?: (tab: 'part' | 'abnormal') => void;
+}
+
+export function FindingManagement({
+  initialSubTab = 'part',
+  onSubTabChange,
+}: FindingManagementProps = {}) {
   const { user } = useAuth();
+  const [activeSubTab, setActiveSubTab] = useState<'part' | 'abnormal'>(initialSubTab);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setActiveSubTab(initialSubTab);
+  }, [initialSubTab]);
+
+  const handleTabClick = (tab: 'part' | 'abnormal') => {
+    setActiveSubTab(tab);
+    onSubTabChange?.(tab);
+  };
 
   const [formData, setFormData] = useState({
     partName: '',
@@ -160,24 +180,69 @@ export function FindingManagement() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative">
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-10"
-      >
-        <div className="flex items-center gap-2 sm:gap-3 mb-2">
-          <div className="p-1.5 sm:p-2 bg-amber-50 rounded-lg border border-amber-100">
-            <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
-          </div>
-          <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Input Temuan Maintenance
-          </h1>
-        </div>
-        <p className="text-slate-600 font-medium text-sm sm:text-base ml-0 sm:ml-12 lg:ml-14">
-          Dokumentasikan temuan trouble maintenance dengan detail untuk arsip dan pelaporan.
-        </p>
-      </motion.div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 relative">
+      {/* Tab Switcher Temuan: Sparepart Trouble vs Temuan Abnormal Manual */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 backdrop-blur-md rounded-2xl w-fit mb-8 border border-slate-200/80 shadow-xs">
+        <button
+          type="button"
+          onClick={() => handleTabClick('part')}
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+            activeSubTab === 'part'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <Package className={`w-4 h-4 ${activeSubTab === 'part' ? 'text-amber-500' : 'text-slate-400'}`} />
+          <span>Temuan Sparepart / Trouble</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabClick('abnormal')}
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+            activeSubTab === 'abnormal'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+              : 'text-slate-600 hover:text-rose-600 hover:bg-rose-50/50'
+          }`}
+        >
+          <AlertTriangle className={`w-4 h-4 ${activeSubTab === 'abnormal' ? 'text-white' : 'text-rose-500'}`} />
+          <span>Input Temuan Abnormal Manual</span>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+            activeSubTab === 'abnormal' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
+          }`}>
+            PJU / Unit
+          </span>
+        </button>
+      </div>
+
+      {activeSubTab === 'abnormal' ? (
+        <motion.div
+          key="manual_abnormal_view"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ManualAbnormalFinding className="w-full max-w-5xl mx-auto px-0 py-0" />
+        </motion.div>
+      ) : (
+        <>
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-10"
+          >
+            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+              <div className="p-1.5 sm:p-2 bg-amber-50 rounded-lg border border-amber-100">
+                <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
+              </div>
+              <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Input Temuan Maintenance
+              </h1>
+            </div>
+            <p className="text-slate-600 font-medium text-sm sm:text-base ml-0 sm:ml-12 lg:ml-14">
+              Dokumentasikan temuan trouble maintenance dengan detail untuk arsip dan pelaporan.
+            </p>
+          </motion.div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
@@ -371,18 +436,20 @@ export function FindingManagement() {
         </form>
       </motion.div>
 
-      <AnimatePresence>
-        {editingPhotoIdx !== null && (
-          <ImageEditor
-            image={photos[editingPhotoIdx].base64}
-            onSave={handleSaveCrop}
-            onCancel={handleCancelCrop}
-            description={photos[editingPhotoIdx].description}
-            maintenanceName={formData.partName}
-            specificDetail={formData.partNumber}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
+        <AnimatePresence>
+          {editingPhotoIdx !== null && (
+            <ImageEditor
+              image={photos[editingPhotoIdx].base64}
+              onSave={handleSaveCrop}
+              onCancel={handleCancelCrop}
+              description={photos[editingPhotoIdx].description}
+              maintenanceName={formData.partName}
+              specificDetail={formData.partNumber}
+            />
+          )}
+        </AnimatePresence>
+      </>
+    )}
+  </div>
+);
 }

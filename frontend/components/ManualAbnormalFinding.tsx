@@ -19,14 +19,16 @@ const MONTHS = [
 const PJU_DEFAULT_DESCRIPTION = 'Lampu PJU menyala, tetapi salah satu baterai abnormal';
 const PJU_DEFAULT_RECOMMENDATION = 'Ganti baterai dan periksa kondisi charging';
 
-export function ManualAbnormalFinding() {
+export function ManualAbnormalFinding({ className }: { className?: string } = {}) {
   const { user } = useAuth();
-  const isPjuAccount = user?.email?.toLowerCase() === 'pju@gmail.com';
+  const userEmail = (user?.email || '').toLowerCase();
+  const isPjuAccount = userEmail === 'pju@gmail.com';
+  const isWatersoftenerAccount = userEmail.includes('watersoftener');
   const now = new Date();
   const [isSaving, setIsSaving] = useState(false);
   const [photoBase64, setPhotoBase64] = useState('');
   const [form, setForm] = useState({
-    maintenanceName: isPjuAccount ? 'PJU' : '',
+    maintenanceName: isPjuAccount ? 'PJU' : isWatersoftenerAccount ? 'Water Softener' : '',
     unitName: '',
     day: String(now.getDate()),
     month: String(now.getMonth() + 1),
@@ -35,7 +37,7 @@ export function ManualAbnormalFinding() {
     actionRecommendation: isPjuAccount ? PJU_DEFAULT_RECOMMENDATION : '',
   });
 
-  // Otomatis terapkan nilai paten untuk akun pju@gmail.com saat dibuka
+  // Otomatis terapkan nilai default untuk akun pju@gmail.com atau watersoftener
   useEffect(() => {
     if (isPjuAccount) {
       setForm((current) => ({
@@ -44,8 +46,13 @@ export function ManualAbnormalFinding() {
         description: current.description || PJU_DEFAULT_DESCRIPTION,
         actionRecommendation: current.actionRecommendation || PJU_DEFAULT_RECOMMENDATION,
       }));
+    } else if (isWatersoftenerAccount) {
+      setForm((current) => ({
+        ...current,
+        maintenanceName: current.maintenanceName || 'Water Softener',
+      }));
     }
-  }, [isPjuAccount]);
+  }, [isPjuAccount, isWatersoftenerAccount]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -160,7 +167,7 @@ export function ManualAbnormalFinding() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className={`w-full max-w-4xl mx-auto ${className ?? 'px-4 sm:px-6 lg:px-8 py-8'}`}>
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-11 h-11 rounded-2xl bg-rose-100 border border-rose-200 text-rose-700 flex items-center justify-center">
