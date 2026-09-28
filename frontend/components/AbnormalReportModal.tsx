@@ -81,6 +81,15 @@ export function AbnormalReportModal({
       // Support multi-format photo (photoBase64 atau array photos)
       let initialPhoto = existing.photoBase64 || (existing.photos && existing.photos[0]?.base64) || '';
 
+      const isPjuAccount = user?.email?.toLowerCase() === 'pju@gmail.com';
+      const PJU_DEFAULT_DESCRIPTION = 'Lampu PJU menyala, tetapi salah satu baterai abnormal';
+      const PJU_DEFAULT_RECOMMENDATION = 'Ganti baterai dan periksa kondisi charging';
+
+      if (isPjuAccount) {
+        if (!initialDesc) initialDesc = PJU_DEFAULT_DESCRIPTION;
+        if (!initialReco) initialReco = PJU_DEFAULT_RECOMMENDATION;
+      }
+
       setDescription(initialDesc);
       setActionRecommendation(initialReco);
       setPhotoBase64(initialPhoto);
@@ -517,10 +526,23 @@ export function AbnormalReportModal({
 
             {/* Field: Deskripsi Kelainan / Kondisi Abnormal (Wajib) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                <span>Deskripsi Temuan / Kerusakan Abnormal <span className="text-rose-600 font-black">*</span></span>
-                <span className="text-[10px] text-slate-400 font-normal lowercase">Wajib diisi</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Deskripsi Temuan / Kerusakan Abnormal <span className="text-rose-600 font-black">*</span>
+                </label>
+                {user?.email?.toLowerCase() === 'pju@gmail.com' ? (
+                  <button
+                    type="button"
+                    onClick={() => setDescription('Lampu PJU menyala, tetapi salah satu baterai abnormal')}
+                    className="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                    title="Klik untuk mengisi kembali teks paten default PJU"
+                  >
+                    Template PJU
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-normal lowercase">Wajib diisi</span>
+                )}
+              </div>
               <textarea
                 rows={3}
                 value={description}
@@ -532,9 +554,21 @@ export function AbnormalReportModal({
 
             {/* Field: Rekomendasi / Tindakan Lanjutan (Opsional) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Rekomendasi / Tindakan Lanjutan <span className="text-slate-400 font-normal lowercase">(opsional)</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Rekomendasi / Tindakan Lanjutan <span className="text-slate-400 font-normal lowercase">(opsional)</span>
+                </label>
+                {user?.email?.toLowerCase() === 'pju@gmail.com' && (
+                  <button
+                    type="button"
+                    onClick={() => setActionRecommendation('Ganti baterai dan periksa kondisi charging')}
+                    className="text-[10px] font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                    title="Klik untuk mengisi kembali rekomendasi paten default PJU"
+                  >
+                    Rekomendasi PJU
+                  </button>
+                )}
+              </div>
               <textarea
                 rows={2}
                 value={actionRecommendation}

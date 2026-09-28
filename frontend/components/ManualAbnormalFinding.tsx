@@ -4,8 +4,8 @@
 //            lengkap (tanggal, bulan, dan tahun).
 // ============================================================================
 
-import { useState } from 'react';
-import { AlertTriangle, Building2, CalendarDays, Camera, ClipboardPenLine, ImagePlus, Loader2, Trash2, Wrench } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertTriangle, Building2, CalendarDays, Camera, ClipboardPenLine, ImagePlus, Loader2, Trash2, Wrench, Sparkles, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
@@ -16,20 +16,36 @@ const MONTHS = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
 
+const PJU_DEFAULT_DESCRIPTION = 'Lampu PJU menyala, tetapi salah satu baterai abnormal';
+const PJU_DEFAULT_RECOMMENDATION = 'Ganti baterai dan periksa kondisi charging';
+
 export function ManualAbnormalFinding() {
   const { user } = useAuth();
+  const isPjuAccount = user?.email?.toLowerCase() === 'pju@gmail.com';
   const now = new Date();
   const [isSaving, setIsSaving] = useState(false);
   const [photoBase64, setPhotoBase64] = useState('');
   const [form, setForm] = useState({
-    maintenanceName: '',
+    maintenanceName: isPjuAccount ? 'PJU' : '',
     unitName: '',
     day: String(now.getDate()),
     month: String(now.getMonth() + 1),
     year: String(now.getFullYear()),
-    description: '',
-    actionRecommendation: '',
+    description: isPjuAccount ? PJU_DEFAULT_DESCRIPTION : '',
+    actionRecommendation: isPjuAccount ? PJU_DEFAULT_RECOMMENDATION : '',
   });
+
+  // Otomatis terapkan nilai paten untuk akun pju@gmail.com saat dibuka
+  useEffect(() => {
+    if (isPjuAccount) {
+      setForm((current) => ({
+        ...current,
+        maintenanceName: current.maintenanceName || 'PJU',
+        description: current.description || PJU_DEFAULT_DESCRIPTION,
+        actionRecommendation: current.actionRecommendation || PJU_DEFAULT_RECOMMENDATION,
+      }));
+    }
+  }, [isPjuAccount]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -128,11 +144,11 @@ export function ManualAbnormalFinding() {
       toast.success('Temuan abnormal manual tersimpan dan masuk ke Pusat Temuan Abnormal.');
       setForm((current) => ({
         ...current,
-        maintenanceName: '',
+        maintenanceName: isPjuAccount ? 'PJU' : '',
         unitName: '',
         day: String(new Date().getDate()),
-        description: '',
-        actionRecommendation: '',
+        description: isPjuAccount ? PJU_DEFAULT_DESCRIPTION : '',
+        actionRecommendation: isPjuAccount ? PJU_DEFAULT_RECOMMENDATION : '',
       }));
       setPhotoBase64('');
     } catch (error: any) {
@@ -155,6 +171,29 @@ export function ManualAbnormalFinding() {
             <p className="text-sm text-slate-500">Catat kondisi abnormal berdasarkan tanggal kejadian yang lengkap.</p>
           </div>
         </div>
+
+        {isPjuAccount && (
+          <div className="mt-4 p-3.5 bg-gradient-to-r from-amber-50 via-rose-50 to-orange-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1 bg-amber-100 text-amber-800 rounded-lg">
+                <Sparkles className="w-4 h-4" />
+              </span>
+              <div>
+                <p className="font-bold text-slate-800">Template Khusus Akun PJU Aktif</p>
+                <p className="text-[11px] text-slate-600">Temuan & Rekomendasi otomatis terisi paten untuk PJU, namun tetap dapat Anda edit bila perlu.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, description: PJU_DEFAULT_DESCRIPTION, actionRecommendation: PJU_DEFAULT_RECOMMENDATION }))}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+              title="Kembalikan teks ke template paten PJU"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+              Reset Teks Paten PJU
+            </button>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -166,11 +205,11 @@ export function ManualAbnormalFinding() {
             </label>
             <label className="block">
               <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><Wrench className="w-4 h-4 text-rose-600" />Nama Maintenance <span className="text-rose-600">*</span></span>
-              <input required value={form.maintenanceName} onChange={(e) => setForm({ ...form, maintenanceName: e.target.value })} placeholder="Contoh: PM Bulanan UPS" className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm" />
+              <input required value={form.maintenanceName} onChange={(e) => setForm({ ...form, maintenanceName: e.target.value })} placeholder="Contoh: PM Bulanan PJU" className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm" />
             </label>
             <label className="block">
               <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><Building2 className="w-4 h-4 text-rose-600" />Nama Unit <span className="text-rose-600">*</span></span>
-              <input required value={form.unitName} onChange={(e) => setForm({ ...form, unitName: e.target.value })} placeholder="Contoh: UPS-01 / CRAC-02" className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm" />
+              <input required value={form.unitName} onChange={(e) => setForm({ ...form, unitName: e.target.value })} placeholder="Contoh: PJU-01 / PJU TIANG 12" className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm" />
             </label>
           </div>
 
@@ -190,13 +229,54 @@ export function ManualAbnormalFinding() {
           </div>
 
           <label className="block">
-            <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><ClipboardPenLine className="w-4 h-4 text-rose-600" />Temuan Abnormal <span className="text-rose-600">*</span></span>
-            <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Jelaskan kondisi abnormal, dampak, dan kebutuhan tindak lanjut..." className="w-full min-h-36 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm resize-y" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <ClipboardPenLine className="w-4 h-4 text-rose-600" />
+                Temuan Abnormal <span className="text-rose-600">*</span>
+              </span>
+              {isPjuAccount && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, description: PJU_DEFAULT_DESCRIPTION }))}
+                  className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                  title="Klik untuk mengisi kembali teks paten default PJU"
+                >
+                  Gunakan Template PJU
+                </button>
+              )}
+            </div>
+            <textarea 
+              required 
+              value={form.description} 
+              onChange={(e) => setForm({ ...form, description: e.target.value })} 
+              placeholder="Jelaskan kondisi abnormal, dampak, dan kebutuhan tindak lanjut..." 
+              className="w-full min-h-36 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-sm resize-y" 
+            />
           </label>
 
           <label className="block">
-            <span className="mb-2 text-sm font-bold text-slate-700 flex items-center gap-2"><Wrench className="w-4 h-4 text-amber-600" />Rekomendasi / Tindakan Lanjutan <span className="text-xs font-medium text-slate-400">(opsional)</span></span>
-            <textarea value={form.actionRecommendation} onChange={(e) => setForm({ ...form, actionRecommendation: e.target.value })} placeholder="Contoh: Perlu penggantian contactor & overcurrent relay, flushing strainer, atau monitoring berkala selama 24 jam..." className="w-full min-h-24 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-sm resize-y" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-amber-600" />
+                Rekomendasi / Tindakan Lanjutan <span className="text-xs font-medium text-slate-400">(opsional)</span>
+              </span>
+              {isPjuAccount && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, actionRecommendation: PJU_DEFAULT_RECOMMENDATION }))}
+                  className="text-[11px] font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                  title="Klik untuk mengisi kembali rekomendasi paten default PJU"
+                >
+                  Gunakan Rekomendasi PJU
+                </button>
+              )}
+            </div>
+            <textarea 
+              value={form.actionRecommendation} 
+              onChange={(e) => setForm({ ...form, actionRecommendation: e.target.value })} 
+              placeholder="Contoh: Perlu penggantian contactor & overcurrent relay, flushing strainer, atau monitoring berkala selama 24 jam..." 
+              className="w-full min-h-24 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-sm resize-y" 
+            />
           </label>
 
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-4 sm:p-5">

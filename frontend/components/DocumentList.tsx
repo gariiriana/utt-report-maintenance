@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye, ArrowLeft } from 'lucide-react';
 import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -41,6 +41,7 @@ import { downloadPDFBlob } from '@/utils/pdfDownload';
 import { UploadSRModal } from './UploadSRModal';
 import { AbnormalReportModal } from './AbnormalReportModal';
 import { HSEReportViewer } from './HSEReportViewer';
+import { HSEReportForm } from './HSEReportForm';
 import { isServiceReportSupported } from '@/config/serviceReportRegistry';
 import { getDoc } from 'firebase/firestore';
 import { safeStorage } from '@/utils/safeStorage';
@@ -422,6 +423,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [previewHseDoc, setPreviewHseDoc] = useState<ExcelDocument | null>(null);
+  const [selectedHseDoc, setSelectedHseDoc] = useState<any | null>(null);
 
   const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
   const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | 'tbm' | 'induction' | null>(null);
@@ -4160,10 +4162,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
         }
       }
 
-      // Arsip HSE adalah read-only untuk role selain HSE Officer. HSE Officer
-      // diarahkan ke form asli agar dapat mengubah laporan di dalam website.
-      if (doc.documentType === 'hse' && userRole !== 'hse') {
-        setPreviewHseDoc({ ...doc, photosData });
+      // Arsip HSE dibuka ke tampilan HSEReportForm (read-only untuk role selain HSE Officer,
+      // sehingga admin dapat membaca detail dan mendownload foto dokumentasi satu-per-satu).
+      if (doc.documentType === 'hse') {
+        setSelectedHseDoc({ ...doc, photosData });
       } else if (onEdit) {
         onEdit({ ...doc, photosData });
       }
@@ -4173,6 +4175,29 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       toast.error('Failed to prepare data for editing', { id: 'edit-prep' });
     }
   };
+
+  if (selectedHseDoc) {
+    return (
+      <div className={`w-full relative z-10 min-w-0 ${filterOverride === 'hse_utt' ? 'py-1 pb-16' : 'max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-32 sm:pb-16'}`}>
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setSelectedHseDoc(null)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-xl transition font-bold text-xs shadow-xs cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500" />
+            <span>Kembali ke Arsip Dokumen HSE</span>
+          </button>
+        </div>
+        <HSEReportForm
+          editingData={selectedHseDoc}
+          readOnly={userRole !== 'hse'}
+          onClearEdit={() => setSelectedHseDoc(null)}
+          mode={selectedHseDoc.hseType || selectedHseDoc.type || 'inspection'}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full relative z-10 min-w-0 overflow-x-hidden ${filterOverride === 'hse_utt' ? 'py-1 pb-16' : 'max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-32 sm:pb-16'}`}>

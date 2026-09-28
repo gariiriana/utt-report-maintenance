@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Camera, Upload, Edit2, FileDown, FileText,
     CheckSquare, Square, User, MapPin, Users, Briefcase,
-    Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2, ShieldCheck
+    Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2, ShieldCheck,
+    Download, Archive, ArrowLeft, Eye, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from '@/components/HSEPhotoEditor';
@@ -13,6 +14,8 @@ import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, d
 import { useAuth } from '@/components/AuthContext';
 import { ExcelDocument } from '@/components/DocumentList';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 import {
     INITIAL_HSE_CHECKLIST,
@@ -26,15 +29,17 @@ interface PhotoItem {
     dataUrl: string;
     description: string;
     label?: string;
+    index?: number;
 }
 
 interface HSEReportFormProps {
     editingData?: ExcelDocument | null;
     onClearEdit?: () => void;
     mode?: 'inspection' | 'sio' | 'silo';
+    readOnly?: boolean;
 }
 
-export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }: HSEReportFormProps) {
+export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection', readOnly = false }: HSEReportFormProps) {
     const { user, userRole } = useAuth();
 
     const [aktivitas, setAktivitas] = useState('');
@@ -65,15 +70,31 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     const [isExporting, setIsExporting] = useState(false);
     const [isExported, setIsExported] = useState(false);
 
+    // Read-only, preview, and download states
+    const [reportDate, setReportDate] = useState<string>('');
+    const [previewModalPhoto, setPreviewModalPhoto] = useState<PhotoItem | null>(null);
+    const [isDownloadingZip, setIsDownloadingZip] = useState(false);
 
     const isInitialMount = useRef(true);
 
-
-
     useEffect(() => {
         if (editingData && editingData.documentType === 'hse') {
+            // Segera isi data foto dari photosData jika sudah disediakan oleh DocumentList
+            if ((editingData as any).photosData && (editingData as any).photosData.length > 0) {
+                const initialPhotos: PhotoItem[] = ((editingData as any).photosData || []).map((p: any, idx: number) => ({
+                    id: p.id || `photo-${idx}`,
+                    dataUrl: p.dataUrl || p.photoBase64 || p.base64 || p.url || '',
+                    description: p.description || '',
+                    label: p.label || '',
+                    index: p.index ?? idx
+                }));
+                if (initialPhotos.length > 0) {
+                    setPhotos(initialPhotos);
+                }
+            }
+
             const fetchFullData = async () => {
-                const toastId = toast.loading('Memuat data laporan...');
+                const toastId = !readOnly ? toast.loading('Memuat data laporan...') : null;
                 try {
                     const docSnap = await getDoc(doc(db, 'hse', editingData.id));
                     if (docSnap.exists()) {
@@ -84,6 +105,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                         setPic(data.pic || '');
                         setAnggota(data.anggota || '');
                         setInspectorK3(data.inspectorK3 || '');
+                        if (data.date) setReportDate(data.date);
                         if (data.maintenanceType && data.maintenanceType !== 'OTHER') {
                             setMaintenanceCategory(data.maintenanceType);
                         } else {
@@ -98,7 +120,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             if (data.sioData.photos) {
                                 setSioPhotos(data.sioData.photos.map((p: any) => ({
                                     id: Math.random().toString(),
-                                    dataUrl: p.base64,
+                                    dataUrl: p.base64 || p.dataUrl,
                                     label: p.label,
                                     description: p.description || ''
                                 })));
@@ -113,7 +135,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 const photoData = d.data();
                                 return {
                                     id: d.id,
-                                    dataUrl: photoData.dataUrl,
+                                    dataUrl: photoData.dataUrl || photoData.photoBase64 || photoData.base64,
                                     description: photoData.description || '',
                                     label: photoData.label || '',
                                     index: photoData.index || 0
@@ -125,10 +147,10 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             setPhotos(fetchedPhotos);
                         }
                     }
-                    toast.dismiss(toastId);
+                    if (toastId) toast.dismiss(toastId);
                 } catch (err) {
                     console.error("Error fetching full HSE data:", err);
-                    toast.error('Gagal memuat data lengkap', { id: toastId });
+                    if (toastId) toast.error('Gagal memuat data lengkap', { id: toastId });
                 }
             };
             fetchFullData();
@@ -136,10 +158,10 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             setAktivitas(editingData.maintenanceName || '');
             setLokasi(editingData.specificDetail || '');
         }
-    }, [editingData, user?.email]);
+    }, [editingData, user?.email, readOnly]);
 
     useEffect(() => {
-        if (editingData || !user?.email) {
+        if (readOnly || editingData || !user?.email) {
             setIsDraftLoading(false);
             return;
         }
@@ -177,10 +199,10 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             setIsDraftLoading(false);
         };
         loadDraft();
-    }, [user?.email, editingData, mode]);
+    }, [user?.email, editingData, mode, readOnly]);
 
     useEffect(() => {
-        if (editingData || !user?.email || isDraftLoading || isExporting || isExported) {
+        if (readOnly || editingData || !user?.email || isDraftLoading || isExporting || isExported) {
             if (isExported && user?.email && !editingData) {
                 draftStorage.remove(`hse_draft_${mode}_${user.email}`);
             }
@@ -245,13 +267,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         }
     }, [
         aktivitas, lokasi, personil, pic, anggota, inspectorK3, maintenanceCategory, checklist, photos,
-        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloFile, msdsFile
+        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloFile, msdsFile, readOnly
     ]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sioLabelRef = useRef<string>('');
 
     const toggleCheck = (key: keyof HSEChecklist) => {
+        if (readOnly) return;
         setChecklist(prev => {
             const next = { ...prev, [key]: !prev[key] };
 
@@ -294,6 +317,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, label?: string) => {
+        if (readOnly) return;
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
@@ -352,17 +376,102 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     };
 
     const removePhoto = (id: string) => {
+        if (readOnly) return;
         setPhotos(prev => prev.filter(p => p.id !== id));
     };
 
     const handleSaveEdit = (editedDataUrl: string) => {
-        if (!editingPhoto) return;
+        if (readOnly || !editingPhoto) return;
         setPhotos(prev => prev.map(p =>
             p.id === editingPhoto.id ? { ...p, dataUrl: editedDataUrl } : p
         ));
         setEditingPhoto(null);
         toast.success('Foto berhasil diedit!');
     };
+
+    // Fungsi unduh satu foto per satu foto (JPG)
+    const downloadSinglePhoto = async (photo: PhotoItem, index: number) => {
+        if (!photo.dataUrl) {
+            toast.error('Data foto tidak valid');
+            return;
+        }
+        try {
+            const safeTitle = (aktivitas || 'foto_hse').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+            const desc = photo.description ? `_${photo.description.trim().slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
+            const label = photo.label ? `_${photo.label.trim().replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
+            const fileName = `${safeTitle}${label}_foto_${index + 1}${desc}.jpg`;
+
+            if (photo.dataUrl.startsWith('data:')) {
+                const link = document.createElement('a');
+                link.href = photo.dataUrl;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                // Fetch blob first to force download for remote URLs
+                const res = await fetch(photo.dataUrl);
+                const blob = await res.blob();
+                saveAs(blob, fileName);
+            }
+            toast.success(`Foto #${index + 1} berhasil didownload`);
+        } catch (err) {
+            console.error('Download photo error:', err);
+            const link = document.createElement('a');
+            link.href = photo.dataUrl;
+            link.download = `foto_${index + 1}.jpg`;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
+    // Fungsi unduh seluruh foto evidence sekaligus ke dalam file ZIP
+    const handleDownloadAllPhotosZip = async () => {
+        if (photos.length === 0) {
+            toast.error('Tidak ada foto untuk didownload');
+            return;
+        }
+        setIsDownloadingZip(true);
+        const toastId = toast.loading('Menyiapkan file ZIP foto...');
+        try {
+            const zip = new JSZip();
+            const folderName = (aktivitas || 'foto_hse').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+            const imgFolder = zip.folder(folderName) || zip;
+
+            for (let i = 0; i < photos.length; i++) {
+                const p = photos[i];
+                if (!p.dataUrl) continue;
+                
+                const desc = p.description ? `_${p.description.trim().slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
+                const label = p.label ? `_${p.label.trim().replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
+                const fileName = `foto_${i + 1}${label}${desc}.jpg`;
+
+                if (p.dataUrl.startsWith('data:')) {
+                    let base64Data = p.dataUrl;
+                    if (base64Data.includes(',')) {
+                        base64Data = base64Data.split(',')[1];
+                    }
+                    imgFolder.file(fileName, base64Data, { base64: true });
+                } else {
+                    const res = await fetch(p.dataUrl);
+                    const blob = await res.blob();
+                    imgFolder.file(fileName, blob);
+                }
+            }
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            saveAs(blob, `${folderName}_semua_foto.zip`);
+            toast.success(`Berhasil mendownload ${photos.length} foto dalam ZIP`, { id: toastId });
+        } catch (err) {
+            console.error('Download all photos error:', err);
+            toast.error('Gagal membuat file ZIP', { id: toastId });
+        } finally {
+            setIsDownloadingZip(false);
+        }
+    };
+
     const buildFormData = (): HSEFormData => {
         return {
             aktivitas,
@@ -377,7 +486,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 description: p.description,
                 label: p.label
             })),
-            date: new Date().toISOString(),
+            date: reportDate || (editingData?.date as string) || new Date().toISOString(),
             hseType: mode as any,
             maintenanceType: maintenanceCategory,
             sioData: {
@@ -398,6 +507,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     };
 
     const handleSave = async (silent = false, reportType?: 'utt' | 'neutradc') => {
+        if (readOnly) return null;
         if (!aktivitas.trim() && mode === 'inspection') {
             if (!silent) toast.error('Aktivitas wajib diisi');
             return null;
@@ -522,6 +632,13 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             formData.reportType = reportMode;
 
             const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
+
+            if (readOnly) {
+                await generateHSEPdf(formData, shouldAutoOpen, userRole || undefined);
+                toast.success(`PDF ${reportMode.toUpperCase()} berhasil dibuat!`, { id: toastId });
+                return;
+            }
+
             const [, savedDocId] = await Promise.all([
                 generateHSEPdf(formData, shouldAutoOpen, userRole || undefined).catch((pdfErr) => {
                     console.error('PDF generation failed:', pdfErr);
@@ -625,17 +742,36 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     return (
         <>
             <div className="space-y-6">
-                <div className="flex justify-between items-center bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 p-4 rounded-2xl border border-emerald-100 shadow-sm mb-2">
-                    <div className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                        Mode: {editingData ? 'Edit ' : 'Input '}{mode.toUpperCase()}
+                {readOnly ? (
+                    <div className="flex justify-between items-center bg-gradient-to-r from-amber-50 via-sky-50 to-emerald-50 p-4 rounded-2xl border border-amber-200/80 shadow-xs mb-2">
+                        <div className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2 flex-wrap">
+                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+                            <span>Mode: Pratinjau Dokumen HSE (Hanya Baca / Read-Only)</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">Admin Mode</span>
+                        </div>
+                        {onClearEdit && (
+                            <button 
+                                type="button"
+                                onClick={onClearEdit} 
+                                className="px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold flex items-center gap-2 transition shadow-xs cursor-pointer"
+                            >
+                                <ArrowLeft className="w-4 h-4 text-slate-600" /> Kembali ke Arsip
+                            </button>
+                        )}
                     </div>
-                    {editingData && (
-                        <button onClick={onClearEdit} className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-200 text-xs font-bold flex items-center gap-2 transition hover:bg-blue-100 shadow-sm cursor-pointer">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Batal Edit
-                        </button>
-                    )}
-                </div>
+                ) : (
+                    <div className="flex justify-between items-center bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 p-4 rounded-2xl border border-emerald-100 shadow-sm mb-2">
+                        <div className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            Mode: {editingData ? 'Edit ' : 'Input '}{mode.toUpperCase()}
+                        </div>
+                        {editingData && (
+                            <button onClick={onClearEdit} className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-200 text-xs font-bold flex items-center gap-2 transition hover:bg-blue-100 shadow-sm cursor-pointer">
+                                <ArrowLeft className="w-4 h-4" /> Batal Edit
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
@@ -659,9 +795,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             <input
                                 type="text"
                                 value={inspectorK3}
+                                disabled={readOnly}
                                 onChange={e => setInspectorK3(e.target.value)}
                                 placeholder="Nama Inspector"
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
+                                className={`w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition shadow-sm ${
+                                    readOnly 
+                                        ? 'bg-slate-50 text-slate-700 border border-slate-200 cursor-not-allowed select-text' 
+                                        : 'bg-white text-slate-900 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                }`}
                             />
                         </div>
 
@@ -675,9 +816,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 <input
                                     type="text"
                                     value={maintenanceCategory}
+                                    disabled={readOnly}
                                     onChange={e => setMaintenanceCategory(e.target.value.toUpperCase())}
                                     placeholder="Contoh: PJU, LIFT, GENSET, dll"
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition uppercase shadow-sm"
+                                    className={`w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition uppercase shadow-sm ${
+                                        readOnly 
+                                            ? 'bg-slate-50 text-slate-700 border border-slate-200 cursor-not-allowed select-text' 
+                                            : 'bg-white text-slate-900 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                    }`}
                                 />
                             </div>
                         )}
@@ -691,9 +837,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             <input
                                 type="text"
                                 value={aktivitas}
+                                disabled={readOnly}
                                 onChange={e => setAktivitas(e.target.value)}
                                 placeholder={mode === 'inspection' ? "Contoh: P.M Maintenance LIFT" : "Contoh: LIFT CAR 1"}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
+                                className={`w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition shadow-sm ${
+                                    readOnly 
+                                        ? 'bg-slate-50 text-slate-700 border border-slate-200 cursor-not-allowed select-text' 
+                                        : 'bg-white text-slate-900 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                }`}
                             />
                         </div>
 
@@ -706,9 +857,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             <input
                                 type="text"
                                 value={lokasi}
+                                disabled={readOnly}
                                 onChange={e => setLokasi(e.target.value)}
                                 placeholder="Lokasi Pekerjaan"
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
+                                className={`w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition shadow-sm ${
+                                    readOnly 
+                                        ? 'bg-slate-50 text-slate-700 border border-slate-200 cursor-not-allowed select-text' 
+                                        : 'bg-white text-slate-900 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                }`}
                             />
                         </div>
 
@@ -723,9 +879,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     <input
                                         type="text"
                                         value={personil}
+                                        disabled={readOnly}
                                         onChange={e => setPersonil(e.target.value)}
                                         placeholder="Contoh: 4 org"
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
+                                        className={`w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition shadow-sm ${
+                                            readOnly 
+                                                ? 'bg-slate-50 text-slate-700 border border-slate-200 cursor-not-allowed select-text' 
+                                                : 'bg-white text-slate-900 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                        }`}
                                     />
                                 </div>
                                 <div>
@@ -737,9 +898,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     <input
                                         type="text"
                                         value={pic}
+                                        disabled={readOnly}
                                         onChange={e => setPic(e.target.value)}
                                         placeholder="Nama PIC"
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
+                                        className={`w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition shadow-sm ${
+                                            readOnly 
+                                                ? 'bg-slate-50 text-slate-700 border border-slate-200 cursor-not-allowed select-text' 
+                                                : 'bg-white text-slate-900 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                        }`}
                                     />
                                 </div>
                                 <div className="sm:col-span-2">
@@ -751,9 +917,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     <input
                                         type="text"
                                         value={anggota}
+                                        disabled={readOnly}
                                         onChange={e => setAnggota(e.target.value)}
                                         placeholder="Nama anggota (pisahkan koma)"
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
+                                        className={`w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition shadow-sm ${
+                                            readOnly 
+                                                ? 'bg-slate-50 text-slate-700 border border-slate-200 cursor-not-allowed select-text' 
+                                                : 'bg-white text-slate-900 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                                        }`}
                                     />
                                 </div>
                             </>
@@ -785,7 +956,12 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {HSE_CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map(item => (
                                             <div key={item.key} className="flex flex-col gap-3">
-                                                <button onClick={() => toggleCheck(item.key)} className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all cursor-pointer ${checklist[item.key] ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-sm' : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
+                                                <button 
+                                                    type="button"
+                                                    disabled={readOnly}
+                                                    onClick={() => toggleCheck(item.key)} 
+                                                    className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${readOnly ? 'cursor-default' : 'cursor-pointer'} ${checklist[item.key] ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-sm' : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+                                                >
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${checklist[item.key] ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300'}`}>
                                                             {checklist[item.key] ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5 text-slate-400" />}
@@ -809,8 +985,9 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                                 <div key={sub.key} className="space-y-1.5">
                                                                     <button 
                                                                         type="button"
+                                                                        disabled={readOnly}
                                                                         onClick={() => toggleCheck(sub.key)}
-                                                                        className={`flex items-center gap-3 text-left group transition-all cursor-pointer ${checklist[sub.key] ? 'text-emerald-800 font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                                                                        className={`flex items-center gap-3 text-left group transition-all ${readOnly ? 'cursor-default' : 'cursor-pointer'} ${checklist[sub.key] ? 'text-emerald-800 font-bold' : 'text-slate-600 hover:text-slate-900'}`}
                                                                     >
                                                                         <div className={`w-4 h-4 rounded-full flex items-center justify-center border transition-all ${checklist[sub.key] ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-300 group-hover:border-slate-400'}`}>
                                                                             {checklist[sub.key] && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
@@ -837,73 +1014,90 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                                                                     {msdsFile ? msdsFile.name : 'DOKUMEN MSDS TERSEDIA'}
                                                                                                 </p>
                                                                                                 <p className="text-[9px] text-emerald-700 font-medium">
-                                                                                                    {msdsFile ? `${(msdsFile.size / (1024 * 1024)).toFixed(2)} MB • PDF siap digabung` : 'PDF siap digabung'}
+                                                                                                    {msdsFile ? `${(msdsFile.size / (1024 * 1024)).toFixed(2)} MB • PDF siap digabung` : 'PDF terlampir'}
                                                                                                 </p>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div className="flex items-center gap-1.5 shrink-0">
-                                                                                            <label className="text-[10px] font-bold text-emerald-800 hover:text-emerald-900 bg-white border border-emerald-200 hover:border-emerald-300 px-2 py-1 rounded-md cursor-pointer transition shadow-2xs">
-                                                                                                Ganti
-                                                                                                <input
-                                                                                                    type="file"
-                                                                                                    accept="application/pdf"
-                                                                                                    className="hidden"
-                                                                                                    onChange={(e) => {
-                                                                                                        const file = e.target.files?.[0];
-                                                                                                        if (file) {
-                                                                                                            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-                                                                                                                toast.error('File harus berformat PDF');
-                                                                                                                return;
-                                                                                                            }
-                                                                                                            setMsdsFile(file);
-                                                                                                            toast.success(`File MSDS dipilih: ${file.name}`);
-                                                                                                        }
-                                                                                                    }}
-                                                                                                />
-                                                                                            </label>
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={(e) => {
-                                                                                                    e.stopPropagation();
-                                                                                                    setMsdsFile(null);
-                                                                                                    setMsdsPdfUrl('');
-                                                                                                }}
-                                                                                                className="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-white border border-rose-200 hover:border-rose-300 px-2 py-1 rounded-md cursor-pointer transition shadow-2xs"
-                                                                                            >
-                                                                                                Hapus
-                                                                                            </button>
+                                                                                            {readOnly ? (
+                                                                                                msdsPdfUrl && (
+                                                                                                    <a
+                                                                                                        href={msdsPdfUrl}
+                                                                                                        target="_blank"
+                                                                                                        rel="noreferrer"
+                                                                                                        className="text-[10px] font-bold text-emerald-800 hover:text-emerald-900 bg-white border border-emerald-200 px-2 py-1 rounded-md transition shadow-2xs"
+                                                                                                    >
+                                                                                                        Lihat PDF
+                                                                                                    </a>
+                                                                                                )
+                                                                                            ) : (
+                                                                                                <>
+                                                                                                    <label className="text-[10px] font-bold text-emerald-800 hover:text-emerald-900 bg-white border border-emerald-200 hover:border-emerald-300 px-2 py-1 rounded-md cursor-pointer transition shadow-2xs">
+                                                                                                        Ganti
+                                                                                                        <input
+                                                                                                            type="file"
+                                                                                                            accept="application/pdf"
+                                                                                                            className="hidden"
+                                                                                                            onChange={(e) => {
+                                                                                                                const file = e.target.files?.[0];
+                                                                                                                if (file) {
+                                                                                                                    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                                                                                                                        toast.error('File harus berformat PDF');
+                                                                                                                        return;
+                                                                                                                    }
+                                                                                                                    setMsdsFile(file);
+                                                                                                                    toast.success(`File MSDS dipilih: ${file.name}`);
+                                                                                                                }
+                                                                                                            }}
+                                                                                                        />
+                                                                                                    </label>
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation();
+                                                                                                            setMsdsFile(null);
+                                                                                                            setMsdsPdfUrl('');
+                                                                                                        }}
+                                                                                                        className="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-white border border-rose-200 hover:border-rose-300 px-2 py-1 rounded-md cursor-pointer transition shadow-2xs"
+                                                                                                    >
+                                                                                                        Hapus
+                                                                                                    </button>
+                                                                                                </>
+                                                                                            )}
                                                                                         </div>
                                                                                     </div>
                                                                                 ) : (
-                                                                                    <label className="flex items-center gap-2.5 p-2.5 bg-slate-50/90 border border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition group">
-                                                                                        <div className="p-1.5 bg-white border border-slate-200 group-hover:border-emerald-300 rounded-lg text-slate-500 group-hover:text-emerald-600 transition shrink-0">
-                                                                                            <Upload className="w-3.5 h-3.5" />
-                                                                                        </div>
-                                                                                        <div className="flex-1 min-w-0">
-                                                                                            <p className="text-[10px] font-bold text-slate-700 group-hover:text-emerald-800 uppercase tracking-tight">
-                                                                                                Unggah File MSDS (PDF) <span className="text-[9px] font-normal lowercase text-slate-500">(opsional)</span>
-                                                                                            </p>
-                                                                                            <p className="text-[9px] text-slate-500 group-hover:text-emerald-600">
-                                                                                                Lampiran PDF akan digabung di akhir laporan inspeksi
-                                                                                            </p>
-                                                                                        </div>
-                                                                                        <input
-                                                                                            type="file"
-                                                                                            accept="application/pdf"
-                                                                                            className="hidden"
-                                                                                            onChange={(e) => {
-                                                                                                const file = e.target.files?.[0];
-                                                                                                if (file) {
-                                                                                                    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-                                                                                                        toast.error('File harus berformat PDF');
-                                                                                                        return;
+                                                                                    !readOnly && (
+                                                                                        <label className="flex items-center gap-2.5 p-2.5 bg-slate-50/90 border border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition group">
+                                                                                            <div className="p-1.5 bg-white border border-slate-200 group-hover:border-emerald-300 rounded-lg text-slate-500 group-hover:text-emerald-600 transition shrink-0">
+                                                                                                <Upload className="w-3.5 h-3.5" />
+                                                                                            </div>
+                                                                                            <div className="flex-1 min-w-0">
+                                                                                                <p className="text-[10px] font-bold text-slate-700 group-hover:text-emerald-800 uppercase tracking-tight">
+                                                                                                    Unggah File MSDS (PDF) <span className="text-[9px] font-normal lowercase text-slate-500">(opsional)</span>
+                                                                                                </p>
+                                                                                                <p className="text-[9px] text-slate-500 group-hover:text-emerald-600">
+                                                                                                    Lampiran PDF akan digabung di akhir laporan inspeksi
+                                                                                                </p>
+                                                                                            </div>
+                                                                                            <input
+                                                                                                type="file"
+                                                                                                accept="application/pdf"
+                                                                                                className="hidden"
+                                                                                                onChange={(e) => {
+                                                                                                    const file = e.target.files?.[0];
+                                                                                                    if (file) {
+                                                                                                        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                                                                                                            toast.error('File harus berformat PDF');
+                                                                                                            return;
+                                                                                                        }
+                                                                                                        setMsdsFile(file);
+                                                                                                        toast.success(`File MSDS dipilih: ${file.name}`);
                                                                                                     }
-                                                                                                    setMsdsFile(file);
-                                                                                                    toast.success(`File MSDS dipilih: ${file.name}`);
-                                                                                                }
-                                                                                            }}
-                                                                                        />
-                                                                                    </label>
+                                                                                                }}
+                                                                                            />
+                                                                                        </label>
+                                                                                    )
                                                                                 )}
                                                                             </motion.div>
                                                                         </AnimatePresence>
@@ -929,8 +1123,10 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                 return (
                                                     <button 
                                                         key={key} 
+                                                        type="button"
+                                                        disabled={readOnly}
                                                         onClick={() => toggleCheck(key as any)} 
-                                                        className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all cursor-pointer ${checklist[key as keyof HSEChecklist] ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                                                        className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all ${readOnly ? 'cursor-default' : 'cursor-pointer'} ${checklist[key as keyof HSEChecklist] ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                                                     >
                                                         <div className="flex items-center gap-4">
                                                             <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${checklist[key as keyof HSEChecklist] ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300'}`}>
@@ -955,14 +1151,30 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
                 >
-                    <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+                    <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-100 rounded-lg"><Camera className="w-4 h-4 text-blue-700" /></div>
-                            <h3 className="text-sm font-bold text-slate-900">Dokumentasi {mode.toUpperCase()}</h3>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">Dokumentasi {mode.toUpperCase()}</h3>
+                                <p className="text-[11px] text-slate-500 font-medium">{photos.length} Foto Dokumentasi Bukti</p>
+                            </div>
                         </div>
+
+                        {photos.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={handleDownloadAllPhotosZip}
+                                disabled={isDownloadingZip}
+                                className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                                title="Download semua foto bukti dalam 1 file ZIP"
+                            >
+                                {isDownloadingZip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+                                <span>{isDownloadingZip ? 'Mengompres Foto...' : 'Download Semua Foto (.ZIP)'}</span>
+                            </button>
+                        )}
                     </div>
                     <div className="p-5">
-                        {mode === 'sio' && (
+                        {!readOnly && mode === 'sio' && (
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                                 {['FOTO KTP', 'FOTO SIM', 'FOTO OPERATOR / LAINNYA'].map(label => (
                                     <button
@@ -977,7 +1189,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             </div>
                         )}
 
-                        {mode === 'silo' && (
+                        {!readOnly && mode === 'silo' && (
                             <button
                                 onClick={() => { sioLabelRef.current = 'DOKUMEN SILO'; fileInputRef.current?.click(); }}
                                 className="w-full flex items-center justify-center gap-3 p-4 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-900 transition mb-6 font-bold cursor-pointer shadow-sm"
@@ -987,45 +1199,108 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             </button>
                         )}
 
-                        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={(e) => handleFileUpload(e)} className="hidden" title="Unggah Foto Evidence" placeholder="Unggah Foto Evidence" />
+                        {!readOnly && (
+                            <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={(e) => handleFileUpload(e)} className="hidden" title="Unggah Foto Evidence" placeholder="Unggah Foto Evidence" />
+                        )}
                         
                         <div className="space-y-4">
-                            <div 
-                                onClick={() => fileInputRef.current?.click()} 
-                                className="group border-2 border-dashed border-slate-300 hover:border-emerald-400 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-50/50 hover:bg-emerald-50/30"
-                            >
-                                <div className="p-3 bg-white border border-slate-200 rounded-xl group-hover:scale-110 group-hover:bg-emerald-100 transition-all shadow-sm">
-                                    <Camera className="w-6 h-6 text-slate-500 group-hover:text-emerald-700" />
+                            {!readOnly && (
+                                <div 
+                                    onClick={() => fileInputRef.current?.click()} 
+                                    className="group border-2 border-dashed border-slate-300 hover:border-emerald-400 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-50/50 hover:bg-emerald-50/30"
+                                >
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl group-hover:scale-110 group-hover:bg-emerald-100 transition-all shadow-sm">
+                                        <Camera className="w-6 h-6 text-slate-500 group-hover:text-emerald-700" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-xs font-bold text-slate-900">Tambah Foto Evidence</p>
+                                        <p className="text-[10px] text-slate-500 mt-1 font-medium">Klik untuk upload file</p>
+                                    </div>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-xs font-bold text-slate-900">Tambah Foto Evidence</p>
-                                    <p className="text-[10px] text-slate-500 mt-1 font-medium">Klik untuk upload file</p>
+                            )}
+
+                            {readOnly && photos.length === 0 && (
+                                <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                                    <Camera className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                                    <p className="text-xs font-bold text-slate-600">Tidak ada foto dokumentasi pada laporan ini.</p>
                                 </div>
-                            </div>
+                            )}
 
                             {photos.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     <AnimatePresence mode="popLayout">
-                                        {photos.map((photo) => (
-                                            <motion.div key={photo.id} layout className="flex flex-col gap-2">
-                                                <div className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-100 shadow-sm">
-                                                    <img src={photo.dataUrl} alt="" className="w-full h-full object-cover" />
+                                        {photos.map((photo, index) => (
+                                            <motion.div key={photo.id || index} layout className="flex flex-col gap-2">
+                                                <div 
+                                                    className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-100 shadow-sm cursor-pointer"
+                                                    onClick={() => setPreviewModalPhoto(photo)}
+                                                >
+                                                    <img src={photo.dataUrl} alt={photo.description || `Foto ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                                                     {photo.label && (
                                                         <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow">
                                                             {photo.label}
                                                         </div>
                                                     )}
-                                                    <div className="absolute top-2 right-2 flex gap-1 transition">
-                                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md cursor-pointer" title="Edit Foto"><Edit2 className="w-3.5 h-3.5" /></button>
-                                                        <button onClick={() => removePhoto(photo.id)} className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-md cursor-pointer" title="Hapus Foto"><Trash2 className="w-3.5 h-3.5" /></button>
-                                                    </div>
+                                                    
+                                                    {readOnly ? (
+                                                        <div className="absolute top-2 right-2 flex gap-1 transition" onClick={e => e.stopPropagation()}>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => setPreviewModalPhoto(photo)} 
+                                                                className="p-2 bg-slate-900/80 hover:bg-slate-950 text-white rounded-lg shadow-md cursor-pointer transition" 
+                                                                title="Perbesar Foto"
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => downloadSinglePhoto(photo, index)} 
+                                                                className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-md cursor-pointer transition" 
+                                                                title="Download Foto Ini"
+                                                            >
+                                                                <Download className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="absolute top-2 right-2 flex gap-1 transition" onClick={e => e.stopPropagation()}>
+                                                            <button type="button" onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md cursor-pointer" title="Edit Foto"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                            <button type="button" onClick={() => removePhoto(photo.id)} className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-md cursor-pointer" title="Hapus Foto"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] font-medium outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm" />
+
+                                                {readOnly ? (
+                                                    <div className="space-y-1.5">
+                                                        <div 
+                                                            className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-[11px] font-medium truncate"
+                                                            title={photo.description || 'Tanpa keterangan'}
+                                                        >
+                                                            {photo.description || <span className="text-slate-400 italic">Tanpa keterangan</span>}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => downloadSinglePhoto(photo, index)}
+                                                            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-[10px] font-bold transition cursor-pointer shadow-2xs"
+                                                            title="Download foto ini langsung"
+                                                        >
+                                                            <Download className="w-3 h-3 text-emerald-600" />
+                                                            Unduh Foto #{index + 1}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <input 
+                                                        type="text" 
+                                                        value={photo.description} 
+                                                        onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} 
+                                                        placeholder="Keterangan foto..." 
+                                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] font-medium outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm" 
+                                                    />
+                                                )}
                                             </motion.div>
                                         ))}
 
                                         {/* Special Inline Upload Card for hse@gmail.com */}
-                                        {user?.email?.toLowerCase() === 'hse@gmail.com' && (
+                                        {!readOnly && user?.email?.toLowerCase() === 'hse@gmail.com' && (
                                             <motion.div
                                                 key="inline-upload-card"
                                                 layout
@@ -1044,7 +1319,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                     </div>
                                                     <span className="text-[10px] font-bold text-slate-600 group-hover/inline:text-slate-900 uppercase tracking-wider">Tambah Foto</span>
                                                 </div>
-                                                {/* Placeholder matching the height of photo description input to align grid items */}
                                                 <div className="h-[34px] invisible" aria-hidden="true" />
                                             </motion.div>
                                         )}
@@ -1071,15 +1345,42 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
                                         <label htmlFor="sioOperatorName" className="block text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-2">Nama Operator</label>
-                                        <input id="sioOperatorName" type="text" value={sioOperatorName} onChange={e => setSioOperatorName(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-500 shadow-sm" placeholder="ZAINAL" title="Nama Operator SIO" />
+                                        <input 
+                                            id="sioOperatorName" 
+                                            type="text" 
+                                            value={sioOperatorName} 
+                                            readOnly={readOnly}
+                                            onChange={e => setSioOperatorName(e.target.value.toUpperCase())} 
+                                            className={`w-full px-4 py-2.5 rounded-lg text-xs font-medium outline-none shadow-sm ${readOnly ? 'bg-slate-50 border border-slate-200 text-slate-700' : 'bg-white border border-slate-200 text-slate-900 focus:ring-1 focus:ring-blue-500'}`} 
+                                            placeholder="ZAINAL" 
+                                            title="Nama Operator SIO" 
+                                        />
                                     </div>
                                     <div>
                                         <label htmlFor="sioNumber" className="block text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-2">No SIO / Lisensi</label>
-                                        <input id="sioNumber" type="text" value={sioNumber} onChange={e => setSioNumber(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-500 shadow-sm" placeholder="1234RTYU-BN" title="No SIO / Lisensi" />
+                                        <input 
+                                            id="sioNumber" 
+                                            type="text" 
+                                            value={sioNumber} 
+                                            readOnly={readOnly}
+                                            onChange={e => setSioNumber(e.target.value.toUpperCase())} 
+                                            className={`w-full px-4 py-2.5 rounded-lg text-xs font-medium outline-none shadow-sm ${readOnly ? 'bg-slate-50 border border-slate-200 text-slate-700' : 'bg-white border border-slate-200 text-slate-900 focus:ring-1 focus:ring-blue-500'}`} 
+                                            placeholder="1234RTYU-BN" 
+                                            title="No SIO / Lisensi" 
+                                        />
                                     </div>
                                     <div>
                                         <label htmlFor="sioExpiryDate" className="block text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-2">Masa Berlaku</label>
-                                        <input id="sioExpiryDate" type="date" value={sioExpiryDate} onChange={e => setSioExpiryDate(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-500 shadow-sm" title="Masa Berlaku SIO" placeholder="Pilih tanggal masa berlaku" />
+                                        <input 
+                                            id="sioExpiryDate" 
+                                            type="date" 
+                                            value={sioExpiryDate} 
+                                            readOnly={readOnly}
+                                            onChange={e => setSioExpiryDate(e.target.value)} 
+                                            className={`w-full px-4 py-2.5 rounded-lg text-xs font-medium outline-none shadow-sm ${readOnly ? 'bg-slate-50 border border-slate-200 text-slate-700' : 'bg-white border border-slate-200 text-slate-900 focus:ring-1 focus:ring-blue-500'}`} 
+                                            title="Masa Berlaku SIO" 
+                                            placeholder="Pilih tanggal masa berlaku" 
+                                        />
                                     </div>
                                 </div>
 
@@ -1093,39 +1394,55 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                     <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 border border-slate-200 group shadow-sm">
                                                         {photo ? (
                                                             <>
-                                                                <img src={photo.dataUrl} className="w-full h-full object-cover" alt={label} />
+                                                                <img src={photo.dataUrl} className="w-full h-full object-cover cursor-pointer" alt={label} onClick={() => setPreviewModalPhoto(photo)} />
                                                                 <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded text-white">{label}</div>
-                                                                <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-rose-600 rounded text-white transition shadow-md cursor-pointer" title="Hapus Foto SIO"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                                {readOnly ? (
+                                                                    <div className="absolute top-1 right-1 flex gap-1">
+                                                                        <button type="button" onClick={() => setPreviewModalPhoto(photo)} className="p-1.5 bg-slate-900/80 hover:bg-black rounded-lg text-white transition shadow-md cursor-pointer" title="Lihat Foto"><Eye className="w-3 h-3" /></button>
+                                                                        <button type="button" onClick={() => downloadSinglePhoto(photo, 100)} className="p-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white transition shadow-md cursor-pointer" title="Download Foto"><Download className="w-3 h-3" /></button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button type="button" onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-rose-600 rounded text-white transition shadow-md cursor-pointer" title="Hapus Foto SIO"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                                )}
                                                             </>
                                                         ) : (
-                                                            <button 
-                                                                onClick={() => {
-                                                                    const input = document.createElement('input');
-                                                                    input.type = 'file';
-                                                                    input.accept = 'image/*';
-                                                                    input.onchange = async (e: any) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) {
-                                                                            const dataUrl = await compressImage(file);
-                                                                            setSioPhotos(prev => [...prev.filter(p => p.label !== label), { id: Date.now().toString(), dataUrl, label, description: '' }]);
-                                                                        }
-                                                                    };
-                                                                    input.click();
-                                                                }}
-                                                                className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 transition-all cursor-pointer"
-                                                            >
-                                                                <Camera className="w-5 h-5" />
-                                                                <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
-                                                            </button>
+                                                            readOnly ? (
+                                                                <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-slate-400 p-2 text-center bg-slate-50/60">
+                                                                    <span className="text-[9px] font-bold uppercase">{label}</span>
+                                                                    <span className="text-[8px] text-slate-400 italic">Tidak dilampirkan</span>
+                                                                </div>
+                                                            ) : (
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const input = document.createElement('input');
+                                                                        input.type = 'file';
+                                                                        input.accept = 'image/*';
+                                                                        input.onchange = async (e: any) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) {
+                                                                                const dataUrl = await compressImage(file);
+                                                                                setSioPhotos(prev => [...prev.filter(p => p.label !== label), { id: Date.now().toString(), dataUrl, label, description: '' }]);
+                                                                            }
+                                                                        };
+                                                                        input.click();
+                                                                    }}
+                                                                    className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 transition-all cursor-pointer"
+                                                                >
+                                                                    <Camera className="w-5 h-5" />
+                                                                    <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
+                                                                </button>
+                                                            )
                                                         )}
                                                     </div>
                                                     {label === 'LAINNYA' && photo && (
                                                         <input 
                                                             type="text" 
                                                             value={photo.description || ''} 
+                                                            readOnly={readOnly}
                                                             onChange={e => setSioPhotos(prev => prev.map(p => p.label === 'LAINNYA' ? { ...p, description: e.target.value } : p))} 
                                                             placeholder="Keterangan..." 
-                                                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] font-medium outline-none placeholder-slate-400 focus:border-blue-500 shadow-sm"
+                                                            className={`w-full px-3 py-1.5 rounded-lg text-[11px] font-medium outline-none shadow-sm ${readOnly ? 'bg-slate-50 border border-slate-200 text-slate-700' : 'bg-white border border-slate-200 text-slate-900 focus:border-blue-500'}`}
                                                         />
                                                     )}
                                                 </div>
@@ -1143,29 +1460,49 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                             <div className="p-3 bg-amber-100 rounded-xl"><FileDown className="w-6 h-6 text-amber-700" /></div>
                                             <div className="text-center">
                                                 <p className="text-xs font-black text-slate-900 uppercase">{siloFile ? siloFile.name : 'DOKUMEN SILO TERSEDIA'}</p>
-                                                <button onClick={() => { setSiloFile(null); setSiloPdfUrl(''); }} className="text-[10px] font-bold text-rose-600 hover:underline mt-1 cursor-pointer">Hapus & Ganti File</button>
+                                                {readOnly ? (
+                                                    siloPdfUrl && (
+                                                        <a
+                                                            href={siloPdfUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition shadow-xs mt-2"
+                                                        >
+                                                            <FileDown className="w-3.5 h-3.5" />
+                                                            Buka Dokumen SILO (PDF)
+                                                        </a>
+                                                    )
+                                                ) : (
+                                                    <button type="button" onClick={() => { setSiloFile(null); setSiloPdfUrl(''); }} className="text-[10px] font-bold text-rose-600 hover:underline mt-1 cursor-pointer">Hapus & Ganti File</button>
+                                                )}
                                             </div>
                                         </div>
                                     ) : (
-                                        <div 
-                                            onClick={() => {
-                                                const input = document.createElement('input');
-                                                input.type = 'file';
-                                                input.accept = 'application/pdf';
-                                                input.onchange = (e: any) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) setSiloFile(file);
-                                                };
-                                                input.click();
-                                            }}
-                                            className="p-8 border-2 border-dashed border-slate-300 hover:border-amber-400 rounded-2xl flex flex-col items-center gap-3 cursor-pointer bg-slate-50/50 hover:bg-amber-50/30 transition-all"
-                                        >
-                                            <Upload className="w-6 h-6 text-slate-500" />
-                                            <div className="text-center">
-                                                <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Unggah Dokumen SILO (PDF)</p>
-                                                <p className="text-[9px] text-slate-500 mt-1 font-medium">Lampiran ini akan digabung ke laporan HSE</p>
+                                        readOnly ? (
+                                            <div className="p-6 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-center text-xs text-slate-500 font-medium">
+                                                Tidak ada dokumen SILO terlampir pada laporan ini.
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div 
+                                                onClick={() => {
+                                                    const input = document.createElement('input');
+                                                    input.type = 'file';
+                                                    input.accept = 'application/pdf';
+                                                    input.onchange = (e: any) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) setSiloFile(file);
+                                                    };
+                                                    input.click();
+                                                }}
+                                                className="p-8 border-2 border-dashed border-slate-300 hover:border-amber-400 rounded-2xl flex flex-col items-center gap-3 cursor-pointer bg-slate-50/50 hover:bg-amber-50/30 transition-all"
+                                            >
+                                                <Upload className="w-6 h-6 text-slate-500" />
+                                                <div className="text-center">
+                                                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Unggah Dokumen SILO (PDF)</p>
+                                                    <p className="text-[9px] text-slate-500 mt-1 font-medium">Lampiran ini akan digabung ke laporan HSE</p>
+                                                </div>
+                                            </div>
+                                        )
                                     )}
                                 </div>
                             </div>
@@ -1197,27 +1534,100 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     </button>
                 </div>
 
-                <div className="flex justify-center gap-4 sm:gap-6 pt-2">
-                    <button
-                        onClick={() => handleSave()}
-                        disabled={isSaving || isGeneratingPdf}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl transition text-xs font-bold uppercase tracking-widest shadow-sm cursor-pointer"
-                    >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Simpan Draft
-                    </button>
-                    {!editingData && (
+                {!readOnly ? (
+                    <div className="flex justify-center gap-4 sm:gap-6 pt-2">
                         <button
-                            onClick={handleResetForm}
+                            onClick={() => handleSave()}
                             disabled={isSaving || isGeneratingPdf}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-xl transition text-xs font-bold uppercase tracking-widest shadow-sm cursor-pointer"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl transition text-xs font-bold uppercase tracking-widest shadow-sm cursor-pointer"
                         >
-                            <Trash2 className="w-4 h-4" />
-                            Kosongkan Form
+                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            Simpan Draft
                         </button>
-                    )}
-                </div>
+                        {!editingData && (
+                            <button
+                                onClick={handleResetForm}
+                                disabled={isSaving || isGeneratingPdf}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-xl transition text-xs font-bold uppercase tracking-widest shadow-sm cursor-pointer"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Kosongkan Form
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    onClearEdit && (
+                        <div className="flex justify-center pt-2">
+                            <button
+                                type="button"
+                                onClick={onClearEdit}
+                                className="flex items-center gap-2 px-8 py-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl transition text-xs font-bold uppercase tracking-wider shadow-md cursor-pointer"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                Kembali ke Arsip Dokumen HSE
+                            </button>
+                        </div>
+                    )
+                )}
             </div>
+
+            <AnimatePresence>
+                {previewModalPhoto && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                        onClick={() => setPreviewModalPhoto(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={e => e.stopPropagation()}
+                            className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200"
+                        >
+                            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Camera className="w-5 h-5 text-emerald-400" />
+                                    <span className="font-bold text-sm">
+                                        {previewModalPhoto.label || 'Pratinjau Foto Dokumentasi'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => downloadSinglePhoto(previewModalPhoto, 1)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition cursor-pointer shadow-sm"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Unduh Foto
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewModalPhoto(null)}
+                                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-auto bg-slate-950 flex items-center justify-center p-4 min-h-[320px]">
+                                <img
+                                    src={previewModalPhoto.dataUrl}
+                                    alt={previewModalPhoto.description || 'Foto Evidence'}
+                                    className="max-h-[65vh] max-w-full object-contain rounded-lg"
+                                />
+                            </div>
+                            {previewModalPhoto.description && (
+                                <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-700 font-medium">
+                                    <span className="font-bold text-slate-900">Keterangan:</span> {previewModalPhoto.description}
+                                </div>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <AnimatePresence>
                 {editingPhoto && (
@@ -1231,4 +1641,3 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         </>
     );
 }
-
