@@ -1023,7 +1023,7 @@ export async function exportCMMonthlyRecapToDocx(
     });
 
     // Helper untuk memformat sel 'Tindakan Solusi' (Murni daftar poin tindakan solusi bernomor)
-    const buildActionOnlyCell = (actionStr: string, isZebra: boolean) => {
+    const buildActionOnlyCell = (actionStr: string, isZebra: boolean, colWidthPercent: number = 40) => {
       const actionTrimmed = (actionStr || '-').trim();
 
       // Normalisasi tindakan solusi menjadi daftar bernomor yang konsisten.
@@ -1049,7 +1049,7 @@ export async function exportCMMonthlyRecapToDocx(
         cellParagraphs.push(
           new Paragraph({
             alignment: isSingleDash ? AlignmentType.CENTER : AlignmentType.LEFT,
-            indent: isSingleDash ? undefined : { left: 160, hanging: 120 },
+            indent: isSingleDash ? undefined : { left: 140, hanging: 110 },
             spacing: {
               before: isFirst ? 20 : 3,
               after: isLast ? 20 : 3,
@@ -1067,7 +1067,7 @@ export async function exportCMMonthlyRecapToDocx(
       });
 
       return new TableCell({
-        width: { size: 40, type: WidthType.PERCENTAGE },
+        width: { size: colWidthPercent, type: WidthType.PERCENTAGE },
         verticalAlign: VerticalAlign.CENTER,
         borders: borderThin,
         shading: isZebra ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
@@ -1075,8 +1075,63 @@ export async function exportCMMonthlyRecapToDocx(
       });
     };
 
-    // 3. TABEL MATRIKS REKAPITULASI CEPAT (SUMMARY MATRIX TABLE)
-    const tableHeaderRow = new TableRow({
+    // Helper untuk memformat sel 'Rekomendasi' (Daftar poin rekomendasi teknis bernomor)
+    const buildRecommendationCell = (recStr: string, isZebra: boolean, colWidthPercent: number = 22) => {
+      const recTrimmed = (recStr || '-').trim();
+
+      const recLines = (recTrimmed && recTrimmed !== '-' ? recTrimmed : '-')
+        .replace(/\r\n?/g, '\n')
+        .replace(/•\s*/g, '\n')
+        .split(/\n+/)
+        .map((line) => line
+          .trim()
+          .replace(/^\s*(?:[-–—]\s*|\d+\s*[).:-]\s*)/, '')
+          .trim())
+        .filter(Boolean);
+      if (recLines.length === 0) recLines.push('-');
+
+      const cellParagraphs: Paragraph[] = [];
+
+      recLines.forEach((line, idx) => {
+        const isFirst = idx === 0;
+        const isLast = idx === recLines.length - 1;
+        const isSingleDash = recLines.length === 1 && line === '-';
+
+        cellParagraphs.push(
+          new Paragraph({
+            alignment: isSingleDash ? AlignmentType.CENTER : AlignmentType.LEFT,
+            indent: isSingleDash ? undefined : { left: 140, hanging: 110 },
+            spacing: {
+              before: isFirst ? 20 : 3,
+              after: isLast ? 20 : 3,
+            },
+            children: [
+              new TextRun({
+                text: isSingleDash ? '-' : `${idx + 1}). ${line}`,
+                size: 14,
+                color: COLOR_DARK,
+                font: 'Calibri',
+              }),
+            ],
+          })
+        );
+      });
+
+      return new TableCell({
+        width: { size: colWidthPercent, type: WidthType.PERCENTAGE },
+        verticalAlign: VerticalAlign.CENTER,
+        borders: borderThin,
+        shading: isZebra ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+        children: cellParagraphs,
+      });
+    };
+
+    // 3. TABEL MATRIKS REKAPITULASI (TERPISAH ANTARA SOLVED & PENDING)
+    const solvedReports = reports.filter((r) => getTroubleStatusInfo(r).isClosed);
+    const pendingReports = reports.filter((r) => !getTroubleStatusInfo(r).isClosed);
+
+    // --- TABEL SOLVED (5 KOLOM: No, Equipment, Kendala, Tanggal & Status, Tindakan Solusi) ---
+    const solvedTableHeaderRow = new TableRow({
       tableHeader: true,
       children: [
         'No',
@@ -1112,9 +1167,8 @@ export async function exportCMMonthlyRecapToDocx(
       ),
     });
 
-    const tableDataRows = reports.map((report, idx) => {
+    const solvedTableDataRows = solvedReports.map((report, idx) => {
       const statusInfo = getTroubleStatusInfo(report);
-      const isClosed = statusInfo.isClosed;
       const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
       const equipLocStr = `${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
       const dateStr = formatReportDate(report);
@@ -1192,22 +1246,258 @@ export async function exportCMMonthlyRecapToDocx(
                     bold: true,
                     size: 13,
                     font: 'Calibri',
-                    color: isClosed ? '166534' : 'B45309',
+                    color: '166534',
                   }),
                 ],
               }),
             ],
           }),
-          // 5. Tindakan Solusi (Murni Tindakan Solusi Poin-Poin, Tanpa Label Kendala)
-          buildActionOnlyCell(actionStr, idx % 2 === 1),
+          // 5. Tindakan Solusi (Murni Tindakan Solusi Poin-Poin)
+          buildActionOnlyCell(actionStr, idx % 2 === 1, 40),
         ],
       });
     });
 
-    const summaryMatrixTable = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [tableHeaderRow, ...tableDataRows],
+    // --- TABEL PENDING (6 KOLOM: No, Equipment, Kendala, Tanggal & Status, Tindakan Solusi, Rekomendasi) ---
+    const pendingTableHeaderRow = new TableRow({
+      tableHeader: true,
+      children: [
+        'No',
+        'Equipment',
+        'Kendala',
+        'Tanggal & Status',
+        'Tindakan Solusi',
+        'Rekomendasi',
+      ].map((text, idx) =>
+        new TableCell({
+          width: {
+            size: [4, 20, 18, 14, 22, 22][idx],
+            type: WidthType.PERCENTAGE,
+          },
+          shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
+          verticalAlign: VerticalAlign.CENTER,
+          borders: borderThin,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 50, after: 50 },
+              children: [
+                new TextRun({
+                  text,
+                  bold: true,
+                  size: 15,
+                  color: COLOR_WHITE,
+                  font: 'Calibri',
+                }),
+              ],
+            }),
+          ],
+        })
+      ),
     });
+
+    const pendingTableDataRows = pendingReports.map((report, idx) => {
+      const statusInfo = getTroubleStatusInfo(report);
+      const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
+      const equipLocStr = `${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
+      const dateStr = formatReportDate(report);
+      const actionStr = report.correctiveAction || report.actionTaken || '-';
+
+      // Ekstraksi data rekomendasi teknis & catatan pending
+      let recStr = '';
+      const reco = (report.recommendation || (report as any).recommendations || (report as any).recommend || '').trim();
+      const pendReason = (report.troublePendingReason || '').trim();
+
+      if (reco && pendReason) {
+        if (reco.toLowerCase().includes(pendReason.toLowerCase())) {
+          recStr = reco;
+        } else {
+          recStr = `${reco}\nCatatan Kendala: ${pendReason}`;
+        }
+      } else {
+        recStr = reco || pendReason || '-';
+      }
+
+      return new TableRow({
+        children: [
+          // 1. No
+          new TableCell({
+            width: { size: 4, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 30, after: 30 },
+                children: [new TextRun({ text: String(idx + 1), size: 15, font: 'Calibri', bold: true })],
+              }),
+            ],
+          }),
+          // 2. Equipment (Perangkat & Lokasi)
+          new TableCell({
+            width: { size: 20, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: equipLocStr.split('\n').map((line, lIdx) =>
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                spacing: { before: lIdx === 0 ? 30 : 2, after: lIdx === 0 ? 2 : 30 },
+                children: [
+                  new TextRun({
+                    text: line,
+                    size: 15,
+                    font: 'Calibri',
+                    bold: lIdx === 0,
+                  }),
+                ],
+              })
+            ),
+          }),
+          // 3. Kendala (No. Tiket / Identitas / Permasalahan)
+          new TableCell({
+            width: { size: 18, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                spacing: { before: 30, after: 30 },
+                children: [new TextRun({ text: ticketStr, size: 15, font: 'Calibri', bold: true })],
+              }),
+            ],
+          }),
+          // 4. Tanggal & Status
+          new TableCell({
+            width: { size: 14, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 20, after: 10 },
+                children: [new TextRun({ text: dateStr, size: 14, font: 'Calibri' })],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 0, after: 20 },
+                children: [
+                  new TextRun({
+                    text: statusInfo.label,
+                    bold: true,
+                    size: 13,
+                    font: 'Calibri',
+                    color: 'B45309',
+                  }),
+                ],
+              }),
+            ],
+          }),
+          // 5. Tindakan Solusi (Murni Tindakan Solusi Poin-Poin)
+          buildActionOnlyCell(actionStr, idx % 2 === 1, 22),
+          // 6. Rekomendasi (Saran Teknis & Rekomendasi Lanjutan)
+          buildRecommendationCell(recStr, idx % 2 === 1, 22),
+        ],
+      });
+    });
+
+    // Elemen Gabungan Tabel Rekapitulasi (Solved & Pending)
+    const recapTablesElements: (Paragraph | Table)[] = [];
+
+    // Subheading A: Tabel Solved
+    recapTablesElements.push(
+      new Paragraph({
+        spacing: { before: 120, after: 60 },
+        children: [
+          new TextRun({
+            text: 'A. DAFTAR PEKERJAAN CM — STATUS SELESAI (SOLVED / CLOSED)',
+            bold: true,
+            size: 15,
+            color: '166534',
+            font: 'Calibri',
+          }),
+          new TextRun({
+            text: `  (${solvedReports.length} Laporan)`,
+            bold: false,
+            size: 14,
+            color: COLOR_MUTED,
+            font: 'Calibri',
+          }),
+        ],
+      })
+    );
+
+    if (solvedReports.length > 0) {
+      const solvedMatrixTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [solvedTableHeaderRow, ...solvedTableDataRows],
+      });
+      recapTablesElements.push(solvedMatrixTable);
+    } else {
+      recapTablesElements.push(
+        new Paragraph({
+          spacing: { before: 30, after: 80 },
+          children: [
+            new TextRun({
+              text: 'Tidak ada pekerjaan Corrective Maintenance dengan status selesai pada periode ini.',
+              italics: true,
+              size: 14,
+              color: COLOR_MUTED,
+              font: 'Calibri',
+            }),
+          ],
+        })
+      );
+    }
+
+    // Subheading B: Tabel Pending
+    recapTablesElements.push(
+      new Paragraph({
+        spacing: { before: 200, after: 60 },
+        children: [
+          new TextRun({
+            text: 'B. DAFTAR PEKERJAAN CM — STATUS PENDING (OPEN / PROSES)',
+            bold: true,
+            size: 15,
+            color: 'B45309',
+            font: 'Calibri',
+          }),
+          new TextRun({
+            text: `  (${pendingReports.length} Laporan)`,
+            bold: false,
+            size: 14,
+            color: COLOR_MUTED,
+            font: 'Calibri',
+          }),
+        ],
+      })
+    );
+
+    if (pendingReports.length > 0) {
+      const pendingMatrixTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [pendingTableHeaderRow, ...pendingTableDataRows],
+      });
+      recapTablesElements.push(pendingMatrixTable);
+    } else {
+      recapTablesElements.push(
+        new Paragraph({
+          spacing: { before: 30, after: 80 },
+          children: [
+            new TextRun({
+              text: 'Seluruh pekerjaan Corrective Maintenance pada periode ini telah terselesaikan (100% Solved / Nihil Pending).',
+              italics: true,
+              size: 14,
+              color: '166534',
+              font: 'Calibri',
+            }),
+          ],
+        })
+      );
+    }
 
     // 4. BAGIAN DETAIL PER PEKERJAAN CM (LENGKAP DESKRIPSI, TINDAKAN, STATUS, & FOTO)
     const detailReportParagraphs: (Paragraph | Table)[] = [];
@@ -1503,6 +1793,38 @@ export async function exportCMMonthlyRecapToDocx(
               new TextRun({ text: 'Catatan Penanganan: ', bold: true, size: 14, font: 'Calibri', color: isClosed ? '166534' : 'B45309' }),
               new TextRun({ text: statusInfo.note, size: 14, font: 'Calibri', italics: true, color: '334155' }),
             ],
+          })
+        );
+      }
+
+      // Rekomendasi / Saran Teknis Lanjutan (Jika ada)
+      const detailRec = (report.recommendation || (report as any).recommendations || (report as any).recommend || '').trim();
+      if (detailRec && detailRec !== '-') {
+        const numberedRecRuns = buildNumberedActionRuns(detailRec, 15, COLOR_DARK);
+        detailReportParagraphs.push(
+          new Paragraph({
+            spacing: { before: 40, after: 20 },
+            children: [
+              new TextRun({
+                text: 'Rekomendasi / Saran Teknis Lanjutan:',
+                bold: true,
+                size: 16,
+                color: 'B45309',
+                font: 'Calibri',
+              }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { before: 30, after: 60, line: 240 },
+            shading: { type: ShadingType.SOLID, color: 'FEF3C7', fill: 'FEF3C7' },
+            border: {
+              left: { style: BorderStyle.SINGLE, size: 6, color: 'D97706' },
+              top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+              right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+            },
+            indent: { left: 100 },
+            children: numberedRecRuns || buildCompactDetailRuns(detailRec, 15, COLOR_DARK),
           })
         );
       }
@@ -1888,8 +2210,8 @@ export async function exportCMMonthlyRecapToDocx(
               ],
             }),
 
-            // Tabel Matriks
-            summaryMatrixTable,
+            // Tabel Matriks Rekapitulasi (Terpisah: Solved & Pending)
+            ...recapTablesElements,
 
             // Rincian Detail per Laporan CM
             ...detailReportParagraphs,
