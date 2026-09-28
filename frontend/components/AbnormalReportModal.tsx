@@ -308,9 +308,10 @@ export function AbnormalReportModal({
           }, { merge: true });
 
           // SINKRONISASI KE KOLEKSI 'findings' (0 Reads, Pure Write via setDoc merge pada resolvedFindingId)
-          const findingDataToSave = {
+          const findingDataToSave: Record<string, any> = {
             docId: docItem.id,
             reportId: docItem.id,
+            ...(docItem.createdAt ? { createdAt: docItem.createdAt } : {}),
             maintenanceName: docItem.maintenanceName || 'Maintenance',
             specificDetail: docItem.specificDetail || targetUnitName,
             partName: targetUnitName,

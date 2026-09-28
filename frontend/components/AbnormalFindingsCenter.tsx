@@ -106,9 +106,87 @@ interface AbnormalFindingsCenterProps {
   onNavigateToDocument?: (searchQuery: string) => void;
 }
 
+// Helper ekstraksi tanggal waktu upload secara deterministik & aman
+export function parseDocUploadDate(data: any): Date {
+  if (!data) return new Date(0);
+
+  // 1. Cek createdAt / created_at (Timestamp, Date, number ms, atau ISO string)
+  const c = data.createdAt || data.created_at;
+  if (c) {
+    if (c instanceof Date && !isNaN(c.getTime())) return c;
+    if (typeof c.toDate === 'function') {
+      const d = c.toDate();
+      if (!isNaN(d.getTime())) return d;
+    }
+    if (typeof c.toMillis === 'function') {
+      const ms = c.toMillis();
+      if (!isNaN(ms)) return new Date(ms);
+    }
+    if (typeof c === 'number') {
+      const d = new Date(c);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(c);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 2. Cek uploadedAt / uploaded_at / timestamp
+  const u = data.uploadedAt || data.uploaded_at || data.timestamp;
+  if (u) {
+    if (u instanceof Date && !isNaN(u.getTime())) return u;
+    if (typeof u.toDate === 'function') {
+      const d = u.toDate();
+      if (!isNaN(d.getTime())) return d;
+    }
+    if (typeof u.toMillis === 'function') {
+      const ms = u.toMillis();
+      if (!isNaN(ms)) return new Date(ms);
+    }
+    if (typeof u === 'number') {
+      const d = new Date(u);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(u);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 3. Fallback ke maintenanceTime / findingDate / reportedAt / date
+  const timeStr = data.findingDate || data.maintenanceTime || data.date || data.reportedAt;
+  if (timeStr && typeof timeStr === 'string') {
+    const raw = timeStr.trim();
+    const firstPart = raw.includes(' - ') ? raw.split(' - ')[0].trim() : raw;
+    const ymd = firstPart.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if (ymd) {
+      const d = new Date(parseInt(ymd[1], 10), parseInt(ymd[2], 10) - 1, parseInt(ymd[3], 10));
+      if (!isNaN(d.getTime())) return d;
+    }
+    const dmy = firstPart.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (dmy) {
+      const d = new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
+      if (!isNaN(d.getTime())) return d;
+    }
+    const parsed = new Date(firstPart);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  return new Date(0);
+}
+
+// Helper ekstraksi waktu upload temuan dalam milidetik (stabil & tidak berubah saat diedit)
+export function getItemUploadTime(item: AbnormalItem): number {
+  if (item.createdAt && item.createdAt instanceof Date && !isNaN(item.createdAt.getTime()) && item.createdAt.getTime() > 0) {
+    return item.createdAt.getTime();
+  }
+  const mDate = getItemMonthData(item).date;
+  if (mDate && !isNaN(mDate.getTime())) {
+    return mDate.getTime();
+  }
+  return 0;
+}
+
 // Helper ekstraksi data bulan & tahun dari laporan temuan abnormal
 export function getItemMonthData(item: AbnormalItem): { key: string; label: string; date: Date } {
-  let targetDate: Date = item.createdAt || new Date();
+  let targetDate: Date = (item.createdAt && !isNaN(item.createdAt.getTime()) && item.createdAt.getTime() > 0) ? item.createdAt : new Date(0);
 
   // 1. Prioritas dari findingDate
   if (item.abnormalFinding?.findingDate) {
@@ -176,7 +254,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('all');
   const [selectedDocTypeFilter, setSelectedDocTypeFilter] = useState<'all' | 'pdf' | 'excel' | 'hse'>('all');
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState<'all' | 'with_photo' | 'without_photo'>('all');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'unit_asc'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'unit_asc' | 'recently_updated'>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   // Preview lightbox photo state
@@ -871,7 +949,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
       // Deduplikasi antarsesama standalone findings:
       // Jika ada 2 finding lepas dengan unit + maintenance + creator yang sama (misal terduplikasi akibat edit manual sebelumnya),
-      // hanya pertahankan 1 temuan yang paling baru (updatedAt atau createdAt terbaru)!
+      // hanya pertahankan 1 temuan yang paling baru datanya, namun pertahankan waktu pembuatan awal (createdAt terlama)
       const standaloneMap = new Map<string, any>();
       rawStandaloneFindings.forEach(f => {
         const key = `${normalize(f.createdByEmail)}_${normalize(f.maintenanceName)}_${normalize(f.specificDetail || f.partName)}`;
@@ -881,15 +959,21 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         } else {
           const timeExisting = existing.updatedAt?.toDate?.()?.getTime?.() || (existing.updatedAt instanceof Date ? existing.updatedAt.getTime() : 0) || existing.createdAt?.toDate?.()?.getTime?.() || (existing.createdAt instanceof Date ? existing.createdAt.getTime() : 0);
           const timeCurrent = f.updatedAt?.toDate?.()?.getTime?.() || (f.updatedAt instanceof Date ? f.updatedAt.getTime() : 0) || f.createdAt?.toDate?.()?.getTime?.() || (f.createdAt instanceof Date ? f.createdAt.getTime() : 0);
+          const existingUploadTime = parseDocUploadDate(existing).getTime();
+          const currentUploadTime = parseDocUploadDate(f).getTime();
+          const earliestCreatedAt = (existingUploadTime > 0 && (currentUploadTime <= 0 || existingUploadTime <= currentUploadTime))
+            ? existing.createdAt
+            : (f.createdAt || existing.createdAt);
+
           if (timeCurrent > timeExisting) {
-            standaloneMap.set(key, f);
+            standaloneMap.set(key, { ...f, createdAt: earliestCreatedAt });
           }
         }
       });
 
       const deduplicatedFindings = Array.from(standaloneMap.values());
       const standaloneFindings: AbnormalItem[] = deduplicatedFindings.map(f => {
-        const createdAt = f.createdAt?.toDate ? f.createdAt.toDate() : (f.createdAt ? new Date(f.createdAt) : new Date());
+        const createdAt = parseDocUploadDate(f);
         const photoB64 = (f.photos && f.photos[0]?.base64) || f.photoBase64 || '';
         return {
           id: `finding_${f.id}`,
@@ -941,7 +1025,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       (snapshot) => {
         pdfList = snapshot.docs.map((d) => {
           const data = d.data();
-          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date());
+          const createdAt = parseDocUploadDate(data);
           const updatedAt = data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : createdAt);
           return {
             id: `pdf_${d.id}`,
@@ -989,7 +1073,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       (snapshot) => {
         excelList = snapshot.docs.map((d) => {
           const data = d.data();
-          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date());
+          const createdAt = parseDocUploadDate(data);
           const updatedAt = data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : createdAt);
           return {
             id: `excel_${d.id}`,
@@ -1037,7 +1121,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       (snapshot) => {
         hseList = snapshot.docs.map((d) => {
           const data = d.data();
-          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date());
+          const createdAt = parseDocUploadDate(data);
           const updatedAt = data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : createdAt);
           return {
             id: `hse_${d.id}`,
@@ -1199,7 +1283,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       return true;
     });
 
-    // Pengurutan
+    // Pengurutan: Default selalu berdasarkan waktu data upload terbaru (createdAt/uploadTime),
+    // sehingga saat temuan abnormal diedit, posisinya tetap stabil dan tidak meloncat ke paling atas.
     return result.sort((a, b) => {
       if (sortBy === 'unit_asc') {
         const nameA = (a.abnormalFinding?.unitName || a.specificDetail || a.maintenanceName).toLowerCase();
@@ -1207,14 +1292,26 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         return nameA.localeCompare(nameB);
       }
       if (sortBy === 'oldest') {
-        const timeA = a.updatedAt?.getTime() || a.createdAt.getTime();
-        const timeB = b.updatedAt?.getTime() || b.createdAt.getTime();
-        return timeA - timeB;
+        const timeA = getItemUploadTime(a);
+        const timeB = getItemUploadTime(b);
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.id || '').localeCompare(b.id || '');
       }
-      // default: newest
-      const timeA = a.updatedAt?.getTime() || a.createdAt.getTime();
-      const timeB = b.updatedAt?.getTime() || b.createdAt.getTime();
-      return timeB - timeA;
+      if (sortBy === 'recently_updated') {
+        const timeA = a.updatedAt?.getTime() || getItemUploadTime(a);
+        const timeB = b.updatedAt?.getTime() || getItemUploadTime(b);
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.id || '').localeCompare(a.id || '');
+      }
+      // default: newest (data upload yang terbaru lebih dahulu)
+      const timeA = getItemUploadTime(a);
+      const timeB = getItemUploadTime(b);
+      if (timeB !== timeA) return timeB - timeA;
+      // Fallback tie-breaker ke tanggal maintenance jika waktu upload sama
+      const maintA = getItemMonthData(a).date.getTime();
+      const maintB = getItemMonthData(b).date.getTime();
+      if (maintB !== maintA) return maintB - maintA;
+      return (b.id || '').localeCompare(a.id || '');
     });
   }, [items, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, searchQuery, sortBy]);
 
@@ -1809,8 +1906,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               onChange={(e) => setSortBy(e.target.value as any)}
               className="w-full px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer truncate"
             >
-              <option value="newest">Waktu Terkini</option>
-              <option value="oldest">Waktu Terlama</option>
+              <option value="newest">Waktu Terkini (Upload Terbaru)</option>
+              <option value="oldest">Upload Terlama</option>
+              <option value="recently_updated">Terakhir Diedit / Diupdate</option>
               <option value="unit_asc">Nama Unit (A - Z)</option>
             </select>
           </div>
@@ -1897,7 +1995,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
             {sortBy !== 'newest' && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[11px] font-medium border border-purple-200">
-                <span>Urut: {sortBy === 'oldest' ? 'Waktu Terlama' : 'Unit (A-Z)'}</span>
+                <span>
+                  Urut: {sortBy === 'oldest' ? 'Upload Terlama' : sortBy === 'recently_updated' ? 'Terakhir Diedit' : 'Unit (A-Z)'}
+                </span>
                 <button
                   type="button"
                   onClick={() => setSortBy('newest')}
