@@ -223,8 +223,8 @@ function extractBilingualFromXml(elementXml: string): { en: string; id: string }
   if (!elementXml) return { en: '', id: '' };
 
   const withDelim = elementXml
-    .replace(/<w:br\/>/g, '[[BR]]')
-    .replace(/<\/w:p>/g, '[[BR]]')
+    .replace(/<w:br\s*\/?>/gi, '[[BR]]')
+    .replace(/<\/w:p>/gi, '[[BR]]')
     .replace(/<[^>]+>/g, '');
 
   const lines = decodeEntities(withDelim)

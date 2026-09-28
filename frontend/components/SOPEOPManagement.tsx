@@ -278,6 +278,16 @@ export function SOPEOPManagement() {
   const handleSaveSop = async () => {
     try {
       setIsSavingSop(true);
+      if (!sopData.documentTitle?.trim()) {
+        toast.error('Judul dokumen wajib diisi!');
+        setIsSavingSop(false);
+        return;
+      }
+      if (!sopData.workLocationEn?.trim() && !sopData.workLocationId?.trim()) {
+        toast.error('Lokasi kerja wajib diisi!');
+        setIsSavingSop(false);
+        return;
+      }
       const payload = {
         ...sopData,
         type: 'SOP',
@@ -514,6 +524,16 @@ export function SOPEOPManagement() {
   const handleSaveEop = async () => {
     try {
       setIsSavingEop(true);
+      if (!eopData.documentTitle?.trim()) {
+        toast.error('Judul dokumen wajib diisi!');
+        setIsSavingEop(false);
+        return;
+      }
+      if (!eopData.workLocationEn?.trim() && !eopData.workLocationId?.trim()) {
+        toast.error('Lokasi kerja wajib diisi!');
+        setIsSavingEop(false);
+        return;
+      }
       const payload = {
         ...eopData,
         type: 'EOP',
@@ -612,12 +632,12 @@ export function SOPEOPManagement() {
 
   const handleLoadArchiveDoc = (item: any) => {
     if (item.type === 'SOP') {
-      setSopData({ ...item });
+      setSopData({ ...DEFAULT_SOP_DATA, ...item });
       setCurrentSopDocId(item.id);
       setActiveSubTab('sop');
       toast.success(`Dokumen SOP "${item.documentTitle || 'Tanpa Judul'}" dimuat ke formulir`);
     } else {
-      setEopData({ ...item });
+      setEopData({ ...DEFAULT_EOP_DATA, ...item });
       setCurrentEopDocId(item.id);
       setActiveSubTab('eop');
       toast.success(`Dokumen EOP "${item.documentTitle || 'Tanpa Judul'}" dimuat ke formulir`);

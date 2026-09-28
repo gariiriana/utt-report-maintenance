@@ -490,8 +490,8 @@ async function callTranslationBackend(prompt: string): Promise<string> {
   const response = await fetch(getApiEndpoint('/ai/chat'), {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${token ?? ''}`,
     },
     body: JSON.stringify({
       messages: [
@@ -504,9 +504,10 @@ async function callTranslationBackend(prompt: string): Promise<string> {
     }),
   });
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload.reply) {
-    throw new Error(payload.error || payload.message || `AI translation failed (HTTP ${response.status}).`);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload || !payload.reply) {
+    const errorMsg = payload?.error || payload?.message || `AI translation failed (HTTP ${response.status}).`;
+    throw new Error(errorMsg);
   }
   return payload.reply;
 }
@@ -563,7 +564,14 @@ ${JSON.stringify(chunk, null, 2)}`;
 
       const rawJson = await callTranslationBackend(prompt);
       const cleaned = rawJson.replace(/```json/gi, '').replace(/```/gi, '').trim();
-      const parsed: Array<{ id: string; translation: string }> = JSON.parse(cleaned);
+      let parsed: Array<{ id: string; translation: string }>;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (parseErr) {
+        console.error('[BilingualAI] Gagal parse JSON dari AI:', parseErr);
+        console.error('[BilingualAI] Raw response:', rawJson);
+        continue;
+      }
 
       for (const p of parsed) {
         if (p.id && p.translation && p.translation.trim().length > 0) {
