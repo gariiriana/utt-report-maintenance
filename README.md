@@ -11,6 +11,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![WhatsApp](https://img.shields.io/badge/WhatsApp-Gateway_Baileys-25D366?style=flat-square&logo=whatsapp)](https://github.com/WhiskeySockets/Baileys)
+[![JSZip](https://img.shields.io/badge/JSZip-Batch_Archive-FF9800?style=flat-square&logo=zip)](https://stuk.github.io/jszip/)
 [![Security](https://img.shields.io/badge/Security-Firestore_Rules_&_WAF_Shield-brightgreen?style=flat-square&logo=shield)](#-security)
 
 **DwimitraSystem** adalah sistem terintegrasi dokumentasi, otomatisasi analisis AI, pemeliharaan infrastruktur kritikal (*Data Center Critical Infrastructure Facility*), dan pelaporan operasional profesional yang dirancang khusus untuk **PT Dwimitra Ekatama Mandiri** melayani **PT United Transworld Trading (UTT)** di kawasan fasilitas data center **Neutra DC Cikarang**.
@@ -27,12 +28,13 @@
 - [Key Modules & Features](#-key-modules--features)
   - [🤖 AI-Powered Service Report, Chat Copilot & Voice Agent](#-ai-powered-service-report-chat-copilot--voice-agent)
   - [📑 Comprehensive Monthly Report Generator (Bab 1–8)](#-comprehensive-monthly-report-generator-bab-18)
+  - [📋 Manajemen SOP & EOP (Standard & Emergency Operating Procedures)](#-manajemen-sop--eop-standard--emergency-operating-procedures)
+  - [🚨 Abnormal Findings Center (Checklist PM & Manual Field Input)](#-abnormal-findings-center-checklist-pm--manual-field-input)
+  - [⚡ Corrective Maintenance (CM) & SLA 180-Minute Tracking](#-corrective-maintenance-cm--sla-180-minute-tracking)
   - [🔮 Predictive Maintenance (PdM) & NeutraDC 5-Role Approval Sheet](#-predictive-maintenance-pdm--neutradc-5-role-approval-sheet)
   - [📁 Centralized File Management (16 Kategori Folder)](#-centralized-file-management-16-kategori-folder)
-  - [🚨 Abnormal Findings Center & QC DME Workflow](#-abnormal-findings-center--qc-dme-workflow)
-  - [⚡ Corrective Maintenance (CM) & SLA 180-Minute Tracking](#-corrective-maintenance-cm--sla-180-minute-tracking)
   - [📜 PTW (Permit to Work) Dynamic Management](#-ptw-permit-to-work-dynamic-management)
-  - [🦺 HSE, K3 & Attendance Verification with Face Recognition](#-hse-k3--attendance-verification-with-face-recognition)
+  - [🦺 HSE, K3, Multi-Foto Attendance & ZIP Archive Export](#-hse-k3-multi-foto-attendance--zip-archive-export)
   - [📋 MOP Workflow, Monitoring & Post Incident Report (PIR)](#-mop-workflow-monitoring--post-incident-report-pir)
   - [📷 Smart Camera & GPS Watermarking](#-smart-camera--gps-watermarking)
   - [📄 Paper Report Digitizer & WhatsApp Gateway](#-paper-report-digitizer--whatsapp-gateway)
@@ -60,8 +62,9 @@
 │  └────┬─────┘ └────┬─────┘ └───────┬───────┘ └──────┬───────┘ └──────────┬──────────┘  │
 │       │            │               │                │                    │             │
 │  ┌────┴────────────┴───────────────┴────────────────┴────────────────────┴──────────┐  │
-│  │  Modul Khusus: FileManagement (16 Folders) | AbnormalFindingsCenter | PdM Modal  │  │
-│  │  CM SLA Form | PTWManagement | FaceRecognition Absensi TBM/Induction | MOP & PIR │  │
+│  │ Modul: SOPEOPManagement (14/8 Seksi) | AbnormalFindingsCenter (PM & Manual)      │  │
+│  │ FileManagement (16 Folders) | PdM 5-Role Modal | CM SLA 180m | HSE Archive & ZIP │  │
+│  │ PTW Management | Face ID Absensi TBM/Induction | MOP Workflow & PIR Manager      │  │
 │  └─────────────────────────────────────┬────────────────────────────────────────────┘  │
 │                                        │ Firebase Auth Token (Bearer)                  │
 ├────────────────────────────────────────┼───────────────────────────────────────────────┤
@@ -72,7 +75,7 @@
 │                                │                                                       │
 │                 ┌──────────────▼──────────────┐                                        │
 │                 │  Firebase Edge / Hosting     │  SSL Auto-Provisioning & Static CDN   │
-│                 └──────────────┬───────────────┘                                       │
+│                 └──────────────┬───────────────┘                                        │
 │                                │                                                       │
 │  ┌─────────────────────────────┼──────────────────────────────────────────────────┐    │
 │  │        Go 1.24 Backend (cmd/api/main.go & api/index.go)                        │    │
@@ -98,8 +101,8 @@
 │  │                                            ┌────────────▼────────────┐         │    │
 │  │                                            │   Repositories Layer    │         │    │
 │  │                                            └────────────┬────────────┘         │    │
-│  └─────────────────────────────────────────────────────────┼──────────────────────┘    │
-│                                                            │                           │
+│  │  └─────────────────────────────────────────────────────────┼──────────────────────┘    │
+│  │                                                            │                           │
 ├────────────────────────────────────────────────────────────┼───────────────────────────┤
 │                                                            ▼                           │
 │  ┌───────────────────────────────────┐    ┌─────────────────────────────────────────┐  │
@@ -130,6 +133,8 @@
 | **docx** | `9.6.1` | Generator dokumen Microsoft Word (.docx) berstandar format korporat |
 | **ExcelJS** | `4.4.0` | Dual-sheet Excel export dengan custom borders, dynamic formulas & colors |
 | **jsPDF & AutoTable** | `2.5.2` | Generator dokumen PDF presisi A4 dengan auto-pagination |
+| **JSZip** | `3.10.1` | Ekspor arsip batch multi-file (ZIP) dokumen HSE & repositori berkas |
+| **heic2any** | `0.0.4` | Konversi otomatis format foto Apple HEIC ke JPEG di sisi browser |
 | **html2canvas** | `1.4.1` | Screenshot capture elemen visual & preview report |
 | **Recharts** | `2.15.2` | Visualisasi grafik tren PTW mingguan dan monitoring SLA |
 | **Tesseract.js** | `7.0.0` | Client-side Optical Character Recognition untuk digitasi laporan fisik |
@@ -205,17 +210,90 @@ Modul mutakhir (`MonthlyReportGenerator.tsx` & `generateMonthlyReportDOCX.ts`) u
 
 ---
 
+### 📋 Manajemen SOP & EOP (Standard & Emergency Operating Procedures)
+
+Pusat pengelolaan dan penyusunan prosedur operasional berstandar data center tingkat tinggi (`SOPEOPManagement.tsx`):
+
+- **Struktur Standar 14 Seksi SOP & 8 Seksi EOP**:
+  - **14 Seksi SOP Lengkap**: Mulai dari Tujuan, Ruang Lingkup, Standar APD/EHS, Dokumen Referensi, Daftar Alat Ukur & Kebutuhan Material, Kualifikasi Personil, Matriks Tanggung Jawab, Persyaratan Awal (*Pre-requisites*), Langkah Prosedur Eksekusi Step-by-Step, Verifikasi & Pengujian Hasil, *Housekeeping & Handover*, hingga Lembar Pengesahan Multi-Pihak.
+  - **8 Seksi EOP Tanggap Darurat**: Protokol Reaksi Cepat Kegagalan Sistem (*Power Outage, Chiller Failure, Fire Alarm, Gas Suppression*), Rantai Eskalasi Darurat, Isolasi Sistem Kritis, Tindakan Mitigasi Darurat (*Bypass / Failover*), Pemulihan Normal (*System Normalization*), dan Kontak Darurat Tim Respon Cepat.
+- **Bilingual AI Engine (Google Gemini)**:
+  - Fitur penerjemahan dwibahasa otomatis (*Indonesian & English*) untuk setiap klausul dan langkah operasional via `sopEopBilingualAI.ts`.
+  - Pembuatan draf prosedur otomatis berbasis prompt cerdas yang disesuaikan dengan terminologi baku *critical infrastructure data center*.
+- **Parser & Importer Dokumen Word (.docx)**:
+  - Kemampuan import dokumen Word SOP/EOP yang sudah ada ke dalam formulir digital (`sopEopDocxImport.ts`).
+  - Secara cerdas mengenali tabel sekuens pengujian (*Dry Run sequence, Transformer Interlock, Generator Auto-Start*), blok EHS, dan identitas dokumen.
+- **Ekspor Dokumen Korporat Berstandar NeutraDC**:
+  - Generator Word (.docx) berkecepatan tinggi (`sopEopDocxExport.ts`) dengan border tabel terstandarisasi, margin korporat, dan proteksi *keep-next pagination rules* agar baris tabel atau tanda tangan tidak terpotong ke halaman berikutnya.
+  - Ekspor PDF identik dengan tata letak visual elegan siap cetak.
+- **Penyimpanan Terpusat & Riwayat Versi**:
+  - Tersimpan aman di Firestore (`sop_documents` & `eop_documents`) dengan riwayat revisi, status pengajuan (*Draft, Under Review, Approved*), dan pelacakan persetujuan bertingkat.
+
+---
+
+### 🚨 Abnormal Findings Center (Checklist PM & Manual Field Input)
+
+Pusat kendali temuan anomali komprehensif (`AbnormalFindingsCenter.tsx` & `FindingManagement.tsx`) yang menggabungkan temuan berkala dan temuan mendadak di lapangan:
+
+- **Pemisahan Tab: Temuan Otomatis PM vs Temuan Abnormal Manual**:
+  - **Temuan Otomatis (Checklist PM)**: Agregasi otomatis seluruh catatan inspeksi berkala yang berstatus *Not Good / Abnormal*.
+  - **Temuan Abnormal Manual (`ManualAbnormalFinding.tsx`)**: Form input instan bagi teknisi/engineer untuk mendokumentasikan anomali perangkat kapan saja tanpa perlu menunggu jadwal PM rutin.
+- **Preset Otomatis Akun Khusus (PJU & Water Softener)**:
+  - Sistem secara cerdas mendeteksi akun login khusus (seperti `pju@gmail.com` dan unit water softener) dan langsung mengisi template anomali, deskripsi standar, dan rekomendasi awal secara otomatis.
+- **Toolbar Filter Mutakhir & Month Range Picker**:
+  - Filter rentang bulan (*Month Range Picker*) yang intuitif untuk evaluasi tren anomali triwulanan atau tahunan.
+  - Filter unit/lokasi perangkat dan filter status penyelesaian (*Open, In Progress, Closed*).
+- **Pengurutan Realtime Berbasis Upload**:
+  - Daftar temuan diurutkan secara stabil berdasarkan waktu upload terbaru tanpa menyebabkan loncatan posisi kartu saat statusnya diperbarui.
+- **Format Tanggal Rapi & Anti-Clipping**:
+  - Penyajian timestamp yang bersih dan ringkas (bulan & tahun) dengan perlindungan *text-clipping* pada layout kartu responsive.
+- **Dukungan Multi-Foto & Single Download**:
+  - Dokumentasi sebelum dan sesudah perbaikan (*Before & After*). Akun admin memiliki akses tombol unduh satuan untuk setiap foto bukti.
+- **Ekspor Rekap Word & Excel Bersih**:
+  - Generator rekap bulanan (`AbnormalRecapWordExport.ts` & Excel) menghasilkan tabel ringkas, bersih, tanpa duplikasi tanda tangan yang membingungkan.
+- **Dashboard QC DME & Pengajuan Hapus**:
+  - Area khusus tim QC DME (`qcdme@dme.com`) untuk review temuan abnormal lintas fasilitas dan alur persetujuan pengajuan hapus dokumen (*Delete Requests Manager*).
+
+---
+
+### ⚡ Corrective Maintenance (CM) & SLA 180-Minute Tracking
+
+Modul pemeliharaan korektif (`CorrectiveMaintenance.tsx`, `SLAForm.tsx` & `CMMonthlyRecapModal.tsx`) untuk merespon dan menyelesaikan insiden kegagalan perangkat:
+
+- **Pemisahan Sumber Form SLA (CM vs PIR)**:
+  - Logika pemisahan tegas antara tiket insiden fasilitas (PIR) dan perbaikan korektif perangkat (CM).
+  - Pada formulir SLA tipe CM, input tiket disembunyikan/disederhanakan untuk memusatkan evaluasi pada waktu pemulihan perangkat (*Restore Time*).
+- **Field Resolution Time vs Restore Time (Step 4)**:
+  - Pemisahan input waktu investigasi tuntas (*Resolution Time*) dari waktu pemulihan operasional (*Restore Time* - target 180 menit) guna memastikan metrik MTTR (*Mean Time to Resolution*) tercatat akurat.
+- **Kategorisasi Sparepart Presisi**:
+  - Pengelompokan status material menjadi *DME Sparepart*, *Consumable Part*, dan *Non-Sparepart* dengan badge visual persisten.
+- **Rekap CM Multi-Bulan & Layout Kompak (`CMMonthlyRecapExport.ts`)**:
+  - Tabel rekap multi-bulan diperlebar untuk keterbacaan data maksimal.
+  - Pemisahan kolom jenis CM dan status perbaikan.
+  - Penataan foto before-after yang hemat halaman saat dicetak ke format Word (.docx) atau diekspor ke Excel.
+- **Cascade Delete Konsistensi Database**:
+  - Penghapusan data SLA/SLG secara otomatis membersihkan entri relasi CM untuk mencegah *orphan records* dan menjaga kebersihan database Firestore.
+- **Pengurutan Kronologis Ascending (DD/MM/YYYY HH:mm:ss)**:
+  - Urutan waktu standar dari awal bulan ke akhir bulan untuk kelancaran proses audit operasional.
+
+---
+
 ### 🔮 Predictive Maintenance (PdM) & NeutraDC 5-Role Approval Sheet
 
-Modul pemeliharaan prediktif canggih (`PredictiveReportModal.tsx` & `PeriodicPredictiveModal.tsx`) untuk mendeteksi potensi anomali sebelum terjadi *breakdown*:
+Modul pemeliharaan prediktif mutakhir (`PredictiveReportModal.tsx` & `PeriodicPredictiveModal.tsx`) untuk mencegah kegagalan fatal melalui analisis anomali berbasis bukti:
 
-- **Lembar Pengesahan Resmi 5 Peran (5-Role Approval Sheet)** — Menyelaraskan lembar persetujuan dengan standar resmi NeutraDC:
-  - 5 Standby Engineers terpilih dengan dropdown auto-signature.
+- **AI Predictive Agent Evidence-Grounded (`aiPredictiveAgent.ts`)**:
+  - Evaluasi analitis AI diperketat hanya berdasarkan bukti nyata (*grounded evidence*) dari data anomali historis dan parameter operasional terukur, mengeliminasi halusinasi AI.
+- **Lembar Pengesahan Resmi 5 Peran (5-Role Approval Sheet)**:
+  - 5 Standby Engineers terpilih dengan dropdown auto-signature terintegrasi.
   - Reviewer terkunci resmi ke Site Manager (Arif Budiman).
-  - Kolom persetujuan TDE, CBRE, dan Manajemen Fasilitas.
-- **Action Plan Halaman 2 (Page 2)** — Rencana aksi mitigasi teknis terstruktur yang langsung dicetak di halaman kedua dokumen laporan.
-- **Kalkulasi RUL (Remaining Useful Life) & Tingkat Urgensi** — Evaluasi AI terhadap sisa masa pakai komponen dan penetapan level urgensi dalam grid visual 2x2.
-- **Ekspor Format Ganda (PDF & DOCX)** — Laporan prediktif dapat langsung diekspor ke format PDF siap tanda tangan atau file Word editable.
+  - Kolom persetujuan berjenjang: TDE, CBRE, dan Manajemen Fasilitas.
+- **Pembersihan Antarmuka**:
+  - Penghapusan selector status kesehatan manual dan label SLA yang tidak relevan demi fokus pada rencana tindakan teknis.
+- **Kop Surat Multi-Halaman & Proteksi Lembar Pengesahan**:
+  - Penataan kop surat resmi di setiap halaman (termasuk halaman 2 dst) dan pencegahan pemotongan tanda tangan saat diekspor ke Word (`PredictiveReportWordExport.ts`) atau PDF (`PredictiveReportPdfExport.ts`).
+- **Kalkulasi RUL (Remaining Useful Life) & Matriks Urgensi**:
+  - Estimasi sisa masa pakai komponen dan penetapan prioritas penanganan dalam grid visual 2x2.
 
 ---
 
@@ -227,30 +305,7 @@ Sistem repositori berkas terpusat (`FileManagement.tsx`) yang terintegrasi pada 
 - **Otorisasi Berkas Berjenjang** — Hak upload dan kelola berkas eksklusif untuk peran **Admin** dan **QC DME**, dengan hak akses *read-only* yang aman untuk Standby Engineer.
 - **Optimasi Cache Pembacaan & Manual Refresh** — Mekanisme caching data cerdas untuk meminimalkan pembacaan Firestore, dilengkapi tombol segarkan manual instan.
 - **Pencarian Mode DME & Pengurutan Fleksibel** — Filter pencarian lintas folder dengan sakelar mode pencarian DME dan pengurutan multi-kriteria (berdasarkan tanggal, nama, atau ukuran).
-- **Ekspor ZIP Terstruktur Otomatis** — Fitur pengunduhan arsip batch yang secara otomatis mengelompokkan berkas ke dalam subfolder sesuai kategori dan tipe pemeliharaan.
-
----
-
-### 🚨 Abnormal Findings Center & QC DME Workflow
-
-Pusat kendali temuan anomali (`AbnormalFindingsCenter.tsx`) yang diperuntukkan bagi tim Quality Control & Site Management:
-
-- **Dashboard Khusus QC DME (`qcdme@dme.com`)** — Tampilan monitoring menyeluruh atas seluruh temuan abnormal di seluruh area data center.
-- **Rekap Bulanan Temuan Abnormal & Ekspor DOCX** — Penyaringan temuan berdasarkan bulan/tahun dengan ekspor berkas Word berlogo ganda (Dwimitra & UTT), deskripsi temuan, tindakan perbaikan, dan galeri foto bukti.
-- **Preservasi Aspek Rasio & Auto-Crop Foto Bukti** — Foto temuan abnormal diproses dengan rasio proporsional dan pemotongan otomatis area teks berlebih agar rapi di laporan.
-- **Modal Interaktif "Lihat Temuan" & Badge Folder** — Peninjauan detail temuan secara langsung dari arsip dengan badge jumlah temuan abnormal pada setiap folder pemeliharaan.
-- **Pusat Manajemen Pengajuan Hapus (*Delete Requests Manager*)** — Alur pengajuan hapus dokumen yang memerlukan persetujuan berjenjang dari tim QC DME sebelum data dihapus permanen.
-
----
-
-### ⚡ Corrective Maintenance (CM) & SLA 180-Minute Tracking
-
-Modul pemeliharaan korektif (`CorrectiveMaintenance.tsx` & `SLAForm.tsx`) untuk penanganan insiden dan gangguan:
-
-- **Kategorisasi Sparepart Presisi** — Pemisahan status material menjadi *DME Sparepart*, *Consumable Part*, dan *Non-Sparepart* dengan badge visual persisten.
-- **Target Pemulihan SLA 180 Menit** — Standar waktu pemulihan (*Restore Time*) 180 menit dengan pemantauan selisih menit, formula Excel dinamis, dan pewarnaan otomatis (*conditional formatting*).
-- **Pengurutan Kronologis Ascending (DD/MM/YYYY HH:mm:ss)** — Format waktu dan tanggal terstandarisasi yang diurutkan dari awal bulan ke akhir bulan untuk kepatuhan audit.
-- **Heuristik Pencocokan Token & Banner Aksi SLA** — Penghubungan otomatis antara laporan insiden CM dengan berkas SLA terkait untuk memastikan tidak ada insiden tertunda tanpa tindak lanjut.
+- **Ekspor ZIP Terstruktur Otomatis** — Fitur pengunduhan arsip batch yang secara otomatis mengelompokkan berkas ke dalam subfolder sesuai kategori dan tipe pemeliharaan via JSZip.
 
 ---
 
@@ -265,22 +320,38 @@ Pengendalian izin kerja operasional berisiko tinggi (`PTWManagement.tsx`):
 
 ---
 
-### 🦺 HSE, K3 & Attendance Verification with Face Recognition
+### 🦺 HSE, K3, Multi-Foto Attendance & ZIP Archive Export
 
-Manajemen keselamatan kerja terintegrasi (`HSEReportForm.tsx`, `AbsenTBM.tsx`, `AbsenInduction.tsx`):
+Manajemen keselamatan kerja terpadu (`HSEReportForm.tsx`, `AbsenTBM.tsx`, `AbsenInduction.tsx`, dan `HSEArchiveHub.tsx`):
 
-- **Absensi Toolbox Meeting (TBM) & Safety Induction** — Pencatatan kehadiran digital kegiatan briefing keselamatan kerja harian dan induksi K3 kontraktor.
-- **Pengenalan Wajah (*Face Recognition & Registration*)** — Registrasi biometrik wajah teknisi (`FaceRegistrationManagement.tsx`) untuk verifikasi kehadiran otentik di lokasi proyek.
-- **Editor Foto K3 & Pembuat Laporan HSE** — Penandaan visual area bahaya pada foto (*annotation*) dan ekspor dokumen keselamatan kerja resmi.
+- **Absensi TBM & Safety Induction Multi-Foto**:
+  - Pencatatan kehadiran digital kegiatan briefing keselamatan kerja harian (Toolbox Meeting) dan induksi K3 kontraktor.
+  - Setiap slot absensi kini mendukung **multi-foto dokumentasi** per peserta untuk validasi visual yang lebih kuat.
+- **Proteksi Limit Ukuran Firestore (1MB limit)**:
+  - Kompresi foto otomatis di sisi klien (`imageCompression.ts`) sebelum data disimpan, menjaga ukuran payload tetap aman di bawah batas 1MB per dokumen Firestore.
+- **Hub Arsip Dokumen HSE Terpusat (`HSEArchiveHub.tsx`)**:
+  - Akses terintegrasi langsung di navbar Admin & Site Manager dengan hak akses baca-saja dan fitur unduhan foto bukti satuan.
+- **Fitur Ekspor ZIP Arsip Dokumen HSE**:
+  - Pengunduhan massal sekali klik seluruh dokumen HSE dan seluruh lampiran foto dokumentasi ke dalam 1 file ZIP terkompresi menggunakan JSZip.
+- **Generator PDF Khusus K3**:
+  - Berita Acara TBM (`HSETbmPdfExport.ts`).
+  - Formulir Safety Induction (`HSESafetyInductionPdfExport.ts`).
+  - Rekap Inspeksi HSE (`HSEInspectionRecapPdfExport.ts`).
+  - Formulir Temuan HSE (`HSEFindingPdfExport.ts`).
+- **Pengenalan Wajah (*Face Recognition & Registration*)**:
+  - Registrasi biometrik wajah teknisi (`FaceRegistrationManagement.tsx`) untuk verifikasi kehadiran otentik di lokasi proyek.
 
 ---
 
 ### 📋 MOP Workflow, Monitoring & Post Incident Report (PIR)
 
+- **Standarisasi Dokumen PIR Korporat (`PIRManagement.tsx` & `PIRReportPdfExport.ts`)**:
+  - Matriks tanda tangan 3-kolom simetris (Dwi Tasmiyadi, Chief Engineer Habib Mulyana, Standby Engineer dropdown) dengan *page-break protection* (tidak terpotong ke halaman baru).
+  - Tipografi korporat Century Gothic 10pt sesuai standar resmi fasilitas data center.
+  - Grid foto dokumentasi terkompresi tanpa celah kosong dengan tabel tindakan korektif.
 - **MOP Workflow & Kanban (`MOPWorkflow.tsx`)** — Manajemen alur kerja *Method of Procedure* (MOP) dengan status pengajuan, review OCS, hingga approval TDE.
 - **MOP Monitoring Dashboard (`MOPMonitoringDashboard.tsx`)** — Pemantauan pekerjaan berisiko tinggi yang sedang aktif di gedung data center.
-- **PIR (Post Incident Report)** — Formulir investigasi insiden komprehensif (`PIRManagement.tsx`) dengan alur kronologis kejadian, mitigasi, dan ekspor PDF resmi.
-- **Generator Berita Acara (BA)** — Pembuatan dokumen Berita Acara serah terima pekerjaan (`BeritaAcaraReport.tsx`) berformat Microsoft Word (.docx).
+- **Generator Berita Acara (BA)** — Pembuatan dokumen Berita Acara serah terima pekerjaan (`BeritaAcaraReport.tsx` & `generateBeritaAcaraDOCX.ts`) berformat Microsoft Word (.docx).
 
 ---
 
@@ -356,52 +427,53 @@ DwimitraSystem/
 │   ├── api/firebase.ts           # Firebase Web SDK client configuration
 │   ├── components/
 │   │   ├── AuthContext.tsx        # Global auth state & user session
+│   │   ├── MainApp.tsx            # Main application navigation & dynamic routing
+│   │   ├── SOPEOPManagement.tsx   # ★ SOP (14 Seksi) & EOP (8 Seksi) Manager
 │   │   ├── MonthlyReportGenerator.tsx # ★ Bab 1-8 Comprehensive Monthly Report Generator
 │   │   ├── BOQMasterAsset.tsx     # BOQ Master Asset management
 │   │   ├── FileManagement.tsx     # ★ Centralized 16-Folder File Management
+│   │   ├── FindingManagement.tsx  # Finding tab switcher (PM vs Manual)
+│   │   ├── ManualAbnormalFinding.tsx # ★ Manual Abnormal Finding field input & presets
 │   │   ├── AbnormalFindingsCenter.tsx # ★ QC DME Abnormal Findings Center
 │   │   ├── PredictiveReportModal.tsx # ★ PdM Modal with 5-Role NeutraDC Approval Sheet
 │   │   ├── PeriodicPredictiveModal.tsx # Periodic PdM Modal
 │   │   ├── CorrectiveMaintenance.tsx # ★ CM Module & Sparepart Categorization
 │   │   ├── CMReportFormModal.tsx  # Corrective Maintenance Report Form
+│   │   ├── CMMonthlyRecapModal.tsx # ★ Multi-month CM recap modal
 │   │   ├── SLAForm.tsx            # SLA calculation & 180m restore time tracking
 │   │   ├── SLAMonthlyRecapModal.tsx # Monthly SLA Recap Modal (Ascending Sort)
 │   │   ├── PTWManagement.tsx      # ★ Permit to Work with dynamic intervals & dates
-│   │   ├── AbsenTBM.tsx           # Toolbox Meeting attendance with Face ID
-│   │   ├── AbsenInduction.tsx     # Safety Induction attendance with Face ID
+│   │   ├── AbsenTBM.tsx           # ★ Toolbox Meeting multi-photo attendance with Face ID
+│   │   ├── AbsenInduction.tsx     # ★ Safety Induction multi-photo attendance with Face ID
+│   │   ├── HSEArchiveHub.tsx      # ★ HSE Document Archive & Bulk ZIP Export
 │   │   ├── FaceRegistrationManagement.tsx # Biometric Face Registration
 │   │   ├── MOPWorkflow.tsx        # Method of Procedure workflow & approval
 │   │   ├── MOPMonitoringDashboard.tsx # Realtime MOP monitoring
-│   │   ├── PIRManagement.tsx      # Post Incident Report manager
+│   │   ├── PIRManagement.tsx      # ★ Post Incident Report manager (Century Gothic 10pt)
 │   │   ├── PIRReportFormModal.tsx # PIR Form modal
 │   │   ├── BeritaAcaraReport.tsx  # Berita Acara report generator
 │   │   ├── HSEReportForm.tsx      # HSE (K3) report form
 │   │   ├── HSEFindingsArchive.tsx # HSE inspection findings archive
-│   │   ├── DeleteRequestsManager.tsx # Review tab for document deletion requests
-│   │   ├── PaperReportDigitizerModal.tsx # AI Paper report scanner/digitizer
-│   │   ├── WAGatewayModal.tsx     # WhatsApp Gateway configuration modal
-│   │   ├── AIChatWidget.tsx       # Floating AI Chat Copilot widget
-│   │   ├── AIVoiceAgent.tsx       # Floating AI Voice Agent hands-free UI
-│   │   ├── CameraModal.tsx        # Smart camera with GPS & NeutraDC watermarking
-│   │   ├── DocumentList.tsx       # General reports archive list & search
-│   │   ├── ServiceReportContainer.tsx # 13 Accounts dedicated service reports container
-│   │   └── ui/                    # Radix & custom UI primitives
-│   ├── pages/
-│   │   ├── Login.tsx              # Login page with Cloudflare Turnstile CAPTCHA
-│   │   ├── MainApp.tsx            # Default Engineer dashboard
-│   │   ├── AdminDashboard.tsx     # System administrator dashboard
-│   │   ├── SiteManagerDashboard.tsx # Site Manager & Management overview
-│   │   ├── DMEDashboard.tsx       # DME workflow & MOP dashboard
-│   │   ├── HSEApp.tsx             # HSE & K3 specialist dashboard
-│   │   └── DivisionApp.tsx        # Division-specific dashboards (PMO, CBRE, TDE, Direksi)
+│   │   ├── CameraModal.tsx        # Smart Camera with GPS & corporate watermarks
+│   │   ├── PaperReportDigitizerModal.tsx # AI Paper Report OCR digitizer
+│   │   └── WAGatewayModal.tsx     # WhatsApp Gateway dashboard
 │   ├── utils/
-│   │   ├── generateMonthlyReportDOCX.ts # Word (.docx) generator for Bab 1-8 Monthly Report
-│   │   ├── monthlyReportData.ts   # Data templates & calculation engine for Monthly Report
+│   │   ├── sopEopDocxExport.ts    # Word (.docx) export for SOP & EOP procedures
+│   │   ├── sopEopDocxImport.ts    # Word (.docx) parser & importer for SOP/EOP
+│   │   ├── sopEopBilingualAI.ts   # Bilingual AI translator & drafting engine
+│   │   ├── generateMonthlyReportDOCX.ts # Word generator for Bab 1-8 Monthly Report
 │   │   ├── monthlyReportAI.ts     # AI prompt pipeline for Monthly Report Executive Summary
 │   │   ├── AbnormalRecapWordExport.ts # Word (.docx) generator for Abnormal Findings Recap
 │   │   ├── PredictiveReportWordExport.ts # Word (.docx) export for Predictive Maintenance
 │   │   ├── PredictiveReportPdfExport.ts # PDF export for Predictive Maintenance
 │   │   ├── CMReportPdfExport.ts   # Corrective maintenance PDF export
+│   │   ├── CMMonthlyRecapExport.ts # Multi-month CM recap export to DOCX & Excel
+│   │   ├── HSETbmPdfExport.ts     # PDF generator for Toolbox Meeting (TBM)
+│   │   ├── HSESafetyInductionPdfExport.ts # PDF generator for Safety Induction
+│   │   ├── HSEInspectionRecapPdfExport.ts # PDF generator for HSE Inspection Recap
+│   │   ├── HSEFindingPdfExport.ts # PDF generator for HSE Findings
+│   │   ├── engineerSignatures.ts  # Standardized 3-column & 5-role signature matrix
+│   │   ├── imageCompression.ts   # Client-side image compression (Firestore 1MB limit safe)
 │   │   ├── generateBeritaAcaraDOCX.ts # Berita Acara Word generator
 │   │   ├── modalScrollLock.ts     # Universal background scroll lock utility
 │   │   ├── excelExport.ts         # Dual-sheet Excel generator with dynamic formulas
@@ -409,7 +481,13 @@ DwimitraSystem/
 │   │   ├── aiAgentPipeline.ts     # Client pipeline to Go backend AI endpoints
 │   │   ├── faceRecognitionService.ts # Client face recognition & vector matching
 │   │   └── draftStorage.ts        # LocalStorage auto-save draft manager
-│   ├── types/                     # Comprehensive TypeScript interfaces & DTOs
+│   ├── types/
+│   │   ├── sopEopTypes.ts         # SOP (14 Seksi) & EOP (8 Seksi) interfaces
+│   │   ├── hseTbmInductionTypes.ts # TBM, Safety Induction & Multi-photo DTOs
+│   │   ├── correctiveReportTypes.ts # Corrective maintenance DTOs & SLA models
+│   │   ├── finding.ts             # PM and Manual abnormal findings data model
+│   │   ├── pirReportTypes.ts      # PIR chronological incidents & signatures
+│   │   └── serviceReportTypes.ts  # 13 maintenance equipment checklist models
 │   └── themes/                    # UI color palettes & theme configs
 │
 ├── firebase/
@@ -540,7 +618,7 @@ Perlindungan bot cerdas tanpa puzzle yang terpasang pada halaman otentikasi logi
 ### 3. Firestore Security Rules Granular
 
 - **Strict User Authentication**: Akses baca/tulis ditolak total tanpa Firebase ID Token yang valid.
-- **Collection-Level Isolation**: Isolasi hak akses terpisah untuk `reports`, `archive`, `hse_reports`, `ptw`, `findings`, dan `maintenance_progress`.
+- **Collection-Level Isolation**: Isolasi hak akses terpisah untuk `reports`, `archive`, `sop_documents`, `eop_documents`, `hse_reports`, `ptw`, `findings`, dan `maintenance_progress`.
 - **System Tracker Protection**: Koleksi `system_status/ai_limit_tracker` diproteksi ketat hanya untuk backend terverifikasi.
 
 ### 4. Middleware Pipeline Backend Go
@@ -627,18 +705,20 @@ NVIDIA_NIM_CHAT_MODEL=models/gemini-3.1-flash-lite
 
 ## 🔑 Role System (RBAC)
 
-DwimitraSystem menerapkan kontrol akses berbasis peran (*Role-Based Access Control*) yang mencakup 16+ peran operasional:
+DwimitraSystem menerapkan kontrol akses berbasis peran (*Role-Based Access Control*) yang mencakup 18+ peran operasional dan akun preset:
 
 | Role | Tingkat Akses | Deskripsi & Ruang Lingkup |
 | :--- | :--- | :--- |
-| `admin` | 🔴 Full System | Akses tak terbatas, user management, audit logs, file upload, & konfigurasi |
+| `admin` | 🔴 Full System | Akses tak terbatas, user management, audit logs, file upload, ekspor arsip, & konfigurasi |
 | `qcdme@dme.com` | 🔴 Full Quality | QC DME Dashboard, Abnormal Findings Center, review delete requests, upload berkas |
-| `site_manager` | 🟠 High / Approval | Monitoring pemeliharaan menyeluruh, persetujuan MOP/PTW, pengesahan laporan |
+| `site_manager` | 🟠 High / Approval | Monitoring pemeliharaan menyeluruh, persetujuan MOP/PTW, pengesahan laporan Bab 1-8 |
 | `site_manager_dme` | 🟠 High / Approval | DME Dashboard, MOP Kanban, OCS & TDE Approval, chunk upload monitoring |
 | `manager` | 🟠 High | Pemantauan progres pemeliharaan data center & ringkasan operasional |
+| `teknisi` / `maintenance` | 🟢 Standard Lapangan | Akses terarah ke tab Input Temuan Abnormal Manual, pelaporan inspeksi lapangan, manajemen sparepart trouble, dan arsip dokumen |
 | `engineer` | 🟢 Standard Operasional | Pembuatan laporan service report, unggah foto, temuan lapangan, smart camera |
 | `standby_engineer` | 🟢 Standard Lapangan | Pembuatan laporan cepat di lapangan & akses read-only pada Management File |
-| `hse` | 🟡 Modul K3 | Modul HSE, absensi K3 (TBM & Induction), foto editor inspeksi keselamatan |
+| `Engineer_K2` / `engineer_k2` | 🟢 Spesialis UTT K2 | Pelaporan dan inspeksi operasional spesifik perangkat K2 data center |
+| `hse` | 🟡 Modul K3 | Modul HSE, absensi K3 (TBM & Induction multi-foto), foto editor inspeksi keselamatan |
 | `tde` | 🟡 Divisi Teknis | Akses persetujuan divisi Technical Data Center Engineer (TDE) |
 | `cbre` | 🟡 Divisi Fasilitas | Tampilan pemantauan operasional divisi CBRE |
 | `pmo` | 🟡 Divisi Proyek | Akses pelacakan milestone dan progres pemeliharaan proyek data center |
@@ -648,6 +728,9 @@ DwimitraSystem menerapkan kontrol akses berbasis peran (*Role-Based Access Contr
 | `dirut` | 🟣 Eksekutif | Hak akses baca-saja (*read-only*) level Direktur Utama |
 | `direksiSDM` | 🟣 Eksekutif | Hak akses baca-saja (*read-only*) level Direksi SDM |
 | `DireksiKeuangan` | 🟣 Eksekutif | Hak akses baca-saja (*read-only*) level Direksi Keuangan |
+
+*Catatan Preset Akun Khusus:*
+- Akun seperti `pju@gmail.com` dan akun perangkat water softener secara otomatis memuat template temuan anomali bawaan, deskripsi standar, dan rekomendasi awal saat membuat temuan abnormal manual.
 
 ---
 
