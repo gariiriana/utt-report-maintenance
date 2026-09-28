@@ -1761,13 +1761,13 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     children: [
       new TableCell({
         width: { size: 6516, type: WidthType.DXA },
-        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 60, right: 60 },
         children: [
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Document Name', size: 20, font: FONT_BODY }),
+              new TextRun({ text: 'Document Name', size: 20, font: FONT_BODY, bold: true }),
               new TextRun({ text: '', break: 1 }),
               new TextRun({ text: 'Nama Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
             ],
@@ -1776,13 +1776,13 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
       }),
       new TableCell({
         width: { size: 2500, type: WidthType.DXA },
-        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 60, right: 60 },
         children: [
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Document Number', size: 20, font: FONT_BODY }),
+              new TextRun({ text: 'Document Number', size: 20, font: FONT_BODY, bold: true }),
               new TextRun({ text: '', break: 1 }),
               new TextRun({ text: 'Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
             ],
@@ -1802,13 +1802,13 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
       children: [
         new TableCell({
           width: { size: 6516, type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [new Paragraph({ children: [new TextRun({ text: docItem.name || '-', size: 18, font: FONT_BODY })] })],
         }),
         new TableCell({
           width: { size: 2500, type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_BOTTOM,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [new Paragraph({ children: [new TextRun({ text: docItem.number || '-', size: 18, font: FONT_BODY })] })],
         }),
@@ -1819,7 +1819,6 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      borders: TABLE_NO_BORDER,
       rows: [eopRefDocHeaderRow, ...refDocRows],
     })
   );
@@ -1856,10 +1855,14 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
         { textEn: eopEhs.commsEn, textId: eopEhs.commsId },
         ...(eopEhs.additionalItems || []),
       ];
-  const eopEhsItems: [string, string][] = orderedEhsItems.map((item, idx): [string, string] => [
-    `${idx + 1}. ${item.textEn || item.textId}`,
-    `${idx + 1}. ${ensureBilingualTranslation(item.textEn, item.textId)}`,
-  ]);
+  const eopEhsItems: [string, string][] = orderedEhsItems.map((item, idx): [string, string] => {
+    const rawEn = (item.textEn || item.textId || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+    const rawId = ensureBilingualTranslation(item.textEn || item.textId || '-', item.textId).replace(/^\s*\d+[\.\)]\s*/, '').trim();
+    return [
+      `${idx + 1}. ${rawEn || '-'}`,
+      `${idx + 1}. ${rawId || rawEn || '-'}`,
+    ];
+  });
 
   children.push(
     new Table({
@@ -1870,7 +1873,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
             children: [
               new TableCell({
                 width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-                borders: CELL_BORDER_DIVIDER_BOTTOM,
+                borders: CELL_BORDERS_BOX,
                 margins: { top: 40, bottom: 40, left: 60, right: 60 },
                 children: [
                   new Paragraph({
@@ -1932,33 +1935,33 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     children: [
       new TableCell({
         width: { size: eopStepColWidths[0], type: WidthType.DXA },
-        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 20, right: 20 },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No', size: 20, font: FONT_BODY })] })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No', size: 20, font: FONT_BODY, bold: true })] })],
       }),
       new TableCell({
         width: { size: eopStepColWidths[1], type: WidthType.DXA },
-        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 40, right: 40 },
-        children: [new Paragraph({ children: createBilingualRuns('Action', 'Tindakan', { isHeader: true }) })],
+        children: [new Paragraph({ children: createBilingualRuns('Action', 'Tindakan', { isHeader: true, boldEn: true }) })],
       }),
       new TableCell({
         width: { size: eopStepColWidths[2], type: WidthType.DXA },
-        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 40, right: 40 },
-        children: [new Paragraph({ children: createBilingualRuns('Expected Outcome', 'Hasil yang Diharapkan', { isHeader: true }) })],
+        children: [new Paragraph({ children: createBilingualRuns('Expected Outcome', 'Hasil yang Diharapkan', { isHeader: true, boldEn: true }) })],
       }),
       new TableCell({
         width: { size: eopStepColWidths[3], type: WidthType.DXA },
-        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 20, right: 20 },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: createBilingualRuns('Time', 'Waktu', { isHeader: true }) })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: createBilingualRuns('Time', 'Waktu', { isHeader: true, boldEn: true }) })],
       }),
       new TableCell({
         width: { size: eopStepColWidths[4], type: WidthType.DXA },
-        borders: CELL_BORDER_DIVIDER_BOTTOM,
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 20, right: 20 },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: createBilingualRuns('Name', 'Nama', { isHeader: true }) })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: createBilingualRuns('Name', 'Nama', { isHeader: true, boldEn: true }) })],
       }),
     ],
   });
@@ -1976,13 +1979,13 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
       children: [
         new TableCell({
           width: { size: eopStepColWidths[0], type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_TOP,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 20, right: 20 },
           children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${stepNo}.`, size: 18, font: FONT_BODY })] })],
         }),
         new TableCell({
           width: { size: eopStepColWidths[1], type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_TOP,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 40, right: 40 },
           children: [
             new Paragraph({
@@ -1996,7 +1999,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
         }),
         new TableCell({
           width: { size: eopStepColWidths[2], type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_TOP,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 40, right: 40 },
           children: [
             new Paragraph({
@@ -2010,13 +2013,13 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
         }),
         new TableCell({
           width: { size: eopStepColWidths[3], type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_TOP,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 20, right: 20 },
           children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: st.time || '', size: 18, font: FONT_BODY })] })],
         }),
         new TableCell({
           width: { size: eopStepColWidths[4], type: WidthType.DXA },
-          borders: CELL_BORDER_DIVIDER_TOP,
+          borders: CELL_BORDERS_BOX,
           margins: { top: 40, bottom: 40, left: 20, right: 20 },
           children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: st.name || '', size: 18, font: FONT_BODY })] })],
         }),
