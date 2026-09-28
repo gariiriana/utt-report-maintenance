@@ -499,7 +499,13 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   ];
 
   const hasEquipmentData = eqList.length > 0;
+  const isTrafoDocument = eqList.some(
+    (eq) => (eq.classId || '').toUpperCase() === 'TR' || (eq.ciName || '').toUpperCase().includes('TRAFO')
+  ) || (data.documentTitle || '').toUpperCase().includes('TRAFO');
+
   const activeEquipCols = allEquipCols.filter((col) => {
+    // Untuk dokumen Trafo standar NeutraDC, selalu pertahankan 10 kolom lengkap agar tidak ada kolom yang hilang
+    if (isTrafoDocument) return true;
     // Jika tidak ada data equipment sama sekali, pertahankan semua kolom template standar
     if (!hasEquipmentData) return true;
     // Kolom inti (no, classId, ciName) selalu ditampilkan
@@ -764,7 +770,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
                 new Paragraph({
                   children: createBilingualRuns(
                     data.affectedSystemsDetailsEn || data.affectedSystemsDetails || '-',
-                    data.affectedSystemsDetailsId,
+                    data.affectedSystemsDetailsId || '',
                     { sizeEn: 18, sizeId: 18 }
                   ),
                 }),
@@ -1048,75 +1054,71 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   );
 
   const dryRun = data.dryRun;
-  const hasDryRunValues = !!(dryRun && ((dryRun.name && dryRun.name !== '-' && dryRun.name.trim() !== '') || (dryRun.date && dryRun.date !== '-' && dryRun.date.trim() !== '')));
+  const dryRunJobTitle = (dryRun?.jobTitle && dryRun.jobTitle !== '-') ? dryRun.jobTitle : 'Teknisi Data Center';
+  const dryRunName = (dryRun?.name && dryRun.name !== '-') ? dryRun.name : '';
+  const dryRunDate = (dryRun?.date && dryRun.date !== '-') ? dryRun.date : '';
 
-  const dryRunRows: TableRow[] = [
-    new TableRow({
-      cantSplit: true,
-      children: [
-        ['Job Title:', 'Jabatan:'],
-        ['Name:', 'Nama:'],
-        ['Signature:', 'Tanda Tangan:'],
-        ['Date:', 'Tanggal:'],
-      ].map(([en, id]) =>
-        new TableCell({
-          width: { size: 2254, type: WidthType.DXA },
-          borders: CELL_NO_BORDER,
-          margins: { top: 30, bottom: 30, left: 60, right: 60 },
-          children: [
-            new Paragraph({
-              spacing: { after: 0, line: 240 },
-              children: [
-                new TextRun({ text: en, size: 20, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-              ],
-            }),
-          ],
-        })
-      ),
-    }),
-  ];
-
-  if (hasDryRunValues && dryRun) {
-    dryRunRows.push(
-      new TableRow({
-        cantSplit: true,
+  const dryRunHeaderRow = new TableRow({
+    cantSplit: true,
+    tableHeader: true,
+    children: [
+      ['Job Title', 'Jabatan'],
+      ['Name', 'Nama'],
+      ['Signature', 'Tanda Tangan'],
+      ['Date', 'Tanggal'],
+    ].map(([en, id]) =>
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
         children: [
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 30, bottom: 30, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: (dryRun.jobTitle && dryRun.jobTitle !== '-') ? dryRun.jobTitle : '', size: 18, font: FONT_BODY })] })],
-          }),
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 30, bottom: 30, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: (dryRun.name && dryRun.name !== '-') ? dryRun.name : '', size: 18, font: FONT_BODY })] })],
-          }),
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 30, bottom: 30, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
-          }),
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 30, bottom: 30, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: (dryRun.date && dryRun.date !== '-') ? dryRun.date : '', size: 18, font: FONT_BODY })] })],
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: en, size: 20, font: FONT_BODY, bold: true }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
           }),
         ],
       })
-    );
-  }
+    ),
+  });
+
+  const dryRunDataRow = new TableRow({
+    cantSplit: true,
+    children: [
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: dryRunJobTitle, size: 19, font: FONT_BODY })] })],
+      }),
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: dryRunName, size: 19, font: FONT_BODY })] })],
+      }),
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 19, font: FONT_BODY })] })],
+      }),
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: dryRunDate, size: 19, font: FONT_BODY })] })],
+      }),
+    ],
+  });
 
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      borders: TABLE_NO_BORDER,
-      rows: dryRunRows,
+      rows: [dryRunHeaderRow, dryRunDataRow],
     })
   );
   children.push(createSpacer(60));
@@ -1629,7 +1631,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
                 new Paragraph({
                   children: createBilingualRuns(
                     data.additionalInformationEn || data.additionalInformation || '-',
-                    data.additionalInformationId,
+                    data.additionalInformationId || '',
                     { sizeEn: 18, sizeId: 18 }
                   ),
                 }),
@@ -2186,72 +2188,71 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   );
 
   const eopDryRun = data.dryRun;
-  const hasDryRunValues = !!(eopDryRun && ((eopDryRun.name && eopDryRun.name !== '-' && eopDryRun.name.trim() !== '') || (eopDryRun.date && eopDryRun.date !== '-' && eopDryRun.date.trim() !== '')));
+  const eopDryRunJobTitle = (eopDryRun?.jobTitle && eopDryRun.jobTitle !== '-') ? eopDryRun.jobTitle : 'Teknisi Data Center';
+  const eopDryRunName = (eopDryRun?.name && eopDryRun.name !== '-') ? eopDryRun.name : '';
+  const eopDryRunDate = (eopDryRun?.date && eopDryRun.date !== '-') ? eopDryRun.date : '';
 
-  const eopDryRunRows: TableRow[] = [
-    new TableRow({
-      children: [
-        ['Job Title:', 'Jabatan:'],
-        ['Name:', 'Nama:'],
-        ['Signature:', 'Tanda Tangan:'],
-        ['Date:', 'Tanggal:'],
-      ].map(([en, id]) =>
-        new TableCell({
-          width: { size: 2254, type: WidthType.DXA },
-          borders: CELL_NO_BORDER,
-          margins: { top: 40, bottom: 40, left: 60, right: 60 },
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({ text: en, size: 20, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-              ],
-            }),
-          ],
-        })
-      ),
-    }),
-  ];
-
-  if (hasDryRunValues && eopDryRun) {
-    eopDryRunRows.push(
-      new TableRow({
+  const eopDryRunHeaderRow = new TableRow({
+    cantSplit: true,
+    tableHeader: true,
+    children: [
+      ['Job Title', 'Jabatan'],
+      ['Name', 'Nama'],
+      ['Signature', 'Tanda Tangan'],
+      ['Date', 'Tanggal'],
+    ].map(([en, id]) =>
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 40, bottom: 40, left: 60, right: 60 },
         children: [
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: (eopDryRun.jobTitle && eopDryRun.jobTitle !== '-') ? eopDryRun.jobTitle : '', size: 18, font: FONT_BODY })] })],
-          }),
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: (eopDryRun.name && eopDryRun.name !== '-') ? eopDryRun.name : '', size: 18, font: FONT_BODY })] })],
-          }),
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 18, font: FONT_BODY })] })],
-          }),
-          new TableCell({
-            width: { size: 2254, type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [new Paragraph({ children: [new TextRun({ text: (eopDryRun.date && eopDryRun.date !== '-') ? eopDryRun.date : '', size: 18, font: FONT_BODY })] })],
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: en, size: 20, font: FONT_BODY, bold: true }),
+              new TextRun({ text: '', break: 1 }),
+              new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+            ],
           }),
         ],
       })
-    );
-  }
+    ),
+  });
+
+  const eopDryRunDataRow = new TableRow({
+    cantSplit: true,
+    children: [
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: eopDryRunJobTitle, size: 19, font: FONT_BODY })] })],
+      }),
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: eopDryRunName, size: 19, font: FONT_BODY })] })],
+      }),
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: '             ', size: 19, font: FONT_BODY })] })],
+      }),
+      new TableCell({
+        width: { size: 2254, type: WidthType.DXA },
+        borders: CELL_BORDERS_BOX,
+        margins: { top: 50, bottom: 50, left: 60, right: 60 },
+        children: [new Paragraph({ children: [new TextRun({ text: eopDryRunDate, size: 19, font: FONT_BODY })] })],
+      }),
+    ],
+  });
 
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      borders: TABLE_NO_BORDER,
-      rows: eopDryRunRows,
+      rows: [eopDryRunHeaderRow, eopDryRunDataRow],
     })
   );
   children.push(createSpacer(80));
@@ -2403,7 +2404,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
                 new Paragraph({
                   children: createBilingualRuns(
                     data.additionalInformationEn || data.additionalInformation || '-',
-                    data.additionalInformationId,
+                    data.additionalInformationId || '',
                     { sizeEn: 18, sizeId: 18 }
                   ),
                 }),

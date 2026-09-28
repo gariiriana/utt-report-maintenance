@@ -117,6 +117,7 @@ interface PhotoItem {
 }
 
 export interface SLAPrefillData {
+  slaSource?: 'cm' | 'pir';
   ticketName?: string;
   ticketNumber?: string;
   ticketStatus?: 'open' | 'closed';
@@ -135,9 +136,10 @@ interface SLAFormProps {
   editId?: string;
   prefillData?: SLAPrefillData;
   availableCMReports?: any[];
+  availablePIRReports?: any[];
 }
 
-export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMReports }: SLAFormProps) {
+export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMReports, availablePIRReports }: SLAFormProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -158,6 +160,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
 
   // Form State
   const [formData, setFormData] = useState({
+    slaSource: (prefillData?.slaSource || (prefillData?.pirReportId ? 'pir' : 'cm')) as 'cm' | 'pir',
     ticketName: prefillData?.ticketName || '',
     ticketNumber: prefillData?.ticketNumber || '',
     ticketStatus: (prefillData?.ticketStatus || 'open') as 'open' | 'closed',
@@ -239,6 +242,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
             const expectedTarget = defaultTargetByPrio(currentPrio);
 
             setFormData({
+              slaSource: (data.slaSource || (data.pirReportId ? 'pir' : 'cm')) as 'cm' | 'pir',
               ticketName: data.ticketName || '',
               ticketNumber: data.ticketNumber || '',
               ticketStatus: data.ticketStatus === 'closed' ? 'closed' : 'open',
@@ -286,6 +290,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
 
       setFormData(prev => ({
         ...prev,
+        slaSource: prefillData.slaSource || (prefillData.pirReportId ? 'pir' : prev.slaSource),
         ticketName: prefillData.ticketName || prev.ticketName,
         ticketNumber: prefillData.ticketNumber || prev.ticketNumber,
         ticketStatus: prefillData.ticketStatus || prev.ticketStatus,
@@ -386,6 +391,35 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     }
 
     toast.success(`Berhasil ditautkan ke CM: ${foundCM.incidentName || foundCM.equipmentName || foundCM.issue}`);
+  };
+
+  // Handler Tautkan ke Report PIR (Sinkronisasi Otomatis PIR ↔ SLA)
+  const handleSelectLinkedPIR = (pirId: string) => {
+    if (!pirId) {
+      setFormData(prev => ({
+        ...prev,
+        pirReportId: '',
+        ticketNumber: '',
+      }));
+      toast.info('Tautan ke Report PIR dilepas.');
+      return;
+    }
+
+    const foundPIR = availablePIRReports?.find((p: any) => p.id === pirId);
+    if (!foundPIR) return;
+
+    setFormData(prev => ({
+      ...prev,
+      ticketName: foundPIR.incidentName || foundPIR.issue || prev.ticketName,
+      ticketNumber: foundPIR.slaTicketNumber || foundPIR.ticketNumber || foundPIR.incidentId || prev.ticketNumber,
+      ticketStatus: foundPIR.slaTicketStatus || (foundPIR.ticketStatus === 'closed' ? 'closed' : 'open'),
+      location: foundPIR.location || prev.location || 'Neutra DC Cikarang',
+      timeOrder: foundPIR.incidentDate || prev.timeOrder,
+      remark: foundPIR.resolution || foundPIR.summary || prev.remark,
+      pirReportId: foundPIR.id,
+    }));
+
+    toast.success(`Berhasil ditautkan ke PIR: ${foundPIR.incidentName || foundPIR.issue || 'Report PIR'}`);
   };
 
   // Equipment SLA Selection Handler

@@ -77,7 +77,7 @@ function detectSystemCategory(name: string): string {
 
 // ─── Deterministic Fallback Builder ──────────────────────────────────────────
 
-function buildFallbackPeriodicData(input: GeneratePeriodicPredictiveInput): PeriodicPredictiveReportData {
+export function buildFallbackPeriodicData(input: GeneratePeriodicPredictiveInput): PeriodicPredictiveReportData {
   const { periodType, month = 9, year, cmReports, abnormalFindings = [], sparepartLogs = [], userName = 'Standby Engineer' } = input;
   const monthName = periodType === 'monthly' ? MONTH_NAMES_ID[month - 1] : undefined;
   const totalCM = cmReports.length;
@@ -263,7 +263,7 @@ function buildEvidenceConstrainedPeriodicData(input: GeneratePeriodicPredictiveI
     const equipmentName = record.equipmentName || record.incidentName || 'Peralatan tidak teridentifikasi';
     const category = detectSystemCategory(`${equipmentName} ${record.issue || record.actionTaken || ''}`);
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-    const asset = assets.get(equipmentName) || { category, location: record.location || 'Lokasi tidak tercatat', incidents: [] };
+    const asset = assets.get(equipmentName) || { category, location: record.location || 'Lokasi tidak tercatat', incidents: [] as any[] };
     asset.incidents.push(record);
     assets.set(equipmentName, asset);
   });

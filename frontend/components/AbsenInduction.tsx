@@ -52,7 +52,7 @@ interface DocumentationRecord {
 }
 
 // ─── Helper Functions ───
-const getDayName = (dateStr: string) => {
+export const getDayName = (dateStr: string) => {
   if (!dateStr) return '';
   const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const parts = dateStr.split('-');

@@ -759,6 +759,59 @@ function parseEOPEHSRequirementsRobust(xml: string): {
   items: Array<{ textEn: string; textId: string }>;
   additionalItems: Array<{ textEn: string; textId: string }>;
 } {
+  const blocks = getSectionBlocks(xml, 3);
+  const rawPairs: Array<{ textEn: string; textId: string }> = [];
+
+  // Prioritas 1: Ekstraksi dari tabel Word resmi (NeutraDC/DME corporate standard)
+  for (const block of blocks) {
+    if (block.kind === 'table') {
+      const rows = getTableRows(block.xml);
+      for (const row of rows) {
+        if (row.cells.join(' ').toLowerCase().includes('requirements') && row.cells.length === 1) continue;
+        const cellXml = row.cellXml[0] || '';
+        const bilingual = extractBilingualFromXml(cellXml);
+        const cleanEn = (bilingual.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+        const cleanId = (bilingual.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+        if (cleanEn || cleanId) {
+          rawPairs.push({ textEn: cleanEn, textId: cleanId });
+        }
+      }
+    } else if (block.kind === 'paragraph') {
+      const bilingual = extractBilingualFromXml(block.xml);
+      const cleanEn = (bilingual.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const cleanId = (bilingual.id || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      if ((cleanEn || cleanId) && !/(?:section|seksi)\s*3/i.test(cleanEn) && !/^requirements$/i.test(cleanEn)) {
+        rawPairs.push({ textEn: cleanEn, textId: cleanId });
+      }
+    }
+  }
+
+  // Jika ekstraksi terstruktur berhasil mendapatkan data:
+  if (rawPairs.length > 0) {
+    const ppeIndex = rawPairs.findIndex((item) =>
+      /personal protective|\bppe\b|alat pelindung|\bapd\b|safety shoes|protective helmet/i.test(`${item.textEn} ${item.textId}`)
+    );
+    const commsIndex = rawPairs.findIndex((item) =>
+      /communication|handy[\s-]*talk|komunikasi|\bht\b/i.test(`${item.textEn} ${item.textId}`)
+    );
+
+    const ppe = ppeIndex >= 0 ? rawPairs[ppeIndex] : (rawPairs[0] || { textEn: '', textId: '' });
+    const comms = commsIndex >= 0 ? rawPairs[commsIndex] : (rawPairs[1] || { textEn: '', textId: '' });
+
+    const usedIndices = new Set([ppeIndex >= 0 ? ppeIndex : 0, commsIndex >= 0 ? commsIndex : 1]);
+    const additionalItems = rawPairs.filter((_, idx) => !usedIndices.has(idx));
+
+    return {
+      ppeEn: ppe.textEn,
+      ppeId: ppe.textId,
+      commsEn: comms.textEn,
+      commsId: comms.textId,
+      items: rawPairs,
+      additionalItems
+    };
+  }
+
+  // Prioritas 2: Fallback plain text jika dokumen Word tidak menggunakan tabel
   const section = extractPlainSection(xml, 3, 4);
   const firstNumberedItem = section.search(/(?:^|\n|\t)\s*1[\.\)]\s+/m);
   const raw = (firstNumberedItem >= 0 ? section.slice(firstNumberedItem) : section)
@@ -827,49 +880,6 @@ function parseSOPEHSRequirementsRobust(xml: string): {
 }
 
 /**
- * Mengekstrak Persyaratan K3 / EHS EOP (Seksi 3)
- */
-function parseEOPEHSRequirements(xml: string): {
-  ppeEn: string;
-  ppeId: string;
-  commsEn: string;
-  commsId: string;
-} {
-  const sec3Match = xml.match(
-    /(?:Section\s*3|Seksi\s*3)[\s\S]*?(?:Enviro?nmental|K3)[\s\S]*?(?=(?:Section\s*4|Seksi\s*4))/i
-  );
-  if (!sec3Match) {
-    return { ppeEn: '', ppeId: '', commsEn: '', commsId: '' };
-  }
-
-  const raw = cleanText(sec3Match[0])
-    .replace(/(?:Section\s*3|Seksi\s*3)[^–—\-]*[–—\-]\s*(?:Enviro?nmental[^\n]*|K3[^\n]*)/i, '')
-    .replace(/Requirements\s*:?/i, '')
-    .trim();
-
-  if (!raw || raw.length < 5) {
-    return { ppeEn: '', ppeId: '', commsEn: '', commsId: '' };
-  }
-
-  const items = raw.split(/(?=\b\d+[\.\)])/).map((s) => s.trim()).filter(Boolean);
-  if (items.length > 0) {
-    return {
-      ppeEn: items.slice(0, 2).join('\n') || items[0] || '',
-      ppeId: '',
-      commsEn: items.slice(2).join('\n') || '',
-      commsId: ''
-    };
-  }
-
-  return {
-    ppeEn: raw,
-    ppeId: '',
-    commsEn: '',
-    commsId: ''
-  };
-}
-
-/**
  * Mengekstrak Kondisi yang Diharapkan EOP (Seksi 4)
  */
 function parseEOPExpectedConditions(xml: string): { en: string; id: string } {
@@ -902,7 +912,52 @@ function parseEOPExpectedConditionsRobust(xml: string): { en: string; id: string
 }
 
 /**
+ * Mengekstrak data Dry Run / Simulasi Pelaksanaan (SOP Seksi 8 / EOP Seksi 6).
+ * Membaca Job Title, Name, dan Date jika tersedia pada tabel berkas Word.
+ */
+function parseDryRun(xml: string, isEop: boolean): {
+  jobTitle: string;
+  name: string;
+  date: string;
+  signatureBase64?: string;
+} {
+  const defaultDryRun = {
+    jobTitle: 'Teknisi Data Center',
+    name: '',
+    date: '',
+    signatureBase64: ''
+  };
+
+  const sectionNumber = isEop ? 6 : 8;
+  const blocks = getSectionBlocks(xml, sectionNumber);
+  const tableBlock = blocks.find((b) => b.kind === 'table');
+  if (!tableBlock) return defaultDryRun;
+
+  const rows = getTableRows(tableBlock.xml);
+  // Cari baris data (bukan baris label header "Job Title / Jabatan")
+  const dataRow = rows.find((r) => {
+    const text = r.cells.join(' ').toLowerCase();
+    return !text.includes('job title') && !text.includes('jabatan') && r.cells.length >= 2;
+  });
+
+  if (dataRow && dataRow.cells.length >= 2) {
+    const jobTitle = cleanText(dataRow.cells[0] || '').trim();
+    const name = cleanText(dataRow.cells[1] || '').trim();
+    const date = dataRow.cells.length >= 4 ? cleanText(dataRow.cells[3] || '').trim() : '';
+    return {
+      jobTitle: jobTitle && jobTitle !== '-' ? jobTitle : defaultDryRun.jobTitle,
+      name: name && name !== '-' ? name : '',
+      date: date && date !== '-' ? date : '',
+      signatureBase64: ''
+    };
+  }
+
+  return defaultDryRun;
+}
+
+/**
  * Mengekstrak tabel Approval / Pengesahan (4 Pejabat Penandatangan)
+ * Kebal terhadap baris header dan perbedaan urutan baris.
  */
 function parseApprovals(xml: string): DocumentSigner[] {
   const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
@@ -915,7 +970,13 @@ function parseApprovals(xml: string): DocumentSigner[] {
   );
   if (!appTbl) return [...DEFAULT_DEFAULT_APPROVERS];
 
-  const trs = appTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
+  const rows = getTableRows(appTbl);
+  // Filter baris data yang bukan baris header tabel
+  const dataRows = rows.filter((r) => {
+    const text = r.cells.join(' ').toLowerCase();
+    return !text.includes('signature') && !text.includes('tanda tangan') && r.cells.length >= 2;
+  });
+
   const defaultRoles = [
     { roleEn: 'Project Manager', roleId: 'Manajer Proyek', fallbackName: 'Dwi Tasmiyadi' },
     { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', fallbackName: 'Habib Mulyana' },
@@ -923,43 +984,37 @@ function parseApprovals(xml: string): DocumentSigner[] {
     { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', fallbackName: 'Budi Susanto' }
   ];
 
-  const approvers: DocumentSigner[] = defaultRoles.map((role, idx) => {
-    const tr = trs[idx];
-    if (!tr) {
+  return defaultRoles.map((role) => {
+    // Cari baris yang memuat jabatan yang bersangkutan di sel 0
+    const matchedRow = dataRows.find((r) => {
+      const firstCell = (r.cells[0] || '').toLowerCase();
+      if (role.roleEn === 'Project Manager') return firstCell.includes('project') || firstCell.includes('proyek');
+      if (role.roleEn === 'Chief Engineering') return firstCell.includes('chief') || firstCell.includes('kepala');
+      if (role.roleEn === 'Facility Manager') return firstCell.includes('facility') || firstCell.includes('fasilitas');
+      if (role.roleEn === 'Assistant Manager HDC') return firstCell.includes('assistant') || firstCell.includes('asisten');
+      return false;
+    });
+
+    if (matchedRow) {
+      const rawName = cleanText(matchedRow.cells[1] || '').trim();
+      const rawDate = matchedRow.cells.length >= 4 ? cleanText(matchedRow.cells[3] || '').trim() : '';
       return {
         roleEn: role.roleEn,
         roleId: role.roleId,
-        name: role.fallbackName,
-        date: '',
+        name: rawName && rawName !== '-' ? rawName : role.fallbackName,
+        date: rawDate && rawDate !== '-' ? rawDate : '',
         signature: ''
       };
-    }
-
-    const raw = tr
-      .replace(/<w:br\/>/g, '[[BR]]')
-      .replace(/<\/w:p>/g, '[[BR]]')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    let extractedName = '';
-    const m = raw.match(
-      /(?:Project\s*Manager|Chief\s*Engineering|Facility\s*Manager|Assistant\s*Manager\s*HDC)\s*(.*?)(?:\[\[BR\]\]|Manajer|Kepala|Asisten|$)/i
-    );
-    if (m && m[1]) {
-      extractedName = m[1].replace(/\[\[BR\]\]/g, '').trim();
     }
 
     return {
       roleEn: role.roleEn,
       roleId: role.roleId,
-      name: extractedName || role.fallbackName,
+      name: role.fallbackName,
       date: '',
       signature: ''
     };
   });
-
-  return approvers;
 }
 
 /**
@@ -1113,12 +1168,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     referencedDocuments: parseReferencedDocuments(xml, 5),
     ehsRequirements,
     prerequisites,
-    dryRun: {
-      jobTitle: 'Teknisi Data Center',
-      name: '',
-      date: '',
-      signatureBase64: ''
-    },
+    dryRun: parseDryRun(xml, false),
     maintenancePeriod,
     conditionsPriorToExecutionEn: conditionsPair.en,
     conditionsPriorToExecutionId: conditionsPair.id,
@@ -1144,19 +1194,19 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
   const meta = extractMetadata(xml, fileName, true);
   const referencedDocuments = parseReferencedDocuments(xml, 2);
   const ehsRequirements = parseEOPEHSRequirementsRobust(xml);
-  const robustExpectedCond = parseEOPExpectedConditionsRobust(xml);
-  const parsedExpectedCond = robustExpectedCond.en || robustExpectedCond.id
-    ? robustExpectedCond
-    : parseEOPExpectedConditions(xml);
   const expectedCondPair = extractSectionBilingual(
     xml,
     /(?:Expected\s*Conditions\s*(?:\/\s*Equipment\s*Status)?|Kondisi\s*yang\s*Diharapkan)/i,
     /<w:tbl/i,
     [/^expected\s*conditions/i, /^kondisi\s*yang\s*diharapkan/i]
   );
+  const robustExpectedCond = parseEOPExpectedConditionsRobust(xml);
+  const parsedExpectedCond = robustExpectedCond.en || robustExpectedCond.id
+    ? robustExpectedCond
+    : parseEOPExpectedConditions(xml);
   const expectedCond = {
-    en: parsedExpectedCond.en || expectedCondPair.en,
-    id: parsedExpectedCond.id || expectedCondPair.id,
+    en: expectedCondPair.en || parsedExpectedCond.en,
+    id: expectedCondPair.id || parsedExpectedCond.id,
   };
   const workSteps = parseEOPWorkSteps(xml);
   const approvals = parseApprovals(xml);
@@ -1183,12 +1233,7 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
     dateOfCreation: meta.creationDate,
     nextDateRevision: meta.revisionDate || 'N/A',
     revisionNumber: meta.revisionNumber || '00',
-    dryRun: {
-      jobTitle: 'Teknisi Data Center',
-      name: '',
-      date: '',
-      signatureBase64: ''
-    },
+    dryRun: parseDryRun(xml, true),
     approvals,
     additionalInformation: additionalPair.en || additionalPair.id || 'N/A T/A',
     additionalInformationEn: additionalPair.en,
@@ -1214,10 +1259,16 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
   // Deteksi Tipe Dokumen:
   // SOP memiliki 14 seksi dan Informasi Peralatan (Equipment Information).
   // EOP memiliki 8 seksi (Section 8 – Additional Information) dan warna banner FF00FF.
+  const hasSection8 =
+    /(?:section|seksi)\s*8\s*[-–—]\s*(?:additional|informasi\s*tambahan)/i.test(documentText) ||
+    /(?:section|seksi)\s*8\b/i.test(documentText);
+  const hasSection9Or10Or14 = /(?:section|seksi)\s*(?:9|10|14)\b/i.test(documentText);
+
   const isEop =
-    (!containsLabel(documentText, 'Section 14') &&
-      (xml.includes('FF00FF') || xml.includes('Section 8 – Additional') || /eop/i.test(file.name))) ||
-    /emergency\s*operating\s*procedure/i.test(documentText);
+    (!hasSection9Or10Or14 &&
+      (hasSection8 || xml.includes('FF00FF') || /eop/i.test(file.name))) ||
+    /emergency\s*operating\s*procedure/i.test(documentText) ||
+    (!containsLabel(documentText, 'Section 14') && /eop/i.test(file.name));
 
   if (isEop) {
     const eopData = parseEOPData(xml, file.name);

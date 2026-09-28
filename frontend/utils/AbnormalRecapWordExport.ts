@@ -133,7 +133,7 @@ const borderThin = {
   right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
 } as const;
 
-const borderNone = {
+export const borderNone = {
   top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
   bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
   left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
