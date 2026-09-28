@@ -90,4 +90,11 @@ export interface CMReportData {
   reportedByEmail?: string;                 // Email User Pengirim
   reportedAt?: any;                         // Timestamp Pengiriman
   createdAt?: any;                          // Timestamp Pembuatan
+
+  // Status Revisi Dokumen (Arsip Standby & Rekapitulasi)
+  revisionStatus?: 'revisi' | 'final';     // 'revisi' jika dokumen perlu perbaikan, 'final' jika sudah approved
+  isRevision?: boolean;                    // Boolean helper: true jika revisionStatus === 'revisi'
+  revisionNote?: string;                   // Catatan alasan/detail revisi dari reviewer/QC/admin
+  revisionUpdatedAt?: any;                 // Timestamp kapan status revisi diupdate
+  revisionUpdatedBy?: string;              // Nama/email yang mengupdate status revisi
 }

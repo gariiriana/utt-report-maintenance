@@ -101,6 +101,13 @@ export interface PIRReportData {
 
     approvedBy3Name: string;                // Penyetuju 3 (EGM DC Operation)
     approvedBy3Title: string;               // Jabatan Penyetuju 3
+
+    // Status Revisi Dokumen (Arsip Standby & Rekapitulasi)
+    revisionStatus?: 'revisi' | 'final';     // 'revisi' jika dokumen masih revisi, 'final' jika approved
+    isRevision?: boolean;                    // Boolean helper: true jika revisionStatus === 'revisi'
+    revisionNote?: string;                   // Catatan alasan/detail revisi
+    revisionUpdatedAt?: any;                 // Timestamp kapan status revisi diupdate
+    revisionUpdatedBy?: string;              // Nama/email yang mengupdate status revisi
 }
 
 // Data Awal Bawaan Format Baku PIR Laporan UTT / NeutraDC

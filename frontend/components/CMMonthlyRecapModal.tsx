@@ -250,6 +250,10 @@ export function CMMonthlyRecapModal({
       const isPIR = r.reportType === 'PIR' || r.reportType === 'pir';
       if (isSLA || isPIR) return false;
 
+      // Filter out reports that are still in revision (hanya rekap laporan yang sudah final)
+      const isRevision = r.revisionStatus === 'revisi' || r.isRevision === true;
+      if (isRevision) return false;
+
       const ts = parseReportTime(r);
 
       // 1. Time / Date Filter
@@ -379,6 +383,17 @@ export function CMMonthlyRecapModal({
 
   // Validasi rentang tanggal (jika tanggal mulai lebih besar dari selesai)
   const isDateRangeInvalid = filterMode === 'range' && Boolean(startDate && endDate && startDate > endDate);
+
+  // Hitung jumlah laporan CM yang berstatus revisi dan dikecualikan
+  const excludedRevisionCount = useMemo(() => {
+    return internalReports.filter((r) => {
+      if (r.deleteRequested) return false;
+      const isSLA = r.reportType === 'SLA' || r.reportType === 'sla' || (r.issue && r.issue.startsWith('[SLA / SLG]')) || r.targetResponseMin !== undefined;
+      const isPIR = r.reportType === 'PIR' || r.reportType === 'pir';
+      if (isSLA || isPIR) return false;
+      return r.revisionStatus === 'revisi' || r.isRevision === true;
+    }).length;
+  }, [internalReports]);
 
   // Label period title dinamis
   const periodLabel = useMemo(() => {
@@ -806,6 +821,21 @@ export function CMMonthlyRecapModal({
                   <span className="font-bold text-slate-900">Format Ringkas &amp; Otomatis Dipisah Per Bulan:</span> Hasil ekspor didesain ringkas dengan kompresi foto otomatis. Jika periode melintasi beberapa bulan, dokumen langsung <strong>dipisahkan per bulan dalam satu file</strong> (halaman/tabel terpisah di PDF &amp; Word, tab sheet bulanan di Excel).
                 </div>
               </div>
+
+              {/* Notice: Laporan Berstatus Revisi Dikecualikan */}
+              {excludedRevisionCount > 0 && (
+                <div className="flex items-center justify-between gap-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      <strong>{excludedRevisionCount} Dokumen CM Berstatus "Revisi"</strong> otomatis dikecualikan dari hasil rekapitulasi.
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shrink-0">
+                    Hanya Dokumen Final
+                  </span>
+                </div>
+              )}
 
               {/* 4 KPI Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

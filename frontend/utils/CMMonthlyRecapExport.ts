@@ -444,7 +444,7 @@ export async function exportCMMonthlyRecapToExcel(
   periodTitle: string = 'Bulanan'
 ): Promise<void> {
   const reports = (rawReports || [])
-    .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR')
+    .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR' && r.revisionStatus !== 'revisi' && !r.isRevision)
     .sort((a, b) => parseReportTime(a) - parseReportTime(b));
 
   if (reports.length === 0) {
@@ -832,7 +832,7 @@ export async function exportCMMonthlyRecapToDocx(
     : periodTitleOrOptions;
 
   const reports = (rawReports || [])
-    .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR')
+    .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR' && r.revisionStatus !== 'revisi' && !r.isRevision)
     .sort((a, b) => parseReportTime(a) - parseReportTime(b));
 
   if (reports.length === 0) {
@@ -1022,27 +1022,11 @@ export async function exportCMMonthlyRecapToDocx(
       ],
     });
 
-    // Helper untuk memformat teks sel tabel menjadi paragraf rapi (mendukung enter atau bullet point)
-    // Helper untuk memformat sel 'Uraian Masalah & Tindakan Solusi' (Dipisah garis pemisah horizontal)
-    const buildIssueAndActionCell = (issueStr: string, actionStr: string, isZebra: boolean) => {
-      const issueTrimmed = (issueStr || '-').trim();
+    // Helper untuk memformat sel 'Tindakan Solusi' (Murni daftar poin tindakan solusi bernomor)
+    const buildActionOnlyCell = (actionStr: string, isZebra: boolean) => {
       const actionTrimmed = (actionStr || '-').trim();
 
-      // 1. Parsing baris / bullet uraian masalah
-      let issueLines: string[] = [];
-      if (issueTrimmed && issueTrimmed !== '-') {
-        if (issueTrimmed.includes('\n')) {
-          issueLines = issueTrimmed.split('\n').map(l => l.trim()).filter(Boolean);
-        } else if (issueTrimmed.includes('•')) {
-          issueLines = issueTrimmed.split('•').map(l => l.trim()).filter(Boolean).map(l => `• ${l}`);
-        } else {
-          issueLines = [issueTrimmed];
-        }
-      } else {
-        issueLines = ['-'];
-      }
-
-      // 2. Normalisasi tindakan solusi menjadi daftar bernomor yang konsisten.
+      // Normalisasi tindakan solusi menjadi daftar bernomor yang konsisten.
       // Input lama dapat berisi bullet, strip, ataupun nomor dari teknisi.
       const actionLines = (actionTrimmed && actionTrimmed !== '-' ? actionTrimmed : '-')
         .replace(/\r\n?/g, '\n')
@@ -1057,86 +1041,22 @@ export async function exportCMMonthlyRecapToDocx(
 
       const cellParagraphs: Paragraph[] = [];
 
-      // A. Bagian Atas: Uraian Masalah (Kendala)
-      issueLines.forEach((line, idx) => {
-        const isFirst = idx === 0;
-        const isLast = idx === issueLines.length - 1;
-        const children: TextRun[] = [];
-
-        if (isFirst) {
-          children.push(
-            new TextRun({
-              text: 'Kendala: ',
-              bold: true,
-              size: 13,
-              color: '334155',
-              font: 'Calibri',
-            })
-          );
-        }
-        children.push(
-          new TextRun({
-            text: line,
-            size: 14,
-            color: COLOR_DARK,
-            font: 'Calibri',
-          })
-        );
-
-        cellParagraphs.push(
-          new Paragraph({
-            alignment: AlignmentType.LEFT,
-            spacing: {
-              before: isFirst ? 15 : 4,
-              after: isLast ? 8 : 4,
-            },
-            // Garis horizontal pemisah di bawah uraian masalah
-            border: isLast
-              ? {
-                  bottom: {
-                    style: BorderStyle.SINGLE,
-                    size: 6, // 0.75 pt garis solid tegas
-                    color: COLOR_BORDER, // Slate 300
-                    space: 8,
-                  },
-                }
-              : undefined,
-            children,
-          })
-        );
-      });
-
-      // B. Bagian Bawah: Tindakan Solusi (nomor 1)., 2)., 3)., dst.)
-      cellParagraphs.push(
-        new Paragraph({
-          alignment: AlignmentType.LEFT,
-          spacing: { before: 14, after: 2 },
-          children: [
-            new TextRun({
-              text: 'Tindakan Solusi:',
-              bold: true,
-              size: 13,
-              color: '166534',
-              font: 'Calibri',
-            }),
-          ],
-        })
-      );
-
       actionLines.forEach((line, idx) => {
+        const isFirst = idx === 0;
         const isLast = idx === actionLines.length - 1;
+        const isSingleDash = actionLines.length === 1 && line === '-';
 
         cellParagraphs.push(
           new Paragraph({
-            alignment: AlignmentType.LEFT,
-            indent: { left: 180, hanging: 120 },
+            alignment: isSingleDash ? AlignmentType.CENTER : AlignmentType.LEFT,
+            indent: isSingleDash ? undefined : { left: 160, hanging: 120 },
             spacing: {
-              before: 0,
-              after: isLast ? 15 : 2,
+              before: isFirst ? 20 : 3,
+              after: isLast ? 20 : 3,
             },
             children: [
               new TextRun({
-                text: `${idx + 1}). ${line}`,
+                text: isSingleDash ? '-' : `${idx + 1}). ${line}`,
                 size: 14,
                 color: COLOR_DARK,
                 font: 'Calibri',
@@ -1147,7 +1067,7 @@ export async function exportCMMonthlyRecapToDocx(
       });
 
       return new TableCell({
-        width: { size: 42, type: WidthType.PERCENTAGE },
+        width: { size: 40, type: WidthType.PERCENTAGE },
         verticalAlign: VerticalAlign.CENTER,
         borders: borderThin,
         shading: isZebra ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
@@ -1160,14 +1080,14 @@ export async function exportCMMonthlyRecapToDocx(
       tableHeader: true,
       children: [
         'No',
-        'No. Tiket / Identitas',
-        'Perangkat & Lokasi',
+        'Equipment',
+        'Kendala',
         'Tanggal & Status',
-        'Uraian Masalah & Tindakan Solusi',
+        'Tindakan Solusi',
       ].map((text, idx) =>
         new TableCell({
           width: {
-            size: [4, 18, 22, 14, 42][idx],
+            size: [4, 22, 20, 14, 40][idx],
             type: WidthType.PERCENTAGE,
           },
           shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
@@ -1198,7 +1118,6 @@ export async function exportCMMonthlyRecapToDocx(
       const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
       const equipLocStr = `${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
       const dateStr = formatReportDate(report);
-      const issueStr = report.issue || report.problem || report.problemAnalysis || '-';
       const actionStr = report.correctiveAction || report.actionTaken || '-';
 
       return new TableRow({
@@ -1217,9 +1136,30 @@ export async function exportCMMonthlyRecapToDocx(
               }),
             ],
           }),
-          // 2. Tiket
+          // 2. Equipment (Perangkat & Lokasi)
           new TableCell({
-            width: { size: 18, type: WidthType.PERCENTAGE },
+            width: { size: 22, type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
+            children: equipLocStr.split('\n').map((line, lIdx) =>
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                spacing: { before: lIdx === 0 ? 30 : 2, after: lIdx === 0 ? 2 : 30 },
+                children: [
+                  new TextRun({
+                    text: line,
+                    size: 15,
+                    font: 'Calibri',
+                    bold: lIdx === 0,
+                  }),
+                ],
+              })
+            ),
+          }),
+          // 3. Kendala (No. Tiket / Identitas / Permasalahan)
+          new TableCell({
+            width: { size: 20, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
@@ -1228,20 +1168,6 @@ export async function exportCMMonthlyRecapToDocx(
                 alignment: AlignmentType.LEFT,
                 spacing: { before: 30, after: 30 },
                 children: [new TextRun({ text: ticketStr, size: 15, font: 'Calibri', bold: true })],
-              }),
-            ],
-          }),
-          // 3. Perangkat & Lokasi
-          new TableCell({
-            width: { size: 22, type: WidthType.PERCENTAGE },
-            verticalAlign: VerticalAlign.CENTER,
-            borders: borderThin,
-            shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.LEFT,
-                spacing: { before: 30, after: 30 },
-                children: [new TextRun({ text: equipLocStr, size: 15, font: 'Calibri' })],
               }),
             ],
           }),
@@ -1272,8 +1198,8 @@ export async function exportCMMonthlyRecapToDocx(
               }),
             ],
           }),
-          // 5. Uraian Masalah & Tindakan Solusi (Satu Sel Kolom dengan Garis Pemisah Horizontal)
-          buildIssueAndActionCell(issueStr, actionStr, idx % 2 === 1),
+          // 5. Tindakan Solusi (Murni Tindakan Solusi Poin-Poin, Tanpa Label Kendala)
+          buildActionOnlyCell(actionStr, idx % 2 === 1),
         ],
       });
     });
@@ -1993,7 +1919,7 @@ export async function exportCMMonthlyRecapToPDF(
   periodTitle: string = 'Bulanan'
 ): Promise<void> {
   const reports = (rawReports || [])
-    .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR')
+    .filter(r => !r.deleteRequested && r.reportType !== 'SLA' && r.reportType !== 'PIR' && r.revisionStatus !== 'revisi' && !r.isRevision)
     .sort((a, b) => parseReportTime(a) - parseReportTime(b));
 
   if (reports.length === 0) {

@@ -453,6 +453,19 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     });
     const [isSavingTroubleStatus, setIsSavingTroubleStatus] = useState(false);
 
+    // Document Revision Status Modal & Filter State
+    const [selectedRevisionFilter, setSelectedRevisionFilter] = useState<'all' | 'final' | 'revisi'>('all');
+    const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+    const [selectedReportForRevision, setSelectedReportForRevision] = useState<CorrectiveReport | any | null>(null);
+    const [revisionForm, setRevisionForm] = useState<{
+        status: 'final' | 'revisi';
+        note: string;
+    }>({
+        status: 'final',
+        note: ''
+    });
+    const [isSavingRevisionStatus, setIsSavingRevisionStatus] = useState(false);
+
     useEffect(() => {
         if (initialSearchQuery !== undefined) {
             setSearchQuery(initialSearchQuery);
@@ -915,6 +928,71 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
     };
 
+    // Handlers Pembaruan Status Dokumen (Final / Approved vs Revisi)
+    const handleOpenRevisionModal = (report: any) => {
+        lastInteractedReportIdRef.current = report.id;
+        setHighlightedReportId(report.id);
+        try {
+            sessionStorage.setItem('cm_last_interacted_id', report.id);
+            sessionStorage.setItem('cm_should_scroll_to_report', 'true');
+        } catch {}
+        setSelectedReportForRevision(report);
+        const currentStatus = (report.revisionStatus === 'revisi' || report.isRevision) ? 'revisi' : 'final';
+        setRevisionForm({
+            status: currentStatus,
+            note: report.revisionNote || ''
+        });
+        setIsRevisionModalOpen(true);
+    };
+
+    const handleSaveRevisionStatus = async () => {
+        if (!selectedReportForRevision) return;
+        const targetReport = selectedReportForRevision;
+        const targetReportId = targetReport.id;
+
+        if (revisionForm.status === 'revisi' && !revisionForm.note.trim()) {
+            toast.error('Wajib mengisi catatan/alasan apa yang perlu direvisi!');
+            return;
+        }
+
+        try {
+            setIsSavingRevisionStatus(true);
+            const toastId = toast.loading('Menyimpan status dokumen...');
+            const docRef = doc(db, 'corrective_reports', targetReportId);
+            const isRevisi = revisionForm.status === 'revisi';
+
+            await updateDoc(docRef, {
+                revisionStatus: revisionForm.status,
+                isRevision: isRevisi,
+                revisionNote: isRevisi ? revisionForm.note.trim() : '',
+                revisionUpdatedAt: serverTimestamp(),
+                revisionUpdatedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
+                updatedAt: serverTimestamp()
+            });
+
+            // Proteksi Filter: Jika user sedang memfilter status yang berbeda
+            if (selectedRevisionFilter !== 'all' && selectedRevisionFilter !== revisionForm.status) {
+                setSelectedRevisionFilter('all');
+                toast.info("Filter status dokumen disesuaikan ke 'Semua' agar laporan tetap terlihat.", { icon: 'ℹ️' });
+            }
+
+            toast.success(
+                isRevisi
+                    ? 'Status dokumen ditandai: REVISI (Dikecualikan dari Rekapitulasi)'
+                    : 'Status dokumen ditandai: FINAL / APPROVED (Siap Rekapitulasi)',
+                { id: toastId }
+            );
+            setIsRevisionModalOpen(false);
+            setSelectedReportForRevision(null);
+            scrollToReport(targetReportId);
+        } catch (err: any) {
+            console.error('Error saving revision status:', err);
+            toast.error('Gagal memperbarui status revisi: ' + (err?.message || 'Error'));
+        } finally {
+            setIsSavingRevisionStatus(false);
+        }
+    };
+
     const INDO_MONTHS_MAP: Record<string, number> = {
         'januari': 0, 'jan': 0, 'january': 0,
         'februari': 1, 'feb': 1, 'february': 1,
@@ -1184,6 +1262,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             } else if (selectedTroubleStatus === 'unmarked') {
                 if (isClosed || isOpen) return false;
             }
+        }
+
+        // Filter Status Dokumen (Revisi vs Final)
+        if (selectedRevisionFilter !== 'all') {
+            const isRev = report.revisionStatus === 'revisi' || report.isRevision === true;
+            if (selectedRevisionFilter === 'revisi' && !isRev) return false;
+            if (selectedRevisionFilter === 'final' && isRev) return false;
         }
 
         // Incident Date Filter (Day / Month / Year)
@@ -2802,8 +2887,35 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         </select>
                                     </div>
 
+                                    {/* Filter Status Dokumen (Revisi vs Final) */}
+                                    {(archiveFolder === 'cm_pdf' || archiveFolder === 'pir') && (() => {
+                                        const list = reports.filter(r => !r.deleteRequested && (archiveFolder === 'pir' ? r.reportType === 'PIR' : (r.reportType !== 'SLA' && r.reportType !== 'PIR')));
+                                        const revCount = list.filter(r => r.revisionStatus === 'revisi' || r.isRevision === true).length;
+                                        const finalCount = list.length - revCount;
+
+                                        return (
+                                            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
+                                                <select
+                                                    value={selectedRevisionFilter}
+                                                    onChange={(e) => setSelectedRevisionFilter(e.target.value as any)}
+                                                    title="Filter Status Dokumen (Final vs Revisi)"
+                                                    aria-label="Filter Status Dokumen"
+                                                    className={`px-2.5 py-1.5 bg-transparent text-xs font-semibold outline-none cursor-pointer ${
+                                                        selectedRevisionFilter === 'revisi' ? 'text-amber-700 font-bold' :
+                                                        selectedRevisionFilter === 'final' ? 'text-emerald-700 font-bold' :
+                                                        'text-slate-800'
+                                                    }`}
+                                                >
+                                                    <option value="all">Status Dokumen ({list.length})</option>
+                                                    <option value="final">✓ Final ({finalCount})</option>
+                                                    <option value="revisi">⚠️ Revisi ({revCount})</option>
+                                                </select>
+                                            </div>
+                                        );
+                                    })()}
+
                                     {/* Reset Filter Button */}
-                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all' || selectedTroubleStatus !== 'all' || (archiveFolder === 'sla' && selectedSLASource !== 'all')) && (
+                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all' || selectedTroubleStatus !== 'all' || selectedRevisionFilter !== 'all' || (archiveFolder === 'sla' && selectedSLASource !== 'all')) && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -2812,6 +2924,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 setSelectedYear('all');
                                                 setSelectedCMType('all');
                                                 setSelectedTroubleStatus('all');
+                                                setSelectedRevisionFilter('all');
                                                 setSelectedSLASource('all');
                                                 setSearchQuery('');
                                                 setAdminDeleteFilter('all');
@@ -3290,6 +3403,41 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 </div>
 
                                                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                                    {/* BADGE STATUS DOKUMEN REVISI PIR */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (isAuthorizedRole) {
+                                                                handleOpenRevisionModal(report);
+                                                            } else {
+                                                                toast.info('Hanya Standby Engineer / Admin yang dapat mengubah status revisi.');
+                                                            }
+                                                        }}
+                                                        className={`h-8 px-2.5 sm:px-3 rounded-lg inline-flex items-center gap-1.5 text-xs font-bold border transition shadow-2xs cursor-pointer ${
+                                                            report.revisionStatus === 'revisi' || report.isRevision
+                                                                ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-400 animate-pulse'
+                                                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                                                        }`}
+                                                        title={
+                                                            report.revisionStatus === 'revisi' || report.isRevision
+                                                                ? `Status: Dokumen REVISI (Dikecualikan dari Rekapitulasi)${report.revisionNote ? ` - Catatan: ${report.revisionNote}` : ''}. Klik untuk ubah.`
+                                                                : 'Status: Dokumen FINAL / APPROVED. Klik untuk tandai revisi.'
+                                                        }
+                                                    >
+                                                        {report.revisionStatus === 'revisi' || report.isRevision ? (
+                                                            <>
+                                                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                                                <span>REVISI</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                                                <span>FINAL</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+
                                                     <button
                                                         type="button"
                                                         onClick={async () => {
@@ -3380,6 +3528,35 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                             </div>
 
                                             <div className="space-y-3">
+                                                {/* Notice Dokumen Revisi PIR */}
+                                                {(report.revisionStatus === 'revisi' || report.isRevision) && (
+                                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5 shadow-2xs">
+                                                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center justify-between flex-wrap gap-1">
+                                                                <span className="font-extrabold text-amber-900">Dokumen PIR Sedang Dalam Revisi</span>
+                                                                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                                                                    Dikecualikan dari Rekapitulasi
+                                                                </span>
+                                                            </div>
+                                                            {report.revisionNote ? (
+                                                                <p className="mt-1 text-slate-700 italic bg-white/80 p-2 rounded-lg border border-amber-200">
+                                                                    "{report.revisionNote}"
+                                                                </p>
+                                                            ) : (
+                                                                <p className="mt-0.5 text-amber-700 text-[11px]">
+                                                                    Dokumen ini memerlukan perbaikan sebelum dapat diikutsertakan dalam laporan resmi.
+                                                                </p>
+                                                            )}
+                                                            {report.revisionUpdatedBy && (
+                                                                <span className="text-[10px] text-slate-400 block mt-1">
+                                                                    Ditandai oleh: {report.revisionUpdatedBy}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 <div>
                                                     <span className="text-[10px] font-extrabold text-red-600 uppercase tracking-wider block mb-0.5">NAMA ISSUE / INSIDEN</span>
                                                     <h3 className="text-lg font-bold text-slate-900">{report.incidentName || report.issue || 'Laporan Insiden PIR'}</h3>
@@ -3802,6 +3979,41 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                     );
                                                                 }
                                                             })()}
+
+                                                            {/* BADGE STATUS DOKUMEN REVISI (REVISI VS FINAL) */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (isAuthorizedRole) {
+                                                                        handleOpenRevisionModal(report);
+                                                                    } else {
+                                                                        toast.info('Hanya Standby Engineer / Admin yang dapat mengubah status revisi.');
+                                                                    }
+                                                                }}
+                                                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition shadow-2xs cursor-pointer ${
+                                                                    report.revisionStatus === 'revisi' || report.isRevision
+                                                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-400 animate-pulse'
+                                                                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                                                                }`}
+                                                                title={
+                                                                    report.revisionStatus === 'revisi' || report.isRevision
+                                                                        ? `Dokumen Masih REVISI (Dikecualikan dari Rekapitulasi)${report.revisionNote ? ` - Catatan: ${report.revisionNote}` : ''}. Klik untuk ubah ke Final.`
+                                                                        : 'Dokumen FINAL / APPROVED (Masuk Rekapitulasi). Klik untuk ubah ke Revisi.'
+                                                                }
+                                                            >
+                                                                {report.revisionStatus === 'revisi' || report.isRevision ? (
+                                                                    <>
+                                                                        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                                                        <span>Dokumen: REVISI</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                                                        <span>Dokumen: FINAL</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
                                                             {Boolean(report.hasPredictiveReport || report.predictiveReportId) && (
                                                                 <span
                                                                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 shadow-2xs"
@@ -4000,6 +4212,35 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         <p className="text-xs text-slate-500 mt-1">
                                                             Reported by <span className="text-slate-700">{report.reportedByEmail}</span> • {report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString() : 'Baru Saja')}
                                                         </p>
+
+                                                        {/* Notice Dokumen Revisi CM */}
+                                                        {(report.revisionStatus === 'revisi' || report.isRevision) && (
+                                                            <div className="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2 shadow-2xs">
+                                                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center justify-between flex-wrap gap-1">
+                                                                        <span className="font-extrabold text-amber-900">Dokumen Sedang Dalam Revisi</span>
+                                                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300">
+                                                                            Dikecualikan dari Rekapitulasi
+                                                                        </span>
+                                                                    </div>
+                                                                    {report.revisionNote ? (
+                                                                        <p className="mt-1 text-slate-700 italic bg-white/80 p-2 rounded-lg border border-amber-200">
+                                                                            "{report.revisionNote}"
+                                                                        </p>
+                                                                    ) : (
+                                                                        <p className="mt-0.5 text-amber-700 text-[11px]">
+                                                                            Dokumen ini memerlukan perbaikan sebelum dapat diikutsertakan dalam laporan rekapitulasi.
+                                                                        </p>
+                                                                    )}
+                                                                    {report.revisionUpdatedBy && (
+                                                                        <span className="text-[10px] text-slate-400 block mt-1">
+                                                                            Ditandai oleh: {report.revisionUpdatedBy}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -4386,6 +4627,24 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 setForm={setTroubleForm}
                 onSave={handleSaveTroubleStatus}
                 loading={isSavingTroubleStatus}
+            />
+
+            {/* Modal Dialog Update Status Dokumen Revisi (Revisi vs Final) */}
+            <DocumentRevisionStatusModal
+                isOpen={isRevisionModalOpen}
+                onClose={() => {
+                    const targetId = selectedReportForRevision?.id || lastInteractedReportIdRef.current;
+                    setIsRevisionModalOpen(false);
+                    setSelectedReportForRevision(null);
+                    if (targetId) {
+                        scrollToReport(targetId);
+                    }
+                }}
+                report={selectedReportForRevision}
+                form={revisionForm}
+                setForm={setRevisionForm}
+                onSave={handleSaveRevisionStatus}
+                loading={isSavingRevisionStatus}
             />
 
             {/* Floating Quick Jump Pill: Kembali ke Laporan Terpilih / Terakhir Dikerjakan */}
@@ -5218,6 +5477,251 @@ ${sparepartCMs.map(cm => `   - [CM: ${cm.id}] ${cm.incidentName || cm.equipmentN
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// KOMPONEN: DocumentRevisionStatusModal
+// Modal dialog untuk update status dokumen (Final / Approved vs Revisi)
+// pada Laporan CM dan Laporan PIR di Arsip Standby
+// ============================================================================
+interface DocumentRevisionStatusModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    report: CorrectiveReport | any | null;
+    form: {
+        status: 'final' | 'revisi';
+        note: string;
+    };
+    setForm: React.Dispatch<React.SetStateAction<{
+        status: 'final' | 'revisi';
+        note: string;
+    }>>;
+    onSave: () => void;
+    loading: boolean;
+}
+
+const REVISION_NOTE_PRESETS = [
+    'Perbaiki foto dokumentasi sebelum / sesudah pengerjaan',
+    'Lengkapi nomor tiket SLA / tiket insiden',
+    'Koreksi nama perangkat / lokasi lantai',
+    'Perjelas rincian analisis akar masalah (RCA)',
+    'Lengkapi daftar suku cadang / sparepart yang diganti',
+    'Koreksi jam operasional / waktu mulai & selesai perbaikan'
+];
+
+function DocumentRevisionStatusModal({
+    isOpen,
+    onClose,
+    report,
+    form,
+    setForm,
+    onSave,
+    loading
+}: DocumentRevisionStatusModalProps) {
+    if (!isOpen || !report) return null;
+
+    const isRevisi = form.status === 'revisi';
+    const isPIR = report.reportType === 'PIR';
+
+    const handleAddPreset = (presetText: string) => {
+        const current = form.note.trim();
+        if (!current) {
+            setForm(prev => ({ ...prev, note: presetText }));
+        } else if (!current.includes(presetText)) {
+            setForm(prev => ({ ...prev, note: `${current}, ${presetText}` }));
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden my-auto"
+            >
+                {/* Modal Header */}
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                    <div className="flex items-center gap-2.5">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
+                            isPIR ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                            <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                                Status Dokumen {isPIR ? 'PIR (Post Incident)' : 'Corrective Maintenance (CM)'}
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Dokumen berstatus <strong>Revisi</strong> otomatis <em>dikecualikan</em> dari hasil rekapitulasi.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
+                        title="Tutup"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    {/* Ringkasan Laporan Target */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
+                        <div className="font-bold text-slate-800 line-clamp-1">
+                            {report.incidentName || report.ticketName || report.issue || 'Laporan Dokumen'}
+                        </div>
+                        <div className="text-slate-500 flex items-center gap-2 flex-wrap">
+                            <span>{report.equipmentName || report.equipment || 'Perangkat'}</span>
+                            <span>•</span>
+                            <span>{report.location || report.area || 'Lokasi'}</span>
+                            {report.ticketNumber && (
+                                <>
+                                    <span>•</span>
+                                    <span className="font-mono">{report.ticketNumber}</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Radio Choice: Final vs Revisi */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-2">
+                            Pilih Status Dokumen:
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Option Final / Approved */}
+                            <button
+                                type="button"
+                                onClick={() => setForm(prev => ({ ...prev, status: 'final' }))}
+                                className={`p-3.5 rounded-xl border-2 text-left transition flex flex-col gap-1 cursor-pointer ${
+                                    !isRevisi
+                                        ? 'border-emerald-500 bg-emerald-50/70 shadow-sm'
+                                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-extrabold text-emerald-800 flex items-center gap-1.5">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                        FINAL / APPROVED
+                                    </span>
+                                    {!isRevisi && <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />}
+                                </div>
+                                <p className="text-[11px] text-slate-600 leading-snug mt-1">
+                                    Dokumen sudah lengkap &amp; valid. <strong>Masuk dalam rekapitulasi</strong>.
+                                </p>
+                            </button>
+
+                            {/* Option Revisi */}
+                            <button
+                                type="button"
+                                onClick={() => setForm(prev => ({ ...prev, status: 'revisi' }))}
+                                className={`p-3.5 rounded-xl border-2 text-left transition flex flex-col gap-1 cursor-pointer ${
+                                    isRevisi
+                                        ? 'border-amber-500 bg-amber-50/70 shadow-sm'
+                                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-extrabold text-amber-800 flex items-center gap-1.5">
+                                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                        DALAM REVISI
+                                    </span>
+                                    {isRevisi && <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-ping" />}
+                                </div>
+                                <p className="text-[11px] text-slate-600 leading-snug mt-1">
+                                    Masih ada perbaikan. <strong>Otomatis dikecualikan dari rekap</strong>.
+                                </p>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Note input (Wajib jika revisi, opsional jika final) */}
+                    {isRevisi ? (
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold text-amber-900 flex items-center justify-between">
+                                <span>Catatan / Bagian yang Harus Direvisi: <span className="text-red-500">*</span></span>
+                                <span className="text-[10px] text-slate-400 font-normal">Wajib diisi</span>
+                            </label>
+                            <textarea
+                                value={form.note}
+                                onChange={(e) => setForm(prev => ({ ...prev, note: e.target.value }))}
+                                placeholder="Contoh: Lampirkan foto penggantian part, perbaiki serial number pada halaman 2..."
+                                rows={3}
+                                className="w-full p-2.5 text-xs sm:text-sm border border-amber-300 rounded-xl bg-amber-50/30 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                            />
+
+                            {/* Quick Presets for Revision */}
+                            <div>
+                                <span className="text-[10px] font-bold text-slate-500 block mb-1.5">
+                                    Pilih template catatan cepat:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {REVISION_NOTE_PRESETS.map((p, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => handleAddPreset(p)}
+                                            className="text-[10px] px-2 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-slate-200 transition cursor-pointer"
+                                        >
+                                            + {p}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        report.revisionNote ? (
+                            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
+                                <span className="font-bold text-slate-700 block mb-0.5">Catatan Revisi Sebelumnya:</span>
+                                <p className="italic text-slate-500">{report.revisionNote}</p>
+                                <span className="text-[10px] text-emerald-700 font-semibold block mt-1">
+                                    ✓ Catatan revisi akan dibersihkan saat disimpan sebagai Final.
+                                </span>
+                            </div>
+                        ) : null
+                    )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSave}
+                        disabled={loading}
+                        className={`px-5 py-2 rounded-xl text-xs font-bold text-white transition flex items-center gap-1.5 shadow-md cursor-pointer ${
+                            isRevisi
+                                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                        }`}
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Menyimpan...</span>
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Simpan Status {isRevisi ? 'Revisi' : 'Final'}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </motion.div>
         </div>
     );
 }

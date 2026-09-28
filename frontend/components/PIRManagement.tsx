@@ -22,7 +22,9 @@ import {
   Loader2,
   User,
   MapPin,
-  FolderOpen
+  FolderOpen,
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -76,6 +78,19 @@ export function PIRManagement() {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
+  const [selectedRevisionFilter, setSelectedRevisionFilter] = useState<'all' | 'final' | 'revisi'>('all');
+
+  // Revision Modal State
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+  const [selectedReportForRevision, setSelectedReportForRevision] = useState<PIRReportData | null>(null);
+  const [revisionForm, setRevisionForm] = useState<{
+    status: 'final' | 'revisi';
+    note: string;
+  }>({
+    status: 'final',
+    note: ''
+  });
+  const [isSavingRevisionStatus, setIsSavingRevisionStatus] = useState(false);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{
@@ -137,6 +152,13 @@ export function PIRManagement() {
       }
     }
 
+    // Revision status filter
+    if (selectedRevisionFilter !== 'all') {
+      const isRev = report.revisionStatus === 'revisi' || report.isRevision === true;
+      if (selectedRevisionFilter === 'revisi' && !isRev) return false;
+      if (selectedRevisionFilter === 'final' && isRev) return false;
+    }
+
     // Date filter
     if (report.incidentDate) {
       const d = new Date(report.incidentDate);
@@ -161,6 +183,54 @@ export function PIRManagement() {
   const handleOpenEdit = (id: string) => {
     setEditingId(id);
     setShowModal(true);
+  };
+
+  const handleOpenRevisionModal = (report: PIRReportData) => {
+    setSelectedReportForRevision(report);
+    const currentStatus = (report.revisionStatus === 'revisi' || report.isRevision) ? 'revisi' : 'final';
+    setRevisionForm({
+      status: currentStatus,
+      note: report.revisionNote || ''
+    });
+    setIsRevisionModalOpen(true);
+  };
+
+  const handleSaveRevisionStatus = async () => {
+    if (!selectedReportForRevision?.id) return;
+    const isRevisi = revisionForm.status === 'revisi';
+    if (isRevisi && !revisionForm.note.trim()) {
+      toast.error('Wajib mengisi catatan bagian yang harus direvisi!');
+      return;
+    }
+
+    try {
+      setIsSavingRevisionStatus(true);
+      await updateDoc(doc(db, 'corrective_reports', selectedReportForRevision.id), {
+        revisionStatus: revisionForm.status,
+        isRevision: isRevisi,
+        revisionNote: isRevisi ? revisionForm.note.trim() : '',
+        revisionUpdatedAt: serverTimestamp(),
+        revisionUpdatedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
+        updatedAt: serverTimestamp()
+      });
+
+      if (selectedRevisionFilter !== 'all' && selectedRevisionFilter !== revisionForm.status) {
+        setSelectedRevisionFilter('all');
+      }
+
+      toast.success(
+        isRevisi
+          ? 'Status laporan PIR ditandai: REVISI (Dikecualikan dari Rekapitulasi)'
+          : 'Status laporan PIR ditandai: FINAL / APPROVED'
+      );
+      setIsRevisionModalOpen(false);
+      setSelectedReportForRevision(null);
+    } catch (err: any) {
+      console.error('Error updating revision status:', err);
+      toast.error('Gagal memperbarui status revisi: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSavingRevisionStatus(false);
+    }
   };
 
   const handleCreateSLAFromPIR = async (report: PIRReportData) => {
@@ -317,6 +387,17 @@ export function PIRManagement() {
             <option value="OTHER">Other</option>
           </select>
 
+          {/* Status Dokumen Revisi vs Final filter */}
+          <select
+            value={selectedRevisionFilter}
+            onChange={(e) => setSelectedRevisionFilter(e.target.value as any)}
+            className="px-3 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:bg-white focus:border-amber-500 transition cursor-pointer"
+          >
+            <option value="all">Status Dokumen ({reports.length})</option>
+            <option value="final">✓ Final ({reports.filter(r => r.revisionStatus !== 'revisi' && !r.isRevision).length})</option>
+            <option value="revisi">⚠️ Revisi ({reports.filter(r => r.revisionStatus === 'revisi' || r.isRevision).length})</option>
+          </select>
+
           {/* Month filter */}
           <select
             value={selectedMonth}
@@ -374,15 +455,64 @@ export function PIRManagement() {
                 >
                   <div className="space-y-3">
                     {/* Header Card: Badges */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${getSeverityBadge(report.severityLevel)}`}>
-                        {report.severityLevel || 'LOW'} SEVERITY
-                      </span>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${getSeverityBadge(report.severityLevel)}`}>
+                          {report.severityLevel || 'LOW'} SEVERITY
+                        </span>
+                        {/* BADGE REVISI STATUS */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenRevisionModal(report)}
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 cursor-pointer transition ${
+                            report.revisionStatus === 'revisi' || report.isRevision
+                              ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-400 animate-pulse'
+                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                          }`}
+                          title={
+                            report.revisionStatus === 'revisi' || report.isRevision
+                              ? `Dokumen Masih Revisi: ${report.revisionNote || 'Perlu perbaikan'}. Klik untuk ubah ke Final.`
+                              : 'Dokumen Final / Approved. Klik untuk tandai revisi.'
+                          }
+                        >
+                          {report.revisionStatus === 'revisi' || report.isRevision ? (
+                            <>
+                              <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span>REVISI</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>FINAL</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
 
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                         {effectiveCompany}
                       </span>
                     </div>
+
+                    {/* Notice Dokumen Revisi PIR */}
+                    {(report.revisionStatus === 'revisi' || report.isRevision) && (
+                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2 shadow-2xs">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between flex-wrap gap-1">
+                            <span className="font-extrabold text-amber-900">Dalam Revisi</span>
+                            <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
+                              Exclude Rekap
+                            </span>
+                          </div>
+                          {report.revisionNote && (
+                            <p className="mt-0.5 text-slate-700 italic text-[11px]">
+                              "{report.revisionNote}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Incident Title */}
                     <div>
@@ -561,6 +691,162 @@ export function PIRManagement() {
         deleteReason={itemToDelete?.deleteReason}
         requireReason={!isQcDme}
       />
+
+      {/* Revision Modal for PIR */}
+      {isRevisionModalOpen && selectedReportForRevision && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden my-auto"
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                    Status Dokumen PIR (Post Incident)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Dokumen berstatus <strong>Revisi</strong> otomatis <em>dikecualikan</em> dari hasil rekapitulasi.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRevisionModalOpen(false);
+                  setSelectedReportForRevision(null);
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
+                <div className="font-bold text-slate-800 line-clamp-1">
+                  {selectedReportForRevision.incidentName || 'Laporan PIR'}
+                </div>
+                <div className="text-slate-500 flex items-center gap-2 flex-wrap">
+                  <span>ID: {selectedReportForRevision.incidentId || selectedReportForRevision.id?.slice(0, 8)}</span>
+                  <span>•</span>
+                  <span>{selectedReportForRevision.incidentDate || '-'}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Pilih Status Dokumen:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRevisionForm(prev => ({ ...prev, status: 'final' }))}
+                    className={`p-3.5 rounded-xl border-2 text-left transition flex flex-col gap-1 cursor-pointer ${
+                      revisionForm.status !== 'revisi'
+                        ? 'border-emerald-500 bg-emerald-50/70 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-emerald-800 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        FINAL / APPROVED
+                      </span>
+                      {revisionForm.status !== 'revisi' && <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />}
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-snug mt-1">
+                      Dokumen sudah valid. <strong>Masuk dalam rekapitulasi</strong>.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRevisionForm(prev => ({ ...prev, status: 'revisi' }))}
+                    className={`p-3.5 rounded-xl border-2 text-left transition flex flex-col gap-1 cursor-pointer ${
+                      revisionForm.status === 'revisi'
+                        ? 'border-amber-500 bg-amber-50/70 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-amber-800 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        DALAM REVISI
+                      </span>
+                      {revisionForm.status === 'revisi' && <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-ping" />}
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-snug mt-1">
+                      Masih ada perbaikan. <strong>Otomatis dikecualikan dari rekap</strong>.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {revisionForm.status === 'revisi' && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-amber-900 flex items-center justify-between">
+                    <span>Catatan Perbaikan Revisi: <span className="text-red-500">*</span></span>
+                    <span className="text-[10px] text-slate-400 font-normal">Wajib diisi</span>
+                  </label>
+                  <textarea
+                    value={revisionForm.note}
+                    onChange={(e) => setRevisionForm(prev => ({ ...prev, note: e.target.value }))}
+                    placeholder="Contoh: Lampirkan kronologi kejadian, perjelas akar masalah (RCA)..."
+                    rows={3}
+                    className="w-full p-2.5 text-xs sm:text-sm border border-amber-300 rounded-xl bg-amber-50/30 focus:ring-2 focus:ring-amber-500 outline-none transition"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRevisionModalOpen(false);
+                  setSelectedReportForRevision(null);
+                }}
+                disabled={isSavingRevisionStatus}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveRevisionStatus}
+                disabled={isSavingRevisionStatus}
+                className={`px-5 py-2 rounded-xl text-xs font-bold text-white transition flex items-center gap-1.5 shadow-md cursor-pointer ${
+                  revisionForm.status === 'revisi'
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                }`}
+              >
+                {isSavingRevisionStatus ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Simpan Status {revisionForm.status === 'revisi' ? 'Revisi' : 'Final'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
