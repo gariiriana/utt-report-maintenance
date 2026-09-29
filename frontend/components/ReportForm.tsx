@@ -1466,7 +1466,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   <motion.button
                     whileHover={{ scale: 1.02, x: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={onClearEdit}
+                    onClick={() => onClearEdit()}
                     className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-md transition-all text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 cursor-pointer border border-emerald-400/30 shrink-0"
                     title="Kembali ke Arsip Dokumen"
                   >
@@ -1503,7 +1503,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   {onClearEdit && (
                     <button
                       type="button"
-                      onClick={onClearEdit}
+                      onClick={() => onClearEdit()}
                       className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl border border-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-200 transition-all cursor-pointer shrink-0"
                     >
                       <X className="w-3.5 h-3.5" /> Batal
@@ -2059,7 +2059,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               {(isDME || editingData) && onClearEdit && (
                 <button
                   type="button"
-                  onClick={onClearEdit}
+                  onClick={() => onClearEdit()}
                   disabled={isSaving || isExporting}
                   className="w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer"
                 >

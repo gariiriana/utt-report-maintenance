@@ -284,6 +284,14 @@ export const getMonthYearString = (date: Date) => {
   return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 };
 
+export const getFullDateString = (date: Date) => {
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+};
+
 export const getWeekOfMonth = (date: Date) => {
   const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
   const dayOfMonth = date.getDate();

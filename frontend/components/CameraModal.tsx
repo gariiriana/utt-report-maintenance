@@ -188,12 +188,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
       if (videoTrack) {
         try {
-          const caps = (videoTrack.getCapabilities ? videoTrack.getCapabilities() : {}) as any;
+          const caps = (typeof videoTrack.getCapabilities === 'function' ? videoTrack.getCapabilities() : {}) as any;
           console.log("Camera Capabilities:", caps);
 
           const hasHardwareTorch = Boolean(
-            caps.torch ||
-            (Array.isArray(caps.fillLightMode) && caps.fillLightMode.includes('torch'))
+            caps?.torch ||
+            (Array.isArray(caps?.fillLightMode) && caps.fillLightMode.includes('torch'))
           );
 
           if (hasHardwareTorch) {
@@ -201,16 +201,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             setIsTorchOn(false);
           } else {
             const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() as any;
-            if (supportedConstraints?.torch) {
-              try {
-                await (videoTrack as any).applyConstraints({ advanced: [{ torch: false }] });
-                setTorchSupported(true);
-                setIsTorchOn(false);
-              } catch {
-                setTorchSupported(false);
-              }
+            if (supportedConstraints?.torch && facingMode === 'environment') {
+              setTorchSupported(true);
+              setIsTorchOn(false);
             } else {
               setTorchSupported(false);
+              setIsTorchOn(false);
             }
           }
 
@@ -289,16 +285,60 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
   const toggleTorch = async () => {
     if (!streamRef.current) return;
     const videoTrack = streamRef.current.getVideoTracks()[0];
-    if (videoTrack && torchSupported) {
+    if (!videoTrack) return;
+
+    const newState = !isTorchOn;
+    let applied = false;
+
+    // Strategi 1: Standard W3C torch constraint
+    try {
+      await (videoTrack as any).applyConstraints({
+        advanced: [{ torch: newState }]
+      });
+      applied = true;
+    } catch (e1) {
+      console.warn("Metode torch standard gagal, mencoba fillLightMode:", e1);
+    }
+
+    // Strategi 2: fillLightMode constraint
+    if (!applied) {
       try {
-        const newState = !isTorchOn;
-        await videoTrack.applyConstraints({
-          advanced: [{ torch: newState }]
-        } as any);
-        setIsTorchOn(newState);
-      } catch (err) {
-        console.error("Failed to toggle torch:", err);
-        toast.error("Gagal mengaktifkan senter");
+        await (videoTrack as any).applyConstraints({
+          advanced: [{ fillLightMode: newState ? 'torch' : 'off' }]
+        });
+        applied = true;
+      } catch (e2) {
+        console.warn("Metode fillLightMode gagal:", e2);
+      }
+    }
+
+    // Strategi 3: kombinasi torch + fillLightMode
+    if (!applied) {
+      try {
+        await (videoTrack as any).applyConstraints({
+          advanced: [{ torch: newState, fillLightMode: newState ? 'torch' : 'off' }]
+        });
+        applied = true;
+      } catch (e3) {
+        console.warn("Metode kombinasi torch gagal:", e3);
+      }
+    }
+
+    if (applied) {
+      setIsTorchOn(newState);
+      toast.success(newState ? "Lampu flash LED menyala" : "Lampu flash LED dimatikan", { duration: 1500 });
+    } else {
+      if (!newState) {
+        setIsTorchOn(false);
+      } else {
+        // Driver hardware / browser menolak akses lampu fisik
+        setIsTorchOn(false);
+        setTorchSupported(false);
+        setIsScreenFlashOn(true);
+        toast(
+          "Flash LED tidak diizinkan sistem HP ini. Flash Layar otomatis aktif! (Atau gunakan tombol 'Kamera HP')",
+          { icon: "💡", duration: 4500 }
+        );
       }
     }
   };
@@ -422,7 +462,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     e.target.value = '';
   };
 
-  const takePhoto = () => {
+  const takePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -431,12 +471,17 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
     if (isScreenFlashOn) {
       setIsFlashing(true);
-      setTimeout(() => setIsFlashing(false), 300);
+      // Jeda 220ms agar cahaya layar putih memancar penuh dan kamera HP menyesuaikan auto-exposure
+      await new Promise(resolve => setTimeout(resolve, 220));
     }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
+
+    if (isScreenFlashOn) {
+      setTimeout(() => setIsFlashing(false), 150);
+    }
 
     capturedTimestampRef.current = new Date().toLocaleString('id-ID', {
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -588,33 +633,33 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           <div className="flex items-center gap-1.5 sm:gap-2">
             {!capturedImage && (
               <>
-                {torchSupported ? (
+                {torchSupported && (
                   <button
                     type="button"
                     onClick={toggleTorch}
-                    className={`p-2 rounded-xl transition ${isTorchOn ? 'bg-amber-100 text-amber-600 ring-2 ring-amber-400' : 'text-slate-500 hover:bg-slate-100'}`}
+                    className={`p-2 rounded-xl transition ${isTorchOn ? 'bg-amber-100 text-amber-600 ring-2 ring-amber-400 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
                     title={isTorchOn ? "Matikan Lampu Flash LED" : "Nyalakan Lampu Flash LED"}
                   >
-                    {isTorchOn ? <Zap className="w-5 h-5 fill-amber-500 text-amber-600" /> : <ZapOff className="w-5 h-5" />}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsScreenFlashOn(prev => !prev)}
-                    className={`p-2 rounded-xl transition flex items-center gap-1 text-xs font-semibold ${isScreenFlashOn ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
-                    title={isScreenFlashOn ? "Matikan Flash Layar" : "Nyalakan Flash Layar (Penerang untuk iPhone / HP tanpa Flash WebRTC)"}
-                  >
-                    <Sun className={`w-5 h-5 ${isScreenFlashOn ? 'fill-amber-500 text-amber-600 animate-pulse' : ''}`} />
-                    <span className="text-[9px] hidden sm:inline">{isScreenFlashOn ? 'Layar ON' : 'Flash Layar'}</span>
+                    {isTorchOn ? <Zap className="w-5 h-5 fill-amber-500 text-amber-600 animate-pulse" /> : <ZapOff className="w-5 h-5" />}
                   </button>
                 )}
 
-                <label
-                  className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition cursor-pointer flex items-center gap-1"
-                  title="Gunakan Kamera Bawaan HP (Mendukung Flash Fisik HP)"
+                <button
+                  type="button"
+                  onClick={() => setIsScreenFlashOn(prev => !prev)}
+                  className={`p-2 rounded-xl transition flex items-center gap-1 text-xs font-semibold ${isScreenFlashOn ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                  title={isScreenFlashOn ? "Matikan Flash Layar" : "Nyalakan Flash Layar (Penerang untuk iPhone / HP yang Flash LED-nya tidak didukung)"}
                 >
-                  <Camera className="w-5 h-5" />
-                  <span className="text-[10px] font-bold hidden sm:inline">Kamera HP</span>
+                  <Sun className={`w-5 h-5 ${isScreenFlashOn ? 'fill-amber-500 text-amber-600 animate-pulse' : ''}`} />
+                  <span className="text-[10px] hidden sm:inline">{isScreenFlashOn ? 'Layar ON' : 'Flash Layar'}</span>
+                </button>
+
+                <label
+                  className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 rounded-xl transition cursor-pointer flex items-center gap-1.5 border border-blue-200/80 shadow-xs"
+                  title="Gunakan Kamera Bawaan HP (Flash Fisik 100% Berfungsi di Semua HP & iPhone)"
+                >
+                  <Camera className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span className="text-[11px] font-bold whitespace-nowrap">Kamera HP</span>
                   <input
                     type="file"
                     accept="image/*"
