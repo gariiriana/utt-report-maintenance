@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye, ArrowLeft } from 'lucide-react';
-import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp, getDoc, getDocFromCache } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -43,7 +43,6 @@ import { AbnormalReportModal } from './AbnormalReportModal';
 import { HSEReportViewer } from './HSEReportViewer';
 import { HSEReportForm } from './HSEReportForm';
 import { isServiceReportSupported } from '@/config/serviceReportRegistry';
-import { getDoc } from 'firebase/firestore';
 import { safeStorage } from '@/utils/safeStorage';
 
 interface PhotoData {
@@ -1319,6 +1318,29 @@ export function DocumentList({
     return { blob, fileName };
   };
 
+  // Helper: Firestore getDoc with 5s timeout + cache fallback to prevent hanging when offline
+  const safeGetFirestoreDoc = async (cName: string, docId: string): Promise<any> => {
+    try {
+      const docRef = doc(db, cName, docId);
+      if (navigator.onLine) {
+        const fetchPromise = getDoc(docRef);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Firestore getDoc timeout (5s)')), 5000)
+        );
+        try {
+          return await Promise.race([fetchPromise, timeoutPromise]);
+        } catch {
+          // Online fetch failed/timed out → try cache
+          return await getDocFromCache(docRef).catch(() => null);
+        }
+      }
+      // Offline → read from cache directly
+      return await getDocFromCache(docRef).catch(() => null);
+    } catch {
+      return null;
+    }
+  };
+
   const buildPDFBlob = async (docData: ExcelDocument, saveToFile: boolean = false, photosOnly: boolean = false): Promise<{ blob: Blob; fileName: string }[]> => {
     let finalPhotosData = docData.photosData || [];
 
@@ -1380,11 +1402,11 @@ export function DocumentList({
       }
     }
 
-    // 3. Fallback: Cek jika foto tersimpan di dokumen utama Firestore
+    // 3. Fallback: Cek jika foto tersimpan di dokumen utama Firestore (with timeout)
     if (finalPhotosData.length === 0) {
       try {
-        const docSnap = await getDoc(doc(db, colName, docData.id));
-        if (docSnap.exists()) {
+        const docSnap = await safeGetFirestoreDoc(colName, docData.id);
+        if (docSnap && docSnap.exists()) {
           const d = docSnap.data();
           const rawPhotos = d.photos || d.photosData || d.cards;
           if (Array.isArray(rawPhotos) && rawPhotos.length > 0) {
@@ -1486,8 +1508,8 @@ export function DocumentList({
     let servicePayload = docData.serviceReportPayload;
     if (!srBase64 && !servicePayload) {
       try {
-        const docSnap = await getDoc(doc(db, colName, docData.id));
-        if (docSnap.exists()) {
+        const docSnap = await safeGetFirestoreDoc(colName, docData.id);
+        if (docSnap && docSnap.exists()) {
           const d = docSnap.data();
           if (d.attachedSrBase64) srBase64 = d.attachedSrBase64;
           if (d.attachedSrFile?.name && !srFileName) srFileName = d.attachedSrFile.name;
@@ -1774,7 +1796,10 @@ export function DocumentList({
       toast.success('PDF berhasil diunduh!', { id: 'download-pdf' });
     } catch (error) {
       console.error('Download PDF error:', error);
-      toast.error('Gagal mengunduh PDF', { id: 'download-pdf' });
+      toast.error('Gagal mengunduh PDF. Periksa koneksi internet Anda.', { id: 'download-pdf' });
+    } finally {
+      // Pastikan toast loading selalu di-dismiss meskipun terjadi error tak terduga
+      setTimeout(() => toast.dismiss('download-pdf'), 100);
     }
   };
 
@@ -1793,6 +1818,8 @@ export function DocumentList({
     } catch (error) {
       console.error('Download photos-only error:', error);
       toast.error('Gagal mengunduh dokumentasi foto', { id: 'download-photos' });
+    } finally {
+      setTimeout(() => toast.dismiss('download-photos'), 100);
     }
   };
 
@@ -1823,11 +1850,20 @@ export function DocumentList({
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
-        const mimeType = docData.attachedSrFile?.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        // Deteksi apakah file SR yang di-upload aslinya PDF atau Excel
+        const isPdf =
+          docData.attachedSrFile?.type === 'application/pdf' ||
+          srFileName?.toLowerCase().endsWith('.pdf') ||
+          srBase64.startsWith('data:application/pdf') ||
+          srBase64.includes('JVBERi0');
+        const mimeType = isPdf
+          ? 'application/pdf'
+          : (docData.attachedSrFile?.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        const ext = isPdf ? '.pdf' : '.xlsx';
         const blob = new Blob([byteNumbers], { type: mimeType });
-        const finalName = srFileName || `${docData.fileName.replace(/\.pdf$/i, '')}_Service_Report.xlsx`;
+        const finalName = srFileName || `${docData.fileName.replace(/\.pdf$/i, '')}_Service_Report${ext}`;
         saveAs(blob, finalName);
-        toast.success('Berkas Service Report Excel berhasil diunduh!', { id: 'download-sr' });
+        toast.success(`Berkas Service Report berhasil diunduh!`, { id: 'download-sr' });
         return;
       }
 
@@ -1859,6 +1895,8 @@ export function DocumentList({
     } catch (error: any) {
       console.error('Download SR error:', error);
       toast.error(`Gagal mengunduh Service Report: ${error.message || 'Terjadi kesalahan'}`, { id: 'download-sr' });
+    } finally {
+      setTimeout(() => toast.dismiss('download-sr'), 100);
     }
   };
 

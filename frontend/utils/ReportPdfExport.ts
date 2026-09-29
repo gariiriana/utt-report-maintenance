@@ -47,21 +47,46 @@ export const loadLogoBase64 = (pathOrObj: string | { src: string } | null | unde
       resolve('');
       return;
     }
+    if (url.startsWith('data:image/')) {
+      resolve(url);
+      return;
+    }
+
+    let hasFinished = false;
+    const timer = setTimeout(() => {
+      if (!hasFinished) {
+        hasFinished = true;
+        resolve('');
+      }
+    }, 3000);
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
+      if (hasFinished) return;
+      hasFinished = true;
+      clearTimeout(timer);
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        }
+        resolve(canvas.toDataURL('image/png'));
+      } catch {
+        resolve('');
       }
-      resolve(canvas.toDataURL('image/png'));
     };
-    img.onerror = () => resolve('');
+    img.onerror = () => {
+      if (hasFinished) return;
+      hasFinished = true;
+      clearTimeout(timer);
+      resolve('');
+    };
     img.src = url;
   });
 };

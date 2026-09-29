@@ -15,22 +15,49 @@ import logoK2 from '@/assets/logo_k2.png';
  * dengan latar belakang putih agar transparansi PNG tidak menjadi hitam di PDF.
  */
 export async function loadImageBase64(src: string): Promise<string> {
-  return new Promise((resolve, reject) => {
+  if (!src) return '';
+  if (typeof src === 'string' && src.startsWith('data:image/')) {
+    return src;
+  }
+
+  return new Promise((resolve) => {
+    let hasFinished = false;
+    const timer = setTimeout(() => {
+      if (!hasFinished) {
+        hasFinished = true;
+        console.warn('loadImageBase64 timeout for:', src.substring(0, 60));
+        resolve('');
+      }
+    }, 3000);
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth || img.width;
-      canvas.height = img.naturalHeight || img.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
+      if (hasFinished) return;
+      hasFinished = true;
+      clearTimeout(timer);
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        }
+        resolve(canvas.toDataURL('image/png'));
+      } catch (canvasErr) {
+        console.warn('Failed to draw canvas for image:', canvasErr);
+        resolve('');
       }
-      resolve(canvas.toDataURL('image/png'));
     };
-    img.onerror = reject;
+    img.onerror = () => {
+      if (hasFinished) return;
+      hasFinished = true;
+      clearTimeout(timer);
+      resolve('');
+    };
     img.src = src;
   });
 }
