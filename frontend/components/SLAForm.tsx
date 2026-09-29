@@ -130,6 +130,69 @@ export interface SLAPrefillData {
   equipmentName?: string;
 }
 
+// Helper konversi tanggal/waktu ke format ISO datetime-local (YYYY-MM-DDTHH:mm)
+export function formatToDateTimeLocal(dateInput: any): string {
+  if (!dateInput) return '';
+  let d: Date | null = null;
+  if (dateInput instanceof Date) {
+    d = dateInput;
+  } else if (dateInput && typeof dateInput.toDate === 'function') {
+    d = dateInput.toDate();
+  } else if (typeof dateInput === 'number') {
+    d = new Date(dateInput);
+  } else if (typeof dateInput === 'string') {
+    const trimmed = dateInput.trim();
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(trimmed)) {
+      return trimmed.slice(0, 16);
+    }
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+    if (isoMatch) {
+      const yr = isoMatch[1];
+      const mo = isoMatch[2];
+      const dy = isoMatch[3];
+      const hr = isoMatch[4] || '08';
+      const mn = isoMatch[5] || '00';
+      return `${yr}-${mo}-${dy}T${hr}:${mn}`;
+    }
+    const indonesianMonths: Record<string, number> = {
+      januari: 0, jan: 0, februari: 1, feb: 1, maret: 2, mar: 2,
+      april: 3, apr: 3, mei: 4, may: 4, juni: 5, jun: 5,
+      juli: 6, jul: 6, agustus: 7, agu: 7, ags: 7,
+      september: 8, sep: 8, oktober: 9, okt: 9, oct: 9,
+      november: 10, nov: 10, desember: 11, des: 11, dec: 11
+    };
+    const textDateMatch = trimmed.match(/^(\d{1,2})[\s\-]+([a-zA-Z]+)[\s\-]+(\d{4})(?:[\s,T]+(\d{1,2}):(\d{2}))?/);
+    if (textDateMatch) {
+      const day = parseInt(textDateMatch[1], 10);
+      const monthKey = textDateMatch[2].toLowerCase();
+      const year = parseInt(textDateMatch[3], 10);
+      const hour = textDateMatch[4] ? parseInt(textDateMatch[4], 10) : 8;
+      const min = textDateMatch[5] ? parseInt(textDateMatch[5], 10) : 0;
+      if (monthKey in indonesianMonths) {
+        d = new Date(year, indonesianMonths[monthKey], day, hour, min);
+      }
+    }
+    if (!d) {
+      const dmyMatch = trimmed.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})(?:[\s,T]+(\d{1,2}):(\d{2}))?/);
+      if (dmyMatch) {
+        const day = parseInt(dmyMatch[1], 10);
+        const month = parseInt(dmyMatch[2], 10) - 1;
+        const year = parseInt(dmyMatch[3], 10);
+        const hour = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 8;
+        const min = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+        d = new Date(year, month, day, hour, min);
+      }
+    }
+    if (!d) {
+      const fallback = new Date(trimmed);
+      if (!isNaN(fallback.getTime())) d = fallback;
+    }
+  }
+  if (!d || isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 interface SLAFormProps {
   onSuccess: (savedId?: string) => void;
   onCancel: (canceledId?: string) => void;
@@ -173,7 +236,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     pirReportId: prefillData?.pirReportId || '',
 
     // Response Time (Step 1) - Target < 5 Menit
-    timeOrder: '',
+    timeOrder: formatToDateTimeLocal(prefillData?.timeOrder) || '',
     actualTimeResponse: '',
     targetResponseMin: 5,
     photosResponse: [] as PhotoItem[],
@@ -295,7 +358,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
         ticketNumber: prefillData.ticketNumber || prev.ticketNumber,
         ticketStatus: prefillData.ticketStatus || prev.ticketStatus,
         location: prefillData.location || prev.location,
-        timeOrder: prefillData.timeOrder || prev.timeOrder,
+        timeOrder: formatToDateTimeLocal(prefillData.timeOrder) || prev.timeOrder,
         priority: finalPriority,
         remark: prefillData.remark || prev.remark,
         cmReportId: prefillData.cmReportId || prev.cmReportId,
@@ -377,7 +440,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       ...prev,
       ticketName: foundCM.incidentName || foundCM.equipmentName || foundCM.issue || prev.ticketName,
       location: foundCM.location || prev.location || 'Neutra DC Cikarang',
-      timeOrder: foundCM.incidentDate || (foundCM.reportedAt?.toDate ? foundCM.reportedAt.toDate().toLocaleDateString('id-ID') : prev.timeOrder),
+      timeOrder: formatToDateTimeLocal(foundCM.incidentDate || foundCM.reportedAt) || prev.timeOrder,
       priority: prev.priority || finalPriority,
       remark: foundCM.actionTaken || foundCM.summaryProblemAnalysis || prev.remark,
       cmReportId: foundCM.id,
@@ -414,7 +477,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       ticketNumber: foundPIR.slaTicketNumber || foundPIR.ticketNumber || foundPIR.incidentId || prev.ticketNumber,
       ticketStatus: foundPIR.slaTicketStatus || (foundPIR.ticketStatus === 'closed' ? 'closed' : 'open'),
       location: foundPIR.location || prev.location || 'Neutra DC Cikarang',
-      timeOrder: foundPIR.incidentDate || prev.timeOrder,
+      timeOrder: formatToDateTimeLocal(foundPIR.incidentDate || foundPIR.reportedAt) || prev.timeOrder,
       remark: foundPIR.resolution || foundPIR.summary || prev.remark,
       pirReportId: foundPIR.id,
     }));
@@ -501,8 +564,16 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
   useEffect(() => {
     const calculateDiffMinutes = (startStr: string, endStr: string): number => {
       if (!startStr || !endStr) return 0;
-      const start = new Date(startStr);
-      const end = new Date(endStr);
+      let start = new Date(startStr);
+      if (isNaN(start.getTime())) {
+        const localIso = formatToDateTimeLocal(startStr);
+        if (localIso) start = new Date(localIso);
+      }
+      let end = new Date(endStr);
+      if (isNaN(end.getTime())) {
+        const localIso = formatToDateTimeLocal(endStr);
+        if (localIso) end = new Date(localIso);
+      }
       const diffMs = end.getTime() - start.getTime();
       if (isNaN(diffMs) || diffMs < 0) return 0;
       return Math.round(diffMs / (1000 * 60));

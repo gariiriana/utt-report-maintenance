@@ -11,7 +11,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Save, FileEdit } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { ExcelDocument } from '@/components/DocumentList';
+import { ExcelDocument, invalidateDocumentsCache } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { draftStorage } from '@/utils/draftStorage';
 import { sendFileNotification } from '@/utils/notificationService';
+import { safeStorage } from '@/utils/safeStorage';
 
 
 
@@ -77,7 +78,7 @@ export interface ReportUnit {
 
 interface ReportFormProps {
   editingData?: ExcelDocument | null;
-  onClearEdit?: () => void;
+  onClearEdit?: (savedDocId?: string) => void;
 }
 
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
@@ -1297,9 +1298,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             'abnormalFinding.findingId': createdFindingId,
           }).catch(() => {});
         }
+        // Bersihkan cache dokumen di memori agar Arsip Dokumen langsung sinkron dengan Firestore
+        invalidateDocumentsCache();
         toast.success('Perubahan laporan berhasil diperbarui di Arsip Dokumen!', { id: toastId });
+        const savedId = typeof saveResult === 'string' ? saveResult : editingData?.id;
+        if (savedId) {
+          safeStorage.setItem('dme_highlight_document_id', savedId);
+        }
         if (onClearEdit) {
-          onClearEdit();
+          onClearEdit(savedId);
         }
       } else {
         toast.error('Gagal memperbarui data laporan ke database', { id: toastId });

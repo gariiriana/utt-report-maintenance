@@ -128,6 +128,8 @@ export function MainApp() {
 
   // State data laporan yang sedang disunting (edit mode)
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
+  // State target dokumen yang disorot (auto-scroll & highlight setelah edit)
+  const [highlightedDocId, setHighlightedDocId] = useState<string | null>(null);
 
   // Daftar item navigasi aplikasi beserta batasan hak akses (fitur show)
   const navItems = [
@@ -244,7 +246,10 @@ export function MainApp() {
   };
 
   // Handler untuk membersihkan data edit (kembali ke tab arsip dokumen)
-  const clearEditingData = () => {
+  const clearEditingData = (savedDocId?: string) => {
+    if (savedDocId) {
+      setHighlightedDocId(savedDocId);
+    }
     setEditingData(null);
     // Engineer kembali ke Arsip Dokumen, role lain kembali ke Management File
     const isEngineerRole = !isAdmin && !isStandby && userRole !== 'DME' && userRole !== 'site_manager_dme';
@@ -284,9 +289,9 @@ export function MainApp() {
         ) : activeTab === 'ptw' ? (
           <PTWManagement initialSearchQuery={navSearchQuery} />
         ) : activeTab === 'files' ? (
-          <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
+          <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} highlightedDocId={highlightedDocId} onClearHighlight={() => setHighlightedDocId(null)} />
         ) : activeTab === 'arsip_dokumen' ? (
-          <DocumentList viewMode="flat" onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
+          <DocumentList viewMode="flat" onEdit={handleEditReport} initialSearchQuery={navSearchQuery} highlightedDocId={highlightedDocId} onClearHighlight={() => setHighlightedDocId(null)} />
         ) : activeTab === 'report' ? (
           <ReportForm
             editingData={editingData}
@@ -314,7 +319,7 @@ export function MainApp() {
           isDwimitra ? (
             <SOPEOPManagement />
           ) : (
-            <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
+            <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} highlightedDocId={highlightedDocId} onClearHighlight={() => setHighlightedDocId(null)} />
           )
         ) : activeTab === 'pm_schedule' ? (
           <PMSchedule />
@@ -323,7 +328,7 @@ export function MainApp() {
         ) : activeTab === 'face_registration' ? (
           <FaceRegistrationManagement />
         ) : (
-          <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} />
+          <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} highlightedDocId={highlightedDocId} onClearHighlight={() => setHighlightedDocId(null)} />
         )}
       </motion.div>
     </AnimatePresence>

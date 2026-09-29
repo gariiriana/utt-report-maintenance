@@ -52,6 +52,7 @@ export function DMEDashboard() {
   const visibleTabs = TAB_ITEMS.filter(tab => tab.id !== 'sop_eop' || isDwimitra);
   const [activeTab, setActiveTab] = useState<DMETab>('workflow');
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
+  const [highlightedDocId, setHighlightedDocId] = useState<string | null>(null);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mopList, setMopList] = useState<MOPWorkflowDoc[]>([]);
 
@@ -230,10 +231,17 @@ export function DMEDashboard() {
                 {editingData ? (
                   <ReportForm
                     editingData={editingData}
-                    onClearEdit={() => setEditingData(null)}
+                    onClearEdit={(savedDocId) => {
+                      if (savedDocId) setHighlightedDocId(savedDocId);
+                      setEditingData(null);
+                    }}
                   />
                 ) : (
-                  <DocumentList onEdit={(doc) => setEditingData(doc)} />
+                  <DocumentList
+                    onEdit={(doc) => setEditingData(doc)}
+                    highlightedDocId={highlightedDocId}
+                    onClearHighlight={() => setHighlightedDocId(null)}
+                  />
                 )}
               </motion.div>
             )}

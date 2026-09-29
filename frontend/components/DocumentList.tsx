@@ -360,9 +360,19 @@ interface DocumentListProps {
   initialSearchQuery?: string;
   initialFolder?: string | null;
   viewMode?: 'folder' | 'flat';
+  highlightedDocId?: string | null;
+  onClearHighlight?: () => void;
 }
 
-export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initialFolder, viewMode = 'folder' }: DocumentListProps) {
+export function DocumentList({
+  onEdit,
+  filterOverride,
+  initialSearchQuery,
+  initialFolder,
+  viewMode = 'folder',
+  highlightedDocId,
+  onClearHighlight,
+}: DocumentListProps) {
   const { user, userRole, companyType, isQcDme } = useAuth();
   // Access mode must follow the assigned role, not the email domain.
   const isDME = userRole === 'DME' || userRole === 'site_manager_dme';
@@ -382,6 +392,15 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
+  const [activeHighlightedId, setActiveHighlightedId] = useState<string | null>(() => {
+    return highlightedDocId || safeStorage.getItem('dme_highlight_document_id') || null;
+  });
+
+  useEffect(() => {
+    if (highlightedDocId) {
+      setActiveHighlightedId(highlightedDocId);
+    }
+  }, [highlightedDocId]);
 
   // HSE Inspection Export Recap Modal State (Filter tgl & opsi rekap PDF)
   const [isHseRecapModalOpen, setIsHseRecapModalOpen] = useState(false);
@@ -528,6 +547,50 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
     const isRoot = currentLevel === 'root' && !selectedCategory;
     scrollToContent(isRoot);
   }, [currentLevel, selectedCategory, selectedMonth, selectedWeek, selectedMaintenance]);
+
+  // Efek navigasi folder otomatis dan auto-scroll ke dokumen yang baru diedit/disimpan
+  useEffect(() => {
+    if (!activeHighlightedId || documents.length === 0) return;
+
+    const targetDoc = documents.find(d => d.id === activeHighlightedId);
+    if (!targetDoc) return;
+
+    // Jika mode folder DME dan bukan flat view, otomatis arahkan hierarki folder ke dokumen tersebut
+    if (viewMode === 'folder') {
+      const docAccount = targetDoc.createdBy || 'Unknown';
+      const docDate = getDocumentDate(targetDoc);
+      const docMonth = getMonthYearString(docDate);
+      const docDateStr = getFullDateString(docDate);
+
+      setDmeSelectedFolder(null);
+      setDmeSelectedAccount(docAccount);
+      setDmeSelectedMonth(docMonth);
+      setDmeSelectedDate(docDateStr);
+      setDmeLevel('documents');
+    }
+
+    // Scroll ke kartu dokumen dengan smooth animation
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`doc-card-${activeHighlightedId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 450);
+
+    // Hapus highlight visual setelah 8 detik
+    const fadeTimer = setTimeout(() => {
+      setActiveHighlightedId(null);
+      safeStorage.removeItem('dme_highlight_document_id');
+      if (onClearHighlight) {
+        onClearHighlight();
+      }
+    }, 8000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fadeTimer);
+    };
+  }, [activeHighlightedId, documents, viewMode, onClearHighlight]);
 
   // Ref for aborting stale fetchDocuments calls when auth/filter changes
   const fetchIdRef = useRef(0);
@@ -3799,16 +3862,22 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
       document.documentType === 'pdf'
     );
     const hasSR = Boolean(document.attachedSrFile || document.attachedSrBase64);
+    const isHighlighted = activeHighlightedId === document.id;
 
     return (
       <motion.div
         key={document.id}
+        id={`doc-card-${document.id}`}
         layout
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.2, delay: index * 0.05 }}
-        className="bg-white/90 backdrop-blur-xl rounded-2xl p-3.5 sm:p-5 border border-sky-100/90 hover:border-blue-300 shadow-md text-slate-800 transition group w-full max-w-full overflow-hidden"
+        className={`bg-white/95 backdrop-blur-xl rounded-2xl p-3.5 sm:p-5 border shadow-md text-slate-800 transition-all duration-500 group w-full max-w-full overflow-hidden ${
+          isHighlighted
+            ? 'border-emerald-500 ring-4 ring-emerald-400/60 shadow-xl shadow-emerald-500/25 bg-gradient-to-r from-emerald-50/70 via-white to-teal-50/50'
+            : 'border-sky-100/90 hover:border-blue-300'
+        }`}
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
           <div className="flex items-start gap-3 flex-1 min-w-0 w-full">
@@ -3829,6 +3898,12 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery, initi
                 <h3 className="text-sm sm:text-lg font-black text-slate-900 leading-snug break-words">
                   {document.maintenanceName}
                 </h3>
+                {isHighlighted && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white shadow-sm flex items-center gap-1 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                    Baru Diperbarui
+                  </span>
+                )}
                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                   document.documentType === 'pdf'
                     ? 'bg-red-50 text-red-600 border border-red-200'
