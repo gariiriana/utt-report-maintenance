@@ -481,42 +481,15 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     { width: 1041, en: 'Capacity', id: 'Kapasitas', key: 'capacity' },
     { width: 1198, en: 'Serial Number', id: 'Nomor Seri', key: 'serialNumber' },
     { width: 642, en: 'MFD', id: 'Tahun Pembuatan (MFD)', key: 'mfd' },
-    { width: 1143, en: 'Product Name', id: 'Nama Produk', key: 'productName' },
+    { width: 1143, en: 'Manufacturer / Principle', id: 'Pabrikan / Prinsipal', key: 'productName' },
     { width: 1152, en: 'Model', id: 'Model', key: 'model' },
     { width: 356, en: 'Room', id: 'Ruangan', key: 'room' },
   ];
 
-  // Tentukan kolom mana yang punya data (skip kolom opsional jika semua itemnya kosong/"-")
+  // Selalu pertahankan seluruh 10 kolom master standar NeutraDC / DME (termasuk Manufacturer / Principle)
+  // untuk SEMUA dokumen SOP agar format tabel selalu utuh, konsisten, dan kolom Principle tidak hilang.
   const eqList = data.equipmentList || [];
-  const optionalKeys: (keyof SOPCIEquipmentItem)[] = [
-    'ciDescription',
-    'serialNumber',
-    'room',
-    'capacity',
-    'mfd',
-    'productName',
-    'model',
-  ];
-
-  const hasEquipmentData = eqList.length > 0;
-  const isTrafoDocument = eqList.some(
-    (eq) => (eq.classId || '').toUpperCase() === 'TR' || (eq.ciName || '').toUpperCase().includes('TRAFO')
-  ) || (data.documentTitle || '').toUpperCase().includes('TRAFO');
-
-  const activeEquipCols = allEquipCols.filter((col) => {
-    // Untuk dokumen Trafo standar NeutraDC, selalu pertahankan 10 kolom lengkap agar tidak ada kolom yang hilang
-    if (isTrafoDocument) return true;
-    // Jika tidak ada data equipment sama sekali, pertahankan semua kolom template standar
-    if (!hasEquipmentData) return true;
-    // Kolom inti (no, classId, ciName) selalu ditampilkan
-    if (!optionalKeys.includes(col.key)) return true;
-    // Kolom opsional hanya ditampilkan jika minimal ada 1 baris yang terisi data bermakna
-    return eqList.some((eq) => {
-      const rawVal = eq[col.key as keyof SOPCIEquipmentItem];
-      const val = rawVal !== undefined && rawVal !== null ? String(rawVal).trim() : '';
-      return val !== '' && val !== '-' && val !== 'N/A' && val !== 'n/a';
-    });
-  });
+  const activeEquipCols = allEquipCols;
 
   // Redistribusi lebar kolom agar total tetap pas = CONTENT_WIDTH_DXA (15.9 cm)
   const totalActiveWidth = activeEquipCols.reduce((sum, c) => sum + c.width, 0);

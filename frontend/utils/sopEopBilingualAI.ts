@@ -453,9 +453,14 @@ export function ensureBilingualTranslation(textEn: string, textId?: string): str
   const dict = translateFromDictionary(cleanEn, 'id');
   if (dict) return dict;
 
-  // Pattern: "Guide to carry [Equipment] Maintenance"
+  // Pattern: "Guide to carry [Equipment] Maintenance" or "Guide to carry Maintenance [Equipment]"
   if (/^Guide to carry\s+(.*?)\s+Maintenance$/i.test(cleanEn)) {
     const match = cleanEn.match(/^Guide to carry\s+(.*?)\s+Maintenance$/i);
+    const equip = match ? match[1] : '';
+    return `Panduan pelaksanaan Pemeliharaan ${equip}`;
+  }
+  if (/^Guide to carry\s+Maintenance\s+(.*)$/i.test(cleanEn)) {
+    const match = cleanEn.match(/^Guide to carry\s+Maintenance\s+(.*)$/i);
     const equip = match ? match[1] : '';
     return `Panduan pelaksanaan Pemeliharaan ${equip}`;
   }

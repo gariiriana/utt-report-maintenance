@@ -1065,7 +1065,7 @@ export function SOPEOPManagement() {
                     <th className="p-2.5 w-28">Capacity</th>
                     <th className="p-2.5 w-28">Serial Number</th>
                     <th className="p-2.5 w-20">MFD</th>
-                    <th className="p-2.5 w-28">Product Name</th>
+                    <th className="p-2.5 w-36">Manufacturer / Principle</th>
                     <th className="p-2.5 w-36">Model</th>
                     <th className="p-2.5 w-28">Room</th>
                     <th className="p-2.5 w-12 text-center">Aksi</th>
@@ -1128,6 +1128,7 @@ export function SOPEOPManagement() {
                           type="text"
                           value={item.productName}
                           onChange={(e) => updateEquipmentItem(idx, 'productName', e.target.value)}
+                          placeholder="Manufacturer / Principle"
                           className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
                         />
                       </td>
