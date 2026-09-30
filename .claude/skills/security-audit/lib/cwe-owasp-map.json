@@ -1,0 +1,117 @@
+{
+  "description": "Canonical CWE -> OWASP Top 10:2025 (web) pairing source-of-truth for the CWE/A##:2025 tag-pair validator (scripts/validate-schemas.sh, step [8/8]). The `canonical` table is a 1:1 CWE->A## map derived verbatim from lib/owasp-web-top10.md Part 1 (the CWE -> A##:2025 lookup table). `context_overrides` lists deliberate, documented (cwe, owasp, cat) triples that intentionally differ from `canonical` (context roll-ups) OR carry a CWE that is absent from the canonical web-Top-10 table; these MUST NOT be flagged as mismaps. A pair that is neither a canonical match nor a listed override is a genuine tag-mismap and fails validation. Keep `canonical` in sync with owasp-web-top10.md if that table changes.",
+  "source_of_truth": "skills/security-audit/lib/owasp-web-top10.md (Part 1 — OWASP Top 10:2025 web, CWE -> A##:2025 lookup table)",
+  "canonical": {
+    "CWE-284": "A01:2025",
+    "CWE-285": "A01:2025",
+    "CWE-862": "A01:2025",
+    "CWE-863": "A01:2025",
+    "CWE-639": "A01:2025",
+    "CWE-352": "A01:2025",
+    "CWE-918": "A01:2025",
+    "CWE-601": "A01:2025",
+    "CWE-200": "A01:2025",
+    "CWE-1035": "A02:2025",
+    "CWE-276": "A02:2025",
+    "CWE-732": "A02:2025",
+    "CWE-614": "A02:2025",
+    "CWE-1004": "A02:2025",
+    "CWE-1275": "A02:2025",
+    "CWE-538": "A02:2025",
+    "CWE-552": "A02:2025",
+    "CWE-1395": "A03:2025",
+    "CWE-1357": "A03:2025",
+    "CWE-1104": "A03:2025",
+    "CWE-494": "A03:2025",
+    "CWE-506": "A03:2025",
+    "CWE-829": "A03:2025",
+    "CWE-311": "A04:2025",
+    "CWE-319": "A04:2025",
+    "CWE-321": "A04:2025",
+    "CWE-326": "A04:2025",
+    "CWE-327": "A04:2025",
+    "CWE-328": "A04:2025",
+    "CWE-329": "A04:2025",
+    "CWE-330": "A04:2025",
+    "CWE-331": "A04:2025",
+    "CWE-338": "A04:2025",
+    "CWE-916": "A04:2025",
+    "CWE-522": "A04:2025",
+    "CWE-79": "A05:2025",
+    "CWE-89": "A05:2025",
+    "CWE-77": "A05:2025",
+    "CWE-78": "A05:2025",
+    "CWE-90": "A05:2025",
+    "CWE-91": "A05:2025",
+    "CWE-94": "A05:2025",
+    "CWE-943": "A05:2025",
+    "CWE-1321": "A05:2025",
+    "CWE-611": "A05:2025",
+    "CWE-117": "A05:2025",
+    "CWE-20": "A05:2025",
+    "CWE-636": "A06:2025",
+    "CWE-1059": "A06:2025",
+    "CWE-287": "A07:2025",
+    "CWE-288": "A07:2025",
+    "CWE-306": "A07:2025",
+    "CWE-307": "A07:2025",
+    "CWE-384": "A07:2025",
+    "CWE-521": "A07:2025",
+    "CWE-613": "A07:2025",
+    "CWE-640": "A07:2025",
+    "CWE-798": "A07:2025",
+    "CWE-345": "A07:2025",
+    "CWE-347": "A07:2025",
+    "CWE-502": "A08:2025",
+    "CWE-915": "A08:2025",
+    "CWE-470": "A08:2025",
+    "CWE-532": "A09:2025",
+    "CWE-778": "A09:2025",
+    "CWE-201": "A09:2025",
+    "CWE-209": "A10:2025",
+    "CWE-215": "A10:2025"
+  },
+  "context_overrides": [
+    {
+      "cwe": "CWE-94",
+      "owasp": "A03:2025",
+      "cats": [
+        "cat-10-supply-chain.md"
+      ],
+      "why": "Code Injection via a poisoned CI/build step (e.g. GitHub Actions discussion.body injection) is a software-supply-chain failure in cat-10's context, so it rolls up to A03 (Software Supply Chain Failures) rather than its generic canonical bucket A05 (Injection). owasp-web-top10.md notes a finding can legitimately roll up to A03 even when its category is supply_chain."
+    },
+    {
+      "cwe": "CWE-798",
+      "owasp": "A03:2025",
+      "cats": [
+        "cat-10-supply-chain.md"
+      ],
+      "why": "Hard-coded credentials in CI/CD pipeline config (CICD-SEC-6 Insufficient Credential Hygiene) is a supply-chain/build-infrastructure failure in cat-10's context, so it rolls up to A03 (Software Supply Chain Failures) rather than its generic canonical bucket A07 (Authentication Failures)."
+    },
+    {
+      "cwe": "CWE-250",
+      "owasp": "A02:2025",
+      "cats": [
+        "cat-07-deployment.md"
+      ],
+      "why": "Execution with Unnecessary Privileges (privileged container, SYS_ADMIN capability, docker.sock mount) is a hardening/Security-Misconfiguration concern. CWE-250 is intentionally absent from the canonical OWASP web-Top-10 lookup table, so cat-07 maps it to the closest applicable category A02 (Security Misconfiguration). Documented here so the absent-from-canonical WARN path does not fire and the pairing is treated as a vetted, deliberate choice."
+    },
+    {
+      "cwe": "CWE-1220",
+      "owasp": "A01:2025",
+      "cats": [
+        "cat-12-collection-scoping.md",
+        "cat-02-idor-bola.md"
+      ],
+      "why": "Insufficient Granularity of Access Control is the precise CWE for the collection-scoping class: a gate EXISTS and authenticates the caller, but rows are not constrained to that caller. It is Broken Access Control (A01) at the collection level (OWASP API1:2023 BOLA + API3:2023). CWE-1220 is absent from the canonical web-Top-10 lookup table, so this override documents the intended roll-up instead of leaving a permanent WARN."
+    },
+    {
+      "cwe": "CWE-359",
+      "owasp": "A01:2025",
+      "cats": [
+        "cat-12-collection-scoping.md"
+      ],
+      "why": "Exposure of Private Personal Information to an Unauthorized Actor — used when the unscoped collection returns PII columns rather than mere identifiers. Still an access-control failure (A01), not a logging/monitoring one; the disclosure is the consequence, the missing row-scope is the defect."
+    }
+  ]
+}

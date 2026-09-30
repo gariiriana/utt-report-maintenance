@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/velimattiv/claude-security-audit/lib/keystone-schema.json",
+  "title": "Phase-03 Keystone File Index",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "skill_version",
+    "audit_id",
+    "generated_at",
+    "keystone_files"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "skill_version": { "type": "string" },
+    "audit_id": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "keystone_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "partitions", "reasons"],
+        "properties": {
+          "path": { "type": "string" },
+          "partitions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "reasons": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/velimattiv/claude-security-audit/lib/sink-schema.json",
+  "title": "Phase-02 Egress-Sink Inventory",
+  "description": "Path-sensitive inventory of every code path that can emit a resource's bytes to a caller. Consumed by lib/validate-egress.py. The unit of analysis is the BRANCH (guarded_paths[]), not the handler — this is what makes a conditional unauthenticated-bypass branch expressible. Every deterministic candidate from lib/egress-detection.md MUST appear here as a sink OR in dismissed[] with a reason (fail-closed coverage).",
+  "type": "object",
+  "required": ["schema_version", "sinks"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "skill_version": { "type": "string" },
+    "audit_id": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "sinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "sink_file", "line", "kind", "serves_resource", "guarded_paths", "coverage"],
+        "properties": {
+          "id": { "type": "string" },
+          "sink_file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "kind": {
+            "enum": ["file", "stream", "db_entity", "proxy", "static",
+                     "graphql_field", "presigned_url", "websocket", "sse",
+                     "template", "redirect", "async_job", "cdn",
+                     "json_collection", "json_metadata", "identifier_list"],
+            "description": "v2.5 widened this from byte-emitting sinks only. A JSON list of other principals' identifiers IS an egress of sensitive data — UUIDs plus titles were the discovery half of a real incident, and because the v2.4 enum admitted only byte sinks, the handler serving them never entered this inventory and the §6.19 reconciliation never evaluated it. Use json_collection for a list of entity rows, json_metadata for a single row's descriptive fields, identifier_list for bare ids/paths/slugs."
+          },
+          "framework": { "type": "string" },
+          "serves_resource": {
+            "type": "string",
+            "description": "Canonical data_model entity id this sink emits. HALF the join key for reconciliation — must reference a profile.data_model entity (not free text). v2.6 pairs it with `layer`: on its own this string joined a Vue click handler to a cron worker's HMAC gate."
+          },
+          "layer": {
+            "enum": ["http", "browser", "cli", "worker", "build", "ipc"],
+            "description": "v2.6 story 2.4. WHERE THIS CODE RUNS, and therefore who its caller is. The reconciliation computes the gate floor per (serves_resource, layer): a browser component (app/**), a developer CLI (plugin/scripts/**), a cron worker (server/workers/**) and an HTTP handler (server/api/**) do not enforce each other's gates. Measured cost of omitting this: over a calibrated run the R-rules were 19.8% true, and 115 of 306 raw rows compared an HTTP RBAC gate against a cron HMAC gate. Optional — validate-egress.py infers it from the path, then the partition id, then defaults to `http`, so an un-typed inventory reconciles exactly as v2.5 did. Set it explicitly wherever the path is ambiguous (Next.js `app/api/**` is http; Nuxt `app/**` is browser)."
+          },
+          "destination": {
+            "enum": ["network", "local_fs", "local_stdout"],
+            "default": "network",
+            "description": "v2.6 story 2.5. WHO RECEIVES THE BYTES. `network` (the default, and the only value the authorization rules R2/R3/R5 apply to) means a remote caller who could have been asked for a credential. `local_stdout` is the invoking operator's own terminal; `local_fs` is a write to the device's filesystem. A `writeFileSync(..., {mode: 0o600})` into the device's own home and a `console.log` to the developer's own stdout are NOT egress to an untrusted caller and cannot carry an authorization gate — six of 49 sampled R-rule false positives were exactly this. Non-network sinks are still inventoried, and are evaluated by R6 instead."
+          },
+          "path_control": {
+            "enum": ["fixed", "own_config", "env", "argv", "repo", "caller"],
+            "description": "v2.6 story 4.3, required in practice on any `destination: local_fs` sink. WHO CHOOSES THE DESTINATION PATH — the discriminator for local-filesystem exfil. `fixed`/`own_config` = a constant path or one derived from the operator's own configuration (benign; this is the story-2.5 case). `env`/`argv`/`repo`/`caller` = the path is steerable by something outside the operator's control, and for a hook or agent runner invoked with repository-supplied config that means the ATTACKER chooses where the bytes land. The class this exists for: a repo-steerable state directory made a hook write a live OAuth access token into an attacker's own working tree — exfil with no network call, which the v2.5 rule set could not see at all. Note the discriminator is who controls the path, NOT whether it is a file; both cases are `writeFileSync`. Omitted ⇒ treated as `unknown`, which yields a MEDIUM prompt to record it rather than a HIGH."
+          },
+          "carries_credential": {
+            "type": "boolean",
+            "description": "v2.6 story 4.3. True when the bytes this sink emits contain a live credential (token, key, cookie, signed URL). Raises an R6 local-filesystem finding to CRITICAL. validate-egress.py also derives this from the credential ledger — a sink whose (file, line) coincides with a credential `writers[]` site is treated as credential-carrying without the field being set — so this is a manual override for credentials the ledger did not catch."
+          },
+          "carries_credential_name": {
+            "type": "string",
+            "description": "Name of the credential in `carries_credential`, for the finding text. Optional."
+          },
+          "reachable_via": { "type": "array", "items": { "type": "string" },
+            "description": "Surface ids (or external path templates) that reach this sink." },
+          "intended_gate": {
+            "type": ["string", "null"],
+            "description": "The strongest gate the served resource declares (RBAC / tenant-ownership / 2FA-share / OIDC). Optional — reconciliation also derives the floor from credentials + sibling branches + resolve-layer surfaces."
+          },
+          "gate_rank_hint": {
+            "enum": ["none", "authn", "authz", "verified"],
+            "description": "v2.6 story 2.7. The rank of `intended_gate`, stated structurally. AUTHORITATIVE — validate-egress.py uses it instead of ranking the free text by keyword. See the branch-level field of the same name for why this exists."
+          },
+          "guarded_paths": {
+            "type": "array",
+            "minItems": 1,
+            "description": "EVERY branch in the handler that can emit bytes, with the authz enforced ON THAT BRANCH. A handler with N emitting branches must list N entries; under-reporting ⇒ set coverage:incomplete.",
+            "items": {
+              "type": "object",
+              "required": ["branch_id", "enforced_gate", "serves_bytes"],
+              "properties": {
+                "branch_id": { "type": "string" },
+                "condition": { "type": "string", "description": "The branch's guard condition (e.g. 'an active publishLink exists')." },
+                "enforced_gate": {
+                  "type": "string",
+                  "description": "The authorization actually enforced on this branch, or 'none'. Free text. Ranked by `gate_rank_hint` when present, otherwise by keyword in validate-egress.py (gate_rank)."
+                },
+                "gate_rank_hint": {
+                  "enum": ["none", "authn", "authz", "verified"],
+                  "description": "v2.6 story 2.7. The rank of `enforced_gate`, stated structurally instead of inferred from its wording. AUTHORITATIVE: validate-egress.py uses it and does not consult the keyword table. WHY IT EXISTS: the keyword ranker returns rank 0 for text it does not recognise, and the severity rule files rank-0-against-a-rank-2-floor as CRITICAL — so the emergent behaviour was that THE MORE PRECISELY AN ANALYST DESCRIBED A REAL CONTROL, THE MORE LIKELY IT WAS FILED CRITICAL. This gate text was filed CRITICAL in a calibrated run: \"0600 + chmod + atomic rename, with a compare-and-swap against the bytes read so a concurrent redeem's freshly written credential is never clobbered; unparseable JSON aborts rather than rewrites\" — a paragraph of genuine, correct hardening containing none of the ranker's keywords. Set it whenever the gate is real but does not read like `role`/`session`/`2fa`. It is a lever that can only make the detector quieter, so every use is counted and every use that contradicts negated prose beside it is printed to stderr."
+                },
+                "serves_bytes": { "type": "boolean" }
+              }
+            }
+          },
+          "coverage": {
+            "enum": ["complete", "incomplete", "caveat"],
+            "description": "complete = every emitting branch enumerated. incomplete = fail-closed deficit (handler has more emitting branches than recorded). caveat = mechanically un-gateable (e.g. CDN-edge), surfaced as a report caveat."
+          }
+        }
+      }
+    },
+    "dismissed": {
+      "type": "array",
+      "description": "Deterministic candidates the agent inspected and ruled out (not a sensitive-data sink). Required so the coverage gate can tell 'accounted-for' from 'silently omitted'.",
+      "items": {
+        "type": "object",
+        "required": ["candidate", "reason"],
+        "properties": {
+          "candidate": { "type": "string", "description": "file or file:line of the candidate." },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

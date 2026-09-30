@@ -1,0 +1,479 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/velimattiv/claude-security-audit/lib/finding-schema.json",
+  "title": "Phase-05 Finding (JSONL entry)",
+  "description": "A single finding row as emitted by any deep-dive sub-agent. Each sub-agent writes newline-delimited JSON; each line conforms to this schema.",
+  "type": "object",
+  "required": [
+    "id",
+    "severity",
+    "confidence",
+    "evidence_class",
+    "category",
+    "partition",
+    "file",
+    "line",
+    "cwe",
+    "owasp_ids",
+    "title",
+    "description",
+    "sources"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique across the audit. Format: <partition>:<category>:<seq> (e.g., juice-shop:auth:0012)."
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{12}$",
+      "description": "Optional but strongly encouraged. Stable identifier for baseline carryover / delta-mode. Formula: first 12 chars of sha1(handler_file:line:cwe:category). If omitted, Phase 7 synthesis computes it. Replaces the title-based fingerprint from v2.0.0 which was unstable under title drift."
+    },
+    "severity": {
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFO"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "CONFIRMED",
+        "LIKELY",
+        "POSSIBLE"
+      ],
+      "description": "How likely the finding describes reality. v2.6: this field NO LONGER carries a severity promotion — see `evidence_class`. In v2.5 `confidence == CONFIRMED` bought +1 rung, and `validate-egress.py` hardcoded CONFIRMED on every row at emission, so the least precise rule family got an automatic promotion. Measured over a calibrated run: CONFIRMED findings were 9.6% true, unlabelled ones 92.1%."
+    },
+    "evidence_class": {
+      "enum": [
+        "external_scanner",
+        "heuristic_inventory",
+        "agent_judgement",
+        "governance"
+      ],
+      "description": "REQUIRED. What KIND of evidence produced this row — orthogonal to how sure we are (`confidence`) and to whether anyone attacked it (`attacked`). `external_scanner`: an independent tool (semgrep, trivy, osv-scanner, gitleaks, trufflehog, hadolint) named in sources[].detail — the only class that earns the §7.4 +1 promotion. `heuristic_inventory`: a rule reconciling an inventory a sub-agent WROTE (validate-egress.py, validate-collection-scoping.py) — mechanical over untrusted input, NOT ground truth. `agent_judgement`: a deep-dive sub-agent read the code. `governance`: a meta-finding the composer raised about the AUDIT'S OWN state (R4 ratchet, L1-L3 lifecycle), not about the target. The v2.5 report called the second class 'scanners are mechanical ground truth' and granted it a promotion; that category error is what this field exists to prevent."
+    },
+    "attacked": {
+      "enum": [
+        "not_attempted",
+        "confirmed",
+        "partial",
+        "refuted"
+      ],
+      "default": "not_attempted",
+      "description": "Whether an adversarial pass actually tried to break this finding, and the outcome. Replaces the un-owned run-level `verification_status`, which appeared NOWHERE in the skill and was emitted only by phase-06 §6.19/§6.20 — so it silently measured WHICH PHASE emitted the row rather than trustworthiness. This field must never be presented in the same severity band as findings whose value is `not_attempted`; see lib/report-template.md."
+    },
+    "rule_family": {
+      "type": "string",
+      "description": "The emitting rule family, e.g. 'deepdive:cat-02', 'validate-egress:R5', 'validate-collection-scoping:C1', 'scanner:semgrep', 'asvs', 'linddun'. Carried into SARIF properties. Without it, per-family precision cannot be measured across runs and the standing calibration control (manifest.yaml `rule_family_precision`) has nothing to key on."
+    },
+    "category": {
+      "enum": [
+        "auth",
+        "idor",
+        "token_scope",
+        "collection_scope",
+        "mitm",
+        "crypto",
+        "secret_sprawl",
+        "deployment",
+        "injection",
+        "llm",
+        "supply_chain",
+        "agentic",
+        "config",
+        "scanner",
+        "methodology",
+        "linddun"
+      ]
+    },
+    "partition": {
+      "type": "string"
+    },
+    "file": {
+      "type": "string"
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "line_end": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "surface_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Phase 2 surface row this finding belongs to, if applicable."
+    },
+    "cwe": {
+      "type": "string",
+      "pattern": "^CWE-\\d+$",
+      "description": "Required. Use CWE-1007 as a last-resort generic fallback."
+    },
+    "owasp_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(ASVS-V\\d+\\.\\d+(\\.\\d+)?|API\\d+:\\d{4}|LLM\\d+:\\d{4}|A\\d+:\\d{4}|ASI\\d+:\\d{4}|LINDDUN-[A-Za-z]+)$"
+      },
+      "description": "e.g., ASVS-V6.2.1, API1:2023, LLM02:2025, A03:2025 (web Top 10), ASI01:2026 (agentic), LINDDUN-Linkability. v2.6: LINDDUN accepted here and as a `category` — §6.12 instructs the artifact to carry LINDDUN ids, but v2.5's enum and pattern both excluded them, so LINDDUN findings had to be smuggled through `config`."
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 800
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "grep",
+              "scanner",
+              "heuristic",
+              "manual",
+              "subagent"
+            ],
+            "description": "`scanner` means an EXTERNAL tool (semgrep, trivy, osv-scanner, gitleaks, trufflehog, hadolint). v2.6 adds `heuristic` for this skill's own reconcilers (validate-egress.py, validate-collection-scoping.py), which in v2.5 declared themselves `scanner` and so inherited §7.3's 'scanners are mechanical ground truth' rule plus its severity promotion — while being heuristics over an inventory a sub-agent wrote. Measured true-positive rate of those two families in a calibrated run: 19.8% and 1.4%."
+          },
+          "detail": {
+            "type": "string",
+            "description": "grep pattern name, scanner rule id, or `<script>:<rule>` for a heuristic"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "suggested_fix": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "code_owner": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "From CODEOWNERS if present; else null."
+    },
+    "attack_scenario": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "verification_probe": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Executable proof for access-control findings (RCA §11: 'show me the request that should fail'). The exact unauthorized request an attacker would make, and the expected denial. Emitted by the Authorized-Egress reconciliation and by Phase-6 §6.19 confirmation. `actual` is filled only if the audit ran the probe against a live system.",
+      "properties": {
+        "request": {
+          "type": "string",
+          "description": "e.g. a curl with the attacker's exact capability (id, no credential)."
+        },
+        "expected": {
+          "type": "string",
+          "description": "The denial that proves the control holds (e.g. '401 or 404')."
+        },
+        "actual": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Observed result if probed live; null for static audits."
+        }
+      }
+    },
+    "remediation_effort": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "trivial",
+        "small",
+        "medium",
+        "large",
+        null
+      ]
+    },
+    "related_partitions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Cross-partition finding spans (monorepo ingress/handler split)."
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 400
+    },
+    "display_id": {
+      "type": "string",
+      "description": "Optional short id used in the human report (e.g. 'H1', 'M6'). The R2 prose rule resolves references written in this form, which is how analysts actually cite each other's findings."
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional identifiers this finding has been known by (prior report ids). Lets R2 resolve a chain reference written against an older naming scheme."
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Capabilities an attacker must ALREADY hold to exploit this finding, in the lib/capability-lexicon.md grammar (<verb>:<scope>_<object>). An empty array is a strong claim: anonymous-reachable. REQUIRED for auth / idor / token_scope / collection_scope findings. This is the field that replaces the prose mitigation 'only exploitable if the attacker knows the UUID' — written here, rule R1 can check whether another finding SUPPLIES it, in which case the mitigation is undischarged and cannot lower severity."
+    },
+    "postconditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Capabilities this finding GRANTS the attacker, same grammar. Must be non-empty for access-control categories — a finding that grants nothing is not a finding. An unscoped list endpoint grants both `knows:any_<entity>_id` and `reads:any_<entity>_metadata`; the first is what chains."
+    },
+    "severity_asserted": {
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFO"
+      ],
+      "description": "What the analyst/sub-agent rated it in isolation. Retained for provenance; NOT authoritative."
+    },
+    "severity_computed": {
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFO"
+      ],
+      "description": "What the attack-path arithmetic says (compose-attack-paths.py, rules R1-R3). AUTHORITATIVE — `severity` is set from this at Phase 7. The historical failure this exists for: a CONFIRMED finding whose own description said 'combined with H1 …' was filed one rung below the HIGH it chained to, and prose had no power over the rating."
+    },
+    "escalation_rules": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "R1",
+          "R2",
+          "R3"
+        ]
+      },
+      "description": "Which severity rules fired to produce severity_computed."
+    },
+    "severity_history": {
+      "type": "array",
+      "description": "Append-only. Every severity change across runs, with the reason. Rule R4 (ratchet) FAILS a run in which severity decreased without a new entry here — the mechanism by which a CONFIRMED MEDIUM silently became LOW and then 'well-defended (INFO)' while remaining exploitable.",
+      "items": {
+        "type": "object",
+        "required": [
+          "run_id",
+          "severity",
+          "reason"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "INFO"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "reason_kind": {
+            "enum": [
+              "fix_commit",
+              "compensating_control",
+              "disproven_exploitability",
+              "rescoped",
+              "chain_escalation"
+            ],
+            "description": "A DOWNGRADE is only accepted for fix_commit / compensating_control / disproven_exploitability / rescoped. chain_escalation is emitted by the composer for upgrades."
+          },
+          "fix_commit": {
+            "type": "string",
+            "description": "Required when reason_kind is fix_commit."
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "first_seen_at": {
+      "type": "string",
+      "description": "ISO-8601 timestamp of the first run that reported this fingerprint. Carried forward by Phase 8, never reset. Without it the L1 age gate cannot tell a fresh finding from one that has been open for 96 days."
+    },
+    "lifecycle": {
+      "type": "object",
+      "description": "R1-R4 fix the rating; this forces the action. State machine: open -> accepted(owner, expiry, rationale) -> fixed(fix_commit) -> verified(verified_by_test).",
+      "properties": {
+        "state": {
+          "enum": [
+            "open",
+            "accepted",
+            "fixed",
+            "verified"
+          ]
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Required to accept a HIGH+ finding (gate L2)."
+        },
+        "expiry": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ISO-8601. Required to accept a HIGH+ finding; an expired acceptance is not an acceptance (gate L2)."
+        },
+        "rationale": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 400
+        },
+        "fix_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified_by_test": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Test id/path of a regression test that FAILS against the vulnerable code. Required for state=verified (gate L3). In the incident this gate exists for, the fix shipped with no denial test and a sibling test mocked the very gate it should have pinned — so 'fixed' was never mechanically proven and the class recurred on a different endpoint."
+        }
+      }
+    },
+    "sibling_sites": {
+      "type": "array",
+      "description": "REQUIRED on any finding that survives to HIGH+. Every OTHER site in the repo matching this defect's shape. An empty array is a positive CLAIM — 'the cited site is the only one' — not a silent omission, and `sibling_pattern` must be present to back it. Exists because the calibrated run showed the tool finds instances, not classes: of 34 defects the triage found and the audit missed, the majority were the second, third and fourth site of a defect the audit correctly found once (4 region-root writers filed as 2, 10 postgres() call sites filed as 'all four', 25 RLS bypass clauses filed as 1 policy, 10 mutable action tags filed as 4, 7 plain-HTTP downgrades filed as 1). Each of those counts is a one-line grep. A mechanical sweep does not get bored at nine; both the tool and eight engineers did.",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "line"
+        ],
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "sibling_pattern": {
+      "type": "string",
+      "description": "The grep/AST pattern actually run repo-wide to derive `sibling_sites`. Required whenever `sibling_sites` is present, INCLUDING when it is empty — an empty list with no pattern is an omission wearing a claim's clothes, which is the exact shape this field exists to prevent."
+    },
+    "refutation_scope": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 400,
+      "description": "REQUIRED on any refutation (a claim that an alleged defect does NOT hold, including 'What is sound' rows). States the BOUNDARY of what was actually examined: the module, the file set, or the call-graph depth read. A refutation may only be scoped to what was examined. In the calibrated run a refutation true of ONE module ('the key never leaves the module') was generalised to a system property and filed a real HIGH under a heading readers are told to trust — two call sites hand a GitHub App signing key to a function that sets `Authorization: Bearer`. A wrong refutation is MORE dangerous than a false positive: a false positive costs a triager minutes and is self-correcting; a wrong refutation stops them reading the code and nothing downstream reopens it."
+    },
+    "fix_confidence": {
+      "enum": [
+        "verified",
+        "inferred",
+        "untested"
+      ],
+      "description": "How much to trust `suggested_fix` — SEPARATE from how much to trust the finding. `verified` requires a cited line in the actual dependency/driver/API being asserted about. Exists because the calibrated run produced six findings on one Postgres-TLS defect where the FINDING was right on all six and the FIX was wrong on five: five prescribed a nine-site code change plus CA bundling, one prescribed a one-word `?sslmode=verify-full` substitution and cited the driver source proving it. The correct one was in the minority. Fix text is what gets executed; it currently inherits the finding's confidence for free."
+    },
+    "deployment_reachability": {
+      "type": "object",
+      "description": "Whether this finding's code path can be reached in a DEPLOYED environment. Gates R3 chain escalation (see steps/phase-07-synthesis.md §7.15). Exists because a finding asserted LOW and computed CRITICAL sat on a dev-mode path guarded by an environment allowlist of {local, sandbox} with a fail-closed `unknown` default — structurally unreachable in dev, staging and production. The analyst who rated it LOW knew that; the information had no channel to reach the composer, which overrode the rating BLIND. Fail-open by design: absent or `reachable` means escalation proceeds.",
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "reachable",
+            "gated_by_runtime_flag",
+            "structurally_unreachable"
+          ]
+        },
+        "evidence": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300,
+          "description": "REQUIRED (file:line) when state is not `reachable`. A `structurally_unreachable` claim WITHOUT this cite does NOT suppress escalation — otherwise the field becomes the next self-asserted CONFIRMED."
+        }
+      }
+    },
+    "annexed_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Set when this row is a mechanical enumeration leg folded into a judgement finding rather than filed independently (v2.6 Wave 2b). Holds that finding's `id`. Annexed rows populate the parent's `sibling_sites`, carry no severity of their own, and are EXCLUDED from the capability composition graph. Rationale from the calibrated run: 15 of the 17 true mechanical findings were restatements of a deep-dive finding on the same line, and the rules surfaced no unique CRITICAL — but they DID enumerate a credential-exfil class's nine distinct legs at exact line granularity, which no agent did. Precision is the wrong metric for a rule whose product is a surface rather than a conclusion."
+    },
+    "escalation_suppressed_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Set by the composer when an R3 escalation to CRITICAL was blocked because a member of the contributing slice was `structurally_unreachable` with a cite. Holds that member's finding id. Suppressed escalations MUST be reported (SUPPRESSED ESCALATIONS block) — suppression is the dangerous direction, so it is made loud rather than silent."
+    },
+    "coverage_gate": {
+      "enum": [
+        "passed",
+        "failed"
+      ],
+      "description": "Stamped by the fail-closed reconciliations (validate-collection-scoping.py / validate-egress.py). `failed` means the run's candidate coverage was incomplete, so this finding set is NOT a complete picture. Present so a consumer reading the JSONL directly can tell, without re-deriving it from a shell exit code that may not have propagated."
+    },
+    "skill_self_leak": {
+      "enum": [
+        "true",
+        "false"
+      ],
+      "description": "v2.6.1. `true` marks a finding about THIS SKILL's own artifacts rather than about the audited code: credential material that a prior audit run wrote into the repository (phase-04-scanners.md §4.4c), or that this run's own deliverable gate scrubbed (phase-07-synthesis.md §7.10a). Present because these two must never aggregate with findings about the user's code — through v2.6.0 the skill copied gitleaks' verbatim `region.snippet.text` into a tracked `<output_dir>/findings.sarif`, and the reason it survived two separate detections is that the resulting hits were triaged as prior-artifact noise. A flat, greppable flag is what makes that triage call visible instead of implicit. Phase 7 carries it to the SARIF result as `properties.skill_self_leak`."
+    }
+  }
+}

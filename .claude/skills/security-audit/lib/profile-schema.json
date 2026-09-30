@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/velimattiv/claude-security-audit/lib/profile-schema.json",
+  "title": "Phase-00 Project Profile",
+  "description": "The Project Map emitted by Phase 0 Discovery. Read by every subsequent phase.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "skill_version",
+    "audit_id",
+    "generated_at",
+    "git",
+    "repo",
+    "topology",
+    "languages",
+    "frameworks",
+    "surfaces_hint",
+    "auth",
+    "data_model",
+    "deployment",
+    "trust_zones",
+    "llm_usage",
+    "pii",
+    "ignore_patterns"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "skill_version": { "type": "string", "description": "From skills/security-audit/VERSION" },
+    "audit_id": { "type": "string", "description": "sha256(git.head + top-level listing)" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Orchestrator assumptions, degradations, and misc. free text."
+    },
+    "git": {
+      "type": "object",
+      "required": ["head", "branch", "dirty"],
+      "properties": {
+        "head": { "type": "string" },
+        "branch": { "type": "string" },
+        "remote": { "type": ["string", "null"] },
+        "dirty": { "type": "boolean" }
+      }
+    },
+    "repo": {
+      "type": "object",
+      "required": ["root", "loc_total", "loc_by_language", "file_count", "top_level_dirs"],
+      "properties": {
+        "root": { "type": "string" },
+        "loc_total": { "type": "integer", "minimum": 0 },
+        "loc_by_language": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "file_count": { "type": "integer", "minimum": 0 },
+        "top_level_dirs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "topology": {
+      "type": "object",
+      "required": ["kind", "tool", "workspaces", "services", "submodules"],
+      "properties": {
+        "kind": { "enum": ["monorepo", "multi-service", "single", "unknown"] },
+        "tool": {
+          "type": ["string", "null"],
+          "enum": [
+            "nx", "turbo", "pnpm", "yarn", "npm", "lerna", "rush", "bazel",
+            "go-work", "cargo", "poetry", null
+          ]
+        },
+        "workspaces": { "type": "array", "items": { "type": "string" } },
+        "services": { "type": "array", "items": { "type": "string" } },
+        "submodules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "loc", "files", "primary"],
+        "properties": {
+          "name": { "type": "string" },
+          "loc": { "type": "integer", "minimum": 0 },
+          "files": { "type": "integer", "minimum": 0 },
+          "primary": { "type": "boolean" }
+        }
+      }
+    },
+    "frameworks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["language", "framework", "evidence"],
+        "properties": {
+          "language": { "type": "string" },
+          "framework": { "type": ["string", "null"] },
+          "version": { "type": ["string", "null"] },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "surfaces_hint": {
+      "type": "object",
+      "required": [
+        "http", "grpc", "graphql", "websocket", "sse", "trpc",
+        "queue", "scheduler", "webhook", "file_upload",
+        "serverless", "mobile", "desktop", "admin_endpoints", "cli_admin"
+      ],
+      "properties": {
+        "http": { "type": "boolean" },
+        "grpc": { "type": "boolean" },
+        "graphql": { "type": "boolean" },
+        "websocket": { "type": "boolean" },
+        "sse": { "type": "boolean" },
+        "trpc": { "type": "boolean" },
+        "queue": { "type": "array", "items": { "type": "string" } },
+        "scheduler": { "type": "array", "items": { "type": "string" } },
+        "webhook": { "type": "boolean" },
+        "file_upload": { "type": "boolean" },
+        "serverless": { "type": "array", "items": { "type": "string" } },
+        "mobile": { "type": "array", "items": { "type": "string" } },
+        "desktop": { "type": "array", "items": { "type": "string" } },
+        "admin_endpoints": { "type": "array", "items": { "type": "string" } },
+        "cli_admin": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["kinds", "middleware_paths", "frameworks"],
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "items": { "enum": ["session", "jwt", "api_key", "pat", "oauth"] }
+        },
+        "middleware_paths": { "type": "array", "items": { "type": "string" } },
+        "frameworks": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "data_model": {
+      "type": "object",
+      "required": ["orm", "schema_files", "entities"],
+      "properties": {
+        "orm": { "type": ["string", "null"] },
+        "schema_files": { "type": "array", "items": { "type": "string" } },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "owner_cols", "pii_cols"],
+            "properties": {
+              "name": { "type": "string" },
+              "id": { "type": "string", "description": "Canonical entity id used as the join key by the Authorized-Egress reconciliation (sink.serves_resource / credential.protects_resources). Defaults to `name` if omitted." },
+              "owner_cols": { "type": "array", "items": { "type": "string" } },
+              "pii_cols": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["docker", "k8s", "iac", "ci"],
+      "properties": {
+        "docker": {
+          "type": "object",
+          "properties": {
+            "dockerfiles": { "type": "array", "items": { "type": "string" } },
+            "compose": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "k8s": {
+          "type": "object",
+          "properties": {
+            "manifests": { "type": "array", "items": { "type": "string" } },
+            "helm_charts": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "iac": {
+          "type": "object",
+          "properties": {
+            "terraform": { "type": "array", "items": { "type": "string" } },
+            "cloudformation": { "type": "array", "items": { "type": "string" } },
+            "bicep": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "ci": {
+          "type": "object",
+          "properties": {
+            "github_actions": { "type": "array", "items": { "type": "string" } },
+            "gitlab_ci": { "type": "array", "items": { "type": "string" } },
+            "circleci": { "type": "array", "items": { "type": "string" } },
+            "buildkite": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "trust_zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "sources", "paths"],
+        "properties": {
+          "name": { "enum": ["public", "internal", "admin", "dev"] },
+          "sources": { "type": "array", "items": { "type": "string" } },
+          "paths": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "llm_usage": {
+      "type": "object",
+      "required": ["detected", "sdks", "evidence"],
+      "properties": {
+        "detected": { "type": "boolean" },
+        "kind": { "enum": ["user-facing", "internal", "mixed"] },
+        "sdks": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "pii": {
+      "type": "object",
+      "required": ["detected", "columns"],
+      "properties": {
+        "detected": { "type": "boolean" },
+        "columns": { "type": "array", "items": { "type": "string" } },
+        "frameworks_support": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "mcp_agentic": {
+      "type": "object",
+      "required": ["detected"],
+      "description": "Set by Phase 0. Gates cat-11 (MCP/agentic). SEPARATE from llm_usage: an MCP server or agent tool surface is a distinct attack surface that the LLM gate would wrongly skip. Optional for back-compat — absent means not detected (cat-11 skipped).",
+      "properties": {
+        "detected": { "type": "boolean" },
+        "kind": { "enum": ["mcp-server", "mcp-client", "agent-framework", "mixed"] },
+        "servers": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "supply_chain": {
+      "type": "object",
+      "required": ["detected"],
+      "description": "Set by Phase 0. Informs cat-10 (supply chain & CI/CD), which always runs but scopes to detected ecosystems/CI. Optional for back-compat.",
+      "properties": {
+        "detected": { "type": "boolean" },
+        "ecosystems": { "type": "array", "items": { "type": "string" } },
+        "lockfiles": { "type": "array", "items": { "type": "string" } },
+        "ci_systems": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "access_mechanisms": {
+      "type": "object",
+      "required": ["detected"],
+      "description": "Set by Phase 0. Share/capability mechanisms whose gate may live at a discovery layer separate from the content layer (the confused-deputy class). Optional for back-compat; absent ⇒ none detected.",
+      "properties": {
+        "detected": { "type": "boolean" },
+        "kinds": {
+          "type": "array",
+          "items": { "enum": ["publish_link", "share_token", "signed_url", "capability_param", "verification", "magic_link"] }
+        },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "public_resources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Canonical entity ids that are INTENTIONALLY public (no gate). The Authorized-Egress reconciliation is default-deny: any served entity NOT on this allowlist is treated as sensitive. This list is agent-proposed and surfaced in the report for review."
+    },
+    "ignore_patterns": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

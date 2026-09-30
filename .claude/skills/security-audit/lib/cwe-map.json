@@ -1,0 +1,393 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/velimattiv/claude-security-audit/lib/cwe-map.json",
+  "schema_version": 2,
+  "description": "Curated CWE-to-common-vulnerability mapping for /security-audit findings. Every Phase 5 sub-agent SHOULD map its finding to the most specific CWE in this file; fall back to CWE-1007 only as a last resort.",
+  "attribution": "CWE IDs and names are © MITRE Corporation (CC-BY); see https://cwe.mitre.org/about/termsofuse.html. This file reproduces names for the subset of CWEs most relevant to app-sec audits.",
+  "mappings": {
+    "CWE-16": {
+      "name": "Configuration",
+      "category": "config"
+    },
+    "CWE-20": {
+      "name": "Improper Input Validation",
+      "category": "injection"
+    },
+    "CWE-22": {
+      "name": "Path Traversal",
+      "category": "injection"
+    },
+    "CWE-73": {
+      "name": "External Control of File Name or Path",
+      "category": "injection"
+    },
+    "CWE-77": {
+      "name": "Command Injection",
+      "category": "injection"
+    },
+    "CWE-78": {
+      "name": "OS Command Injection",
+      "category": "injection"
+    },
+    "CWE-79": {
+      "name": "Cross-Site Scripting",
+      "category": "injection"
+    },
+    "CWE-89": {
+      "name": "SQL Injection",
+      "category": "injection"
+    },
+    "CWE-90": {
+      "name": "LDAP Injection",
+      "category": "injection"
+    },
+    "CWE-91": {
+      "name": "XML Injection",
+      "category": "injection"
+    },
+    "CWE-94": {
+      "name": "Code Injection",
+      "category": "injection"
+    },
+    "CWE-98": {
+      "name": "Improper Control of Filename for Include/Require Statement in PHP Program ('PHP Remote File Inclusion')",
+      "category": "injection"
+    },
+    "CWE-117": {
+      "name": "Improper Output Neutralization for Logs",
+      "category": "injection"
+    },
+    "CWE-200": {
+      "name": "Information Exposure",
+      "category": "config"
+    },
+    "CWE-201": {
+      "name": "Insertion of Sensitive Info into Sent Data",
+      "category": "config"
+    },
+    "CWE-208": {
+      "name": "Observable Timing Discrepancy",
+      "category": "crypto"
+    },
+    "CWE-209": {
+      "name": "Generation of Error Message Containing Sensitive Info",
+      "category": "config"
+    },
+    "CWE-215": {
+      "name": "Insertion of Sensitive Information Into Debugging Code",
+      "category": "config"
+    },
+    "CWE-250": {
+      "name": "Execution with Unnecessary Privileges",
+      "category": "deployment"
+    },
+    "CWE-269": {
+      "name": "Improper Privilege Management",
+      "category": "agentic"
+    },
+    "CWE-276": {
+      "name": "Incorrect Default Permissions",
+      "category": "deployment"
+    },
+    "CWE-284": {
+      "name": "Improper Access Control",
+      "category": "auth"
+    },
+    "CWE-285": {
+      "name": "Improper Authorization",
+      "category": "auth"
+    },
+    "CWE-287": {
+      "name": "Improper Authentication",
+      "category": "auth"
+    },
+    "CWE-288": {
+      "name": "Authentication Bypass Using Alternate Path",
+      "category": "auth"
+    },
+    "CWE-295": {
+      "name": "Improper Certificate Validation",
+      "category": "mitm"
+    },
+    "CWE-297": {
+      "name": "Improper Validation of Certificate with Host Mismatch",
+      "category": "mitm"
+    },
+    "CWE-306": {
+      "name": "Missing Authentication for Critical Function",
+      "category": "auth"
+    },
+    "CWE-307": {
+      "name": "Improper Restriction of Excessive Authentication Attempts",
+      "category": "auth"
+    },
+    "CWE-311": {
+      "name": "Missing Encryption of Sensitive Data",
+      "category": "crypto"
+    },
+    "CWE-319": {
+      "name": "Cleartext Transmission of Sensitive Information",
+      "category": "mitm"
+    },
+    "CWE-321": {
+      "name": "Use of Hard-coded Cryptographic Key",
+      "category": "crypto"
+    },
+    "CWE-326": {
+      "name": "Inadequate Encryption Strength",
+      "category": "crypto"
+    },
+    "CWE-327": {
+      "name": "Use of a Broken or Risky Cryptographic Algorithm",
+      "category": "crypto"
+    },
+    "CWE-328": {
+      "name": "Use of Weak Hash",
+      "category": "crypto"
+    },
+    "CWE-329": {
+      "name": "Generation of Predictable IV with CBC Mode",
+      "category": "crypto"
+    },
+    "CWE-330": {
+      "name": "Use of Insufficiently Random Values",
+      "category": "crypto"
+    },
+    "CWE-331": {
+      "name": "Insufficient Entropy",
+      "category": "crypto"
+    },
+    "CWE-338": {
+      "name": "Use of Cryptographically Weak PRNG",
+      "category": "crypto"
+    },
+    "CWE-345": {
+      "name": "Insufficient Verification of Data Authenticity",
+      "category": "auth"
+    },
+    "CWE-346": {
+      "name": "Origin Validation Error",
+      "category": "auth"
+    },
+    "CWE-347": {
+      "name": "Improper Verification of Cryptographic Signature",
+      "category": "auth"
+    },
+    "CWE-352": {
+      "name": "Cross-Site Request Forgery (CSRF)",
+      "category": "auth"
+    },
+    "CWE-359": {
+      "name": "Exposure of Private Personal Information to an Unauthorized Actor",
+      "category": "collection_scope"
+    },
+    "CWE-377": {
+      "name": "Insecure Temporary File",
+      "category": "deployment"
+    },
+    "CWE-384": {
+      "name": "Session Fixation",
+      "category": "auth"
+    },
+    "CWE-400": {
+      "name": "Uncontrolled Resource Consumption",
+      "category": "llm"
+    },
+    "CWE-434": {
+      "name": "Unrestricted Upload of File with Dangerous Type",
+      "category": "injection"
+    },
+    "CWE-441": {
+      "name": "Unintended Proxy or Intermediary ('Confused Deputy')",
+      "category": "idor"
+    },
+    "CWE-444": {
+      "name": "Inconsistent Interpretation of HTTP Requests ('HTTP Request/Response Smuggling')",
+      "category": "mitm"
+    },
+    "CWE-470": {
+      "name": "Use of Externally-Controlled Input to Select Classes or Code",
+      "category": "injection"
+    },
+    "CWE-494": {
+      "name": "Download of Code Without Integrity Check",
+      "category": "supply_chain"
+    },
+    "CWE-502": {
+      "name": "Deserialization of Untrusted Data",
+      "category": "injection"
+    },
+    "CWE-506": {
+      "name": "Embedded Malicious Code",
+      "category": "supply_chain"
+    },
+    "CWE-521": {
+      "name": "Weak Password Requirements",
+      "category": "auth"
+    },
+    "CWE-522": {
+      "name": "Insufficiently Protected Credentials",
+      "category": "crypto"
+    },
+    "CWE-532": {
+      "name": "Insertion of Sensitive Information into Log File",
+      "category": "config"
+    },
+    "CWE-538": {
+      "name": "Insertion of Sensitive Information into Externally-Accessible File",
+      "category": "secret_sprawl"
+    },
+    "CWE-552": {
+      "name": "Files or Directories Accessible to External Parties",
+      "category": "deployment"
+    },
+    "CWE-598": {
+      "name": "Use of GET Request Method With Sensitive Query Strings",
+      "category": "token_scope"
+    },
+    "CWE-601": {
+      "name": "URL Redirection to Untrusted Site (Open Redirect)",
+      "category": "injection"
+    },
+    "CWE-611": {
+      "name": "Improper Restriction of XML External Entity Reference (XXE)",
+      "category": "injection"
+    },
+    "CWE-613": {
+      "name": "Insufficient Session Expiration",
+      "category": "auth"
+    },
+    "CWE-614": {
+      "name": "Sensitive Cookie Without Secure Attribute",
+      "category": "config"
+    },
+    "CWE-636": {
+      "name": "Not Failing Securely ('Failing Open')",
+      "category": "auth"
+    },
+    "CWE-639": {
+      "name": "Authorization Bypass Through User-Controlled Key",
+      "category": "idor"
+    },
+    "CWE-640": {
+      "name": "Weak Password Recovery Mechanism",
+      "category": "auth"
+    },
+    "CWE-646": {
+      "name": "Reliance on File Name or Extension of Externally-Supplied File",
+      "category": "injection"
+    },
+    "CWE-668": {
+      "name": "Exposure of Resource to Wrong Sphere",
+      "category": "agentic"
+    },
+    "CWE-732": {
+      "name": "Incorrect Permission Assignment for Critical Resource",
+      "category": "deployment"
+    },
+    "CWE-749": {
+      "name": "Exposed Dangerous Method or Function",
+      "category": "injection"
+    },
+    "CWE-770": {
+      "name": "Allocation of Resources Without Limits",
+      "category": "llm"
+    },
+    "CWE-776": {
+      "name": "XEE (XML Entity Expansion)",
+      "category": "injection"
+    },
+    "CWE-778": {
+      "name": "Insufficient Logging",
+      "category": "config"
+    },
+    "CWE-798": {
+      "name": "Use of Hard-coded Credentials",
+      "category": "secret_sprawl"
+    },
+    "CWE-829": {
+      "name": "Inclusion of Functionality from Untrusted Control Sphere",
+      "category": "deployment"
+    },
+    "CWE-862": {
+      "name": "Missing Authorization",
+      "category": "auth"
+    },
+    "CWE-863": {
+      "name": "Incorrect Authorization",
+      "category": "auth"
+    },
+    "CWE-915": {
+      "name": "Improperly Controlled Modification of Dynamically-Determined Object Attributes (Mass Assignment)",
+      "category": "auth"
+    },
+    "CWE-916": {
+      "name": "Use of Password Hash With Insufficient Computational Effort",
+      "category": "crypto"
+    },
+    "CWE-918": {
+      "name": "Server-Side Request Forgery (SSRF)",
+      "category": "injection"
+    },
+    "CWE-923": {
+      "name": "Improper Restriction of Communication Channel to Intended Endpoints",
+      "category": "mitm"
+    },
+    "CWE-943": {
+      "name": "Improper Neutralization of Special Elements in Data Query Logic (NoSQLi)",
+      "category": "injection"
+    },
+    "CWE-1004": {
+      "name": "Sensitive Cookie Without 'HttpOnly' Flag",
+      "category": "config"
+    },
+    "CWE-1007": {
+      "name": "Insufficient Visual Distinction of Homoglyphs Presenting to User (generic fallback)",
+      "category": "config"
+    },
+    "CWE-1035": {
+      "name": "OWASP Top Ten 2017 Category A6 — Security Misconfiguration",
+      "category": "config"
+    },
+    "CWE-1059": {
+      "name": "Incomplete Comments",
+      "category": "config"
+    },
+    "CWE-1104": {
+      "name": "Use of Unmaintained Third Party Components",
+      "category": "supply_chain"
+    },
+    "CWE-1188": {
+      "name": "Initialization of a Resource with an Insecure Default",
+      "category": "deployment"
+    },
+    "CWE-1220": {
+      "name": "Insufficient Granularity of Access Control",
+      "category": "collection_scope"
+    },
+    "CWE-1275": {
+      "name": "Sensitive Cookie with Improper SameSite Attribute",
+      "category": "config"
+    },
+    "CWE-1321": {
+      "name": "Improperly Controlled Modification of Object Prototype Attributes ('Prototype Pollution')",
+      "category": "injection"
+    },
+    "CWE-1357": {
+      "name": "Reliance on Insufficiently Trustworthy Component",
+      "category": "supply_chain"
+    },
+    "CWE-1395": {
+      "name": "Dependency on Vulnerable Third-Party Component",
+      "category": "supply_chain"
+    },
+    "CWE-1426": {
+      "name": "Improper Validation of Generative AI Output",
+      "category": "agentic"
+    },
+    "CWE-1427": {
+      "name": "Improper Neutralization of Input Used for LLM Prompting ('Prompt Injection')",
+      "category": "agentic"
+    }
+  }
+}

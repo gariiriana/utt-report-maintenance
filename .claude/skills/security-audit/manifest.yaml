@@ -1,0 +1,505 @@
+# /security-audit — Phase Contract Manifest
+#
+# This file is the STRUCTURED, machine-readable version of the per-phase
+# artifact contract. Prose versions live in:
+#   - SKILL.md (description field, runtime context)
+#   - steps/phase-NN-*.md (MANDATORY EXECUTION RULES blocks)
+#   - workflow.md §3 (Saga Checkpointing)
+#
+# All three must agree. When they disagree, this file is authoritative
+# for the E2E assertion suite. Prose files are authoritative for the
+# orchestrator model's behavior.
+#
+# Consumers (current as of 2.6.0):
+#   - tests/e2e/assertions.py — reads phases[].required_outputs and
+#     phases[].forbidden_outputs to cross-check artifact presence /
+#     absence on disk.
+#   - scripts/calibration-report.py — reads the `calibration:` block for
+#     --check-manifest (drift detection) and --gate (headline-band
+#     enforcement). It prefers PyYAML and falls back to a small reader
+#     when PyYAML is absent, so keep the calibration block to plain
+#     `key: value` scalars and flat `- key: value` list records. Its
+#     --self-test asserts the two readers agree.
+# CI workflows (.github/workflows/*.yml) do NOT currently consume the
+# manifest — that's a v2.1 candidate. Adding entries here does not
+# automatically gate CI; only the local E2E suite enforces them.
+#
+# Schema (informal — formal JSON Schema is a v2.1 candidate):
+#   - schema_version (int): bump on breaking shape changes.
+#   - skill, skill_version (str).
+#   - phases[] (list of objects):
+#       - id (int 0-8), name (str), step_file (path).
+#       - inputs (list of paths or descriptors).
+#       - required_outputs (list):
+#           - path (str): exact file path expected on disk.
+#           - path_glob (str): glob — at least one match required if
+#             at_least_one is true.
+#           - schema (str): optional path to JSON-schema for this artifact.
+#           - empty_if_gated (str): condition under which the file is
+#             allowed to be empty (zero bytes) — but the file MUST exist.
+#           - per_result_required_properties (list, Phase 7 only).
+#       - sub_agent_fan_out (str "none" or object describing fan-out).
+#       - skip_if (list of conditions, Phase 8 only).
+#       - forbidden_outputs (list, optional): per-phase blocklist of
+#         specific paths that MUST NOT exist; each entry has `path`
+#         and `reason` (the reason surfaces in assertion failure
+#         messages).
+#   - final_outputs (list with conditional path resolution).
+#   - invariants (list of human-readable rules).
+#   - calibration (object): the standing calibration control — see the
+#     block immediately below `description`. Measured per-rule-family
+#     true-positive rates plus the policy they enforce.
+
+schema_version: 1
+skill: security-audit
+skill_version: 2.6.1
+
+description: |
+  Per-phase contract. Every phase MUST produce the listed required_outputs
+  on disk before advancing. A run is INVALID if it produces the human
+  report (<output_dir>/security-audit-report.md, default
+  docs/security-audit-output/) without the .claude-audit/current/
+  blackboard. Downstream integrations (delta mode, GitHub Security tab,
+  CI gating, fixture-based E2E) all depend on the blackboard. Output-dir
+  resolution: see lib/output-routing.md.
+
+# ===========================================================================
+# STANDING CALIBRATION CONTROL  (v2.6 story 4.5)
+# ===========================================================================
+#
+# READ THIS BEFORE THE PHASE TABLE. It is the only place in the skill that
+# records how often each rule family is actually RIGHT, and it is the gate
+# that decides which families may appear in the report's headline severity
+# band.
+#
+# WHY IT EXISTS. Until 2026-07-24 this tool had never been measured. Eight
+# security engineers then triaged all 255 HIGH-or-above findings of a
+# v2.5.0 full-mode run against the real code. Two rule families turned out
+# to be 19.8% and 1.4% true while supplying 60% of the HIGH+ volume — and
+# nothing in the tool could have noticed. This block exists so that the
+# NEXT such regression is caught by `scripts/calibration-report.py` rather
+# than by eight engineers being available.
+#
+# HOW TO RE-MEASURE (the whole point — it is one command, not a project):
+#   python3 scripts/calibration-report.py \
+#       --findings .claude-audit/current/phase-07-findings-computed.jsonl \
+#       --verdicts triage/verdicts.jsonl
+#   python3 scripts/calibration-report.py --findings ... --verdicts ... \
+#       --check-manifest        # fails if the rates below have rotted
+#   python3 scripts/calibration-report.py --gate <findings.jsonl>
+#                               # fails if a barred family reached the band
+#
+# THREE STATES, and the asymmetry between them is deliberate:
+#   measured_pass       n >= min_sample_size and rate >= threshold.
+#                       May enter the headline band normally.
+#   measured_fail       n >= min_sample_size and rate <  threshold.
+#                       BARRED from the headline band; capped at
+#                       barred_family_severity_cap. We have evidence, and
+#                       the evidence says the modal row is wrong.
+#   unmeasured /        rate is null, or n < min_sample_size.
+#   insufficient_sample PROVISIONAL: still admitted to the headline band,
+#                       but every such finding MUST carry a visible
+#                       "precision: unmeasured" marker and the run MUST
+#                       print the provenance block. Absence of data is
+#                       NOT evidence of precision — but it is also not
+#                       evidence of imprecision, and barring unmeasured
+#                       families outright would bar every NEW rule on the
+#                       day it ships, which is how a control gets disabled.
+#                       So the unmeasured state is loud, not silent, and
+#                       never passes as `measured_pass`.
+#
+# WHICH COLUMN THE GATE USES. `rate` below is the LOWER BOUND: unresolvable
+# duplicate cycles count as not-true. `rate_excl_cycles` is the flattering
+# figure and is recorded for honesty, not used by the gate. Gating on the
+# number that makes you look better is the exact failure this release fixes.
+#
+# WHAT THIS CONTROL DOES NOT DO. At n = min_sample_size the 95% interval on
+# a rate near 0.5 is still roughly +/-18 points, so this catches gross
+# regressions (a family falling to 20% or 1%) and not subtle drift. It is
+# also one measurement on one codebase (Nuxt 4 / h3 / drizzle, ~235K LOC).
+# See docs/KNOWN-GAPS.md #26.
+
+calibration:
+  method: scripts/calibration-report.py
+  last_calibrated: 2026-07-24
+  calibrated_against: v2.5.0 full-mode run, Nuxt 4 + h3/Nitro + drizzle, ~235K LOC, 8 partitions
+  verdicts_total: 255
+  source: docs/EPIC-v2.6-calibrated-severity.md
+  # `true` := the triage returned REAL or ACCEPTED_RISK.
+  true_definition: REAL or ACCEPTED_RISK
+
+  # --- policy ---
+  headline_band: [CRITICAL, HIGH]
+  headline_band_min_precision: 0.50
+  # 0.50 because below it the MODAL row in the headline band is false, and
+  # a band whose median entry is wrong inverts its own meaning — the reader
+  # spends more time discarding than acting. It is also the one threshold
+  # that does not have to be re-argued every time the numbers move.
+  min_sample_size: 30
+  # Below 30 verdicts a rate is an anecdote. Calling LINDDUN a "50% family"
+  # on n=2 would be exactly the statistical malpractice this epic exists to
+  # correct, so small-n families are `insufficient_sample`, not `fail`.
+  gate_on: rate            # the lower bound, NOT rate_excl_cycles
+  barred_family_severity_cap: MEDIUM
+  unmeasured_enters_headline_band: true      # but LABELLED — see above
+  unmeasured_requires_visible_marker: true
+
+  # --- measured rates ---
+  # `family` values are the roll-up groups emitted by
+  # scripts/calibration-report.py (its FAMILY_GROUPS table); run it with
+  # --by-rule for the per-rule breakdown.
+  rule_family_precision:
+    - family: "Category deep-dive agent"
+      n: 89
+      true_count: 86
+      rate: 0.966
+      rate_excl_cycles: 0.989
+      measured: 2026-07-24
+      note: "four categories were 100% at HIGH+ (agentic 18/18, mitm 16/16, deployment 8/8, injection 6/6)"
+
+    - family: "ASVS checklist"
+      n: 6
+      true_count: 4
+      rate: 0.667
+      rate_excl_cycles: 1.0
+      measured: 2026-07-24
+      note: "n far below min_sample_size — provisional, not a measurement"
+
+    - family: "config (methodology)"
+      n: 4
+      true_count: 2
+      rate: 0.500
+      rate_excl_cycles: 1.0
+      measured: 2026-07-24
+      note: "n far below min_sample_size — provisional, not a measurement"
+
+    - family: "LINDDUN"
+      n: 2
+      true_count: 1
+      rate: 0.500
+      rate_excl_cycles: 1.0
+      measured: 2026-07-24
+      note: "n=2. Recorded so the gap is visible, not so the rate is believed"
+
+    - family: "R-rules (validate-egress.py)"
+      n: 81
+      true_count: 16
+      rate: 0.198
+      rate_excl_cycles: 0.246
+      measured: 2026-07-24
+      note: "BARRED. Free-text resource name used as a cross-layer join key; v2.6 Wave 2 types the join and caps kind-derived floors. Re-measure before lifting"
+
+    - family: "C-rules (validate-collection-scoping.py)"
+      n: 73
+      true_count: 1
+      rate: 0.014
+      rate_excl_cycles: 0.022
+      measured: 2026-07-24
+      note: "BARRED. The 1.4% measures _strip_literals, not C1/C5 — the CONCEPT has never been tested. v2.6 Wave 2 fixes the mechanism; the next calibration is its first honest measurement"
+
+    - family: "External scanner"
+      n: null
+      true_count: null
+      rate: null
+      rate_excl_cycles: null
+      measured: null
+      note: "UNMEASURED. Scanner rows folded into deep-dive findings before triage, so no independent verdict population exists. Provisional"
+
+    - family: "Governance (composer)"
+      n: null
+      true_count: null
+      rate: null
+      rate_excl_cycles: null
+      measured: null
+      note: "UNMEASURED. R4 ratchet / L1-L3 lifecycle rows are claims about the AUDIT's own state, not about the target; the triage did not cover them. Provisional"
+
+# Glob paths are relative to the skill-user's project root.
+
+phases:
+
+  - id: 0
+    name: Discovery & Recon
+    step_file: steps/phase-00-discovery.md
+    inputs: [project root]
+    required_outputs:
+      - path: .claude-audit/current/phase-00-profile.json
+        schema: lib/profile-schema.json
+      - path: .claude-audit/current/phase-00.done
+    sub_agent_fan_out: none
+
+  - id: 1
+    name: Partition & Risk Rank
+    step_file: steps/phase-01-partition.md
+    inputs: [.claude-audit/current/phase-00-profile.json]
+    required_outputs:
+      - path: .claude-audit/current/partitions.json
+        schema: lib/partitions-schema.json
+      - path: .claude-audit/current/phase-01-coverage.json
+        # v2.5 §1.6b partition coverage gate. Proves every non-ignored source
+        # file maps to a partition. An unmatched handler directory used to fall
+        # into a catch-all silently ("explicit partition membership: NONE") and
+        # leave the audit without a word.
+      - path: .claude-audit/current/phase-01.done
+    sub_agent_fan_out: none
+
+  - id: 2
+    name: Attack Surface Inventory
+    step_file: steps/phase-02-surface.md
+    inputs:
+      - .claude-audit/current/phase-00-profile.json
+      - .claude-audit/current/partitions.json
+    required_outputs:
+      - path: .claude-audit/current/phase-02-surface.json
+        schema: lib/surface-schema.json
+      - path: .claude-audit/current/phase-02-sinks.json
+        schema: lib/sink-schema.json
+        # Egress-sink inventory (v2.4 §2.11). ALWAYS written (empty sinks:[] if
+        # none). Input to the Phase-6 §6.19 Authorized-Egress reconciliation.
+      - path: .claude-audit/current/phase-02-credentials.json
+        schema: lib/credential-ledger-schema.json
+        # Credential mint/consume ledger (v2.4 §2.11). ALWAYS written.
+      - path: .claude-audit/current/phase-02-collections.json
+        schema: lib/collection-schema.json
+        # Collection row-scoping inventory (v2.5 §2.12). ALWAYS written
+        # (collections: [] if none). Input to the Phase-6 §6.20 collection-
+        # scoping reconciliation. This is the ONLY artifact that can express
+        # "authentication was used where per-row authorization was required" —
+        # every field in surface-schema records gate PRESENCE.
+      - path: .claude-audit/current/phase-02.done
+    sub_agent_fan_out: none
+
+  - id: 3
+    name: Keystone File Index
+    step_file: steps/phase-03-keystone.md
+    inputs:
+      - .claude-audit/current/phase-00-profile.json
+      - .claude-audit/current/phase-02-surface.json
+    required_outputs:
+      - path: .claude-audit/cache/keystone-files.json
+      - path: .claude-audit/current/phase-03.done
+    sub_agent_fan_out: none
+
+  - id: 4
+    name: External Inputs (Scanners)
+    step_file: steps/phase-04-scanners.md
+    required_outputs:
+      - path_glob: .claude-audit/current/phase-04-scanners/*.slim.json
+        at_least_one: true
+        graceful_degradation: true  # if no scanners installed, still emit marker
+      - path_glob: .claude-audit/current/phase-04-scanners/security-review-*.md
+      - path_glob: .claude-audit/current/phase-04-scanners/adversarial-*.md
+      - path: .claude-audit/current/phase-04-redaction.json
+        # v2.6.1+ ONLY. tests/e2e/assertions.py:91 treats a missing `path` as a
+        # failure, so replaying a pre-2.6.1 artifact directory reports this (and
+        # deliverable-gate.json) as missing. That is correct: those runs had no
+        # redaction pass. Use --skip-manifest-check when replaying old dirs.
+        # v2.6.1 §4.4b. Summary from lib/redact-scanner-output.py. Its ABSENCE
+        # means the ingest strip did not run, and every artifact above may hold
+        # credential material verbatim -- gitleaks SARIF carries the match in
+        # region.snippet.text, and the security-review-*.md / adversarial-*.md
+        # rows above are LLM prose about those same secrets.
+      - path: .claude-audit/current/phase-04.done
+    sub_agent_fan_out:
+      scanners_parallel: 6   # one per scanner binary (semgrep, osv-scanner, gitleaks, trufflehog, trivy, hadolint)
+      reviews_parallel: 2    # /security-review + adversarial-review
+
+  - id: 5
+    name: Parallel Deep Dives
+    step_file: steps/phase-05-deepdives.md
+    required_outputs:
+      - path_glob: .claude-audit/current/phase-05-*-*.jsonl
+        shape: per-category-per-partition
+      - path: .claude-audit/current/phase-05-skipped.json
+        # ALWAYS written. Shape: {"skipped": [...]} — an object wrapping
+        # an array of {category, partition, reason} entries. Empty array
+        # when nothing was skipped: {"skipped": []}. The file's presence
+        # signals filtering ran; absence indicates the orchestrator
+        # skipped fan-out entirely.
+        shape: '{"skipped": [...]}'
+      - path: .claude-audit/current/phase-05.done
+    # Specific consolidated-shape filenames forbidden under .claude-audit/
+    # current/. These are v1-era shapes seen in real regressions; a glob
+    # like phase-05-*.json over-matches and would flag the legitimate
+    # phase-05-skipped.json.
+    #
+    # KNOWN LIMITATION: this list is necessarily incomplete — a model can
+    # invent fresh consolidated names (phase-05-summary.json,
+    # phase-05-results.json, phase-05-data.json, etc.). Add to this list
+    # whenever a new consolidated shape is observed in a regression.
+    # The path_glob in required_outputs above (phase-05-*-*.jsonl with
+    # at_least_one) is the positive invariant; this list is the negative
+    # one. The two together don't fully fence "no consolidated shapes"
+    # but they fence the observed ones.
+    forbidden_outputs:
+      - path: .claude-audit/current/phase-05-tokens.json
+        reason: "v1-era consolidated shape; breaks per-category aggregation"
+      - path: .claude-audit/current/phase-05-findings.json
+        reason: "v1-era consolidated shape; breaks per-category aggregation"
+      - path: .claude-audit/current/phase-05-all.json
+        reason: "consolidated shape; breaks per-category aggregation"
+      - path: .claude-audit/current/phase-05-combined.json
+        reason: "consolidated shape; breaks per-category aggregation"
+    sub_agent_fan_out:
+      pairs: [category, top_n_partition]
+      concurrency_cap: 8
+      # Model: do NOT pass a model parameter to Agent. Claude Code routes
+      # general-purpose sub-agents to the harness-appropriate Opus
+      # variant automatically. Phase 5 §5.2 documents this; orchestrator
+      # MUST NOT downgrade to Sonnet/Haiku.
+      per_pair_output_pattern: .claude-audit/current/phase-05-<category>-<partition>.jsonl
+      categories:
+        - {id: auth,          file: steps/deepdive/cat-01-auth-authz.md,      gate: always}
+        - {id: idor,          file: steps/deepdive/cat-02-idor-bola.md,       gate: always}
+        - {id: token_scope,   file: steps/deepdive/cat-03-token-scope.md,     gate: always}
+        - {id: mitm,          file: steps/deepdive/cat-04-mitm.md,            gate: always}
+        - {id: crypto,        file: steps/deepdive/cat-05-crypto.md,          gate: always}
+        - {id: secret_sprawl, file: steps/deepdive/cat-06-secret-sprawl.md,   gate: always}
+        - {id: deployment,    file: steps/deepdive/cat-07-deployment.md,      gate: always}
+        - {id: injection,     file: steps/deepdive/cat-08-injection-ssrf.md,  gate: always}
+        - {id: llm,           file: steps/deepdive/cat-09-llm.md,             gate: "profile.llm_usage.detected == true && profile.llm_usage.kind != 'internal'"}
+        - {id: supply_chain,  file: steps/deepdive/cat-10-supply-chain.md,    gate: always}
+        - {id: agentic,       file: steps/deepdive/cat-11-mcp-agentic.md,     gate: "profile.mcp_agentic.detected == true"}
+        - {id: collection_scope, file: steps/deepdive/cat-12-collection-scoping.md, gate: always}
+      # 12 categories total (10 always-on incl. supply_chain and
+      # collection_scope; llm + agentic gated). With concurrency_cap 8, category×partition pairs queue into
+      # successive waves — the cap bounds concurrency, not total pairs. Phase 7
+      # synthesis globs phase-05-*.jsonl, so phase-05-supply_chain-*.jsonl and
+      # phase-05-agentic-*.jsonl are ingested automatically. A gated category
+      # that does not fire (e.g. agentic when mcp_agentic.detected is false)
+      # is a legitimate skip recorded in phase-05-skipped.json.
+
+  - id: 6
+    name: Config + Methodology Spine
+    step_file: steps/phase-06-config.md
+    required_outputs:
+      - path: .claude-audit/current/phase-06-config.json
+      - path_glob: .claude-audit/current/phase-06-asvs-*.jsonl
+        # Per-category intermediates from §6.9 fan-out, one per ASVS
+        # category. Concatenated into the aggregate below.
+        at_least_one: true
+      - path: .claude-audit/current/phase-06-asvs.jsonl
+        # Concatenated aggregate of phase-06-asvs-*.jsonl above.
+      - path: .claude-audit/current/phase-06-api-top10.jsonl
+      - path: .claude-audit/current/phase-06-llm-top10.jsonl
+        empty_if_gated: "profile.llm_usage.detected == false || profile.llm_usage.kind == 'internal'"
+      - path: .claude-audit/current/phase-06-web-top10.jsonl
+        # OWASP Top 10:2025 (web) roll-up (§6.16). Always written — pure
+        # roll-up from existing findings' CWEs; never gated.
+      - path: .claude-audit/current/phase-06-agentic-top10.jsonl
+        # OWASP Agentic Apps 2026 lens (§6.17). Always written; zero-byte
+        # when the gate is off.
+        empty_if_gated: "profile.mcp_agentic.detected != true"
+      - path: .claude-audit/current/phase-06-linddun.jsonl
+        empty_if_gated: "profile.pii.detected == false"
+      - path_glob: .claude-audit/current/phase-06-stride/*.md
+        at_least_one: true
+      - path: .claude-audit/current/phase-06-egress.jsonl
+        # Authorized-Egress reconciliation (§6.19). ALWAYS written; zero-byte
+        # only when phase-02-sinks.json has no sinks. Catches the cross-layer /
+        # missing-enforcer / capability-URL class.
+        empty_if_gated: "phase-02-sinks.json has no sinks"
+      - path: .claude-audit/current/phase-06-collections.jsonl
+        # Collection-scoping reconciliation (v2.5 §6.20). ALWAYS written;
+        # zero-byte only when phase-02-collections.json has no collections.
+        # Catches BOLA at the collection level, the authorization-by-decoration
+        # antipattern, and tests that pin insecure behaviour.
+        empty_if_gated: "phase-02-collections.json has no collections"
+      - path: .claude-audit/current/phase-06.done
+    sub_agent_fan_out:
+      # All three Phase 6 fan-outs: do NOT pass a `model` parameter to
+      # Agent. Claude Code routes general-purpose sub-agents to the
+      # harness-appropriate Opus variant automatically. Phase 6 §6.9
+      # documents this; orchestrator MUST NOT downgrade.
+      asvs:
+        # ASVS 4.0.3 Level 2 (lib/asvs-l2.md). v2.6 story 4.2 corrected the
+        # edition label: the file was headed "ASVS 5.0" while enumerating
+        # 4.0.3's chapter set, and every ASVS-V*.*.* id the skill emits is a
+        # 4.0.3 id. 4.0.3 defines 14 chapters (V1-V14); §6.9 still dispatches
+        # 17 slots and hard-fails below that count, so slots 15-17 emit a
+        # single explicit N/A row each. Collapsing the fan-out to 14 needs a
+        # §6.9 edit and is tracked in docs/ROADMAP.md.
+        pairs: [14 ASVS 4.0.3 L2 categories + 3 N/A compatibility slots]
+        concurrency_cap: 8
+        per_pair_output_pattern: .claude-audit/current/phase-06-asvs-<cat>.jsonl
+      linddun:
+        pairs: [entity, threat]
+        gate: "profile.pii.detected == true"
+        concurrency_cap: 8
+      stride:
+        pairs: [top_n_partitions]
+        concurrency_cap: 8
+        per_pair_output_pattern: .claude-audit/current/phase-06-stride/<partition>.md
+
+  - id: 7
+    name: Synthesis & Report
+    step_file: steps/phase-07-synthesis.md
+    required_outputs:
+      - path: .claude-audit/current/phase-07-report.md
+      - path: .claude-audit/current/findings.sarif
+        format: SARIF 2.1.0
+        per_result_required_properties:
+          - security-severity   # CVSS-style numeric string, required for GitHub Security tab
+          - cwe                  # e.g. "CWE-798" — required for fixture matching + baseline carryover
+        per_result_recommended_properties:
+          - category             # one of: auth, idor, token_scope, mitm, crypto, secret_sprawl, deployment, injection, llm, supply_chain, agentic, config
+      - path: .claude-audit/current/findings.cyclonedx.json
+      - path: .claude-audit/current/phase-07-findings-computed.jsonl
+        # v2.5 §7.15. Findings with severity_computed applied — AUTHORITATIVE
+        # input to the report and SARIF. severity_asserted is retained only as
+        # the analyst's opinion.
+      - path: .claude-audit/current/phase-07-governance.jsonl
+        # v2.5 §7.15. R4 ratchet + L1-L3 lifecycle failures. Empty file = clean.
+      - path: .claude-audit/current/phase-07-severity-gate.json
+        # v2.5 §7.15 summary. Phase 8 reads .governance_blocking and REFUSES to
+        # write a baseline while it is non-zero — that refusal is what stops a
+        # silent downgrade from laundering itself into the next baseline.
+      - path: .claude-audit/current/deliverable-gate.json
+        # v2.6.1 §7.10. Fail-closed credential gate result. §7.10a reads it to
+        # build the CRITICAL skill_self_leak finding when the gate fires.
+        # phase-07-gate-fired.marker must NOT survive alongside phase-07.done:
+        # it means the gate fired and the obligated finding was never emitted.
+      - path: .claude-audit/current/phase-07.done
+    sub_agent_fan_out: none
+
+  - id: 8
+    name: Baseline Persistence
+    step_file: steps/phase-08-baseline.md
+    skip_if:
+      - "mode == 'delta'"
+      - ".claude-audit/current/phase-07.done missing"
+      - "audit.log has CRITICAL runtime-error entries"
+      - "phase-07-severity-gate.json .governance_blocking > 0"   # v2.5 — no baseline while R4/L1-L3 fail
+    required_outputs:
+      - path: .claude-audit/baseline.json
+      - path: docs/security-audit-output/security-audit-baseline.json
+        # Default output dir; actual dir resolved per lib/output-routing.md and
+        # recorded in .claude-audit/config.json (.output_dir).
+      - path: .claude-audit/current/baseline-gate.json
+        # v2.6.1 §8.4. The pruned baseline is a TRACKED deliverable carrying
+        # findings_carryover[] titles, so it goes through the same fail-closed
+        # credential gate as the report and SARIF.
+      - path: .claude-audit/current/phase-08.done
+    sub_agent_fan_out: none
+
+final_outputs:
+  # Copied from .claude-audit/current/ to <output_dir>/ at the end of Phase 7
+  # (report/sarif/cyclonedx) and Phase 8 (pruned baseline). <output_dir> is
+  # resolved per lib/output-routing.md (default docs/security-audit-output/);
+  # a non-default dir is recorded in .claude-audit/config.json (.output_dir).
+  - path: docs/security-audit-output/security-audit-report.md
+  - path: docs/security-audit-output/findings.sarif
+  - path: docs/security-audit-output/findings.cyclonedx.json
+  - path: docs/security-audit-output/security-audit-baseline.json
+
+invariants:
+  - Every phase writes its .done marker AFTER its artifacts exist on disk.
+  - A run that produces only the user-facing report (in <output_dir>/, default docs/security-audit-output/) without .claude-audit/current/* is INVALID.
+  - SARIF results without properties.cwe break the E2E regression test's fixture-matching.
+  - Consolidated phase-05-<foo>.json files (v1-era shape) break Phase 7 per-category aggregation.
+  - Skipping Phase 5 fan-out in favor of serial single-pass coverage regresses the E2E test (misses alg:none, 2FA, zip-slip, LFI).
+  - Every path referenced as $SKILL_DIR/<x> in steps/*.md must exist under skills/security-audit/ — installation copies ONLY that directory, so a validator under repo-root scripts/ is unreachable at audit time (v2.4 shipped exactly that bug).
+  - Findings in auth / idor / token_scope / collection_scope must carry preconditions and non-empty postconditions, or the Phase-7 attack-path arithmetic silently has nothing to compose.
+  - A run with unresolved R4/L1-L3 governance failures MUST NOT write a baseline; otherwise an unexplained downgrade persists itself as the new truth.
+  - A rule family recorded in `calibration.rule_family_precision` as measured below `calibration.headline_band_min_precision` over at least `calibration.min_sample_size` verdicts MUST NOT carry a severity in `calibration.headline_band`. Enforce with `python3 scripts/calibration-report.py --gate <findings.jsonl>`.
+  - A rule family with no measured rate (or n below `calibration.min_sample_size`) is PROVISIONAL, never `pass`. It may reach the headline band only while carrying a visible unmeasured-precision marker; an unlabelled provisional finding in the headline band is a contract violation.
+  - Every rule family a run emits must have an entry in `calibration.rule_family_precision`, even if its rate is `null`. A family with no entry at all is the state this control exists to make impossible.

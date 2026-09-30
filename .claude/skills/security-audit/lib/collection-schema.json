@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/velimattiv/claude-security-audit/lib/collection-schema.json",
+  "title": "Phase-02 Collection-Endpoint Inventory",
+  "description": "Row-scoping inventory for every handler that returns a LIST of an entity. Consumed by lib/validate-collection-scoping.py. The unit of analysis is the (handler, entity) pair and the question is NOT 'is there an auth gate?' but 'does the query bind rows to the caller?'. v2.4's sink inventory admits only byte-emitting sinks; a JSON list of other principals' identifiers is an egress that inventory cannot express — this file is where it becomes expressible. Every deterministic candidate extracted from the handler files MUST appear here as a collections[] row OR in dismissed[] with a reason (fail-closed coverage).",
+  "type": "object",
+  "required": ["schema_version", "collections"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "skill_version": { "type": "string" },
+    "audit_id": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "collections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "handler_file",
+          "line",
+          "entity",
+          "returns",
+          "row_scope",
+          "endpoint_gate",
+          "coverage"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "surface_id": {
+            "type": ["string", "null"],
+            "description": "phase-02-surface.json row this collection belongs to, when known."
+          },
+          "partition": { "type": "string" },
+          "handler_file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "framework": { "type": "string" },
+          "method": { "type": ["string", "null"] },
+          "path": { "type": ["string", "null"] },
+          "entity": {
+            "type": "string",
+            "description": "Canonical profile.data_model entity id whose rows this handler returns. Must reference a data_model entity (not free text) so the public_resources allowlist and owner_cols/pii_cols join."
+          },
+          "returns": {
+            "enum": ["collection", "tree", "aggregate", "single"],
+            "description": "collection = flat list; tree = nested/hierarchical list (the shape that hides cross-principal rows inside child nodes); aggregate = counts/rollups derived from rows; single = one row (recorded so a dismissal is explicit, not silent)."
+          },
+          "row_scope": {
+            "enum": [
+              "caller_bound",
+              "visibility_filtered",
+              "public_allowlisted",
+              "role_restricted",
+              "unscoped",
+              "unknown"
+            ],
+            "description": "How ROWS are constrained — independent of the endpoint's auth gate. caller_bound = a WHERE predicate binds to caller identity (session user/org/tenant id). visibility_filtered = a per-row visibility helper is invoked AND its result is used to FILTER. public_allowlisted = entity is on profile.public_resources. role_restricted = the ONLY constraint is a role check (this is NOT row scoping — it passes only when the role is admin-tier; see validate-collection-scoping.py C1). unscoped = no predicate references any caller-derived value. unknown = could not determine from the read region (treated as unscoped, fail-closed)."
+          },
+          "scope_evidence": {
+            "type": ["object", "null"],
+            "description": "Where the row-scoping predicate lives. REQUIRED when row_scope is caller_bound or visibility_filtered — a claim of scoping with no evidence is treated as unscoped.",
+            "properties": {
+              "file": { "type": "string" },
+              "line": { "type": "integer", "minimum": 1 },
+              "predicate": { "type": "string", "maxLength": 300 }
+            }
+          },
+          "endpoint_gate": {
+            "type": "string",
+            "description": "The authentication/authorization enforced at the endpoint, or 'none'. Free text; ranked negation-aware by the same gate_rank() used for egress. Recorded so the report can state the exact shape of the miss: 'authentication was used where per-row authorization was required'."
+          },
+          "roles_required": { "type": "array", "items": { "type": "string" } },
+          "decorates_permission": {
+            "type": "boolean",
+            "description": "True when the handler computes a permission PER ROW and attaches it to the response (canWrite / isEditable / *Permitted). The 'authorization by decoration' antipattern."
+          },
+          "decoration_fields": { "type": "array", "items": { "type": "string" } },
+          "filters_after_decoration": {
+            "type": "boolean",
+            "description": "True only when the decorated collection is subsequently FILTERED using that permission. Decoration without filtering is a finding by construction (C2)."
+          },
+          "row_owner_col": {
+            "type": ["string", "null"],
+            "description": "The entity column that identifies a row's owner, when one exists (from profile.data_model.entities[].owner_cols)."
+          },
+          "coverage": {
+            "enum": ["complete", "incomplete", "caveat"],
+            "description": "complete = the query and every post-query transform were read end to end. incomplete = fail-closed deficit (the handler is longer than could be confidently read, or the query is assembled across files not followed). caveat = mechanically un-decidable (e.g. raw SQL built at runtime), surfaced as a report caveat."
+          },
+          "notes": { "type": "string", "maxLength": 300 }
+        }
+      }
+    },
+    "dismissed": {
+      "type": "array",
+      "description": "Deterministic candidates inspected and ruled out (not a collection of a sensitive entity). Required so the coverage gate can tell 'accounted-for' from 'silently omitted'.",
+      "items": {
+        "type": "object",
+        "required": ["candidate", "reason"],
+        "properties": {
+          "candidate": { "type": "string", "description": "file or file:line of the candidate." },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

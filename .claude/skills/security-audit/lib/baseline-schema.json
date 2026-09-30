@@ -1,0 +1,408 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/velimattiv/claude-security-audit/lib/baseline-schema.json",
+  "title": "Phase-08 Baseline",
+  "description": "The audit baseline — emitted by Phase 8 of a full run, consumed by Phase 0 of a delta-mode run.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "audit_id",
+    "skill_version",
+    "git_head",
+    "created_at",
+    "repo_topology",
+    "partition_manifest",
+    "surface",
+    "keystone_files",
+    "config",
+    "findings_carryover",
+    "scanner_versions",
+    "methodology_coverage",
+    "ignored"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "audit_id": {
+      "type": "string"
+    },
+    "skill_version": {
+      "type": "string"
+    },
+    "git_head": {
+      "type": "string"
+    },
+    "git_branch": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "repo_topology": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "tool": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "partitions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "partition_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "path",
+          "risk_score",
+          "depth"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "risk_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9
+          },
+          "depth": {
+            "enum": [
+              "full",
+              "inventory-only"
+            ]
+          }
+        }
+      }
+    },
+    "surface": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "registration_file",
+          "handler_file",
+          "handler_hash"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "registration_file": {
+            "type": "string"
+          },
+          "handler_file": {
+            "type": "string"
+          },
+          "handler_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auth_required": {
+            "enum": [
+              true,
+              false,
+              "unknown"
+            ]
+          },
+          "trust_zone": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "keystone_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "reason_count"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "auth_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "surface_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "allowed": {
+            "enum": [
+              "allow",
+              "deny",
+              "self",
+              "owner"
+            ]
+          }
+        }
+      }
+    },
+    "idor_candidates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "cors_origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "csp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cookie_flags": {
+          "type": "object"
+        },
+        "security_headers": {
+          "type": "object"
+        }
+      }
+    },
+    "findings_carryover": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fingerprint",
+          "title",
+          "severity",
+          "file"
+        ],
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "minLength": 12
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "INFO"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "CONFIRMED",
+              "LIKELY",
+              "POSSIBLE"
+            ]
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "cwe": {
+            "type": "string"
+          },
+          "owasp_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "partition": {
+            "type": "string"
+          },
+          "severity_asserted": {
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "INFO"
+            ]
+          },
+          "severity_computed": {
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "INFO"
+            ]
+          },
+          "first_seen_at": {
+            "type": "string",
+            "description": "ISO-8601 timestamp of the run that FIRST reported this fingerprint. Carried forward verbatim by Phase 8 §8.4 step 0, never reset. Resetting it zeroes the finding's age and silently disables the L1 gate — the difference between 'found this morning' and 'open for 96 days'."
+          },
+          "severity_history": {
+            "type": "array",
+            "description": "Append-only across runs. Rule R4 reads this to decide whether a severity decrease was justified; an empty history plus a decrease FAILS the run.",
+            "items": {
+              "type": "object",
+              "required": [
+                "run_id",
+                "severity",
+                "reason"
+              ],
+              "properties": {
+                "run_id": {
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "CRITICAL",
+                    "HIGH",
+                    "MEDIUM",
+                    "LOW",
+                    "INFO"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "reason_kind": {
+                  "enum": [
+                    "fix_commit",
+                    "compensating_control",
+                    "disproven_exploitability",
+                    "rescoped",
+                    "chain_escalation"
+                  ]
+                },
+                "fix_commit": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "lifecycle": {
+            "type": "object",
+            "description": "open -> accepted(owner, expiry, rationale) -> fixed(fix_commit) -> verified(verified_by_test). Carried forward by Phase 8; enforced by gates L1-L3.",
+            "properties": {
+              "state": {
+                "enum": [
+                  "open",
+                  "accepted",
+                  "fixed",
+                  "verified"
+                ]
+              },
+              "owner": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "expiry": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rationale": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fix_commit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "verified_by_test": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "category": {
+            "type": "string",
+            "description": "REQUIRED in practice for v2.5: compose-attack-paths.py recomputes fingerprints as sha1(file:line:cwe:category) and falls back to a (file, cwe) line-drift match when the exact fingerprint moves. A carryover entry without `category` weakens that match. Pruning it saves nothing and costs the ratchet."
+          }
+        }
+      }
+    },
+    "scanner_versions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "methodology_coverage": {
+      "type": "object",
+      "properties": {
+        "asvs_pct": {
+          "type": "number"
+        },
+        "api_top10_counts": {
+          "type": "object"
+        },
+        "llm_top10_counts": {
+          "type": "object"
+        },
+        "linddun_counts": {
+          "type": "object"
+        },
+        "unique_cwes": {
+          "type": "integer"
+        }
+      }
+    },
+    "ignored": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

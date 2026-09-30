@@ -1460,6 +1460,34 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     }
   };
 
+  // Handler: Download hanya foto bukti temuan abnormal
+  const handleDownloadAbnormalPhoto = async (item: AbnormalItem) => {
+    const photo = item.abnormalFinding?.photoBase64 || item.abnormalFinding?.photos?.[0]?.base64;
+    if (!photo) return;
+
+    const safeUnitName = (item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName)
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+      .trim()
+      .replace(/\s+/g, '_') || 'Unit';
+    const fileName = `Foto_Temuan_Abnormal_${safeUnitName}.jpg`;
+
+    try {
+      const photoSource = photo.startsWith('data:') || /^https?:\/\//i.test(photo)
+        ? photo
+        : `data:image/jpeg;base64,${photo}`;
+      const response = await fetch(photoSource);
+      if (!response.ok) throw new Error('Foto tidak dapat diakses.');
+
+      const imageBlob = await response.blob();
+      const mimeSubtype = imageBlob.type.split('/')[1]?.split(';')[0]?.toLowerCase();
+      const extension = mimeSubtype === 'jpeg' ? 'jpg' : mimeSubtype || 'jpg';
+      saveAs(imageBlob, fileName.replace(/\.jpg$/i, `.${extension}`));
+    } catch (error) {
+      console.error('Gagal mengunduh foto temuan abnormal:', error);
+      toast.error('Foto temuan gagal diunduh.');
+    }
+  };
+
   // Handler: Ekspor Rekap Lengkap Temuan Abnormal ke format Microsoft Word (.DOCX)
   const handleExportWordRecap = async () => {
     if (recapStartMonth !== 'all' && recapEndMonth !== 'all' && recapStartMonth > recapEndMonth) {
@@ -2112,7 +2140,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                 {filteredItems.map((item, idx) => {
                   const abnormal = item.abnormalFinding;
                   const targetUnit = abnormal.unitName || item.specificDetail || item.maintenanceName;
-                  const hasPhoto = Boolean(abnormal.photoBase64);
+                  const abnormalPhoto = abnormal.photoBase64 || abnormal.photos?.[0]?.base64;
+                  const hasPhoto = Boolean(abnormalPhoto);
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
@@ -2134,7 +2163,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                         {hasPhoto ? (
                           <div
                             onClick={() => setPreviewPhoto({
-                              src: abnormal.photoBase64!,
+                              src: abnormalPhoto!,
                               title: targetUnit,
                               unit: targetUnit,
                               account: item.createdBy,
@@ -2144,7 +2173,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                             title="Klik untuk memperbesar foto"
                           >
                             <img
-                              src={abnormal.photoBase64}
+                              src={abnormalPhoto}
                               alt={targetUnit}
                               className="w-full h-full object-cover"
                             />
@@ -2253,6 +2282,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                             <Download className="w-3.5 h-3.5" />
                           </button>
 
+                          {hasPhoto && (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadAbnormalPhoto(item)}
+                              className="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-md transition cursor-pointer"
+                              title="Unduh Foto Temuan Abnormal"
+                              aria-label={`Unduh foto temuan ${targetUnit}`}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => setEditingModalDoc(itemToExcelDoc(item))}
@@ -2297,7 +2338,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           {filteredItems.map((item) => {
             const abnormal = item.abnormalFinding;
             const targetUnit = abnormal.unitName || item.specificDetail || item.maintenanceName;
-            const hasPhoto = Boolean(abnormal.photoBase64);
+            const abnormalPhoto = abnormal.photoBase64 || abnormal.photos?.[0]?.base64;
+            const hasPhoto = Boolean(abnormalPhoto);
 
             return (
               <motion.div
@@ -2344,11 +2386,11 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                   {hasPhoto ? (
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 group/photo">
                       <img
-                        src={abnormal.photoBase64}
+                        src={abnormalPhoto}
                         alt={targetUnit}
                         className="w-full h-full object-cover cursor-pointer group-hover/photo:scale-105 transition-transform"
                         onClick={() => setPreviewPhoto({
-                          src: abnormal.photoBase64!,
+                          src: abnormalPhoto!,
                           title: targetUnit,
                           unit: targetUnit,
                           account: item.createdBy,
@@ -2357,7 +2399,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                       />
                       <div
                         onClick={() => setPreviewPhoto({
-                          src: abnormal.photoBase64!,
+                          src: abnormalPhoto!,
                           title: targetUnit,
                           unit: targetUnit,
                           account: item.createdBy,
@@ -2479,6 +2521,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                       <Download className="w-3 h-3" />
                       <span>PDF</span>
                     </button>
+
+                    {hasPhoto && (
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadAbnormalPhoto(item)}
+                        className="px-2 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200/80 rounded-md text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer"
+                        title="Unduh Foto Temuan Abnormal"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Foto</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
