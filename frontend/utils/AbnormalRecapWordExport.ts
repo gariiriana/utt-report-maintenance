@@ -324,14 +324,14 @@ export async function exportAbnormalRecapToWord(
     tableHeader: true,
     children: [
       'No',
-      'Nama Unit / Peralatan',
-      'Nama Maintenance',
+      'Nama Equipment',
+      'Detail Unit Equipment',
       'Periode',
-      'Deskripsi Temuan',
+      'Deskripsi & Rekomendasi Temuan',
     ].map((text, idx) =>
       new TableCell({
         width: {
-          size: [4, 18, 18, 14, 46][idx],
+          size: [4, 15, 9, 14, 58][idx],
           type: WidthType.PERCENTAGE,
         },
         shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
@@ -359,16 +359,42 @@ export async function exportAbnormalRecapToWord(
   const tableDataRows = items.map((item, idx) => {
     const unitName = item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName;
     const description = item.abnormalFinding?.description || '-';
+    const recommendation =
+      item.abnormalFinding?.actionRecommendation?.trim() ||
+      item.abnormalFinding?.recommendation?.trim() ||
+      'Belum ada rekomendasi tindakan khusus.';
+    const rowValues = [String(idx + 1), item.maintenanceName, unitName, item.maintenanceTime || '-'];
 
     return new TableRow({
       children: [
-        String(idx + 1),
-        unitName,
-        item.maintenanceName,
-        item.maintenanceTime || '-',
-        description,
-      ].map((text, colIdx) =>
+        ...rowValues.map((text, colIdx) =>
+          new TableCell({
+            width: { size: [4, 15, 9, 14][colIdx], type: WidthType.PERCENTAGE },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: borderThin,
+            shading:
+              idx % 2 === 1
+                ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG }
+                : undefined,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 30, after: 30 },
+                children: [
+                  new TextRun({
+                    text,
+                    size: 15,
+                    color: COLOR_DARK,
+                    font: 'Calibri',
+                    bold: colIdx === 1 || colIdx === 2,
+                  }),
+                ],
+              }),
+            ],
+          })
+        ),
         new TableCell({
+          width: { size: 58, type: WidthType.PERCENTAGE },
           verticalAlign: VerticalAlign.CENTER,
           borders: borderThin,
           shading:
@@ -377,21 +403,25 @@ export async function exportAbnormalRecapToWord(
               : undefined,
           children: [
             new Paragraph({
-              alignment: colIdx === 0 || colIdx === 3 ? AlignmentType.CENTER : AlignmentType.LEFT,
-              spacing: { before: 30, after: 30 },
+              spacing: { before: 30, after: 50 },
+              border: {
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
+              },
               children: [
-                new TextRun({
-                  text,
-                  size: 15,
-                  color: COLOR_DARK,
-                  font: 'Calibri',
-                  bold: colIdx === 1 || colIdx === 2,
-                }),
+                new TextRun({ text: 'Temuan Abnormal: ', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' }),
+                new TextRun({ text: description, size: 15, color: COLOR_DARK, font: 'Calibri' }),
+              ],
+            }),
+            new Paragraph({
+              spacing: { before: 50, after: 30 },
+              children: [
+                new TextRun({ text: 'Rekomendasi: ', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' }),
+                new TextRun({ text: recommendation, size: 15, color: COLOR_DARK, font: 'Calibri' }),
               ],
             }),
           ],
-        })
-      ),
+        }),
+      ],
     });
   });
 
