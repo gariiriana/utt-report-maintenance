@@ -10,6 +10,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/components/AuthContext';
 import { Login } from '@/pages/Login';
 import { MainApp } from '@/pages/MainApp';
+import { DrafterApp } from '@/pages/DrafterApp';
 import { HSEApp } from '@/pages/HSEApp';
 import { DivisionApp } from '@/pages/DivisionApp';
 import { SiteManagerDashboard } from '@/pages/SiteManagerDashboard';
@@ -92,6 +93,7 @@ function AppContent() {
             {/* Routing Komponen Berdasarkan Role User */}
             <div className="flex-1 flex flex-col w-full min-w-0">
               {(() => {
+                if (userRole === 'drafter') return <DrafterApp />;
                 if (userRole === 'hse') return <HSEApp />;
                 const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
                 if (isoRoles.includes(userRole || '')) return <DivisionApp />;
@@ -102,7 +104,7 @@ function AppContent() {
             </div>
             
             {/* Widget Asisten Chatbot AI (Tampil untuk semua user login) */}
-            <AIChatWidget />
+            {userRole !== 'drafter' && <AIChatWidget />}
           </motion.div>
         ) : (
           <motion.div

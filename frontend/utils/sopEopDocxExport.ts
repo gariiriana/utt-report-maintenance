@@ -24,7 +24,7 @@ import {
   PageBreak,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem } from '@/types/sopEopTypes';
+import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem, DocumentSigner, DEFAULT_DEFAULT_APPROVERS } from '@/types/sopEopTypes';
 import { ensureBilingualTranslation } from '@/utils/sopEopBilingualAI';
 import logoDMEOriginal from '@/assets/sop_eop_logo2.jpeg';
 import logoNDCOriginal from '@/assets/sop_eop_logo1.jpeg';
@@ -419,6 +419,67 @@ function createDocumentFooter(): Footer {
       }),
     ],
   });
+}
+
+/**
+ * Membersihkan nama pejabat penandatangan agar tidak tercampur teks jabatan
+ * (misal "Dwi Tasmiyadi Manajer Proyek" -> "Dwi Tasmiyadi").
+ */
+function sanitizeApproverName(rawName?: string, roleEn?: string, roleId?: string): string {
+  if (!rawName || rawName.trim() === '' || rawName.trim() === '-') {
+    const roleLow = ((roleEn || '') + ' ' + (roleId || '')).toLowerCase();
+    if (roleLow.includes('project') || roleLow.includes('proyek')) return 'Dwi Tasmiyadi';
+    if (roleLow.includes('chief') || roleLow.includes('kepala')) return 'Habib Mulyana';
+    if (roleLow.includes('facility') || roleLow.includes('fasilitas')) return 'Supriyatno';
+    if (roleLow.includes('assistant') || roleLow.includes('asisten')) return 'Budi Susanto';
+    return '';
+  }
+
+  let cleaned = rawName;
+
+  // 1. Hapus roleEn & roleId bila menempel
+  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (roleEn) {
+    cleaned = cleaned.replace(new RegExp(escapeRegExp(roleEn), 'gi'), '');
+  }
+  if (roleId) {
+    cleaned = cleaned.replace(new RegExp(escapeRegExp(roleId), 'gi'), '');
+  }
+
+  // 2. Hapus pola jabatan bilingual umum yang sering menempel di nama
+  const commonRolePatterns = [
+    /\b(?:Project\s*Manager|Manajer\s*Proyek)\b/gi,
+    /\b(?:Chief\s*Engineering|Chief\s*Engineer|Kepala\s*Engineering)\b/gi,
+    /\b(?:Facility\s*Manager|Manajer\s*Fasilitas)\b/gi,
+    /\b(?:Assistant\s*Manager(?:\s*HDC)?|Asisten\s*Manajer(?:\s*HDC)?)\b/gi,
+    /\b(?:Operation\s*Manager|Manajer\s*Operasional)\b/gi,
+    /\b(?:Supervisor|Pengawas)\b/gi,
+    /\b(?:Engineer|Teknisi)\b/gi,
+    /\b(?:HDC\s*Facility\s*Management)\b/gi,
+  ];
+
+  for (const pat of commonRolePatterns) {
+    cleaned = cleaned.replace(pat, '');
+  }
+
+  // 3. Bersihkan tanda baca, tanda kurung, strip, titik dua, slash sisa
+  cleaned = cleaned
+    .replace(/[()[\]{}]/g, ' ')
+    .replace(/^[–—:\-\s/]+|[–—:\-\s/]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Jika setelah dibersihkan menjadi kosong (karena ternyata teks sel hanya berisi jabatan), kembalikan default
+  if (!cleaned || cleaned === '-' || cleaned.length < 2) {
+    const roleLow = ((roleEn || '') + ' ' + (roleId || '')).toLowerCase();
+    if (roleLow.includes('project') || roleLow.includes('proyek')) return 'Dwi Tasmiyadi';
+    if (roleLow.includes('chief') || roleLow.includes('kepala')) return 'Habib Mulyana';
+    if (roleLow.includes('facility') || roleLow.includes('fasilitas')) return 'Supriyatno';
+    if (roleLow.includes('assistant') || roleLow.includes('asisten')) return 'Budi Susanto';
+    return rawName.trim();
+  }
+
+  return cleaned;
 }
 
 // ============================================================================
@@ -1468,12 +1529,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 13 – Approval', 'Seksi 13 – Persetujuan', false));
   children.push(createSpacer(40));
 
-  const defaultApprovals = [
-    { roleEn: 'Project Manager', roleId: 'Manajer Proyek', name: 'Dwi Tasmiyadi' },
-    { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', name: 'Habib Mulyana' },
-    { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas', name: 'Supriyatno' },
-    { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', name: 'Budi Susanto' },
-  ];
+  const defaultApprovals: DocumentSigner[] = [...DEFAULT_DEFAULT_APPROVERS];
 
   const approvalList = (data.approvals && data.approvals.length > 0) ? data.approvals : defaultApprovals;
 
@@ -1490,12 +1546,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     ].map((col, idx) =>
       new TableCell({
         width: { size: sopColWidths[idx], type: WidthType.DXA },
-        borders: {
-          top: BORDER_NONE,
-          bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-          left: BORDER_NONE,
-          right: BORDER_NONE,
-        },
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 60, right: 60 },
         children: [
           new Paragraph({
@@ -1510,18 +1561,14 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     ),
   });
 
-  const sopApprovalDataRows = approvalList.map((app) =>
-    new TableRow({
+  const sopApprovalDataRows = approvalList.map((app) => {
+    const cleanName = sanitizeApproverName(app.name, app.roleEn, app.roleId);
+    return new TableRow({
       cantSplit: true,
       children: [
         new TableCell({
           width: { size: sopColWidths[0], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            right: BORDER_NONE,
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [
             new Paragraph({
@@ -1535,46 +1582,35 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
         }),
         new TableCell({
           width: { size: sopColWidths[1], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: BORDER_NONE,
-            right: BORDER_NONE,
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: app.name || '', size: 19, font: FONT_BODY }),
+                new TextRun({ text: cleanName, size: 19, font: FONT_BODY }),
               ],
             }),
           ],
         }),
         new TableCell({
           width: { size: sopColWidths[2], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: BORDER_NONE,
-            right: BORDER_NONE,
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [new Paragraph({ children: [] })],
         }),
         new TableCell({
           width: { size: sopColWidths[3], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: BORDER_NONE,
-            right: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
-          children: [new Paragraph({ children: [] })],
+          children: [
+            new Paragraph({
+              children: app.date ? [new TextRun({ text: app.date, size: 19, font: FONT_BODY })] : [],
+            }),
+          ],
         }),
       ],
-    })
-  );
+    });
+  });
 
   children.push(
     new Table({
@@ -2240,12 +2276,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 7 – Approval', 'Seksi 7 – Persetujuan', true));
   children.push(createSpacer(40));
 
-  const eopDefaultApprovals = [
-    { roleEn: 'Project Manager', roleId: 'Manajer Proyek', name: 'Dwi Tasmiyadi' },
-    { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', name: 'Habib Mulyana' },
-    { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas', name: 'Supriyatno' },
-    { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', name: 'Budi Susanto' },
-  ];
+  const eopDefaultApprovals: DocumentSigner[] = [...DEFAULT_DEFAULT_APPROVERS];
 
   const eopApprovalList = (data.approvals && data.approvals.length > 0) ? data.approvals : eopDefaultApprovals;
 
@@ -2262,12 +2293,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     ].map((col, idx) =>
       new TableCell({
         width: { size: eopColWidths[idx], type: WidthType.DXA },
-        borders: {
-          top: BORDER_NONE,
-          bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-          left: BORDER_NONE,
-          right: BORDER_NONE,
-        },
+        borders: CELL_BORDERS_BOX,
         margins: { top: 40, bottom: 40, left: 60, right: 60 },
         children: [
           new Paragraph({
@@ -2282,19 +2308,15 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     ),
   });
 
-  const eopApprovalDataRows = eopApprovalList.map((app) =>
-    new TableRow({
+  const eopApprovalDataRows = eopApprovalList.map((app) => {
+    const cleanName = sanitizeApproverName(app.name, app.roleEn, app.roleId);
+    return new TableRow({
       cantSplit: true,
       children: [
         // Col 1: Job Title
         new TableCell({
           width: { size: eopColWidths[0], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            right: BORDER_NONE,
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [
             new Paragraph({
@@ -2306,20 +2328,15 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
             }),
           ],
         }),
-        // Col 2: Name (NOT repeated!)
+        // Col 2: Name (Sanitized, no attached job titles)
         new TableCell({
           width: { size: eopColWidths[1], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: BORDER_NONE,
-            right: BORDER_NONE,
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: app.name || '', size: 19, font: FONT_BODY }),
+                new TextRun({ text: cleanName, size: 19, font: FONT_BODY }),
               ],
             }),
           ],
@@ -2327,30 +2344,24 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
         // Col 3: Signature
         new TableCell({
           width: { size: eopColWidths[2], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: BORDER_NONE,
-            right: BORDER_NONE,
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
           children: [new Paragraph({ children: [] })],
         }),
         // Col 4: Date
         new TableCell({
           width: { size: eopColWidths[3], type: WidthType.DXA },
-          borders: {
-            top: BORDER_NONE,
-            bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-            left: BORDER_NONE,
-            right: { style: BorderStyle.SINGLE, size: 6, color: '000000' },
-          },
+          borders: CELL_BORDERS_BOX,
           margins: { top: 50, bottom: 50, left: 60, right: 60 },
-          children: [new Paragraph({ children: [] })],
+          children: [
+            new Paragraph({
+              children: app.date ? [new TextRun({ text: app.date, size: 19, font: FONT_BODY })] : [],
+            }),
+          ],
         }),
       ],
-    })
-  );
+    });
+  });
 
   children.push(
     new Table({

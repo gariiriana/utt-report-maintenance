@@ -24,7 +24,7 @@ import { RegisteredFace } from '@/types/faceAuthTypes';
 interface UserData {
   email: string;
   uid: string;
-  role: 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme';
+  role: 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | 'drafter';
   companyType?: 'neutra' | 'bri' | 'k2';
   createdAt: any;
 }
@@ -36,7 +36,7 @@ interface UserData {
  * @param email Alamat email user
  * @returns Kode role resmi (engineer, standby_engineer, Engineer_K2, dsb.)
  */
-const getRoleFromEmail = (email: string | null): 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' => {
+const getRoleFromEmail = (email: string | null): 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | 'drafter' => {
   if (!email) return 'engineer';
   const lowerEmail = email.toLowerCase();
   // Fallback khusus untuk akun QC DME resmi bila belum tersinkron
@@ -58,7 +58,7 @@ export const isQcDmeEmail = (email?: string | null): boolean => {
 // Interface konteks autentikasi React
 interface AuthContextType {
   user: User | null;
-  userRole: 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null;
+  userRole: 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | 'drafter' | null;
   companyType: 'neutra' | 'bri' | 'k2' | null;
   isQcDme: boolean;
   loading: boolean;
@@ -71,7 +71,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | 'drafter' | null>(null);
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | 'k2' | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -91,13 +91,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (user) {
+        // A signed Drafter claim resolves this restricted role without Firestore reads.
+        // Refresh at login so newly assigned roles are visible immediately.
+        try {
+          const token = await user.getIdTokenResult(true).catch(() => user.getIdTokenResult());
+          if (auth.currentUser?.uid !== user.uid) return;
+          if (token.claims.role === 'drafter') {
+            setUserRole('drafter');
+            setCompanyType('neutra');
+            setLoading(false);
+            return;
+          }
+        } catch (error) { console.warn('Unable to refresh role claim:', error); }
+        let resolvedRole = getRoleFromEmail(user.email);
         const userDocRef = doc(db, 'users', user.uid);
 
         try {
           const userDoc = await getDoc(userDocRef);
 
           // Jika user baru pertama kali login, buat dokumen profil awal di Firestore
-          if (!userDoc.exists()) {
+          if (userDoc.exists()) {
+            resolvedRole = userDoc.data().role || resolvedRole;
+          } else {
             const initialRole = getRoleFromEmail(user.email);
             const initialCompanyType = (initialRole === 'Engineer_K2' || initialRole === 'engineer_k2') ? 'k2' : 'neutra';
             await setDoc(userDocRef, {
@@ -129,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
 
               const resolvedCompanyType = userData.companyType || (finalRole === 'Engineer_K2' ? 'k2' : 'neutra');
+              resolvedRole = finalRole;
               setUserRole(finalRole);
               setCompanyType(resolvedCompanyType);
             } else {
@@ -141,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
           (error) => {
             console.warn('Error listening to user document:', error.message);
-            const defaultRole = getRoleFromEmail(user.email);
+            const defaultRole = resolvedRole;
             const defaultCompanyType = (defaultRole === 'Engineer_K2' || defaultRole === 'engineer_k2') ? 'k2' : 'neutra';
             setUserRole(defaultRole);
             setCompanyType(defaultCompanyType);

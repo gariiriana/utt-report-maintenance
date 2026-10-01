@@ -24,6 +24,8 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   CheckCircle2,
+  XCircle,
+  HelpCircle,
   Clock3,
   Wrench,
   Download,
@@ -78,6 +80,10 @@ export interface CorrectiveReportItem {
   sparepartType?: string;
   spareparts?: any[];
   sparepartsUsed?: any[];
+  // Predictive Report Eligibility Status
+  predictiveEligible?: boolean;
+  predictiveEligibleUpdatedAt?: any;
+  predictiveEligibleUpdatedBy?: string;
   [key: string]: any;
 }
 
@@ -140,6 +146,8 @@ export function CMMonthlyRecapModal({
   const [endDate, setEndDate] = useState<string>(defaultEndDate);
   const [troubleFilter, setTroubleFilter] = useState<'all' | 'closed' | 'open'>('all');
   const [sparepartFilter, setSparepartFilter] = useState<'all' | 'sparepart_all' | 'sparepart_dme' | 'consumable' | 'non_sparepart'>('all');
+  const [predictiveFilter, setPredictiveFilter] = useState<'all' | 'eligible' | 'ineligible' | 'unmarked'>('all');
+  const [predictiveTableTab, setPredictiveTableTab] = useState<'all' | 'eligible' | 'ineligible'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [internalReports, setInternalReports] = useState<CorrectiveReportItem[]>(initialReports || []);
@@ -309,7 +317,12 @@ export function CMMonthlyRecapModal({
         if (!isSp || r.sparepartType !== 'consumable') return false;
       }
 
-      // 4. Search Query
+      // 4. Filter Kelayakan Predictive Report
+      if (predictiveFilter === 'eligible' && r.predictiveEligible !== true) return false;
+      if (predictiveFilter === 'ineligible' && r.predictiveEligible !== false) return false;
+      if (predictiveFilter === 'unmarked' && (r.predictiveEligible === true || r.predictiveEligible === false)) return false;
+
+      // 5. Search Query
       if (searchQuery.trim() !== '') {
         const qLower = searchQuery.toLowerCase();
         const ticketMatch = (r.incidentName || r.ticketName || r.ticketNumber || '').toLowerCase().includes(qLower);
@@ -325,7 +338,7 @@ export function CMMonthlyRecapModal({
 
       return true;
     }).sort((a, b) => parseReportTime(a) - parseReportTime(b)); // Ascending chronologically
-  }, [internalReports, filterMode, startDate, endDate, selectedMonth, selectedYear, troubleFilter, sparepartFilter, searchQuery]);
+  }, [internalReports, filterMode, startDate, endDate, selectedMonth, selectedYear, troubleFilter, sparepartFilter, predictiveFilter, searchQuery]);
 
   // KPI Metrics Calculation
   const metrics = useMemo(() => {
@@ -344,7 +357,10 @@ export function CMMonthlyRecapModal({
         dmeSparepart: 0,
         consumable: 0,
         totalPhotos: 0,
-        reportsWithPhotosCount: 0
+        reportsWithPhotosCount: 0,
+        predictiveEligibleCount: 0,
+        predictiveIneligibleCount: 0,
+        predictiveUnmarkedCount: 0
       };
     }
 
@@ -364,6 +380,10 @@ export function CMMonthlyRecapModal({
     const totalPhotos = filteredCMReports.reduce((acc, r) => acc + extractPhotosFromReport(r).length, 0);
     const reportsWithPhotosCount = filteredCMReports.filter(r => extractPhotosFromReport(r).length > 0).length;
 
+    const predictiveEligibleCount = filteredCMReports.filter(r => r.predictiveEligible === true).length;
+    const predictiveIneligibleCount = filteredCMReports.filter(r => r.predictiveEligible === false).length;
+    const predictiveUnmarkedCount = total - predictiveEligibleCount - predictiveIneligibleCount;
+
     return {
       total,
       closed,
@@ -377,9 +397,23 @@ export function CMMonthlyRecapModal({
       dmeSparepart,
       consumable,
       totalPhotos,
-      reportsWithPhotosCount
+      reportsWithPhotosCount,
+      predictiveEligibleCount,
+      predictiveIneligibleCount,
+      predictiveUnmarkedCount
     };
   }, [filteredCMReports]);
+
+  // Laporan yang ditampilkan pada tabel (disaring oleh tab tabel: Semua, Dapat di Predictive, atau Tidak Bisa Predictive)
+  const displayedTableReports = useMemo(() => {
+    if (predictiveTableTab === 'eligible') {
+      return filteredCMReports.filter(r => r.predictiveEligible === true);
+    }
+    if (predictiveTableTab === 'ineligible') {
+      return filteredCMReports.filter(r => r.predictiveEligible === false);
+    }
+    return filteredCMReports;
+  }, [filteredCMReports, predictiveTableTab]);
 
   // Validasi rentang tanggal (jika tanggal mulai lebih besar dari selesai)
   const isDateRangeInvalid = filterMode === 'range' && Boolean(startDate && endDate && startDate > endDate);
@@ -628,12 +662,12 @@ export function CMMonthlyRecapModal({
             )}
           </div>
 
-          {/* Primary Date Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+          {/* Primary Date & Status Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-center">
             {filterMode === 'range' ? (
               <>
                 {/* Tanggal Mulai */}
-                <div className="sm:col-span-3">
+                <div className="col-span-1">
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-blue-600" />
                     <span>Dari Tanggal</span>
@@ -647,7 +681,7 @@ export function CMMonthlyRecapModal({
                 </div>
 
                 {/* Tanggal Selesai */}
-                <div className="sm:col-span-3">
+                <div className="col-span-1">
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-blue-600" />
                     <span>Sampai Tanggal</span>
@@ -663,7 +697,7 @@ export function CMMonthlyRecapModal({
             ) : (
               <>
                 {/* Bulan Selector */}
-                <div className="sm:col-span-3">
+                <div className="col-span-1">
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-blue-600" />
                     <span>Pilih Bulan</span>
@@ -680,7 +714,7 @@ export function CMMonthlyRecapModal({
                 </div>
 
                 {/* Tahun Selector */}
-                <div className="sm:col-span-3">
+                <div className="col-span-1">
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                     <Filter className="w-3.5 h-3.5 text-blue-600" />
                     <span>Pilih Tahun</span>
@@ -700,7 +734,7 @@ export function CMMonthlyRecapModal({
             )}
 
             {/* Filter Status Trouble */}
-            <div className="sm:col-span-3">
+            <div className="col-span-1">
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Status Trouble</span>
@@ -717,7 +751,7 @@ export function CMMonthlyRecapModal({
             </div>
 
             {/* Filter Sparepart */}
-            <div className="sm:col-span-3">
+            <div className="col-span-1">
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                 <Wrench className="w-3.5 h-3.5 text-amber-600" />
                 <span>Jenis Penanganan</span>
@@ -732,6 +766,24 @@ export function CMMonthlyRecapModal({
                 <option value="sparepart_all">Semua Sparepart (Ada Pergantian)</option>
                 <option value="sparepart_dme">Sparepart DME (Baut / Pengadaan)</option>
                 <option value="consumable">Consumable Part (Wajib SLA)</option>
+              </select>
+            </div>
+
+            {/* Filter Status Kelayakan Predictive */}
+            <div className="col-span-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span>Status Predictive</span>
+              </label>
+              <select
+                value={predictiveFilter}
+                onChange={(e) => setPredictiveFilter(e.target.value as any)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-purple-500 outline-none transition shadow-xs cursor-pointer"
+              >
+                <option value="all">Semua Status Predictive</option>
+                <option value="eligible">✓ Bisa Dibuat Predictive</option>
+                <option value="ineligible">✕ Tidak Bisa Dibuat Predictive</option>
+                <option value="unmarked">Belum Ditentukan</option>
               </select>
             </div>
           </div>
@@ -788,6 +840,14 @@ export function CMMonthlyRecapModal({
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 font-bold">
                 <Clock3 className="w-3 h-3 text-amber-600" />
                 Pending: {metrics.open} ({metrics.openPct.toFixed(0)}%)
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                Dapat di Predictive: {metrics.predictiveEligibleCount}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-300 text-rose-900 font-bold">
+                <XCircle className="w-3 h-3 text-rose-600" />
+                Tidak Bisa: {metrics.predictiveIneligibleCount}
               </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-800 font-bold">
                 <Camera className="w-3 h-3 text-blue-600" />
@@ -893,13 +953,48 @@ export function CMMonthlyRecapModal({
 
               {/* Table Preview */}
               <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-slate-500" />
-                    <span>Daftar Laporan CM ({filteredCMReports.length} Dokumen)</span>
-                  </h4>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2.5">
+                  <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 w-fit flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setPredictiveTableTab('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        predictiveTableTab === 'all'
+                          ? 'bg-white text-blue-700 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Semua Dokumen CM ({filteredCMReports.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPredictiveTableTab('eligible')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        predictiveTableTab === 'eligible'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-emerald-700'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>✓ Tabel Dapat di Predictive Report ({metrics.predictiveEligibleCount})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPredictiveTableTab('ineligible')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        predictiveTableTab === 'ineligible'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-rose-700'
+                      }`}
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>✕ Tabel Tidak Bisa Predictive Report ({metrics.predictiveIneligibleCount})</span>
+                    </button>
+                  </div>
+
                   <span className="text-[11px] text-slate-400">
-                    Urutan kronologis tanggal
+                    Menampilkan {displayedTableReports.length} dari {filteredCMReports.length} data
                   </span>
                 </div>
 
@@ -913,13 +1008,14 @@ export function CMMonthlyRecapModal({
                           <th className="px-3 py-2.5 font-bold text-slate-700">No. Tiket / Gangguan</th>
                           <th className="px-3 py-2.5 font-bold text-slate-700">Perangkat &amp; Lokasi</th>
                           <th className="px-3 py-2.5 font-bold text-slate-700">Status Trouble</th>
+                          <th className="px-3 py-2.5 font-bold text-slate-700 whitespace-nowrap">Status Predictive</th>
                           <th className="px-3 py-2.5 font-bold text-slate-700">Jenis &amp; Sparepart</th>
                           <th className="px-3 py-2.5 font-bold text-slate-700 text-center">Foto</th>
                           <th className="px-3 py-2.5 font-bold text-slate-700">Teknisi (PIC DME)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
-                        {filteredCMReports.map((report, idx) => {
+                        {displayedTableReports.map((report, idx) => {
                           const statusInfo = getTroubleStatusInfo(report);
                           const isSp = isCMSparepart(report);
                           const dateStr = formatReportDate(report);
@@ -955,6 +1051,24 @@ export function CMMonthlyRecapModal({
                                   )}
                                   {statusInfo.label}
                                 </span>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {report.predictiveEligible === true ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    <span>Dapat di Predictive Report</span>
+                                  </span>
+                                ) : report.predictiveEligible === false ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                    <XCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                                    <span>Tidak Bisa Predictive Report</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                    <HelpCircle className="w-3 h-3 text-slate-400 shrink-0" />
+                                    <span>Belum Ditentukan</span>
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2 max-w-[160px]">
                                 <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${

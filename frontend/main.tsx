@@ -22,8 +22,15 @@ if (typeof window !== 'undefined') {
   } catch (_) {}
 }
 
-// Register Service Worker PWA secara otomatis untuk dukungan akses offline & caching
-registerSW({ immediate: true });
+// Keep the PWA service worker in production; unregister stale workers during local development
+// so Vite always serves the current source instead of a cached production bundle.
+if (import.meta.env.PROD) {
+  registerSW({ immediate: true });
+} else if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  void navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(registration => { void registration.unregister(); });
+  });
+}
 
 /**
  * Polyfill DOM Node Prototype Pengaman Crash React

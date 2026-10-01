@@ -922,6 +922,53 @@ function parseDryRun(xml: string, isEop: boolean): {
 }
 
 /**
+ * Membersihkan nama approver dari teks jabatan bilingual yang mungkin terbawa dari sel DOCX
+ */
+function cleanApproverName(raw: string, roleEn: string, roleId: string, fallback: string): string {
+  if (!raw || raw.trim() === '' || raw.trim() === '-') return fallback;
+
+  let cleaned = raw;
+
+  // 1. Hapus roleEn dan roleId jika menempel
+  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (roleEn) {
+    cleaned = cleaned.replace(new RegExp(escapeRegExp(roleEn), 'gi'), '');
+  }
+  if (roleId) {
+    cleaned = cleaned.replace(new RegExp(escapeRegExp(roleId), 'gi'), '');
+  }
+
+  // 2. Hapus pola jabatan bilingual umum yang sering menempel di sel nama
+  const commonRolePatterns = [
+    /\b(?:Project\s*Manager|Manajer\s*Proyek)\b/gi,
+    /\b(?:Chief\s*Engineering|Chief\s*Engineer|Kepala\s*Engineering)\b/gi,
+    /\b(?:Facility\s*Manager|Manajer\s*Fasilitas)\b/gi,
+    /\b(?:Assistant\s*Manager(?:\s*HDC)?|Asisten\s*Manajer(?:\s*HDC)?)\b/gi,
+    /\b(?:Operation\s*Manager|Manajer\s*Operasional)\b/gi,
+    /\b(?:Supervisor|Pengawas)\b/gi,
+    /\b(?:Engineer|Teknisi)\b/gi,
+    /\b(?:HDC\s*Facility\s*Management)\b/gi,
+  ];
+
+  for (const pat of commonRolePatterns) {
+    cleaned = cleaned.replace(pat, '');
+  }
+
+  // 3. Bersihkan tanda kurung, pemisah, tanda baca dan spasi sisa
+  cleaned = cleaned
+    .replace(/[()[\]{}]/g, ' ')
+    .replace(/^[–—:\-\s/]+|[–—:\-\s/]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned || cleaned === '-' || cleaned.length < 2) {
+    return fallback;
+  }
+
+  return cleaned;
+}
+
+/**
  * Mengekstrak tabel Approval / Pengesahan (4 Pejabat Penandatangan)
  * Kebal terhadap baris header dan perbedaan urutan baris.
  */
@@ -964,8 +1011,45 @@ function parseApprovals(xml: string): DocumentSigner[] {
     if (matchedRow) {
       let rawName = '';
       let rawDate = '';
-      if (matchedRow.cells.length >= 2) {
-        rawName = cleanText(matchedRow.cells[1] || '').trim();
+
+      const extractCellLines = (cellIndex: number): string[] => {
+        if (!matchedRow.cellXml || !matchedRow.cellXml[cellIndex]) {
+          return [cleanText(matchedRow.cells[cellIndex] || '')];
+        }
+        return matchedRow.cellXml[cellIndex]
+          .replace(/<w:br\s*\/?>/gi, '\n')
+          .replace(/<\/w:p>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .split('\n')
+          .map((l) => cleanText(l))
+          .filter(Boolean);
+      };
+
+      const isRoleOnlyCell = (text: string) => {
+        const t = text.toLowerCase().trim();
+        return (
+          t === role.roleEn.toLowerCase() ||
+          t === role.roleId.toLowerCase() ||
+          t === 'manajer proyek' ||
+          t === 'kepala engineering' ||
+          t === 'manajer fasilitas' ||
+          t === 'asisten manajer hdc' ||
+          t === 'project manager' ||
+          t === 'chief engineering' ||
+          t === 'facility manager' ||
+          t === 'assistant manager hdc'
+        );
+      };
+
+      if (matchedRow.cells.length >= 5 || (matchedRow.cells.length >= 3 && isRoleOnlyCell(matchedRow.cells[1]))) {
+        // Format 5 kolom: [Role EN, Role ID, Name, Signature, Date]
+        const nameCandidates = extractCellLines(2);
+        rawName = nameCandidates.find((line) => !isRoleOnlyCell(line)) || nameCandidates[0] || '';
+        rawDate = matchedRow.cells.length >= 5 ? cleanText(matchedRow.cells[4] || '') : cleanText(matchedRow.cells[3] || '');
+      } else if (matchedRow.cells.length >= 2) {
+        // Format 4 kolom standar: [Job Title, Name, Signature, Date]
+        const nameCandidates = extractCellLines(1);
+        rawName = nameCandidates.find((line) => !isRoleOnlyCell(line)) || nameCandidates[0] || '';
         rawDate = matchedRow.cells.length >= 4 ? cleanText(matchedRow.cells[3] || '').trim() : '';
       } else if (matchedRow.cells.length === 1) {
         // Baris tunggal misalnya "Project Manager Dwi Tasmiyadi"
@@ -975,10 +1059,12 @@ function parseApprovals(xml: string): DocumentSigner[] {
           .trim();
       }
 
+      const cleanedName = cleanApproverName(rawName, role.roleEn, role.roleId, role.fallbackName);
+
       return {
         roleEn: role.roleEn,
         roleId: role.roleId,
-        name: rawName && rawName !== '-' ? rawName : role.fallbackName,
+        name: cleanedName,
         date: rawDate && rawDate !== '-' ? rawDate : '',
         signature: ''
       };

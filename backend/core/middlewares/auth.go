@@ -11,6 +11,7 @@ import (
 	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 	"github.com/gariiriana/DwimitraSystem/backend/pkg/logger"
 )
+
 type contextKey string
 
 const (
@@ -76,6 +77,11 @@ func RequireFirebaseAuth(authClient *firebaseAuth.Client) func(http.Handler) htt
 			}
 			if role, ok := decoded.Claims["role"].(string); ok {
 				ctx = context.WithValue(ctx, userRoleKey, role)
+				// Drafter uses Firestore/Storage directly; unrelated backend modules are restricted.
+				if role == "drafter" && r.URL.Path != "/api/auth/me" && r.URL.Path != "/api/auth/logout" && r.URL.Path != "/api/auth/login" {
+					helpers.SendError(w, "Forbidden: Drafter access is limited to files and BOQ", http.StatusForbidden)
+					return
+				}
 			}
 
 			next.ServeHTTP(w, r.WithContext(ctx))

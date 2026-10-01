@@ -35,6 +35,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { db } from '@/api/firebase';
 import {
+    Bytes,
     collection,
     addDoc,
     setDoc,
@@ -248,7 +249,26 @@ export const getFileIcon = (fileType: string) => {
 };
 
 const MAX_FILE_SIZE = 60 * 1024 * 1024;
-const CHUNK_SIZE = 450 * 1024; // 450KB binary (~600KB base64), strictly within Firestore 1MB document limit
+const CHUNK_SIZE = 900 * 1024; // Keep each binary field below Firestore's 1 MiB per-value limit.
+
+function decodeStoredFileChunk(value: unknown): { bytes: Uint8Array; mimeType?: string } {
+    if (value instanceof Bytes) return { bytes: value.toUint8Array() };
+    if (typeof value !== 'string') throw new Error('Format potongan berkas tidak dikenal.');
+
+    let base64 = value;
+    let mimeType: string | undefined;
+    if (base64.includes(';base64,')) {
+        const [header, payload] = base64.split(';base64,', 2);
+        if (header.startsWith('data:')) mimeType = header.slice(5).trim();
+        base64 = payload;
+    } else if (base64.includes(',')) {
+        base64 = base64.split(',', 2)[1];
+    }
+    const binary = atob(base64.replace(/[\r\n\s]/g, ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+    return { bytes, mimeType };
+}
 
 export interface ParsedFileMetadata {
     category?: string;
@@ -394,6 +414,7 @@ interface FileData {
 }
 
 interface FileManagementProps {
+    fileOnly?: boolean;
     collectionName?: string;
     allowUpload?: boolean;
     divisionName?: string;
@@ -477,6 +498,7 @@ const parseCorrectiveDocs = (docs: any[]): FileData[] => {
 
 export function FileManagement({
     collectionName = 'files',
+    fileOnly = false,
     allowUpload: propAllowUpload,
     divisionName,
     simpleMode = false,
@@ -640,13 +662,13 @@ export function FileManagement({
             return;
         }
 
-        const isCorrectiveTarget = !initialFolder || 
-            initialFolder === 'Report CM' || 
-            initialFolder === 'Form SLA/SLG' || 
-            initialFolder === 'SLA/SLG' || 
-            initialFolder === 'Report PIR' || 
-            initialFolder === 'Report CM, SLA & PIR' || 
-            Boolean(propSearchQuery && propSearchQuery.trim().length > 0);
+        const isCorrectiveTarget = !fileOnly && (!initialFolder ||
+            initialFolder === 'Report CM' ||
+            initialFolder === 'Form SLA/SLG' ||
+            initialFolder === 'SLA/SLG' ||
+            initialFolder === 'Report PIR' ||
+            initialFolder === 'Report CM, SLA & PIR' ||
+            Boolean(propSearchQuery && propSearchQuery.trim().length > 0));
 
         const isoCached = sharedCollectionsCache[collectionName];
         const isIsoFresh = Boolean(isoCached && (Date.now() - isoCached.timestamp < SHARED_FILES_CACHE_TTL));
@@ -844,20 +866,7 @@ export function FileManagement({
             unsubscribeISO();
             unsubCorrectiveRef.current?.();
         };
-    }, [user, collectionName, initialFolder, refreshTrigger]);
-
-    const chunkToBase64 = (blob: Blob): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const result = reader.result as string;
-                const base64 = result.includes(',') ? result.split(',')[1] : result;
-                resolve(base64);
-            };
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(blob);
-        });
-    };
+    }, [user, collectionName, initialFolder, refreshTrigger, fileOnly]);
 
     const retryOperation = async <T,>(
         operation: () => Promise<T>,
@@ -992,8 +1001,9 @@ export function FileManagement({
                     const resolvedMime = getFileMime(file);
 
                     // Step 1: Buat dokumen utama di Firestore dengan mekanisme retry
-                    fileDocRef = await retryOperation(async () => {
-                        return await addDoc(collection(db, collectionName), {
+                    fileDocRef = doc(collection(db, collectionName));
+                    await retryOperation(async () => {
+                        await setDoc(fileDocRef, {
                             fileName: file.name,
                             fileSize: file.size,
                             fileType: resolvedMime,
@@ -1021,16 +1031,14 @@ export function FileManagement({
                             const chunkBlob = file.slice(start, end);
 
                             batchPromises.push((async () => {
-                                let chunkBase64 = await chunkToBase64(chunkBlob);
-                                if (c === 0) {
-                                    chunkBase64 = `data:${resolvedMime};base64,${chunkBase64}`;
-                                }
+                                const chunkBytes = new Uint8Array(await chunkBlob.arrayBuffer());
 
                                 const chunkRef = doc(db, collectionName, fileDocRef.id, 'chunks', `chunk_${String(c).padStart(4, '0')}`);
                                 await retryOperation(async () => {
                                     await setDoc(chunkRef, {
                                         index: c,
-                                        data: chunkBase64
+                                        data: Bytes.fromUint8Array(chunkBytes),
+                                        storageFormat: 'firestore-bytes-v1',
                                     });
                                 }, 3, 1200);
 
@@ -1077,7 +1085,7 @@ export function FileManagement({
                 delete sharedCollectionsCache[collectionName];
                 setRefreshTrigger(prev => prev + 1);
                 try {
-                    await sendFileNotification({
+                    if (!fileOnly) await sendFileNotification({
                         title: `${successCount} Berkas Baru: ${finalCategory}`,
                         fileName: successCount === 1 ? selectedFiles[0].name : `${successCount} berkas baru (${finalCategory})`,
                         category: finalCategory,
@@ -1356,25 +1364,9 @@ export function FileManagement({
             chunksSnapshot.forEach(docSnap => {
                 const data = docSnap.data();
                 if (data.data) {
-                    let base64Part = data.data;
-                    if (base64Part.includes(';base64,')) {
-                        const parts = base64Part.split(';base64,');
-                        if (parts[0].startsWith('data:')) {
-                            const extractedMime = parts[0].replace('data:', '').trim();
-                            if (extractedMime) mimeString = extractedMime;
-                        }
-                        base64Part = parts[1];
-                    } else if (base64Part.includes(',')) {
-                        base64Part = base64Part.split(',')[1];
-                    }
-                    base64Part = base64Part.replace(/[\r\n\s]/g, '');
-
-                    const byteCharacters = atob(base64Part);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    }
-                    byteArrays.push(new Uint8Array(byteNumbers));
+                    const decoded = decodeStoredFileChunk(data.data);
+                    if (decoded.mimeType) mimeString = decoded.mimeType;
+                    byteArrays.push(decoded.bytes);
                 }
             });
 
@@ -1529,25 +1521,9 @@ export function FileManagement({
                         chunksSnapshot.forEach(docSnap => {
                             const data = docSnap.data();
                             if (data.data) {
-                                let base64Part = data.data;
-                                if (base64Part.includes(';base64,')) {
-                                    const parts = base64Part.split(';base64,');
-                                    if (parts[0].startsWith('data:')) {
-                                        const extractedMime = parts[0].replace('data:', '').trim();
-                                        if (extractedMime) mimeString = extractedMime;
-                                    }
-                                    base64Part = parts[1];
-                                } else if (base64Part.includes(',')) {
-                                    base64Part = base64Part.split(',')[1];
-                                }
-                                base64Part = base64Part.replace(/[\r\n\s]/g, '');
-
-                                const byteCharacters = atob(base64Part);
-                                const byteNumbers = new Array(byteCharacters.length);
-                                for (let k = 0; k < byteCharacters.length; k++) {
-                                    byteNumbers[k] = byteCharacters.charCodeAt(k);
-                                }
-                                byteArrays.push(new Uint8Array(byteNumbers));
+                                const decoded = decodeStoredFileChunk(data.data);
+                                if (decoded.mimeType) mimeString = decoded.mimeType;
+                                byteArrays.push(decoded.bytes);
                             }
                         });
 
@@ -2111,8 +2087,8 @@ export function FileManagement({
                                         if (onBackToRoot) onBackToRoot();
                                     }}
                                     className={`inline-flex items-center gap-1.5 transition-colors ${
-                                        selectedFolder 
-                                            ? 'text-slate-500 hover:text-amber-700 hover:underline cursor-pointer' 
+                                        selectedFolder
+                                            ? 'text-slate-500 hover:text-amber-700 hover:underline cursor-pointer'
                                             : 'text-slate-900 font-bold'
                                     }`}
                                 >
@@ -2127,8 +2103,8 @@ export function FileManagement({
                                             type="button"
                                             onClick={() => { setSelectedQuarter(null); setSelectedMType(null); }}
                                             className={`transition-colors truncate max-w-[200px] sm:max-w-xs ${
-                                                selectedQuarter 
-                                                    ? 'text-slate-500 hover:text-amber-700 hover:underline cursor-pointer' 
+                                                selectedQuarter
+                                                    ? 'text-slate-500 hover:text-amber-700 hover:underline cursor-pointer'
                                                     : 'text-slate-900 font-bold'
                                             }`}
                                             title={selectedFolder}
@@ -2145,8 +2121,8 @@ export function FileManagement({
                                             type="button"
                                             onClick={() => setSelectedMType(null)}
                                             className={`px-2.5 py-0.5 rounded-md text-xs font-bold transition-all ${
-                                                selectedMType 
-                                                    ? 'bg-slate-200/80 text-slate-700 hover:bg-amber-100 hover:text-amber-800 cursor-pointer' 
+                                                selectedMType
+                                                    ? 'bg-slate-200/80 text-slate-700 hover:bg-amber-100 hover:text-amber-800 cursor-pointer'
                                                     : 'bg-amber-500 text-white shadow-2xs'
                                             }`}
                                             title={selectedQuarter}
@@ -2194,10 +2170,10 @@ export function FileManagement({
                             <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
                                 <span className="text-slate-400">Lokasi:</span>
                                 <span className="font-semibold text-slate-700">
-                                    {selectedMType 
-                                        ? `${selectedFolder} › ${selectedQuarter} › ${selectedMType}` 
-                                        : selectedQuarter 
-                                        ? `${selectedFolder} › ${selectedQuarter}` 
+                                    {selectedMType
+                                        ? `${selectedFolder} › ${selectedQuarter} › ${selectedMType}`
+                                        : selectedQuarter
+                                        ? `${selectedFolder} › ${selectedQuarter}`
                                         : selectedFolder}
                                 </span>
                             </div>

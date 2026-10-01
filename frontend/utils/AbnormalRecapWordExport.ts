@@ -55,6 +55,32 @@ async function resolvePredictiveReportData(item: AbnormalItem): Promise<Predicti
   return null;
 }
 
+/** Helper ekstraksi status kelayakan Predictive Maintenance (PdM) pada temuan abnormal */
+export function getAbnormalPredictiveInfo(item: AbnormalItem): { isEligible: boolean | null; label: string; badge: string; color: string } {
+  if (item?.predictiveEligible === true) {
+    return {
+      isEligible: true,
+      label: 'Dapat di Predictive Report',
+      badge: '✓ Dapat di Predictive Report',
+      color: '166534',
+    };
+  }
+  if (item?.predictiveEligible === false) {
+    return {
+      isEligible: false,
+      label: 'Tidak Bisa Predictive Report',
+      badge: '✕ Tidak Bisa Predictive Report',
+      color: 'B91C1C',
+    };
+  }
+  return {
+    isEligible: null,
+    label: 'Belum Ditentukan',
+    badge: 'Predictive: -',
+    color: '64748B',
+  };
+}
+
 // Helper konversi base64 string ke Uint8Array untuk ImageRun docx
 function base64ToUint8Array(base64: string): Uint8Array {
   if (!base64 || typeof base64 !== 'string') return new Uint8Array();
@@ -133,6 +159,26 @@ const borderThin = {
   right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
 } as const;
 
+// Padding sel tabel agar konten tidak mepet/menempel dengan garis border
+const cellMarginStandard = {
+  top: 100,
+  bottom: 100,
+  left: 140,
+  right: 140,
+};
+const cellMarginCompact = {
+  top: 80,
+  bottom: 80,
+  left: 100,
+  right: 100,
+};
+const cellMarginCenter = {
+  top: 80,
+  bottom: 80,
+  left: 80,
+  right: 80,
+};
+
 export const borderNone = {
   top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
   bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
@@ -174,6 +220,7 @@ export async function exportAbnormalRecapToWord(
   const headerTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: borderThin,
+    margins: cellMarginCompact,
     rows: [
       new TableRow({
         children: [
@@ -182,6 +229,7 @@ export async function exportAbnormalRecapToWord(
             width: { size: 20, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCompact,
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -196,6 +244,7 @@ export async function exportAbnormalRecapToWord(
             width: { size: 60, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCompact,
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -254,6 +303,7 @@ export async function exportAbnormalRecapToWord(
             width: { size: 20, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCompact,
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -272,6 +322,7 @@ export async function exportAbnormalRecapToWord(
   const kpiTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: borderThin,
+    margins: cellMarginCompact,
     rows: [
       new TableRow({
         children: [
@@ -284,6 +335,7 @@ export async function exportAbnormalRecapToWord(
             width: { size: 25, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCompact,
             shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
             children: [
               new Paragraph({
@@ -319,14 +371,14 @@ export async function exportAbnormalRecapToWord(
     ],
   });
 
-  // 4. TABEL MATRIKS DAFTAR TEMUAN (TABEL REKAPITULASI CEPAT)
+  // 4. TABEL MATRIKS DAFTAR TEMUAN (TABEL REKAPITULASI CEPAT DENGAN STATUS PREDICTIVE)
   const tableHeaderRow = new TableRow({
     tableHeader: true,
     children: [
       'No',
       'Nama Equipment',
       'Detail Unit Equipment',
-      'Periode',
+      'Periode & Status Predictive',
       'Deskripsi & Rekomendasi Temuan',
     ].map((text, idx) =>
       new TableCell({
@@ -337,6 +389,7 @@ export async function exportAbnormalRecapToWord(
         shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
         verticalAlign: VerticalAlign.CENTER,
         borders: borderThin,
+        margins: cellMarginCompact,
         children: [
           new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -363,22 +416,24 @@ export async function exportAbnormalRecapToWord(
       item.abnormalFinding?.actionRecommendation?.trim() ||
       item.abnormalFinding?.recommendation?.trim() ||
       'Belum ada rekomendasi tindakan khusus.';
-    const rowValues = [String(idx + 1), item.maintenanceName, unitName, item.maintenanceTime || '-'];
+    const predInfo = getAbnormalPredictiveInfo(item);
+    const rowValues = [String(idx + 1), item.maintenanceName, unitName];
 
     return new TableRow({
       children: [
         ...rowValues.map((text, colIdx) =>
           new TableCell({
-            width: { size: [4, 15, 9, 14][colIdx], type: WidthType.PERCENTAGE },
+            width: { size: [4, 15, 9][colIdx], type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: colIdx === 0 ? cellMarginCenter : cellMarginStandard,
             shading:
               idx % 2 === 1
                 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG }
                 : undefined,
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                alignment: colIdx === 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
                 spacing: { before: 30, after: 30 },
                 children: [
                   new TextRun({
@@ -393,10 +448,86 @@ export async function exportAbnormalRecapToWord(
             ],
           })
         ),
+        // Kolom 4: Periode & Status Kelayakan Predictive Maintenance
+        new TableCell({
+          width: { size: 14, type: WidthType.PERCENTAGE },
+          verticalAlign: VerticalAlign.CENTER,
+          borders: borderThin,
+          margins: cellMarginCenter,
+          shading:
+            idx % 2 === 1
+              ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG }
+              : undefined,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 20, after: 10 },
+              children: [
+                new TextRun({
+                  text: item.maintenanceTime || '-',
+                  size: 14,
+                  color: COLOR_DARK,
+                  font: 'Calibri',
+                }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 0, after: 20 },
+              children: predInfo.isEligible === true
+                ? [
+                    new TextRun({
+                      text: '✓ Dapat di',
+                      bold: true,
+                      size: 11,
+                      font: 'Calibri',
+                      color: predInfo.color,
+                    }),
+                    new TextRun({
+                      text: 'Predictive Report',
+                      bold: true,
+                      size: 11,
+                      font: 'Calibri',
+                      color: predInfo.color,
+                      break: 1,
+                    }),
+                  ]
+                : predInfo.isEligible === false
+                ? [
+                    new TextRun({
+                      text: '✕ Tidak Bisa',
+                      bold: true,
+                      size: 11,
+                      font: 'Calibri',
+                      color: predInfo.color,
+                    }),
+                    new TextRun({
+                      text: 'Predictive Report',
+                      bold: true,
+                      size: 11,
+                      font: 'Calibri',
+                      color: predInfo.color,
+                      break: 1,
+                    }),
+                  ]
+                : [
+                    new TextRun({
+                      text: 'Predictive: -',
+                      bold: true,
+                      size: 11,
+                      font: 'Calibri',
+                      color: predInfo.color,
+                    }),
+                  ],
+            }),
+          ],
+        }),
+        // Kolom 5: Deskripsi & Rekomendasi Temuan
         new TableCell({
           width: { size: 58, type: WidthType.PERCENTAGE },
           verticalAlign: VerticalAlign.CENTER,
           borders: borderThin,
+          margins: cellMarginStandard,
           shading:
             idx % 2 === 1
               ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG }
@@ -427,6 +558,7 @@ export async function exportAbnormalRecapToWord(
 
   const summaryMatrixTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    margins: cellMarginCompact,
     rows: [tableHeaderRow, ...tableDataRows],
   });
 
@@ -469,6 +601,7 @@ export async function exportAbnormalRecapToWord(
     const recoText = item.abnormalFinding?.actionRecommendation || 'Belum ada rekomendasi tindakan khusus.';
     const photoB64 = item.abnormalFinding?.photoBase64;
     const hasPhoto = Boolean(photoB64);
+    const predInfo = getAbnormalPredictiveInfo(item);
 
     // Pakai PageBreak eksplisit (bukan hanya paragraph property) karena Word
     // dapat mengabaikan pageBreakBefore saat blok sebelumnya berisi foto.
@@ -511,6 +644,17 @@ export async function exportAbnormalRecapToWord(
             color: COLOR_DARK,
             font: 'Calibri',
           }),
+          new TextRun({
+            text: predInfo.isEligible === true
+              ? `   |   PREDICTIVE: DAPAT DI PREDICTIVE REPORT`
+              : predInfo.isEligible === false
+              ? `   |   PREDICTIVE: TIDAK BISA PREDICTIVE REPORT`
+              : `   |   PREDICTIVE: BELUM DITENTUKAN`,
+            bold: true,
+            size: 15,
+            color: predInfo.color,
+            font: 'Calibri',
+          }),
         ],
       })
     );
@@ -519,6 +663,7 @@ export async function exportAbnormalRecapToWord(
     const metaTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: borderThin,
+      margins: cellMarginCompact,
       rows: [
         new TableRow({
           children: [
@@ -526,6 +671,7 @@ export async function exportAbnormalRecapToWord(
               width: { size: 25, type: WidthType.PERCENTAGE },
               shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
               borders: borderThin,
+              margins: cellMarginCompact,
               children: [
                 new Paragraph({
                   spacing: { before: 20, after: 20 },
@@ -536,6 +682,7 @@ export async function exportAbnormalRecapToWord(
             new TableCell({
               width: { size: 75, type: WidthType.PERCENTAGE },
               borders: borderThin,
+              margins: cellMarginStandard,
               children: [
                 new Paragraph({
                   spacing: { before: 20, after: 20 },
@@ -551,6 +698,7 @@ export async function exportAbnormalRecapToWord(
               width: { size: 25, type: WidthType.PERCENTAGE },
               shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
               borders: borderThin,
+              margins: cellMarginCompact,
               children: [
                 new Paragraph({
                   spacing: { before: 20, after: 20 },
@@ -561,6 +709,7 @@ export async function exportAbnormalRecapToWord(
             new TableCell({
               width: { size: 75, type: WidthType.PERCENTAGE },
               borders: borderThin,
+              margins: cellMarginStandard,
               children: [
                 new Paragraph({
                   spacing: { before: 20, after: 20 },
@@ -571,6 +720,56 @@ export async function exportAbnormalRecapToWord(
                       color: COLOR_DARK,
                       font: 'Calibri',
                     }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+              borders: borderThin,
+              margins: cellMarginCompact,
+              children: [
+                new Paragraph({
+                  spacing: { before: 20, after: 20 },
+                  children: [new TextRun({ text: 'Status Predictive Report', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' })],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 75, type: WidthType.PERCENTAGE },
+              borders: borderThin,
+              margins: cellMarginStandard,
+              children: [
+                new Paragraph({
+                  spacing: { before: 20, after: 20 },
+                  children: [
+                    new TextRun({
+                      text: predInfo.isEligible === true
+                        ? '✓ BISA DIBUATKAN PREDICTIVE REPORT'
+                        : predInfo.isEligible === false
+                        ? '✕ TIDAK BISA PREDICTIVE REPORT'
+                        : 'Belum Ditentukan',
+                      bold: true,
+                      size: 15,
+                      color: predInfo.color,
+                      font: 'Calibri',
+                    }),
+                    ...(item.predictiveEligibleUpdatedBy
+                      ? [
+                          new TextRun({
+                            text: ` (Ditandai oleh: ${item.predictiveEligibleUpdatedBy})`,
+                            size: 13,
+                            color: COLOR_MUTED,
+                            font: 'Calibri',
+                            italics: true,
+                          }),
+                        ]
+                      : []),
                   ],
                 }),
               ],
@@ -729,6 +928,7 @@ export async function exportAbnormalRecapToWord(
         new Table({
           width: { size: 100, type: WidthType.PERCENTAGE },
           borders: borderThin,
+          margins: cellMarginCompact,
           rows: [
             new TableRow({
               children: [
@@ -736,11 +936,13 @@ export async function exportAbnormalRecapToWord(
                   width: { size: 28, type: WidthType.PERCENTAGE },
                   shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                   borders: borderThin,
+                  margins: cellMarginCompact,
                   children: [new Paragraph({ children: [new TextRun({ text: 'Akar Masalah (Root Cause)', bold: true, size: 15, font: 'Calibri' })] })],
                 }),
                 new TableCell({
                   width: { size: 72, type: WidthType.PERCENTAGE },
                   borders: borderThin,
+                  margins: cellMarginStandard,
                   children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.rootCauseAnalysis || '-', size: 15, font: 'Calibri' })] })],
                 }),
               ],
@@ -751,11 +953,13 @@ export async function exportAbnormalRecapToWord(
                   width: { size: 28, type: WidthType.PERCENTAGE },
                   shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                   borders: borderThin,
+                  margins: cellMarginCompact,
                   children: [new Paragraph({ children: [new TextRun({ text: 'Potensi Modus Kegagalan', bold: true, size: 15, font: 'Calibri' })] })],
                 }),
                 new TableCell({
                   width: { size: 72, type: WidthType.PERCENTAGE },
                   borders: borderThin,
+                  margins: cellMarginStandard,
                   children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.potentialFailureMode || '-', size: 15, font: 'Calibri' })] })],
                 }),
               ],
@@ -766,11 +970,13 @@ export async function exportAbnormalRecapToWord(
                   width: { size: 28, type: WidthType.PERCENTAGE },
                   shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                   borders: borderThin,
+                  margins: cellMarginCompact,
                   children: [new Paragraph({ children: [new TextRun({ text: 'Rencana Tindakan Definitif', bold: true, size: 15, font: 'Calibri' })] })],
                 }),
                 new TableCell({
                   width: { size: 72, type: WidthType.PERCENTAGE },
                   borders: borderThin,
+                  margins: cellMarginStandard,
                   children: [new Paragraph({ children: [new TextRun({ text: pdmData.actionPlan?.plannedOverhaulAction || pdmData.actionPlan?.immediateAction || '-', size: 15, font: 'Calibri' })] })],
                 }),
               ],

@@ -26,6 +26,9 @@ export default defineConfig({
     // 3. Plugin PWA (Offline Service Worker & Manifest Web App)
     VitePWA({
       registerType: 'autoUpdate',
+      // Never serve/register a PWA worker from Vite. A stale worker can keep
+      // controlling localhost and return cached production HTML during dev.
+      devOptions: { enabled: false },
       includeAssets: ['logo_utt.png', 'logo-neutradc.png'],
       manifest: {
         name: 'Report UTT',

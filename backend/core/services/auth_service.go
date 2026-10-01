@@ -7,9 +7,11 @@ import (
 
 	firebaseAuth "firebase.google.com/go/v4/auth"
 )
+
 type AuthService struct {
 	AuthClient *firebaseAuth.Client
 }
+
 func NewAuthService(client *firebaseAuth.Client) *AuthService {
 	return &AuthService{AuthClient: client}
 }
@@ -34,10 +36,17 @@ func (s *AuthService) SetCustomClaims(ctx context.Context, uid string, claims ma
 	return nil
 }
 func (s *AuthService) SetRole(ctx context.Context, uid, role string) error {
-	return s.SetCustomClaims(ctx, uid, map[string]interface{}{
-		"role":       role,
-		"updated_at": time.Now().UTC().Unix(),
-	})
+	user, err := s.GetUser(ctx, uid)
+	if err != nil {
+		return err
+	}
+	claims := user.CustomClaims
+	if claims == nil {
+		claims = make(map[string]interface{})
+	}
+	claims["role"] = role
+	claims["updated_at"] = time.Now().UTC().Unix()
+	return s.SetCustomClaims(ctx, uid, claims)
 }
 func (s *AuthService) RevokeRefreshTokens(ctx context.Context, uid string) error {
 	if err := s.AuthClient.RevokeRefreshTokens(ctx, uid); err != nil {
@@ -71,4 +80,3 @@ func (s *AuthService) CreateCustomToken(ctx context.Context, uid string) (string
 	}
 	return token, nil
 }
-

@@ -1,6 +1,25 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Drafter provisioning writes this signed claim together with the profile role.
+    // Storage authorization does not consume Firestore reads.
+    function isDrafter() {
+      return request.auth != null && request.auth.token.get('role', '') == 'drafter';
+    }
+    function canManageBOQ() {
+      return request.auth != null && (request.auth.token.get('role', '') in ['drafter', 'admin', 'qc_dme']
+        || request.auth.token.get('email', '') == 'qcdme@dme.com');
+    }
+    match /boq_photos/{itemId}/{photoId} {
+      allow read: if canManageBOQ();
+      allow create, update: if canManageBOQ()
+        && itemId.matches('room-v1-(room|no-room)-[0-9]+') && photoId.matches('[0-9a-f]{64}')
+        && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp']
+        && request.resource.metadata.uploadedBy == request.auth.uid && request.resource.metadata.sha256 == photoId
+        && (resource == null || resource.metadata.uploadedBy == request.auth.uid);
+      allow delete: if canManageBOQ();
+    }
     
     // ============================================================
     // HSE Reports — PDF yang di-share via WhatsApp
@@ -13,7 +32,7 @@ service firebase.storage {
       // ✅ Write hanya untuk authenticated user
       // - Max 10MB (dikurangi dari 20MB untuk efisiensi)
       // - Hanya file PDF
-      allow write: if request.auth != null
+      allow write: if request.auth != null && !isDrafter()
                    && request.resource.size <= 10 * 1024 * 1024
                    && request.resource.contentType == 'application/pdf';
     }
@@ -24,10 +43,10 @@ service firebase.storage {
     // ============================================================
     match /silo/{fileName} {
       // ✅ Restricted read — only logged in users can see SILO documents
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && !isDrafter();
       
       // ✅ Write hanya untuk authenticated user, max 10MB
-      allow write: if request.auth != null
+      allow write: if request.auth != null && !isDrafter()
                    && request.resource.size <= 10 * 1024 * 1024
                    && request.resource.contentType == 'application/pdf';
     }
@@ -35,10 +54,10 @@ service firebase.storage {
     // PTW Files — Lampiran dokumen Permit to Work
     // ============================================================
     match /ptw_files/{ptwNumber}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
+      allow read: if request.auth != null && !isDrafter();
+      allow write: if request.auth != null && !isDrafter()
                    && request.resource.size <= 10 * 1024 * 1024;
-      allow delete: if request.auth != null;
+      allow delete: if request.auth != null && !isDrafter();
     }
 
     // ============================================================

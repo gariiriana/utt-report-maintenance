@@ -11,6 +11,7 @@ import (
 	"github.com/gariiriana/DwimitraSystem/backend/core/middlewares"
 	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
 	"github.com/gariiriana/DwimitraSystem/backend/core/services"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
 
 type AppDeps struct {
@@ -28,7 +29,7 @@ type AppDeps struct {
 	RateLimiter             *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
 	ThrottleStandard        *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
-	AuthClient              *firebaseAuth.Client    // Firebase Auth client for token verification
+	AuthClient              *firebaseAuth.Client     // Firebase Auth client for token verification
 }
 
 func NewAppDeps(ctx context.Context) (*AppDeps, error) {
@@ -71,7 +72,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	waCtrl := controllers.NewWAController()
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
-	throttleHeavy := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
+	throttleHeavy := middlewares.NewThrottle(5, 10)     // expensive write/delete ops
 	throttleStandard := middlewares.NewThrottle(20, 40) // normal read ops
 
 	return &AppDeps{
@@ -132,6 +133,10 @@ func buildHandler(deps *AppDeps) http.HandlerFunc {
 					// Verify the Firebase ID token from query param
 					decoded, err := deps.AuthClient.VerifyIDToken(r.Context(), token)
 					if err == nil {
+						if role, _ := decoded.Claims["role"].(string); role == "drafter" {
+							helpers.SendError(w, "Forbidden: voice is unavailable for Drafter", http.StatusForbidden)
+							return
+						}
 						ctx := r.Context()
 						ctx = context.WithValue(ctx, middlewares.ClaimsKeyExported, decoded)
 						ctx = context.WithValue(ctx, middlewares.UserUIDKeyExported, decoded.UID)

@@ -1,6 +1,7 @@
 package models
 
 import "time"
+
 type UserRole string
 
 const (
@@ -12,7 +13,9 @@ const (
 	RoleSiteManager UserRole = "site_manager"
 	RoleManager     UserRole = "manager"
 	RoleGuest       UserRole = "guest"
+	RoleDrafter     UserRole = "drafter"
 )
+
 type User struct {
 	UID           string    `json:"uid" firestore:"uid"`
 	Email         string    `json:"email" firestore:"email"`
@@ -39,6 +42,7 @@ type UserProfile struct {
 	Role        UserRole `json:"role"`
 	Department  string   `json:"department,omitempty"`
 }
+
 func (u *User) ToProfile() UserProfile {
 	return UserProfile{
 		UID:         u.UID,
@@ -61,5 +65,6 @@ func AllowedRoles() []string {
 		string(RoleEngineer),
 		string(RoleSiteManager),
 		string(RoleGuest),
+		string(RoleDrafter),
 	}
 }

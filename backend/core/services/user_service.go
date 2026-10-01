@@ -8,10 +8,12 @@ import (
 	"github.com/gariiriana/DwimitraSystem/backend/core/models"
 	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
 )
+
 type UserService struct {
-	Repo     *repositories.UserRepository
-	AuthSvc  *AuthService
+	Repo    *repositories.UserRepository
+	AuthSvc *AuthService
 }
+
 func NewUserService(repo *repositories.UserRepository, authSvc *AuthService) *UserService {
 	return &UserService{Repo: repo, AuthSvc: authSvc}
 }
@@ -40,7 +42,10 @@ func (s *UserService) UpsertFromLogin(ctx context.Context, uid, email, displayNa
 		"updated_at":    now,
 	}
 	exists, err := s.Repo.Exists(ctx, uid)
-	if err != nil || !exists {
+	if err != nil {
+		return fmt.Errorf("UserService.UpsertFromLogin: profile lookup failed: %w", err)
+	}
+	if !exists {
 		data["created_at"] = now
 		data["role"] = string(models.RoleGuest)
 	}
@@ -66,7 +71,7 @@ func (s *UserService) UpdateRole(ctx context.Context, uid string, role models.Us
 
 	if s.AuthSvc != nil {
 		if err := s.AuthSvc.SetRole(ctx, uid, string(role)); err != nil {
-			fmt.Printf("Warning: failed to set Firebase custom claim for %s: %v\n", uid, err)
+			return fmt.Errorf("UserService.UpdateRole: profile updated but custom claim update failed: %w", err)
 		}
 	}
 	return nil

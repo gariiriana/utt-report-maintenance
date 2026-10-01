@@ -52,7 +52,7 @@ const MENU_SECTIONS = [
   },
   {
     title: 'Dokumentasi & Laporan',
-    itemIds: ['report', 'arsip_dokumen', 'documents', 'pir', 'monthly_report', 'berita_acara'],
+    itemIds: ['report', 'arsip_dokumen', 'documents', 'files', 'pir', 'monthly_report', 'berita_acara'],
   },
   {
     title: 'Standar & Aset',

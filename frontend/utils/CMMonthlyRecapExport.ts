@@ -229,6 +229,17 @@ export function getTroubleStatusInfo(r: any): { isClosed: boolean; label: string
   };
 }
 
+/** Get Predictive Eligibility Info */
+export function getPredictiveEligibilityInfo(r: any): { isEligible: boolean | null; label: string } {
+  if (r?.predictiveEligible === true) {
+    return { isEligible: true, label: 'Dapat di Predictive Report' };
+  }
+  if (r?.predictiveEligible === false) {
+    return { isEligible: false, label: 'Tidak Bisa Predictive Report' };
+  }
+  return { isEligible: null, label: 'Belum Ditentukan' };
+}
+
 export interface CMPhotoDetail {
   base64: string;
   description: string;
@@ -498,7 +509,7 @@ export async function exportCMMonthlyRecapToExcel(
       r2.alignment = { horizontal: 'left', vertical: 'middle' };
       sheet.getRow(2).height = 20;
 
-      sheet.mergeCells('A3:P3');
+      sheet.mergeCells('A3:Q3');
       const r3 = sheet.getCell('A3');
       r3.value = statsText;
       r3.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '475569' } };
@@ -517,6 +528,7 @@ export async function exportCMMonthlyRecapToExcel(
         'Perangkat',
         'Lokasi / Ruangan',
         'Status Trouble',
+        'Status Predictive',
         'Catatan Penyelesaian / Pending',
         'Jenis Penanganan',
         'Kategori Sparepart',
@@ -546,6 +558,7 @@ export async function exportCMMonthlyRecapToExcel(
       sheetReports.forEach((report, index) => {
         const statusInfo = getTroubleStatusInfo(report);
         const isSp = isCMSparepart(report);
+        const predInfo = getPredictiveEligibilityInfo(report);
 
         const rowValues = [
           index + 1,
@@ -556,6 +569,7 @@ export async function exportCMMonthlyRecapToExcel(
           report.equipmentName || report.equipment || report.device || '-',
           report.location || report.area || 'NeutraDC Cikarang',
           statusInfo.label,
+          predInfo.label,
           statusInfo.note,
           isSp ? 'Pergantian Sparepart' : 'Non-Sparepart (Troubleshoot)',
           getSparepartCategoryLabel(report),
@@ -867,6 +881,26 @@ export async function exportCMMonthlyRecapToDocx(
       right: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },
     } as const;
 
+    // Padding sel tabel agar konten tidak mepet/menempel dengan garis border
+    const cellMarginStandard = {
+      top: 100,
+      bottom: 100,
+      left: 140,
+      right: 140,
+    };
+    const cellMarginCompact = {
+      top: 80,
+      bottom: 80,
+      left: 100,
+      right: 100,
+    };
+    const cellMarginCenter = {
+      top: 80,
+      bottom: 80,
+      left: 80,
+      right: 80,
+    };
+
     // Hitung Statistik KPI
     const totalCM = reports.length;
     const closedCount = reports.filter(r => getTroubleStatusInfo(r).isClosed).length;
@@ -877,6 +911,7 @@ export async function exportCMMonthlyRecapToDocx(
     const headerTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: borderThin,
+      margins: cellMarginCompact,
       rows: [
         new TableRow({
           children: [
@@ -885,6 +920,7 @@ export async function exportCMMonthlyRecapToDocx(
               width: { size: 20, type: WidthType.PERCENTAGE },
               verticalAlign: VerticalAlign.CENTER,
               borders: borderThin,
+              margins: cellMarginCompact,
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
@@ -899,6 +935,7 @@ export async function exportCMMonthlyRecapToDocx(
               width: { size: 60, type: WidthType.PERCENTAGE },
               verticalAlign: VerticalAlign.CENTER,
               borders: borderThin,
+              margins: cellMarginCompact,
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
@@ -957,6 +994,7 @@ export async function exportCMMonthlyRecapToDocx(
               width: { size: 20, type: WidthType.PERCENTAGE },
               verticalAlign: VerticalAlign.CENTER,
               borders: borderThin,
+              margins: cellMarginCompact,
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
@@ -975,6 +1013,7 @@ export async function exportCMMonthlyRecapToDocx(
     const kpiTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: borderThin,
+      margins: cellMarginCompact,
       rows: [
         new TableRow({
           children: [
@@ -987,6 +1026,7 @@ export async function exportCMMonthlyRecapToDocx(
               width: { size: 25, type: WidthType.PERCENTAGE },
               verticalAlign: VerticalAlign.CENTER,
               borders: borderThin,
+              margins: cellMarginCompact,
               shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
               children: [
                 new Paragraph({
@@ -1070,6 +1110,7 @@ export async function exportCMMonthlyRecapToDocx(
         width: { size: colWidthPercent, type: WidthType.PERCENTAGE },
         verticalAlign: VerticalAlign.CENTER,
         borders: borderThin,
+        margins: cellMarginStandard,
         shading: isZebra ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
         children: cellParagraphs,
       });
@@ -1121,6 +1162,7 @@ export async function exportCMMonthlyRecapToDocx(
         width: { size: colWidthPercent, type: WidthType.PERCENTAGE },
         verticalAlign: VerticalAlign.CENTER,
         borders: borderThin,
+        margins: cellMarginStandard,
         shading: isZebra ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
         children: cellParagraphs,
       });
@@ -1130,14 +1172,14 @@ export async function exportCMMonthlyRecapToDocx(
     const solvedReports = reports.filter((r) => getTroubleStatusInfo(r).isClosed);
     const pendingReports = reports.filter((r) => !getTroubleStatusInfo(r).isClosed);
 
-    // --- TABEL SOLVED (5 KOLOM: No, Equipment, Kendala, Tanggal & Status, Tindakan Solusi) ---
+    // --- TABEL SOLVED (5 KOLOM: No, Equipment, Kendala, Tanggal & Status / Predictive, Tindakan Solusi) ---
     const solvedTableHeaderRow = new TableRow({
       tableHeader: true,
       children: [
         'No',
         'Equipment',
         'Kendala',
-        'Tanggal & Status',
+        'Tanggal & Status / Predictive',
         'Tindakan Solusi',
       ].map((text, idx) =>
         new TableCell({
@@ -1148,6 +1190,7 @@ export async function exportCMMonthlyRecapToDocx(
           shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
           verticalAlign: VerticalAlign.CENTER,
           borders: borderThin,
+          margins: cellMarginCompact,
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -1169,6 +1212,7 @@ export async function exportCMMonthlyRecapToDocx(
 
     const solvedTableDataRows = solvedReports.map((report, idx) => {
       const statusInfo = getTroubleStatusInfo(report);
+      const predInfo = getPredictiveEligibilityInfo(report);
       const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
       const equipLocStr = `${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
       const dateStr = formatReportDate(report);
@@ -1181,6 +1225,7 @@ export async function exportCMMonthlyRecapToDocx(
             width: { size: 4, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCenter,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: [
               new Paragraph({
@@ -1195,6 +1240,7 @@ export async function exportCMMonthlyRecapToDocx(
             width: { size: 22, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginStandard,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: equipLocStr.split('\n').map((line, lIdx) =>
               new Paragraph({
@@ -1216,6 +1262,7 @@ export async function exportCMMonthlyRecapToDocx(
             width: { size: 20, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginStandard,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: [
               new Paragraph({
@@ -1225,11 +1272,12 @@ export async function exportCMMonthlyRecapToDocx(
               }),
             ],
           }),
-          // 4. Tanggal & Status
+          // 4. Tanggal & Status / Status Predictive
           new TableCell({
             width: { size: 14, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCenter,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: [
               new Paragraph({
@@ -1239,7 +1287,7 @@ export async function exportCMMonthlyRecapToDocx(
               }),
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { before: 0, after: 20 },
+                spacing: { before: 0, after: 12 },
                 children: [
                   new TextRun({
                     text: statusInfo.label,
@@ -1250,6 +1298,55 @@ export async function exportCMMonthlyRecapToDocx(
                   }),
                 ],
               }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 0, after: 20 },
+                children: predInfo.isEligible === true
+                  ? [
+                      new TextRun({
+                        text: '✓ Dapat di',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: '166534',
+                      }),
+                      new TextRun({
+                        text: 'Predictive Report',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: '166534',
+                        break: 1,
+                      }),
+                    ]
+                  : predInfo.isEligible === false
+                  ? [
+                      new TextRun({
+                        text: '✕ Tidak Bisa',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: 'B91C1C',
+                      }),
+                      new TextRun({
+                        text: 'Predictive Report',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: 'B91C1C',
+                        break: 1,
+                      }),
+                    ]
+                  : [
+                      new TextRun({
+                        text: 'Predictive: -',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: '64748B',
+                      }),
+                    ],
+              }),
             ],
           }),
           // 5. Tindakan Solusi (Murni Tindakan Solusi Poin-Poin)
@@ -1258,14 +1355,14 @@ export async function exportCMMonthlyRecapToDocx(
       });
     });
 
-    // --- TABEL PENDING (6 KOLOM: No, Equipment, Kendala, Tanggal & Status, Tindakan Solusi, Rekomendasi) ---
+    // --- TABEL PENDING (6 KOLOM: No, Equipment, Kendala, Tanggal & Status / Predictive, Tindakan Solusi, Rekomendasi) ---
     const pendingTableHeaderRow = new TableRow({
       tableHeader: true,
       children: [
         'No',
         'Equipment',
         'Kendala',
-        'Tanggal & Status',
+        'Tanggal & Status / Predictive',
         'Tindakan Solusi',
         'Rekomendasi',
       ].map((text, idx) =>
@@ -1277,6 +1374,7 @@ export async function exportCMMonthlyRecapToDocx(
           shading: { type: ShadingType.SOLID, color: COLOR_DME_BLUE, fill: COLOR_DME_BLUE },
           verticalAlign: VerticalAlign.CENTER,
           borders: borderThin,
+          margins: cellMarginCompact,
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -1298,6 +1396,7 @@ export async function exportCMMonthlyRecapToDocx(
 
     const pendingTableDataRows = pendingReports.map((report, idx) => {
       const statusInfo = getTroubleStatusInfo(report);
+      const predInfo = getPredictiveEligibilityInfo(report);
       const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
       const equipLocStr = `${report.equipmentName || report.equipment || '-'}\n${report.location || report.area || 'NeutraDC'}`;
       const dateStr = formatReportDate(report);
@@ -1325,6 +1424,7 @@ export async function exportCMMonthlyRecapToDocx(
             width: { size: 4, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCenter,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: [
               new Paragraph({
@@ -1339,6 +1439,7 @@ export async function exportCMMonthlyRecapToDocx(
             width: { size: 20, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginStandard,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: equipLocStr.split('\n').map((line, lIdx) =>
               new Paragraph({
@@ -1360,6 +1461,7 @@ export async function exportCMMonthlyRecapToDocx(
             width: { size: 18, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginStandard,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: [
               new Paragraph({
@@ -1369,11 +1471,12 @@ export async function exportCMMonthlyRecapToDocx(
               }),
             ],
           }),
-          // 4. Tanggal & Status
+          // 4. Tanggal & Status / Status Predictive
           new TableCell({
             width: { size: 14, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: borderThin,
+            margins: cellMarginCenter,
             shading: idx % 2 === 1 ? { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG } : undefined,
             children: [
               new Paragraph({
@@ -1383,7 +1486,7 @@ export async function exportCMMonthlyRecapToDocx(
               }),
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { before: 0, after: 20 },
+                spacing: { before: 0, after: 12 },
                 children: [
                   new TextRun({
                     text: statusInfo.label,
@@ -1393,6 +1496,55 @@ export async function exportCMMonthlyRecapToDocx(
                     color: 'B45309',
                   }),
                 ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 0, after: 20 },
+                children: predInfo.isEligible === true
+                  ? [
+                      new TextRun({
+                        text: '✓ Dapat di',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: '166534',
+                      }),
+                      new TextRun({
+                        text: 'Predictive Report',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: '166534',
+                        break: 1,
+                      }),
+                    ]
+                  : predInfo.isEligible === false
+                  ? [
+                      new TextRun({
+                        text: '✕ Tidak Bisa',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: 'B91C1C',
+                      }),
+                      new TextRun({
+                        text: 'Predictive Report',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: 'B91C1C',
+                        break: 1,
+                      }),
+                    ]
+                  : [
+                      new TextRun({
+                        text: 'Predictive: -',
+                        bold: true,
+                        size: 11,
+                        font: 'Calibri',
+                        color: '64748B',
+                      }),
+                    ],
               }),
             ],
           }),
@@ -1433,6 +1585,7 @@ export async function exportCMMonthlyRecapToDocx(
     if (solvedReports.length > 0) {
       const solvedMatrixTable = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
+        margins: cellMarginCompact,
         rows: [solvedTableHeaderRow, ...solvedTableDataRows],
       });
       recapTablesElements.push(solvedMatrixTable);
@@ -1479,6 +1632,7 @@ export async function exportCMMonthlyRecapToDocx(
     if (pendingReports.length > 0) {
       const pendingMatrixTable = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
+        margins: cellMarginCompact,
         rows: [pendingTableHeaderRow, ...pendingTableDataRows],
       });
       recapTablesElements.push(pendingMatrixTable);
@@ -1584,6 +1738,7 @@ export async function exportCMMonthlyRecapToDocx(
     for (let idx = 0; idx < reports.length; idx++) {
       const report = reports[idx];
       const statusInfo = getTroubleStatusInfo(report);
+      const predInfo = getPredictiveEligibilityInfo(report);
       const isClosed = statusInfo.isClosed;
       const ticketStr = report.incidentName || report.ticketName || report.ticketNumber || `CM-${idx + 1}`;
       const equipLocStr = `${report.equipmentName || report.equipment || '-'} (${report.location || report.area || 'NeutraDC'})`;
@@ -1625,6 +1780,21 @@ export async function exportCMMonthlyRecapToDocx(
               color: isClosed ? '166534' : 'B45309',
               font: 'Calibri',
             }),
+            new TextRun({
+              text: predInfo.isEligible === true
+                ? `   |   PREDICTIVE: DAPAT DI PREDICTIVE REPORT`
+                : predInfo.isEligible === false
+                ? `   |   PREDICTIVE: TIDAK BISA PREDICTIVE REPORT`
+                : `   |   PREDICTIVE: -`,
+              bold: true,
+              size: 15,
+              color: predInfo.isEligible === true
+                ? '166534'
+                : predInfo.isEligible === false
+                ? 'B91C1C'
+                : '64748B',
+              font: 'Calibri',
+            }),
           ],
         })
       );
@@ -1633,6 +1803,7 @@ export async function exportCMMonthlyRecapToDocx(
       const metaTable = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         borders: borderThin,
+        margins: cellMarginCompact,
         rows: [
           new TableRow({
             children: [
@@ -1640,6 +1811,7 @@ export async function exportCMMonthlyRecapToDocx(
                 width: { size: 25, type: WidthType.PERCENTAGE },
                 shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                 borders: borderThin,
+                margins: cellMarginCompact,
                 children: [
                   new Paragraph({
                     spacing: { before: 20, after: 20 },
@@ -1650,6 +1822,7 @@ export async function exportCMMonthlyRecapToDocx(
               new TableCell({
                 width: { size: 75, type: WidthType.PERCENTAGE },
                 borders: borderThin,
+                margins: cellMarginStandard,
                 children: [
                   new Paragraph({
                     spacing: { before: 20, after: 20 },
@@ -1665,6 +1838,7 @@ export async function exportCMMonthlyRecapToDocx(
                 width: { size: 25, type: WidthType.PERCENTAGE },
                 shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                 borders: borderThin,
+                margins: cellMarginCompact,
                 children: [
                   new Paragraph({
                     spacing: { before: 20, after: 20 },
@@ -1675,6 +1849,7 @@ export async function exportCMMonthlyRecapToDocx(
               new TableCell({
                 width: { size: 75, type: WidthType.PERCENTAGE },
                 borders: borderThin,
+                margins: cellMarginStandard,
                 children: [
                   new Paragraph({
                     spacing: { before: 20, after: 20 },
@@ -1697,6 +1872,7 @@ export async function exportCMMonthlyRecapToDocx(
                 width: { size: 25, type: WidthType.PERCENTAGE },
                 shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                 borders: borderThin,
+                margins: cellMarginCompact,
                 children: [
                   new Paragraph({
                     spacing: { before: 20, after: 20 },
@@ -1707,6 +1883,7 @@ export async function exportCMMonthlyRecapToDocx(
               new TableCell({
                 width: { size: 75, type: WidthType.PERCENTAGE },
                 borders: borderThin,
+                margins: cellMarginStandard,
                 children: [
                   new Paragraph({
                     spacing: { before: 20, after: 20 },
@@ -1717,6 +1894,60 @@ export async function exportCMMonthlyRecapToDocx(
                         color: COLOR_DARK,
                         font: 'Calibri',
                       }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 25, type: WidthType.PERCENTAGE },
+                shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
+                borders: borderThin,
+                margins: cellMarginCompact,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [new TextRun({ text: 'Status Predictive Report', bold: true, size: 15, color: COLOR_DARK, font: 'Calibri' })],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 75, type: WidthType.PERCENTAGE },
+                borders: borderThin,
+                margins: cellMarginStandard,
+                children: [
+                  new Paragraph({
+                    spacing: { before: 20, after: 20 },
+                    children: [
+                      new TextRun({
+                        text: predInfo.isEligible === true
+                          ? '✓ BISA DIBUATKAN PREDICTIVE REPORT'
+                          : predInfo.isEligible === false
+                          ? '✕ TIDAK BISA PREDICTIVE REPORT'
+                          : 'Belum Ditentukan',
+                        bold: true,
+                        size: 15,
+                        color: predInfo.isEligible === true
+                          ? '166534'
+                          : predInfo.isEligible === false
+                          ? 'B91C1C'
+                          : '64748B',
+                        font: 'Calibri',
+                      }),
+                      ...(report.predictiveEligibleUpdatedBy
+                        ? [
+                            new TextRun({
+                              text: ` (Ditandai oleh: ${report.predictiveEligibleUpdatedBy})`,
+                              size: 13,
+                              color: COLOR_MUTED,
+                              font: 'Calibri',
+                              italics: true,
+                            }),
+                          ]
+                        : []),
                     ],
                   }),
                 ],
@@ -1909,6 +2140,7 @@ export async function exportCMMonthlyRecapToDocx(
             const cell1 = new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
               borders: borderThin,
+              margins: cellMarginCompact,
               shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
               verticalAlign: VerticalAlign.CENTER,
               children: [
@@ -1952,6 +2184,7 @@ export async function exportCMMonthlyRecapToDocx(
               cell2 = new TableCell({
                 width: { size: 50, type: WidthType.PERCENTAGE },
                 borders: borderThin,
+                margins: cellMarginCompact,
                 shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                 verticalAlign: VerticalAlign.CENTER,
                 children: [
@@ -1986,6 +2219,7 @@ export async function exportCMMonthlyRecapToDocx(
               cell2 = new TableCell({
                 width: { size: 50, type: WidthType.PERCENTAGE },
                 borders: borderThin,
+                margins: cellMarginCompact,
                 children: [new Paragraph('')],
               });
             }
@@ -1997,6 +2231,7 @@ export async function exportCMMonthlyRecapToDocx(
             new Paragraph({ spacing: { before: 40, after: 10 } }),
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
+              margins: cellMarginCompact,
               rows: photoTableRows,
             }),
             new Paragraph({ spacing: { before: 0, after: 60 } })
@@ -2038,6 +2273,7 @@ export async function exportCMMonthlyRecapToDocx(
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             borders: borderThin,
+            margins: cellMarginCompact,
             rows: [
               new TableRow({
                 children: [
@@ -2045,11 +2281,13 @@ export async function exportCMMonthlyRecapToDocx(
                     width: { size: 28, type: WidthType.PERCENTAGE },
                     shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                     borders: borderThin,
+                    margins: cellMarginCompact,
                     children: [new Paragraph({ children: [new TextRun({ text: 'Akar Masalah (Root Cause)', bold: true, size: 15, font: 'Calibri' })] })],
                   }),
                   new TableCell({
                     width: { size: 72, type: WidthType.PERCENTAGE },
                     borders: borderThin,
+                    margins: cellMarginStandard,
                     children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.rootCauseAnalysis || '-', size: 15, font: 'Calibri' })] })],
                   }),
                 ],
@@ -2060,11 +2298,13 @@ export async function exportCMMonthlyRecapToDocx(
                     width: { size: 28, type: WidthType.PERCENTAGE },
                     shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                     borders: borderThin,
+                    margins: cellMarginCompact,
                     children: [new Paragraph({ children: [new TextRun({ text: 'Potensi Modus Kegagalan', bold: true, size: 15, font: 'Calibri' })] })],
                   }),
                   new TableCell({
                     width: { size: 72, type: WidthType.PERCENTAGE },
                     borders: borderThin,
+                    margins: cellMarginStandard,
                     children: [new Paragraph({ children: [new TextRun({ text: pdmData.aiAnalysis?.potentialFailureMode || '-', size: 15, font: 'Calibri' })] })],
                   }),
                 ],
@@ -2075,11 +2315,13 @@ export async function exportCMMonthlyRecapToDocx(
                     width: { size: 28, type: WidthType.PERCENTAGE },
                     shading: { type: ShadingType.SOLID, color: COLOR_LIGHT_BG, fill: COLOR_LIGHT_BG },
                     borders: borderThin,
+                    margins: cellMarginCompact,
                     children: [new Paragraph({ children: [new TextRun({ text: 'Rencana Tindakan Definitif', bold: true, size: 15, font: 'Calibri' })] })],
                   }),
                   new TableCell({
                     width: { size: 72, type: WidthType.PERCENTAGE },
                     borders: borderThin,
+                    margins: cellMarginStandard,
                     children: [new Paragraph({ children: [new TextRun({ text: pdmData.actionPlan?.plannedOverhaulAction || pdmData.actionPlan?.immediateAction || '-', size: 15, font: 'Calibri' })] })],
                   }),
                 ],
@@ -2367,7 +2609,14 @@ export async function exportCMMonthlyRecapToPDF(
         
         const issueActionText = `Masalah:\n${r.issue || r.problemAnalysis || r.problem || '-'}\n\nTindakan:\n${r.correctiveAction || r.actionTaken || '-'}`;
         
-        const statusText = `Status: ${statusInfo.label}\n\nJenis CM:\n${getSparepartCategoryLabel(r)}\n\nSparepart:\n${isSp ? '[GANTI SP]' : '[NON-SP]'}\n${getSparepartsSummary(r)}\n\nPIC: ${r.picDME || r.preparedByName || '-'}`;
+        const predInfo = getPredictiveEligibilityInfo(r);
+        const predLine = predInfo.isEligible === true
+          ? 'Predictive: [DAPAT DI PREDICTIVE REPORT]'
+          : predInfo.isEligible === false
+          ? 'Predictive: [TIDAK BISA PREDICTIVE REPORT]'
+          : 'Predictive: [BELUM DITENTUKAN]';
+        
+        const statusText = `Status: ${statusInfo.label}\n${predLine}\n\nJenis CM:\n${getSparepartCategoryLabel(r)}\n\nSparepart:\n${isSp ? '[GANTI SP]' : '[NON-SP]'}\n${getSparepartsSummary(r)}\n\nPIC: ${r.picDME || r.preparedByName || '-'}`;
 
         return [
           String(idx + 1),

@@ -43,7 +43,9 @@ import {
     CheckSquare,
     CalendarRange,
     Link2,
-    Unlink
+    Unlink,
+    XCircle,
+    RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -210,6 +212,9 @@ interface CorrectiveReport {
     predictiveReportId?: string;
     predictiveReportNumber?: string;
     predictiveHealthStatus?: string;
+    predictiveEligible?: boolean;
+    predictiveEligibleUpdatedAt?: any;
+    predictiveEligibleUpdatedBy?: string;
 }
 
 interface CorrectiveMaintenanceProps {
@@ -236,6 +241,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const { user, userRole, isQcDme } = useAuth();
     const isAdmin = userRole === 'admin' || isQcDme;
     const isAuthorizedRole = isAdmin || userRole === 'engineer' || userRole === 'standby_engineer';
+    const canManagePredictiveEligibility = userRole === 'standby_engineer' || (user?.email && user.email.toLowerCase() === 'dwimitra@co.id') || isAdmin;
 
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
     const [loading, setLoading] = useState(true);
@@ -251,12 +257,46 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [cmRecapFilterMode, setCmRecapFilterMode] = useState<'monthly' | 'range'>('range');
     const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState<boolean>(false);
 
-    // State Predictive Maintenance Report (AI)
+    // State Predictive Maintenance Report (AI) & Kelayakan PdM
     const [predictiveModalOpen, setPredictiveModalOpen] = useState<boolean>(false);
     const [activePredictiveData, setActivePredictiveData] = useState<PredictiveReportData | null>(null);
     const [activePredictiveReport, setActivePredictiveReport] = useState<CorrectiveReport | null>(null);
     const [isLoadingPredictive, setIsLoadingPredictive] = useState<boolean>(false);
     const [loadingPredictiveId, setLoadingPredictiveId] = useState<string | null>(null);
+    const [predictiveMenuReportId, setPredictiveMenuReportId] = useState<string | null>(null);
+
+    const handleUpdatePredictiveEligibility = async (report: CorrectiveReport, eligible: boolean | null) => {
+        if (!canManagePredictiveEligibility) {
+            toast.error('Hanya role Standby Engineer dan akun Dwimitra@co.id yang berwenang mengubah status predictive.');
+            return;
+        }
+        const toastId = toast.loading('Menyimpan status kelayakan predictive...');
+        try {
+            const updatePayload: any = {
+                predictiveEligible: eligible === null ? deleteField() : eligible,
+                predictiveEligibleUpdatedAt: serverTimestamp(),
+                predictiveEligibleUpdatedBy: user?.email || userRole || 'standby_engineer'
+            };
+            await updateDoc(doc(db, 'corrective_reports', report.id), updatePayload);
+            setReports(prev => prev.map(r => r.id === report.id ? {
+                ...r,
+                predictiveEligible: eligible === null ? undefined : eligible,
+                predictiveEligibleUpdatedAt: new Date(),
+                predictiveEligibleUpdatedBy: user?.email || 'standby_engineer'
+            } : r));
+            toast.success(
+                eligible === true
+                    ? 'Status laporan: ✓ BISA dibuatkan Predictive Report'
+                    : eligible === false
+                    ? 'Status laporan: ✕ TIDAK BISA dibuatkan Predictive Report'
+                    : 'Status predictive direset (Belum Ditentukan)',
+                { id: toastId }
+            );
+        } catch (err: any) {
+            console.error('Error updating predictive eligibility:', err);
+            toast.error(`Gagal menyimpan status predictive: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
+        }
+    };
 
     // State highlight & memori laporan aktif (misal laporan #48 yang di-update/inspeksi)
     const [highlightedReportId, setHighlightedReportId] = useState<string | null>(() => {
@@ -4219,6 +4259,118 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                     </>
                                                                 )}
                                                             </button>
+
+                                                            {/* BADGE / TOMBOL CEK LIST STATUS PREDICTIVE */}
+                                                            <div className="relative inline-flex items-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (canManagePredictiveEligibility) {
+                                                                            setPredictiveMenuReportId(predictiveMenuReportId === report.id ? null : report.id);
+                                                                        } else {
+                                                                            toast.info('Status Predictive: ' + (
+                                                                                report.predictiveEligible === true
+                                                                                    ? 'Bisa dibuat Predictive Report'
+                                                                                    : report.predictiveEligible === false
+                                                                                    ? 'Tidak bisa dibuat Predictive Report'
+                                                                                    : 'Belum ditentukan oleh Standby Engineer / Dwimitra'
+                                                                            ));
+                                                                        }
+                                                                    }}
+                                                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition shadow-2xs cursor-pointer ${
+                                                                        report.predictiveEligible === true
+                                                                            ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300'
+                                                                            : report.predictiveEligible === false
+                                                                            ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border-rose-300'
+                                                                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                                                                    }`}
+                                                                    title={
+                                                                        canManagePredictiveEligibility
+                                                                            ? 'Cek List: Pilih apakah laporan ini bisa dibuatkan Predictive Report atau tidak (Khusus Standby & Dwimitra)'
+                                                                            : 'Status kelayakan Predictive Report'
+                                                                    }
+                                                                >
+                                                                    {report.predictiveEligible === true ? (
+                                                                        <>
+                                                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                                                            <span>Bisa Predictive</span>
+                                                                        </>
+                                                                    ) : report.predictiveEligible === false ? (
+                                                                        <>
+                                                                            <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                                                            <span>Tidak Bisa Predictive</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <HelpCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                                            <span>Cek List Predictive</span>
+                                                                        </>
+                                                                    )}
+                                                                    {canManagePredictiveEligibility && <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />}
+                                                                </button>
+
+                                                                {/* Popover Dropdown Menu */}
+                                                                {predictiveMenuReportId === report.id && canManagePredictiveEligibility && (
+                                                                    <div
+                                                                        className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1.5 z-40 w-60 bg-white rounded-xl shadow-xl border border-slate-200 p-2 text-xs text-slate-800 animate-in fade-in zoom-in-95 duration-100"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        <div className="font-bold text-slate-900 pb-1.5 mb-1.5 border-b border-slate-100 flex items-center justify-between">
+                                                                            <span>Kelayakan Predictive Report</span>
+                                                                            <button type="button" onClick={() => setPredictiveMenuReportId(null)} className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer">
+                                                                                <X className="w-3.5 h-3.5" />
+                                                                            </button>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    void handleUpdatePredictiveEligibility(report, true);
+                                                                                    setPredictiveMenuReportId(null);
+                                                                                }}
+                                                                                className={`w-full text-left px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-between transition cursor-pointer ${
+                                                                                    report.predictiveEligible === true ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200' : 'hover:bg-slate-50 text-slate-700'
+                                                                                }`}
+                                                                            >
+                                                                                <span className="flex items-center gap-1.5">
+                                                                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                                                                    Bisa Dibuat Predictive
+                                                                                </span>
+                                                                                {report.predictiveEligible === true && <span className="text-emerald-600 font-bold">✓</span>}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    void handleUpdatePredictiveEligibility(report, false);
+                                                                                    setPredictiveMenuReportId(null);
+                                                                                }}
+                                                                                className={`w-full text-left px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-between transition cursor-pointer ${
+                                                                                    report.predictiveEligible === false ? 'bg-rose-50 text-rose-800 font-bold border border-rose-200' : 'hover:bg-slate-50 text-slate-700'
+                                                                                }`}
+                                                                            >
+                                                                                <span className="flex items-center gap-1.5">
+                                                                                    <XCircle className="w-4 h-4 text-rose-600" />
+                                                                                    Tidak Bisa Dibuat Predictive
+                                                                                </span>
+                                                                                {report.predictiveEligible === false && <span className="text-rose-600 font-bold">✓</span>}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    void handleUpdatePredictiveEligibility(report, null);
+                                                                                    setPredictiveMenuReportId(null);
+                                                                                }}
+                                                                                className="w-full text-left px-2.5 py-1.5 rounded-lg font-medium text-slate-500 hover:bg-slate-50 flex items-center gap-1.5 transition text-[11px] pt-1.5 border-t border-slate-100 cursor-pointer"
+                                                                            >
+                                                                                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                                                                                Reset (Belum Ditentukan)
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
                                                             {Boolean(report.hasPredictiveReport || report.predictiveReportId) && (
                                                                 <span
                                                                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 shadow-2xs"

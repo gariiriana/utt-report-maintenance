@@ -35,7 +35,12 @@ import {
   Layers,
   LayoutGrid,
   List,
-  RotateCcw
+  RotateCcw,
+  XCircle,
+  ChevronDown,
+  HelpCircle,
+  CheckSquare,
+  Sparkles
 } from 'lucide-react';
 import {
   collection,
@@ -100,6 +105,9 @@ export interface AbnormalItem {
   predictiveHealthStatus?: 'Critical' | 'Warning' | 'Caution';
   predictiveRemainingLife?: string;
   predictiveReportData?: PredictiveReportData;
+  predictiveEligible?: boolean;
+  predictiveEligibleUpdatedAt?: any;
+  predictiveEligibleUpdatedBy?: string;
 }
 
 interface AbnormalFindingsCenterProps {
@@ -240,9 +248,11 @@ export function formatWaktuMaintenance(item: AbnormalItem): string {
 }
 
 export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFindingsCenterProps) {
-  const { user, companyType } = useAuth();
+  const { user, userRole, isQcDme, companyType } = useAuth();
   // Aksi hapus di pusat temuan ini sengaja eksklusif untuk satu akun QC DME.
   const canDelete = user?.email?.toLowerCase() === 'qcdme@dme.com';
+  const isAdmin = userRole === 'admin' || isQcDme;
+  const canManagePredictiveEligibility = userRole === 'standby_engineer' || (user?.email && user.email.toLowerCase() === 'dwimitra@co.id') || isAdmin;
 
   const [items, setItems] = useState<AbnormalItem[]>([]);
   const [sourceCounts, setSourceCounts] = useState({ documents: 0, findings: 0 });
@@ -254,8 +264,58 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('all');
   const [selectedDocTypeFilter, setSelectedDocTypeFilter] = useState<'all' | 'pdf' | 'excel' | 'hse'>('all');
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState<'all' | 'with_photo' | 'without_photo'>('all');
+  const [selectedPredictiveFilter, setSelectedPredictiveFilter] = useState<'all' | 'eligible' | 'ineligible' | 'unmarked'>('all');
+  const [predictiveTableTab, setPredictiveTableTab] = useState<'all' | 'eligible' | 'ineligible'>('all');
+  const [predictiveMenuReportId, setPredictiveMenuReportId] = useState<string | null>(null);
+  const [isPredictiveRecapModalOpen, setIsPredictiveRecapModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'unit_asc' | 'recently_updated'>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  // Handler: Ubah Status Kelayakan Predictive Report (Khusus Standby Engineer & Dwimitra@co.id)
+  const handleUpdatePredictiveEligibility = async (item: AbnormalItem, eligible: boolean | null) => {
+    if (!canManagePredictiveEligibility) {
+      toast.error('Hanya role Standby Engineer dan akun Dwimitra@co.id yang berwenang mengubah status predictive.');
+      return;
+    }
+    const toastId = toast.loading('Menyimpan status kelayakan predictive...');
+    try {
+      const updatePayload: any = {
+        predictiveEligible: eligible === null ? deleteField() : eligible,
+        predictiveEligibleUpdatedAt: serverTimestamp(),
+        predictiveEligibleUpdatedBy: user?.email || userRole || 'standby_engineer'
+      };
+
+      if (item.collectionName && item.docId) {
+        await updateDoc(doc(db, item.collectionName, item.docId), updatePayload);
+      }
+      if (item.findingId && item.findingId !== item.docId) {
+        try {
+          await updateDoc(doc(db, 'findings', item.findingId), updatePayload);
+        } catch (fErr) {
+          console.warn('Could not update finding record:', fErr);
+        }
+      }
+
+      setItems(prev => prev.map(it => it.id === item.id ? {
+        ...it,
+        predictiveEligible: eligible === null ? undefined : eligible,
+        predictiveEligibleUpdatedAt: new Date(),
+        predictiveEligibleUpdatedBy: user?.email || 'standby_engineer'
+      } : it));
+
+      toast.success(
+        eligible === true
+          ? 'Status temuan: ✓ BISA dibuatkan Predictive Report'
+          : eligible === false
+          ? 'Status temuan: ✕ TIDAK BISA dibuatkan Predictive Report'
+          : 'Status predictive direset (Belum Ditentukan)',
+        { id: toastId }
+      );
+    } catch (err: any) {
+      console.error('Error updating predictive status:', err);
+      toast.error(`Gagal menyimpan status predictive: ${err.message || 'Error'}`, { id: toastId });
+    }
+  };
 
   // Preview lightbox photo state
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; title: string; unit: string; account: string; item?: AbnormalItem } | null>(null);
@@ -701,7 +761,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       }
 
       // 3. Jika belum ada laporan prediktif, generate via AI Reliability Agent
-      toast.loading('AI Agent sedang menganalisis temuan abnormal untuk PdM...', { id: toastId });
+      toast.loading('AI Agent sedang menganalisis temuan abnormal untuk Predictive Report...', { id: toastId });
       const photoB64 = sourcePhoto;
       const equipName = item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName || 'Critical Equipment';
       const desc = item.abnormalFinding?.description || 'Terdeteksi kondisi abnormal pada peralatan fasilitas.';
@@ -884,6 +944,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             partNumber: realPartNumber,
             brandName: realBrandName,
             quantity: realQuantity,
+            predictiveEligible: it.predictiveEligible !== undefined ? it.predictiveEligible : matched.predictiveEligible,
+            predictiveEligibleUpdatedAt: it.predictiveEligibleUpdatedAt || matched.predictiveEligibleUpdatedAt,
+            predictiveEligibleUpdatedBy: it.predictiveEligibleUpdatedBy || matched.predictiveEligibleUpdatedBy,
             abnormalFinding: {
               ...it.abnormalFinding,
               unitName: it.abnormalFinding?.unitName || matched.specificDetail || matched.partName || it.specificDetail || it.maintenanceName,
@@ -992,6 +1055,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           partNumber: f.partNumber,
           brandName: f.brandName,
           quantity: f.quantity,
+          predictiveEligible: f.predictiveEligible !== undefined ? f.predictiveEligible : undefined,
+          predictiveEligibleUpdatedAt: f.predictiveEligibleUpdatedAt,
+          predictiveEligibleUpdatedBy: f.predictiveEligibleUpdatedBy,
           abnormalFinding: {
             unitName: f.partName || f.specificDetail || 'Unit',
             description: f.remark || f.description || `Temuan abnormal pada: ${f.partName || 'Peralatan'}`,
@@ -1056,6 +1122,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             predictiveReportNumber: data.predictiveReportNumber,
             predictiveHealthStatus: data.predictiveHealthStatus,
             predictiveRemainingLife: data.predictiveRemainingLife,
+            predictiveEligible: data.predictiveEligible !== undefined ? data.predictiveEligible : undefined,
+            predictiveEligibleUpdatedAt: data.predictiveEligibleUpdatedAt,
+            predictiveEligibleUpdatedBy: data.predictiveEligibleUpdatedBy,
           };
         });
         updateAll();
@@ -1104,6 +1173,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             predictiveReportNumber: data.predictiveReportNumber,
             predictiveHealthStatus: data.predictiveHealthStatus,
             predictiveRemainingLife: data.predictiveRemainingLife,
+            predictiveEligible: data.predictiveEligible !== undefined ? data.predictiveEligible : undefined,
+            predictiveEligibleUpdatedAt: data.predictiveEligibleUpdatedAt,
+            predictiveEligibleUpdatedBy: data.predictiveEligibleUpdatedBy,
           };
         });
         updateAll();
@@ -1144,6 +1216,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               unitName: data.lokasi || data.aktivitas || 'HSE Area',
               description: 'Temuan abnormal tercatat pada dokumen HSE ini.'
             },
+            predictiveEligible: data.predictiveEligible !== undefined ? data.predictiveEligible : undefined,
+            predictiveEligibleUpdatedAt: data.predictiveEligibleUpdatedAt,
+            predictiveEligibleUpdatedBy: data.predictiveEligibleUpdatedBy,
           };
         });
         updateAll();
@@ -1206,9 +1281,11 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     if (selectedAccountFilter !== 'all') count++;
     if (selectedDocTypeFilter !== 'all') count++;
     if (selectedPhotoFilter !== 'all') count++;
+    if (selectedPredictiveFilter !== 'all') count++;
+    if (predictiveTableTab !== 'all') count++;
     if (sortBy !== 'newest') count++;
     return count;
-  }, [searchQuery, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, sortBy]);
+  }, [searchQuery, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, selectedPredictiveFilter, predictiveTableTab, sortBy]);
 
   // Handler reset semua filter
   const handleResetFilters = () => {
@@ -1217,6 +1294,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     setSelectedAccountFilter('all');
     setSelectedDocTypeFilter('all');
     setSelectedPhotoFilter('all');
+    setSelectedPredictiveFilter('all');
+    setPredictiveTableTab('all');
     setSortBy('newest');
   };
 
@@ -1257,6 +1336,15 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       const hasPhoto = Boolean(item.abnormalFinding?.photoBase64);
       if (selectedPhotoFilter === 'with_photo' && !hasPhoto) return false;
       if (selectedPhotoFilter === 'without_photo' && hasPhoto) return false;
+
+      // Filter Status Kelayakan Predictive Report (Dropdown Filter)
+      if (selectedPredictiveFilter === 'eligible' && item.predictiveEligible !== true) return false;
+      if (selectedPredictiveFilter === 'ineligible' && item.predictiveEligible !== false) return false;
+      if (selectedPredictiveFilter === 'unmarked' && item.predictiveEligible !== undefined && item.predictiveEligible !== null) return false;
+
+      // Filter Tab Tabel Predictive
+      if (predictiveTableTab === 'eligible' && item.predictiveEligible !== true) return false;
+      if (predictiveTableTab === 'ineligible' && item.predictiveEligible !== false) return false;
 
       // Filter Pencarian
       if (searchQuery.trim()) {
@@ -1313,7 +1401,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       if (maintB !== maintA) return maintB - maintA;
       return (b.id || '').localeCompare(a.id || '');
     });
-  }, [items, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, searchQuery, sortBy]);
+  }, [items, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, selectedPredictiveFilter, predictiveTableTab, searchQuery, sortBy]);
 
   // Rentang ini khusus data yang diunduh sebagai rekap; filter daftar di layar
   // tetap dapat dipakai bersamaan bila QC perlu mempersempit lagi per akun/tipe.
@@ -1351,7 +1439,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     const withPhoto = items.filter((i) => Boolean(i.abnormalFinding?.photoBase64)).length;
     const withReco = items.filter((i) => Boolean(i.abnormalFinding?.actionRecommendation?.trim())).length;
     const totalAccounts = uniqueAccounts.length;
-    return { total, withPhoto, withReco, totalAccounts };
+    const predictiveEligible = items.filter((i) => i.predictiveEligible === true).length;
+    const predictiveIneligible = items.filter((i) => i.predictiveEligible === false).length;
+    const predictiveUnmarked = items.filter((i) => i.predictiveEligible === undefined || i.predictiveEligible === null).length;
+    return { total, withPhoto, withReco, totalAccounts, predictiveEligible, predictiveIneligible, predictiveUnmarked };
   }, [items, uniqueAccounts]);
 
   // Handler: Tandai Normal (QC Approval & Resolve)
@@ -1537,13 +1628,13 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       const worksheet = workbook.addWorksheet('Rekap Temuan Abnormal');
 
       // Title & Header Information
-      worksheet.mergeCells('A1:I1');
+      worksheet.mergeCells('A1:J1');
       worksheet.getCell('A1').value = `REKAPITULASI TEMUAN KONDISI ABNORMAL MAINTENANCE DATA CENTER (${periodLabel.toUpperCase()})`;
       worksheet.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FF991B1B' } };
       worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
       worksheet.getRow(1).height = 28;
 
-      worksheet.mergeCells('A2:I2');
+      worksheet.mergeCells('A2:J2');
       worksheet.getCell('A2').value = `Dicetak oleh: ${user?.email || 'QC DME'} | Periode: ${periodLabel} | Tanggal Rekap: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB`;
       worksheet.getCell('A2').font = { size: 10, italic: true, color: { argb: 'FF475569' } };
       worksheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1560,6 +1651,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         'Tanggal Pelaksanaan',
         'Deskripsi Kerusakan / Abnormal',
         'Rekomendasi / Tindakan',
+        'Status Predictive Report',
         'Foto Bukti',
         'Pelapor'
       ]);
@@ -1583,6 +1675,12 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
       // Data Rows
       recapItems.forEach((item, idx) => {
+        const predictiveStatus = item.predictiveEligible === true
+          ? 'BISA PREDICTIVE'
+          : item.predictiveEligible === false
+          ? 'TIDAK BISA PREDICTIVE'
+          : 'BELUM DITENTUKAN';
+
         const row = worksheet.addRow([
           idx + 1,
           item.createdBy,
@@ -1591,6 +1689,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           formatWaktuMaintenance(item),
           item.abnormalFinding?.description || '-',
           item.abnormalFinding?.actionRecommendation || '-',
+          predictiveStatus,
           item.abnormalFinding?.photoBase64 ? 'Ada (Terlampir)' : 'Tanpa Foto',
           item.abnormalFinding?.reportedBy || item.createdBy
         ]);
@@ -1599,7 +1698,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         row.eachCell((cell, colNumber) => {
           cell.alignment = {
             vertical: 'middle',
-            horizontal: colNumber === 1 || colNumber === 5 || colNumber === 8 ? 'center' : 'left',
+            horizontal: colNumber === 1 || colNumber === 5 || colNumber === 8 || colNumber === 9 ? 'center' : 'left',
             wrapText: true
           };
           cell.border = {
@@ -1620,8 +1719,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       worksheet.getColumn(5).width = 18;
       worksheet.getColumn(6).width = 40;
       worksheet.getColumn(7).width = 32;
-      worksheet.getColumn(8).width = 15;
-      worksheet.getColumn(9).width = 20;
+      worksheet.getColumn(8).width = 22;
+      worksheet.getColumn(9).width = 15;
+      worksheet.getColumn(10).width = 20;
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
@@ -1705,6 +1805,15 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>Ekspor Excel</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setIsPredictiveRecapModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-95 text-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer"
+              title="Buka Tabel & Rekap Status Kelayakan Dokumen Predictive Report"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Rekap Predictive</span>
+            </button>
           </div>
         </div>
 
@@ -1769,6 +1878,59 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               <div className="text-sm font-bold text-slate-900 leading-tight">{stats.withReco} <span className="text-[11px] font-normal text-slate-500">Item</span></div>
             </div>
           </div>
+        </div>
+
+        {/* Predictive Eligibility Status Pills Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 px-1 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-purple-600" /> Status Kelayakan Predictive:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setPredictiveTableTab(predictiveTableTab === 'eligible' ? 'all' : 'eligible');
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                predictiveTableTab === 'eligible'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              }`}
+              title="Filter temuan yang bisa dibuat Predictive Report"
+            >
+              <CheckSquare className="w-3 h-3" />
+              <span>Dapat di Predictive: {stats.predictiveEligible}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPredictiveTableTab(predictiveTableTab === 'ineligible' ? 'all' : 'ineligible');
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                predictiveTableTab === 'ineligible'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                  : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+              }`}
+              title="Filter temuan yang tidak bisa dibuat Predictive Report"
+            >
+              <XCircle className="w-3 h-3" />
+              <span>Tidak Bisa: {stats.predictiveIneligible}</span>
+            </button>
+
+            <span className="text-[11px] text-slate-400 font-medium">
+              (Belum ditentukan: {stats.predictiveUnmarked})
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsPredictiveRecapModalOpen(true)}
+            className="text-[11px] font-bold text-purple-700 hover:text-purple-900 underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+          >
+            <span>Buka Tabel Komparasi Predictive</span>
+            <ChevronDown className="w-3 h-3 -rotate-90" />
+          </button>
         </div>
       </div>
 
@@ -1849,7 +2011,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         </div>
 
         {/* Row 2: Filter Grid Terstruktur */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1 border-t border-slate-100">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 border-t border-slate-100">
           {/* Filter Akun Maintenance */}
           <div className="col-span-2 sm:col-span-1">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
@@ -1921,6 +2083,23 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               <option value="all">Semua Foto</option>
               <option value="with_photo">Hanya Berfoto ({stats.withPhoto})</option>
               <option value="without_photo">Tanpa Foto ({items.length - stats.withPhoto})</option>
+            </select>
+          </div>
+
+          {/* Filter Status Predictive */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Status Predictive
+            </label>
+            <select
+              value={selectedPredictiveFilter}
+              onChange={(e) => setSelectedPredictiveFilter(e.target.value as any)}
+              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 font-medium text-slate-800 transition cursor-pointer truncate"
+            >
+              <option value="all">Semua Status Predictive</option>
+              <option value="eligible">✓ Dapat di Predictive Report ({stats.predictiveEligible})</option>
+              <option value="ineligible">✕ Tidak Bisa Predictive Report ({stats.predictiveIneligible})</option>
+              <option value="unmarked">? Belum Ditentukan ({stats.predictiveUnmarked})</option>
             </select>
           </div>
 
@@ -2021,6 +2200,38 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               </span>
             )}
 
+            {selectedPredictiveFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[11px] font-medium border border-purple-200">
+                <span>
+                  Predictive: {selectedPredictiveFilter === 'eligible' ? 'Dapat di Predictive Report' : selectedPredictiveFilter === 'ineligible' ? 'Tidak Bisa Predictive Report' : 'Belum Ditentukan'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPredictiveFilter('all')}
+                  className="hover:text-purple-900 cursor-pointer ml-0.5"
+                  title="Hapus filter status predictive"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {predictiveTableTab !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-medium border border-indigo-200">
+                <span>
+                  Tab: {predictiveTableTab === 'eligible' ? 'Tabel Bisa Predictive' : 'Tabel Tidak Bisa Predictive'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPredictiveTableTab('all')}
+                  className="hover:text-indigo-900 cursor-pointer ml-0.5"
+                  title="Tampilkan semua tab"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
             {sortBy !== 'newest' && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[11px] font-medium border border-purple-200">
                 <span>
@@ -2046,6 +2257,62 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             </button>
           </div>
         )}
+      </div>
+
+      {/* Table Tabs: Semua Temuan vs Bisa Predictive vs Tidak Bisa Predictive */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/90 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setPredictiveTableTab('all')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+            predictiveTableTab === 'all'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span>Semua Temuan</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+            predictiveTableTab === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {items.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPredictiveTableTab('eligible')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+            predictiveTableTab === 'eligible'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-emerald-700 hover:bg-emerald-50'
+          }`}
+        >
+          <CheckSquare className="w-3.5 h-3.5" />
+          <span>✓ Tabel Bisa Dibuat Predictive</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+            predictiveTableTab === 'eligible' ? 'bg-white text-emerald-800' : 'bg-emerald-100 text-emerald-800'
+          }`}>
+            {stats.predictiveEligible}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPredictiveTableTab('ineligible')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+            predictiveTableTab === 'ineligible'
+              ? 'bg-rose-600 text-white shadow-xs'
+              : 'text-rose-700 hover:bg-rose-50'
+          }`}
+        >
+          <XCircle className="w-3.5 h-3.5" />
+          <span>✕ Tabel Tidak Bisa Dibuat Predictive</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+            predictiveTableTab === 'ineligible' ? 'bg-white text-rose-800' : 'bg-rose-100 text-rose-800'
+          }`}>
+            {stats.predictiveIneligible}
+          </span>
+        </button>
       </div>
 
       {canDelete && (
@@ -2133,6 +2400,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                   <th className="py-2.5 px-3 min-w-[220px]">Deskripsi Kelainan</th>
                   <th className="py-2.5 px-3 min-w-[180px]">Rekomendasi</th>
                   <th className="py-2.5 px-3 min-w-[130px]">Pelapor & Waktu</th>
+                  <th className="py-2.5 px-3 min-w-[160px]">Status Predictive</th>
                   <th className="py-2.5 px-3 text-right min-w-[220px]">Aksi QC</th>
                 </tr>
               </thead>
@@ -2243,6 +2511,113 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                         </div>
                       </td>
 
+                      {/* Status Predictive */}
+                      <td className="py-2.5 px-3">
+                        <div className="relative inline-block text-left">
+                          {canManagePredictiveEligibility ? (
+                            <div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPredictiveMenuReportId(predictiveMenuReportId === item.id ? null : item.id);
+                                }}
+                                className={`px-2 py-1 rounded-md text-[11px] font-bold border transition cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                                  item.predictiveEligible === true
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                    : item.predictiveEligible === false
+                                    ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
+                                    : 'bg-slate-50 text-slate-600 border-dashed border-slate-300 hover:bg-slate-100'
+                                }`}
+                                title="Klik untuk mengubah kelayakan Predictive Report (Khusus Standby Engineer / QC)"
+                              >
+                                {item.predictiveEligible === true ? (
+                                  <>
+                                    <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Dapat di Predictive Report</span>
+                                  </>
+                                ) : item.predictiveEligible === false ? (
+                                  <>
+                                    <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                    <span>Tidak Bisa Predictive Report</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Belum Diatur</span>
+                                  </>
+                                )}
+                                <ChevronDown className="w-3 h-3 opacity-60" />
+                              </button>
+
+                              {/* Dropdown Popover */}
+                              {predictiveMenuReportId === item.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setPredictiveMenuReportId(null)}
+                                  />
+                                  <div className="absolute left-0 mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                                    <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                      Kelayakan Predictive:
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleUpdatePredictiveEligibility(item, true);
+                                        setPredictiveMenuReportId(null);
+                                      }}
+                                      className={`w-full text-left px-3 py-1.5 text-xs font-semibold flex items-center gap-2 hover:bg-emerald-50 hover:text-emerald-900 transition cursor-pointer ${
+                                        item.predictiveEligible === true ? 'text-emerald-700 font-bold bg-emerald-50/50' : 'text-slate-700'
+                                      }`}
+                                    >
+                                      <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>Bisa dibuat Predictive</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleUpdatePredictiveEligibility(item, false);
+                                        setPredictiveMenuReportId(null);
+                                      }}
+                                      className={`w-full text-left px-3 py-1.5 text-xs font-semibold flex items-center gap-2 hover:bg-rose-50 hover:text-rose-900 transition cursor-pointer ${
+                                        item.predictiveEligible === false ? 'text-rose-700 font-bold bg-rose-50/50' : 'text-slate-700'
+                                      }`}
+                                    >
+                                      <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                      <span>Tidak bisa Predictive</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleUpdatePredictiveEligibility(item, null);
+                                        setPredictiveMenuReportId(null);
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 text-xs font-medium flex items-center gap-2 text-slate-500 hover:bg-slate-100 transition cursor-pointer border-t border-slate-100"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                                      <span>Reset ke Belum Ditentukan</span>
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                              item.predictiveEligible === true
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : item.predictiveEligible === false
+                                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                : 'bg-slate-50 text-slate-500 border-slate-200'
+                            }`}>
+                              {item.predictiveEligible === true ? '✓ Dapat di Predictive' : item.predictiveEligible === false ? '✕ Tidak Bisa Predictive' : 'Belum Diatur'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
                       {/* Aksi QC */}
                       <td className="py-2.5 px-3 text-right">
                         <div className="flex items-center justify-end gap-1 flex-wrap">
@@ -2264,7 +2639,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                                 ? 'bg-purple-100 hover:bg-purple-200 text-purple-800'
                                 : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
                             }`}
-                            title="Analisis AI Predictive Maintenance (PdM)"
+                            title="Analisis AI Predictive Maintenance"
                           >
                             {isLoadingPredictive && activePredictiveItem?.id === item.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" />
@@ -2352,13 +2727,119 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               >
                 {/* Header Card */}
                 <div className="px-3.5 py-2.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white flex items-center gap-1 shrink-0">
                       <AlertTriangle className="w-2.5 h-2.5" /> ABNORMAL
                     </span>
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-white text-slate-700 border border-slate-200 shrink-0">
                       {item.documentType.toUpperCase()}
                     </span>
+
+                    {/* Badge / Checklist Kelayakan Predictive Report */}
+                    <div className="relative inline-block text-left">
+                      {canManagePredictiveEligibility ? (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPredictiveMenuReportId(predictiveMenuReportId === `grid-${item.id}` ? null : `grid-${item.id}`);
+                            }}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer flex items-center gap-1 shadow-2xs ${
+                              item.predictiveEligible === true
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
+                                : item.predictiveEligible === false
+                                ? 'bg-rose-100 text-rose-800 border-rose-300 hover:bg-rose-200'
+                                : 'bg-slate-100 text-slate-600 border-dashed border-slate-300 hover:bg-slate-200'
+                            }`}
+                            title="Klik untuk memilih kelayakan Predictive Report (Khusus Standby Engineer / Akun Dwimitra)"
+                          >
+                            {item.predictiveEligible === true ? (
+                              <>
+                                <CheckSquare className="w-3 h-3 text-emerald-700" />
+                                <span>Dapat di Predictive Report</span>
+                              </>
+                            ) : item.predictiveEligible === false ? (
+                              <>
+                                <XCircle className="w-3 h-3 text-rose-700" />
+                                <span>Tidak Bisa Predictive Report</span>
+                              </>
+                            ) : (
+                              <>
+                                <HelpCircle className="w-3 h-3 text-slate-400" />
+                                <span>Atur Predictive</span>
+                              </>
+                            )}
+                            <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+                          </button>
+
+                          {/* Dropdown Popover */}
+                          {predictiveMenuReportId === `grid-${item.id}` && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setPredictiveMenuReportId(null)}
+                              />
+                              <div className="absolute left-0 mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                                <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                  Kelayakan Predictive:
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdatePredictiveEligibility(item, true);
+                                    setPredictiveMenuReportId(null);
+                                  }}
+                                  className={`w-full text-left px-3 py-1.5 text-xs font-semibold flex items-center gap-2 hover:bg-emerald-50 hover:text-emerald-900 transition cursor-pointer ${
+                                    item.predictiveEligible === true ? 'text-emerald-700 font-bold bg-emerald-50/50' : 'text-slate-700'
+                                  }`}
+                                >
+                                  <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Dapat dibuat Predictive Report</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdatePredictiveEligibility(item, false);
+                                    setPredictiveMenuReportId(null);
+                                  }}
+                                  className={`w-full text-left px-3 py-1.5 text-xs font-semibold flex items-center gap-2 hover:bg-rose-50 hover:text-rose-900 transition cursor-pointer ${
+                                    item.predictiveEligible === false ? 'text-rose-700 font-bold bg-rose-50/50' : 'text-slate-700'
+                                  }`}
+                                >
+                                  <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Tidak bisa Predictive Report</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdatePredictiveEligibility(item, null);
+                                    setPredictiveMenuReportId(null);
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 text-xs font-medium flex items-center gap-2 text-slate-500 hover:bg-slate-100 transition cursor-pointer border-t border-slate-100"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Reset ke Belum Ditentukan</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                          item.predictiveEligible === true
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : item.predictiveEligible === false
+                            ? 'bg-rose-50 text-rose-800 border-rose-200'
+                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                        }`}>
+                          {item.predictiveEligible === true ? '✓ Dapat di Predictive' : item.predictiveEligible === false ? '✕ Tidak Bisa Predictive' : 'Predictive: -'}
+                        </span>
+                      )}
+                    </div>
+
                     <span className="text-[11px] font-medium text-slate-500 truncate flex items-center gap-1">
                       <User className="w-3 h-3 text-slate-400 shrink-0" />
                       <span className="truncate max-w-[120px]">{item.createdBy.replace(/@.+$/, '')}</span>
@@ -2502,14 +2983,14 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                           ? 'bg-purple-100 hover:bg-purple-200 text-purple-800'
                           : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80'
                       }`}
-                      title="Analisis Predictive Maintenance (PdM)"
+                      title="Analisis Predictive Maintenance"
                     >
                       {isLoadingPredictive && activePredictiveItem?.id === item.id ? (
                         <Loader2 className="w-3 h-3 animate-spin text-purple-600" />
                       ) : (
                         <Brain className="w-3 h-3" />
                       )}
-                      <span>PdM AI</span>
+                      <span>Predictive AI</span>
                     </button>
 
                     <button
@@ -2940,6 +3421,103 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                     </span>
                   )}
                 </div>
+
+                {/* Status Kelayakan Dokumen Predictive (PdM) */}
+                <div className="p-4 bg-purple-50/70 border border-purple-200 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[11px] font-black uppercase text-purple-900 tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" /> Kelayakan Predictive Report:
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                      viewingDetailItem.predictiveEligible === true
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : viewingDetailItem.predictiveEligible === false
+                        ? 'bg-rose-100 text-rose-800 border-rose-300'
+                        : 'bg-slate-100 text-slate-600 border-slate-300'
+                    }`}>
+                      {viewingDetailItem.predictiveEligible === true
+                        ? '✓ Dapat dibuat Predictive Report'
+                        : viewingDetailItem.predictiveEligible === false
+                        ? '✕ Tidak bisa dibuat Predictive Report'
+                        : 'Belum Ditentukan'}
+                    </span>
+                  </div>
+
+                  {viewingDetailItem.predictiveEligibleUpdatedBy && (
+                    <p className="text-[11px] text-purple-700/80">
+                      Diperbarui oleh: <span className="font-semibold text-purple-900">{viewingDetailItem.predictiveEligibleUpdatedBy}</span>
+                      {viewingDetailItem.predictiveEligibleUpdatedAt && (
+                        <span> pada {new Date(viewingDetailItem.predictiveEligibleUpdatedAt).toLocaleString('id-ID')}</span>
+                      )}
+                    </p>
+                  )}
+
+                  {canManagePredictiveEligibility && (
+                    <div className="pt-2 border-t border-purple-200/60 flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-600">Ubah Status (Standby Engineer):</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await handleUpdatePredictiveEligibility(viewingDetailItem, true);
+                          setViewingDetailItem({
+                            ...viewingDetailItem,
+                            predictiveEligible: true,
+                            predictiveEligibleUpdatedBy: user?.displayName || user?.email || 'Standby Engineer',
+                            predictiveEligibleUpdatedAt: new Date().toISOString()
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                          viewingDetailItem.predictiveEligible === true
+                            ? 'bg-emerald-600 text-white ring-2 ring-emerald-300'
+                            : 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50'
+                        }`}
+                      >
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        <span>Bisa Dibuat Predictive</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await handleUpdatePredictiveEligibility(viewingDetailItem, false);
+                          setViewingDetailItem({
+                            ...viewingDetailItem,
+                            predictiveEligible: false,
+                            predictiveEligibleUpdatedBy: user?.displayName || user?.email || 'Standby Engineer',
+                            predictiveEligibleUpdatedAt: new Date().toISOString()
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                          viewingDetailItem.predictiveEligible === false
+                            ? 'bg-rose-600 text-white ring-2 ring-rose-300'
+                            : 'bg-white text-rose-700 border border-rose-300 hover:bg-rose-50'
+                        }`}
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span>Tidak Bisa Predictive</span>
+                      </button>
+
+                      {(viewingDetailItem.predictiveEligible !== undefined && viewingDetailItem.predictiveEligible !== null) && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleUpdatePredictiveEligibility(viewingDetailItem, null);
+                            setViewingDetailItem({
+                              ...viewingDetailItem,
+                              predictiveEligible: undefined,
+                              predictiveEligibleUpdatedBy: undefined,
+                              predictiveEligibleUpdatedAt: undefined
+                            });
+                          }}
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3 inline mr-1" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Footer Actions Modal */}
@@ -2956,10 +3534,10 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                         ? 'bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300'
                         : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-300'
                     }`}
-                    title="Analisis Predictive Maintenance (PdM) berbasis AI"
+                    title="Analisis Predictive Maintenance berbasis AI"
                   >
                     <Brain className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>{viewingDetailItem.hasPredictiveReport || viewingDetailItem.predictiveReportId ? '✓ Lihat Laporan PdM' : 'Predictive AI'}</span>
+                    <span>{viewingDetailItem.hasPredictiveReport || viewingDetailItem.predictiveReportId ? '✓ Lihat Laporan Predictive' : 'Predictive AI'}</span>
                   </button>
 
                   <button
@@ -3207,6 +3785,285 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           }}
         />
       )}
+
+      {/* Modal Dialog: Rekap & Tabel Status Kelayakan Predictive (PdM) */}
+      <AnimatePresence>
+        {isPredictiveRecapModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-5xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]"
+            >
+              {/* Header Modal */}
+              <div className="bg-gradient-to-r from-purple-800 via-indigo-700 to-blue-700 px-5 py-4 sm:px-6 sm:py-5 text-white shrink-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-white/15 rounded-2xl backdrop-blur-xs shrink-0 border border-white/20">
+                      <Sparkles className="w-6 h-6 text-amber-300" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                          Tabel & Rekap Kelayakan Predictive Report
+                        </h2>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-500/80 text-white border border-purple-300/40 uppercase tracking-wider">
+                          Standby & Abnormal Findings
+                        </span>
+                      </div>
+                      <p className="text-xs text-purple-100/90 mt-0.5 font-medium">
+                        Pemetaan laporan temuan abnormal yang bisa vs tidak bisa dibuatkan laporan Predictive Maintenance
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPredictiveRecapModalOpen(false)}
+                    className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer shrink-0"
+                    title="Tutup Modal"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Summary Cards */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Temuan</span>
+                  <div className="text-base font-black text-slate-800 mt-0.5">{items.length} <span className="text-xs font-normal text-slate-500">Unit</span></div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block flex items-center gap-1">
+                    <CheckSquare className="w-3 h-3" /> Dapat di Predictive
+                  </span>
+                  <div className="text-base font-black text-emerald-800 mt-0.5">{stats.predictiveEligible} <span className="text-xs font-normal text-emerald-600">Unit</span></div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-rose-50/80 border border-rose-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block flex items-center gap-1">
+                    <XCircle className="w-3 h-3" /> Tidak Bisa Predictive Report
+                  </span>
+                  <div className="text-base font-black text-rose-800 mt-0.5">{stats.predictiveIneligible} <span className="text-xs font-normal text-rose-600">Unit</span></div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1">
+                    <HelpCircle className="w-3 h-3" /> Belum Ditentukan
+                  </span>
+                  <div className="text-base font-black text-slate-700 mt-0.5">{stats.predictiveUnmarked} <span className="text-xs font-normal text-slate-500">Unit</span></div>
+                </div>
+              </div>
+
+              {/* Table Sub-Filter Tabs */}
+              <div className="px-5 py-3 border-b border-slate-200 bg-white flex items-center justify-between gap-2 flex-wrap shrink-0">
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setPredictiveTableTab('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      predictiveTableTab === 'all'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>Semua Temuan</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-700">
+                      {items.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPredictiveTableTab('eligible')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      predictiveTableTab === 'eligible'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>✓ Bisa Dibuat Predictive</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      predictiveTableTab === 'eligible' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {stats.predictiveEligible}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPredictiveTableTab('ineligible')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      predictiveTableTab === 'ineligible'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-rose-700 hover:bg-rose-50'
+                    }`}
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>✕ Tidak Bisa Dibuat Predictive</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      predictiveTableTab === 'ineligible' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800'
+                    }`}>
+                      {stats.predictiveIneligible}
+                    </span>
+                  </button>
+                </div>
+
+                <div className="text-xs text-slate-500 font-medium">
+                  Menampilkan <strong className="text-slate-800">{filteredItems.length}</strong> temuan abnormal
+                </div>
+              </div>
+
+              {/* Table Container (Scrollable) */}
+              <div className="overflow-auto flex-1 p-4">
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                        <th className="py-2.5 px-3 text-center w-10">#</th>
+                        <th className="py-2.5 px-3 min-w-[180px]">Unit & Peralatan</th>
+                        <th className="py-2.5 px-3 min-w-[160px]">Laporan & Akun</th>
+                        <th className="py-2.5 px-3 min-w-[200px]">Deskripsi Kerusakan</th>
+                        <th className="py-2.5 px-3 min-w-[180px]">Status Predictive</th>
+                        <th className="py-2.5 px-3 min-w-[140px]">Diperbarui Oleh</th>
+                        <th className="py-2.5 px-3 text-center w-20">Foto</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-400">
+                            Tidak ada temuan yang sesuai dengan tab status ini.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredItems.map((item, idx) => {
+                          const targetUnit = item.abnormalFinding?.unitName || item.specificDetail || item.maintenanceName;
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                              <td className="py-2.5 px-3 text-center text-slate-400 font-medium">{idx + 1}</td>
+                              <td className="py-2.5 px-3">
+                                <div className="font-bold text-slate-900">{targetUnit}</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">{formatWaktuMaintenance(item)}</div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <div className="font-medium text-slate-700 truncate max-w-[150px]">{item.maintenanceName}</div>
+                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">{item.createdBy}</div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <p className="text-slate-700 line-clamp-2">{item.abnormalFinding?.description || '-'}</p>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {canManagePredictiveEligibility ? (
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdatePredictiveEligibility(item, true)}
+                                      className={`px-2 py-1 rounded-md text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 shadow-2xs ${
+                                        item.predictiveEligible === true
+                                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                          : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                      }`}
+                                      title="Tandai bisa dibuat Predictive Report"
+                                    >
+                                      <CheckSquare className="w-3 h-3" />
+                                      <span>Dapat di Predictive</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdatePredictiveEligibility(item, false)}
+                                      className={`px-2 py-1 rounded-md text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 shadow-2xs ${
+                                        item.predictiveEligible === false
+                                          ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                                          : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                                      }`}
+                                      title="Tandai tidak bisa dibuat Predictive Report"
+                                    >
+                                      <XCircle className="w-3 h-3" />
+                                      <span>Tidak Bisa Predictive</span>
+                                    </button>
+
+                                    {(item.predictiveEligible !== undefined && item.predictiveEligible !== null) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdatePredictiveEligibility(item, null)}
+                                        className="p-1 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
+                                        title="Reset status"
+                                      >
+                                        <RotateCcw className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border ${
+                                    item.predictiveEligible === true
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                      : item.predictiveEligible === false
+                                      ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                      : 'bg-slate-50 text-slate-500 border-slate-200'
+                                  }`}>
+                                    {item.predictiveEligible === true ? '✓ Dapat di Predictive' : item.predictiveEligible === false ? '✕ Tidak Bisa Predictive' : 'Belum Diatur'}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-500 text-[11px]">
+                                {item.predictiveEligibleUpdatedBy ? (
+                                  <div>
+                                    <div className="font-semibold text-slate-700">{item.predictiveEligibleUpdatedBy}</div>
+                                    {item.predictiveEligibleUpdatedAt && (
+                                      <div className="text-[10px] text-slate-400">
+                                        {new Date(item.predictiveEligibleUpdatedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 italic">-</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                {item.abnormalFinding?.photoBase64 ? (
+                                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" title="Ada foto bukti" />
+                                ) : (
+                                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-300" title="Tanpa foto" />
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Footer Modal */}
+              <div className="p-4 bg-slate-100 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleExportExcelRecap}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Unduh Rekap Spreadsheet (.xlsx)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPredictiveRecapModalOpen(false)}
+                  className="px-4 py-2 bg-white hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
