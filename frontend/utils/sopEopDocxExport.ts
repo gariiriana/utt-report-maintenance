@@ -24,7 +24,7 @@ import {
   PageBreak,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem, DocumentSigner } from '@/types/sopEopTypes';
+import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem, DocumentSigner, getEquipmentCellValue } from '@/types/sopEopTypes';
 import { ensureBilingualTranslation } from '@/utils/sopEopBilingualAI';
 import logoDMEOriginal from '@/assets/sop_eop_logo2.jpeg';
 import logoNDCOriginal from '@/assets/sop_eop_logo1.jpeg';
@@ -536,10 +536,14 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     { width: 356, en: 'Room', id: 'Ruangan', key: 'room' },
   ];
 
-  // Selalu pertahankan seluruh 10 kolom master standar NeutraDC / DME (termasuk Manufacturer / Principle)
-  // untuk SEMUA dokumen SOP agar format tabel selalu utuh, konsisten, dan kolom Principle tidak hilang.
+  // An imported document keeps its own columns (order, headers and count); others use the 10-column master.
   const eqList = data.equipmentList || [];
-  const activeEquipCols = allEquipCols;
+  const importedColumns = data.equipmentColumns && data.equipmentColumns.length > 0 ? data.equipmentColumns : null;
+  const widthFor = (field: string) =>
+    allEquipCols.find((c) => c.key === field)?.width ?? ({ principle: 1143, floor: 500 } as Record<string, number>)[field] ?? 1000;
+  const activeEquipCols: { width: number; en: string; id: string; key: string }[] = importedColumns
+    ? importedColumns.map((c) => ({ width: widthFor(c.field), en: c.labelEn, id: c.labelId, key: c.field }))
+    : allEquipCols;
 
   // Redistribusi lebar kolom agar total tetap pas = CONTENT_WIDTH_DXA (15.9 cm)
   const totalActiveWidth = activeEquipCols.reduce((sum, c) => sum + c.width, 0);
@@ -563,7 +567,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
-              children: createBilingualRuns(col.en, col.id, { sizeEn: 18, sizeId: 16, boldEn: true, isHeader: true }),
+              // A header without an Indonesian label (English-only source) stays a single line.
+              children: col.id
+                ? createBilingualRuns(col.en, col.id, { sizeEn: 18, sizeId: 16, boldEn: true, isHeader: true })
+                : [new TextRun({ text: col.en, bold: true, size: 18, color: COLOR_BLACK, font: FONT_HEADING })],
             }),
           ],
         })
@@ -575,7 +582,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       cantSplit: true,
       children: activeEquipCols.map((col, colIdx) => {
         let cellText = '-';
-        if (col.key === 'no') {
+        if (importedColumns) {
+          // Imported cells are written exactly as they were read, including blanks.
+          cellText = getEquipmentCellValue(eq, col.key).trim();
+        } else if (col.key === 'no') {
           cellText = String(eq.no || i + 1);
         } else {
           const rawVal = eq[col.key as keyof SOPCIEquipmentItem];

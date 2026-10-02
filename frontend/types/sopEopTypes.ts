@@ -16,6 +16,50 @@ export interface SOPCIEquipmentItem {
   productName: string;
   model: string;
   room: string;
+  /** Columns that imported documents may carry separately. */
+  principle?: string;
+  floor?: string;
+  /** "No" cell exactly as written (blank on grouped rows). */
+  noText?: string;
+  /** Imported columns that have no dedicated field, keyed by their header label. */
+  extra?: Record<string, string>;
+}
+
+/**
+ * One column of the SOP equipment table. `field` is an item field name, or
+ * `extra:<header label>` for a column without a dedicated field.
+ */
+export interface SOPEquipmentColumn {
+  field: string;
+  labelEn: string;
+  labelId: string;
+}
+
+/** The standard layout, used for documents that were not imported from Word. */
+export const DEFAULT_SOP_EQUIPMENT_COLUMNS: SOPEquipmentColumn[] = [
+  { field: 'no', labelEn: 'No', labelId: 'No' },
+  { field: 'classId', labelEn: 'Class id', labelId: 'ID Kelas' },
+  { field: 'ciName', labelEn: 'CI Name*', labelId: 'Nama CI*' },
+  { field: 'ciDescription', labelEn: 'CI Description*', labelId: 'Deskripsi CI*' },
+  { field: 'capacity', labelEn: 'Capacity', labelId: 'Kapasitas' },
+  { field: 'serialNumber', labelEn: 'Serial Number', labelId: 'Nomor Seri' },
+  { field: 'mfd', labelEn: 'MFD', labelId: 'Tahun Pembuatan (MFD)' },
+  { field: 'productName', labelEn: 'Manufacturer / Principle', labelId: 'Pabrikan / Prinsipal' },
+  { field: 'model', labelEn: 'Model', labelId: 'Model' },
+  { field: 'room', labelEn: 'Room', labelId: 'Ruangan' },
+];
+
+export function getEquipmentCellValue(item: SOPCIEquipmentItem, field: string): string {
+  if (field === 'no') return item.noText ?? String(item.no ?? '');
+  if (field.startsWith('extra:')) return item.extra?.[field.slice(6)] ?? '';
+  const value = (item as unknown as Record<string, unknown>)[field];
+  return value === undefined || value === null ? '' : String(value);
+}
+
+export function setEquipmentCellValue(item: SOPCIEquipmentItem, field: string, value: string): SOPCIEquipmentItem {
+  if (field === 'no') return { ...item, noText: value };
+  if (field.startsWith('extra:')) return { ...item, extra: { ...(item.extra || {}), [field.slice(6)]: value } };
+  return { ...item, [field]: value };
 }
 
 export interface SOPAffectedSystemItem {
@@ -81,6 +125,8 @@ export interface SOPDocumentData {
 
   // Section 2 – Equipment Information
   equipmentList: SOPCIEquipmentItem[];
+  /** Column layout of an imported document; absent means DEFAULT_SOP_EQUIPMENT_COLUMNS. */
+  equipmentColumns?: SOPEquipmentColumn[];
 
   // Section 3 – Schedule / Work Information
   executionDate: string;

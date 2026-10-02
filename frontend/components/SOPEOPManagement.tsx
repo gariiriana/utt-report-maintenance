@@ -48,14 +48,16 @@ import { useAuth } from '@/components/AuthContext';
 import {
   SOPDocumentData,
   EOPDocumentData,
-  SOPCIEquipmentItem,
   SOPReferencedDocItem,
   SOPPrerequisiteItem,
   SOPWorkStepItem,
   EOPWorkStepItem,
   DocumentSigner,
   DEFAULT_SOP_DATA,
-  DEFAULT_EOP_DATA
+  DEFAULT_EOP_DATA,
+  DEFAULT_SOP_EQUIPMENT_COLUMNS,
+  getEquipmentCellValue,
+  setEquipmentCellValue
 } from '@/types/sopEopTypes';
 import { exportSOPToDocx, exportEOPToDocx } from '@/utils/sopEopDocxExport';
 import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI, BilingualIncompleteError } from '@/utils/sopEopBilingualAI';
@@ -327,17 +329,18 @@ export function SOPEOPManagement() {
       ...prev,
       equipmentList: [
         ...prev.equipmentList,
+        // A new row starts empty; the user fills in the real equipment.
         {
           no: nextNo,
-          classId: 'TR',
-          ciName: `TRAFO ${nextNo}`,
+          classId: '',
+          ciName: '',
           ciDescription: '',
-          capacity: '2500 kVA',
+          capacity: '',
           serialNumber: '',
-          mfd: new Date().getFullYear().toString(),
-          productName: 'TRAFINDO',
-          model: 'Dry Type Cast Resin',
-          room: 'Trafo Room'
+          mfd: '',
+          productName: '',
+          model: '',
+          room: ''
         }
       ]
     }));
@@ -353,10 +356,15 @@ export function SOPEOPManagement() {
     });
   };
 
-  const updateEquipmentItem = (index: number, field: keyof SOPCIEquipmentItem, value: any) => {
+  // Columns of the equipment table: the imported document's own layout, or the standard 10 columns.
+  const equipmentColumns = sopData.equipmentColumns && sopData.equipmentColumns.length > 0
+    ? sopData.equipmentColumns
+    : DEFAULT_SOP_EQUIPMENT_COLUMNS;
+
+  const updateEquipmentCell = (index: number, field: string, value: string) => {
     setSopData((prev) => {
       const updated = [...prev.equipmentList];
-      updated[index] = { ...updated[index], [field]: value };
+      updated[index] = setEquipmentCellValue(updated[index], field, value);
       return { ...prev, equipmentList: updated };
     });
   };
@@ -1068,98 +1076,36 @@ export function SOPEOPManagement() {
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+                {/* Columns follow the imported document; manual documents use the standard 10 columns. */}
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="p-2.5 w-10 text-center">No</th>
-                    <th className="p-2.5 w-20">Class ID</th>
-                    <th className="p-2.5 w-28">CI Name</th>
-                    <th className="p-2.5 w-36">CI Description</th>
-                    <th className="p-2.5 w-28">Capacity</th>
-                    <th className="p-2.5 w-28">Serial Number</th>
-                    <th className="p-2.5 w-20">MFD</th>
-                    <th className="p-2.5 w-36">Manufacturer / Principle</th>
-                    <th className="p-2.5 w-36">Model</th>
-                    <th className="p-2.5 w-28">Room</th>
+                    {equipmentColumns.map((column) => (
+                      <th key={column.field} className={`p-2.5 ${column.field === 'no' ? 'w-10 text-center' : ''}`}>
+                        {column.labelEn || column.labelId}
+                      </th>
+                    ))}
                     <th className="p-2.5 w-12 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {sopData.equipmentList.map((item, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/70">
-                      <td className="p-2 text-center font-bold text-slate-500">{item.no}</td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.classId}
-                          onChange={(e) => updateEquipmentItem(idx, 'classId', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.ciName}
-                          onChange={(e) => updateEquipmentItem(idx, 'ciName', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs font-semibold text-slate-800"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.ciDescription}
-                          onChange={(e) => updateEquipmentItem(idx, 'ciDescription', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.capacity}
-                          onChange={(e) => updateEquipmentItem(idx, 'capacity', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.serialNumber}
-                          onChange={(e) => updateEquipmentItem(idx, 'serialNumber', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs font-mono"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.mfd}
-                          onChange={(e) => updateEquipmentItem(idx, 'mfd', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.productName}
-                          onChange={(e) => updateEquipmentItem(idx, 'productName', e.target.value)}
-                          placeholder="Manufacturer / Principle"
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.model}
-                          onChange={(e) => updateEquipmentItem(idx, 'model', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={item.room}
-                          onChange={(e) => updateEquipmentItem(idx, 'room', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
-                        />
-                      </td>
+                      {equipmentColumns.map((column) =>
+                        column.field === 'no' ? (
+                          <td key={column.field} className="p-2 text-center font-bold text-slate-500">
+                            {getEquipmentCellValue(item, 'no')}
+                          </td>
+                        ) : (
+                          <td key={column.field} className="p-2">
+                            <input
+                              type="text"
+                              value={getEquipmentCellValue(item, column.field)}
+                              onChange={(e) => updateEquipmentCell(idx, column.field, e.target.value)}
+                              className={`w-full px-2 py-1 border border-slate-200 rounded text-xs ${column.field === 'ciName' ? 'font-semibold text-slate-800' : ''} ${column.field === 'serialNumber' ? 'font-mono' : ''}`}
+                            />
+                          </td>
+                        )
+                      )}
                       <td className="p-2 text-center">
                         <button
                           type="button"

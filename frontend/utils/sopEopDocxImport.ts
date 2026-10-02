@@ -10,6 +10,8 @@ import {
   SOPDocumentData,
   EOPDocumentData,
   SOPCIEquipmentItem,
+  SOPEquipmentColumn,
+  setEquipmentCellValue,
   SOPAffectedSystemItem,
   SOPWorkStepItem,
   EOPWorkStepItem,
@@ -404,7 +406,7 @@ function parseDocumentInformation(xml: string, isEop: boolean): {
  * Mengekstrak tabel CI Equipment (SOP Seksi 2) dengan mapping kolom dinamis.
  * Mampu membaca tabel 7 kolom (Lighting Point), 10 kolom (Trafo), maupun variasi jumlah/urutan kolom lainnya.
  */
-function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
+function parseCIEquipment(xml: string): { items: SOPCIEquipmentItem[]; columns: SOPEquipmentColumn[] } {
   // 1. Prioritaskan tabel dari Seksi 2 (Equipment Information)
   const sec2Blocks = getSectionBlocks(xml, 2);
   const sec2Tables = sec2Blocks
@@ -434,7 +436,7 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
     });
   }
 
-  if (candidateTables.length === 0) return [];
+  if (candidateTables.length === 0) return { items: [], columns: [] };
 
   const getLines = (cellXml?: string): string[] => {
     if (!cellXml) return [];
@@ -449,9 +451,26 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
 
   const items: SOPCIEquipmentItem[] = [];
   let currentNo = 1;
-  // Word splits long equipment lists into a headed table plus header-less continuation tables.
-  let previousColMap: Record<string, number> | null = null;
-  let previousColCount = 0;
+  // The column layout of the first headed table; continuation tables reuse it.
+  let columns: SOPEquipmentColumn[] = [];
+  let columnCount = 0;
+
+  // Header text -> item field. Unrecognised headers keep their data under `extra:<label>`.
+  const fieldForHeader = (text: string): string | null => {
+    if (/(?:serial\s*num|nomor\s*seri|no\s*seri|\bs[\.\/]?n\b)/i.test(text)) return 'serialNumber';
+    if (/(?:class\s*id|id\s*kelas|\bkelas\b)/i.test(text)) return 'classId';
+    if (/(?:ci\s*desc|deskripsi\s*ci|\bdeskripsi\b|\bdescription\b|asset\s*tag|tagging)/i.test(text)) return 'ciDescription';
+    if (/(?:ci\s*name|nama\s*ci|asset\s*name|equipment\s*name|nama\s*alat|nama\s*peralatan)/i.test(text)) return 'ciName';
+    if (/(?:production\s*year|tahun\s*(?:pembuatan|produksi)|mfd|manufacturing|year\s*of\s*prod)/i.test(text)) return 'mfd';
+    if (/(?:model\s*[\/\-]?\s*version|model|version|versi|\btipe\b|\btype\b)/i.test(text)) return 'model';
+    if (/(?:capacity|kapasitas|\brating\b)/i.test(text)) return 'capacity';
+    if (/(?:floor|lantai|\blt\b)/i.test(text)) return 'floor';
+    if (/(?:ruang(?:an)?|\broom\b|lokasi|location)/i.test(text)) return 'room';
+    if (/(?:principle|prinsip(?:al)?)/i.test(text)) return 'principle';
+    if (/(?:product\s*name|nama\s*produk|\bmerk\b|\bbrand\b|pabrikan|manufacturer)/i.test(text)) return 'productName';
+    if (/(?:^no\b|^nomor\b|^#)/i.test(text)) return 'no';
+    return null;
+  };
 
   for (const ciTbl of candidateTables) {
     const trs = ciTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
@@ -465,122 +484,61 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
       );
     });
 
-    let colMap = {
-      no: -1,
-      classId: -1,
-      ciName: -1,
-      ciDescription: -1,
-      capacity: -1,
-      serialNumber: -1,
-      mfd: -1,
-      productName: -1,
-      principle: -1,
-      model: -1,
-      floor: -1,
-      room: -1
-    };
-
-    if (headerIdx >= 0) {
-      const headerTcs = trs[headerIdx].match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
-      headerTcs.forEach((tc, idx) => {
-        const text = getLines(tc).join(' ').toLowerCase();
-        if (/(?:serial\s*num|nomor\s*seri|no\s*seri|\bs[\.\/]?n\b)/i.test(text)) {
-          colMap.serialNumber = idx;
-        } else if (/(?:class\s*id|id\s*kelas|\bkelas\b)/i.test(text)) {
-          colMap.classId = idx;
-        } else if (/(?:ci\s*desc|deskripsi\s*ci|\bdeskripsi\b|\bdescription\b|asset\s*tag|tagging)/i.test(text)) {
-          colMap.ciDescription = idx;
-        } else if (/(?:ci\s*name|nama\s*ci|asset\s*name|equipment\s*name|nama\s*alat|nama\s*peralatan)/i.test(text)) {
-          colMap.ciName = idx;
-        } else if (/(?:production\s*year|tahun\s*(?:pembuatan|produksi)|mfd|manufacturing|year\s*of\s*prod)/i.test(text)) {
-          colMap.mfd = idx;
-        } else if (/(?:model\s*[\/\-]?\s*version|model|version|versi|\btipe\b|\btype\b)/i.test(text)) {
-          colMap.model = idx;
-        } else if (/(?:capacity|kapasitas|\brating\b)/i.test(text)) {
-          colMap.capacity = idx;
-        } else if (/(?:floor|lantai|\blt\b)/i.test(text)) {
-          colMap.floor = idx;
-        } else if (/(?:ruang(?:an)?|\broom\b|lokasi|location)/i.test(text)) {
-          colMap.room = idx;
-        } else if (/(?:principle|prinsip(?:al)?)/i.test(text)) {
-          colMap.principle = idx;
-        } else if (/(?:product\s*name|nama\s*produk|\bmerk\b|\bbrand\b|pabrikan|manufacturer)/i.test(text)) {
-          colMap.productName = idx;
-        } else if (/(?:^no\b|^nomor\b|^#)/i.test(text)) {
-          colMap.no = idx;
-        }
-      });
-    }
-
     const firstRowCells = ((trs[0] || '').match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || []).length;
-    const isContinuation = headerIdx < 0 && previousColMap !== null && firstRowCells === previousColCount;
-    if (isContinuation) colMap = { ...(previousColMap as typeof colMap) };
+    // Word splits long equipment lists into a headed table plus header-less continuation tables.
+    const isContinuation = headerIdx < 0 && columns.length > 0 && firstRowCells === columnCount;
+    let tableColumns: SOPEquipmentColumn[] = [];
+
     if (headerIdx >= 0) {
-      previousColMap = { ...colMap };
-      previousColCount = ((trs[headerIdx] || '').match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || []).length;
+      const headerTcs = (trs[headerIdx] || '').match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
+      const used = new Set<string>();
+      tableColumns = headerTcs.map((tc) => {
+        const lines = getLines(tc);
+        const labelEn = lines[0] || '';
+        const labelId = lines[1] || '';
+        let field = fieldForHeader(lines.join(' ').toLowerCase());
+        // A second column mapping to the same field keeps its own data.
+        if (!field || used.has(field)) field = `extra:${labelEn || labelId}`;
+        used.add(field);
+        return { field, labelEn, labelId };
+      });
+      if (columns.length === 0) {
+        columns = tableColumns;
+        columnCount = headerTcs.length;
+      }
+    } else if (isContinuation) {
+      tableColumns = columns;
+    } else {
+      continue;
     }
 
     // A continuation table has no header row, so its first row is data.
-    const rawDataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : isContinuation ? 0 : 1);
+    const rawDataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 0);
     for (const tr of rawDataRows) {
       const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length < 2) continue;
 
-      const getColVal = (colIndex: number): string => {
-        if (colIndex < 0 || colIndex >= tcs.length) return '';
-        return cleanText(tcs[colIndex]);
+      // Every cell is kept verbatim under its column's field (no merging of columns).
+      let item: SOPCIEquipmentItem = {
+        no: currentNo, classId: '', ciName: '', ciDescription: '', capacity: '',
+        serialNumber: '', mfd: '', productName: '', model: '', room: '',
       };
-
-      const ciName = getColVal(colMap.ciName);
-      const ciDescription = getColVal(colMap.ciDescription);
-      const capacity = getColVal(colMap.capacity);
-      const serialNumber = getColVal(colMap.serialNumber);
-      const mfd = getColVal(colMap.mfd);
-      let productName = getColVal(colMap.productName);
-      const principle = getColVal(colMap.principle);
-      if (!productName && principle) {
-        productName = principle;
-      } else if (productName && principle && productName !== principle) {
-        productName = `${productName} / ${principle}`;
-      }
-      const model = getColVal(colMap.model);
-      const floor = getColVal(colMap.floor);
-      let room = getColVal(colMap.room);
-      const classId = getColVal(colMap.classId);
-
-      // Skip baris jika tidak ada identitas sama sekali atau hanya baris subheader duplikat
-      if (!ciName && !classId && !serialNumber && !capacity && !model) continue;
-      if (/^(?:ci\s*name|nama\s*ci|no|nomor)$/i.test(ciName)) continue;
-
-      if (floor && room && !room.toLowerCase().includes(floor.toLowerCase())) {
-        room = `${floor} - ${room}`;
-      } else if (floor && !room) {
-        room = floor;
-      }
-
-      let no = currentNo;
-      if (colMap.no >= 0 && colMap.no < tcs.length) {
-        const parsedNo = parseInt(cleanText(tcs[colMap.no]).replace(/\.$/, ''), 10);
-        if (!isNaN(parsedNo) && parsedNo > 0) no = parsedNo;
-      }
-
-      items.push({
-        no,
-        classId: classId || '',
-        ciName: ciName || '',
-        ciDescription: ciDescription || '',
-        capacity: capacity || '',
-        serialNumber: serialNumber || '',
-        mfd: mfd || '',
-        productName: productName || '',
-        model: model || '',
-        room: room || ''
+      tableColumns.forEach((column, index) => {
+        item = setEquipmentCellValue(item, column.field, index < tcs.length ? cleanText(tcs[index]) : '');
       });
+
+      // Skip rows without any identity, and repeated header rows.
+      if (!item.ciName && !item.classId && !item.serialNumber && !item.capacity && !item.model) continue;
+      if (/^(?:ci\s*name|nama\s*ci|no|nomor)$/i.test(item.ciName)) continue;
+
+      const parsedNo = parseInt((item.noText || '').replace(/\.$/, ''), 10);
+      item.no = !isNaN(parsedNo) && parsedNo > 0 ? parsedNo : currentNo;
+      items.push(item);
       currentNo++;
     }
   }
 
-  return items;
+  return { items, columns };
 }
 
 /**
@@ -1183,7 +1141,7 @@ function parseSOPAffectedSystems(xml: string): {
  */
 function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   const meta = extractMetadata(xml, fileName, false);
-  const equipmentList = parseCIEquipment(xml);
+  const { items: equipmentList, columns: equipmentColumns } = parseCIEquipment(xml);
   const prerequisites = parsePrerequisites(xml);
   const workSteps = parseSOPWorkSteps(xml);
   const approvals = parseApprovals(xml, false);
@@ -1284,6 +1242,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     workLocationEn: meta.locationEn,
     workLocationId: meta.locationId,
     equipmentList,
+    ...(equipmentColumns.length > 0 ? { equipmentColumns } : {}),
     executionDate:
       scheduleDateMatch && scheduleDateMatch[1] && scheduleDateMatch[1].trim() !== '-'
         ? scheduleDateMatch[1].trim()
@@ -1403,7 +1362,7 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
     containsLabel(documentText, 'CI Name') ||
     containsLabel(documentText, 'Nama CI') ||
     containsLabel(documentText, 'Manufacturer / Principle') ||
-    parseCIEquipment(xml).length > 0;
+    parseCIEquipment(xml).items.length > 0;
 
   const hasSection8 =
     /(?:section|seksi)\s*8\s*[-–—]\s*(?:additional|informasi\s*tambahan)/i.test(documentText) ||
