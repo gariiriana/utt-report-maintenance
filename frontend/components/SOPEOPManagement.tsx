@@ -58,7 +58,7 @@ import {
   DEFAULT_EOP_DATA
 } from '@/types/sopEopTypes';
 import { exportSOPToDocx, exportEOPToDocx } from '@/utils/sopEopDocxExport';
-import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI } from '@/utils/sopEopBilingualAI';
+import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI, BilingualIncompleteError } from '@/utils/sopEopBilingualAI';
 import { importSopEopFromDocx } from '@/utils/sopEopDocxImport';
 
 type SubTab = 'sop' | 'eop' | 'archive';
@@ -269,7 +269,13 @@ export function SOPEOPManagement() {
       toast.success('🎉 Format Bilingual (EN + ID) untuk SOP berhasil diselaraskan!', { id: toastId });
     } catch (err: any) {
       console.error('Bilingual error:', err);
-      toast.error(`Gagal menyelaraskan bilingual: ${err?.message || err}`);
+      toast.dismiss();
+      if (err instanceof BilingualIncompleteError && err.partialData) {
+        setSopData(err.partialData as SOPDocumentData);
+        toast.warning(err.message, { duration: 9000 });
+      } else {
+        toast.error(`Gagal menyelaraskan bilingual: ${err?.message || err}`);
+      }
     } finally {
       setIsBilingualSop(false);
     }
@@ -515,7 +521,13 @@ export function SOPEOPManagement() {
       toast.success('🎉 Format Bilingual (EN + ID) untuk EOP berhasil diselaraskan!', { id: toastId });
     } catch (err: any) {
       console.error('Bilingual error:', err);
-      toast.error(`Gagal menyelaraskan bilingual: ${err?.message || err}`);
+      toast.dismiss();
+      if (err instanceof BilingualIncompleteError && err.partialData) {
+        setEopData(err.partialData as EOPDocumentData);
+        toast.warning(err.message, { duration: 9000 });
+      } else {
+        toast.error(`Gagal menyelaraskan bilingual: ${err?.message || err}`);
+      }
     } finally {
       setIsBilingualEop(false);
     }
@@ -1364,6 +1376,64 @@ export function SOPEOPManagement() {
               </h2>
             </div>
 
+            {/* Imported documents keep their own ordered EHS list, which the export uses instead of the 4 slots. */}
+            {sopData.ehsRequirements.items && sopData.ehsRequirements.items.length > 0 ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sopData.ehsRequirements.items.map((item, idx) => (
+                  <div key={`sop-ehs-item-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700">{idx + 1}. Persyaratan EHS:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const items = (sopData.ehsRequirements.items || []).filter((_, i) => i !== idx);
+                          setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, items } });
+                        }}
+                        className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                        title="Hapus butir EHS"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={item.textEn}
+                      onChange={(e) => {
+                        const items = [...(sopData.ehsRequirements.items || [])];
+                        items[idx] = { ...items[idx], textEn: e.target.value };
+                        setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, items } });
+                      }}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300"
+                      placeholder="EHS requirement (English)..."
+                    />
+                    <textarea
+                      rows={2}
+                      value={item.textId}
+                      onChange={(e) => {
+                        const items = [...(sopData.ehsRequirements.items || [])];
+                        items[idx] = { ...items[idx], textId: e.target.value };
+                        setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, items } });
+                      }}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300"
+                      placeholder="Persyaratan EHS (Bahasa Indonesia)..."
+                    />
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const items = [...(sopData.ehsRequirements.items || []), { textEn: '', textId: '' }];
+                  setSopData({ ...sopData, ehsRequirements: { ...sopData.ehsRequirements, items } });
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Butir EHS</span>
+              </button>
+            </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-700">1. APD / PPE:</span>
@@ -1441,6 +1511,7 @@ export function SOPEOPManagement() {
                 />
               </div>
             </div>
+            )}
           </div>
 
           {/* Card Seksi 7: Prerequisites */}

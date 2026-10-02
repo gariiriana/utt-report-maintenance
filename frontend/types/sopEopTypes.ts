@@ -107,6 +107,11 @@ export interface SOPDocumentData {
     commsId: string;
     lotoEn: string;
     lotoId: string;
+    /** Full ordered list as it appears in an imported document; takes precedence over the 4 legacy slots. */
+    items?: Array<{
+      textEn: string;
+      textId: string;
+    }>;
   };
 
   // Section 7 – Prerequisites

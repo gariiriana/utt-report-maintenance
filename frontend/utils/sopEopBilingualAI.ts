@@ -429,9 +429,12 @@ export function translateTechnicalFallback(text: string, toLang: 'id' | 'en'): s
 }
 
 /**
- * Memastikan sebuah teks memiliki pasangan terjemahan Bahasa Indonesia yang valid.
- * Jaminan 100%: Tidak akan pernah mengembalikan teks Bahasa Inggris atau kalimat
- * campuran (hybrid) di slot terjemahan Bahasa Indonesia.
+ * Returns the Indonesian line for a bilingual field.
+ * - Existing Indonesian text (typed by the user, imported, or from the AI button) is always kept as-is.
+ * - Missing text is filled only from the curated dictionary / fixed template phrases.
+ * - Otherwise it returns '' — a word-by-word "translation" produced hybrid text such as
+ *   "Periksa physical condition of panel", and invented sentences must never reach the document.
+ *   Real translations come from the "Bilingual (EN + ID)" AI action.
  */
 export function ensureBilingualTranslation(textEn: string, textId?: string): string {
   const enTrim = (textEn || '').trim();
@@ -441,13 +444,11 @@ export function ensureBilingualTranslation(textEn: string, textId?: string): str
   const cleanEn = enTrim.replace(/^\s*\d+[\.\)]\s*/, '').trim();
   const cleanId = idTrim.replace(/^\s*\d+[\.\)]\s*/, '').trim();
 
-  // Jika teksId sudah ada dan BENAR-BENAR Bahasa Indonesia yang valid (bukan hybrid atau Inggris)
-  if (cleanId && !isHybridOrEnglish(cleanId, cleanEn)) {
-    return cleanId;
-  }
+  // A line that is only a list number (an empty "2." placeholder) is kept verbatim.
+  if (idTrim) return cleanId || idTrim;
 
   // Jika teksEn kosong
-  if (!cleanEn) return cleanId || '-';
+  if (!cleanEn) return '-';
 
   // 1. Coba dari kamus statis (terjemahan paling akurat dan presisi)
   const dict = translateFromDictionary(cleanEn, 'id');
@@ -465,22 +466,8 @@ export function ensureBilingualTranslation(textEn: string, textId?: string): str
     return `Panduan pelaksanaan Pemeliharaan ${equip}`;
   }
 
-  // 2. Coba dari rule-based fallback
-  const fallback = translateTechnicalFallback(cleanEn, 'id');
-
-  // 3. Periksa kualitas terjemahan
-  if (fallback && !isHybridOrEnglish(fallback, cleanEn)) {
-    return fallback;
-  }
-
-  // 4. Sanitasi sisa kata bahasa Inggris
-  const sanitized = cleanUpRemainingEnglish(fallback || cleanEn);
-  if (sanitized && !isHybridOrEnglish(sanitized, cleanEn)) {
-    return sanitized;
-  }
-
-  // 5. Fallback aman terakhir untuk istilah umum
-  return fallback || `Tindakan operasional terkait: ${cleanEn}`;
+  // No reliable translation available offline: leave the Indonesian line empty.
+  return '';
 }
 
 /**
@@ -542,11 +529,8 @@ async function translateBatchWithAI(
     return resultMap;
   }
 
-  // 2. Siapkan fallback otomatis awal untuk seluruh pendingItems
-  for (const item of pendingItems) {
-    const fallbackText = translateTechnicalFallback(item.text, item.toLang);
-    resultMap.set(item.id, fallbackText);
-  }
+  // 2. Untranslated items are reported, never silently filled with a word-by-word fallback.
+  let lastError = '';
 
   // 3. Panggil Google Gemini AI dalam kelompok batch (maksimal 15 item per permintaan)
   const CHUNK_SIZE = 15;
@@ -575,6 +559,7 @@ ${JSON.stringify(chunk, null, 2)}`;
       } catch (parseErr) {
         console.error('[BilingualAI] Gagal parse JSON dari AI:', parseErr);
         console.error('[BilingualAI] Raw response:', rawJson);
+        lastError = 'Respons AI tidak dapat dibaca.';
         continue;
       }
 
@@ -582,22 +567,41 @@ ${JSON.stringify(chunk, null, 2)}`;
         if (p.id && p.translation && p.translation.trim().length > 0) {
           const item = chunk.find((c) => c.id === p.id);
           const tr = p.translation.trim();
-          // Validasi ketat: pastikan hasil AI bukan hybrid atau masih Inggris
-          if (item && item.toLang === 'id' && isHybridOrEnglish(tr, item.text)) {
-            console.warn(`[BilingualAI] Terjemahan AI untuk '${p.id}' masih hybrid, menggunakan fallback.`);
-            const fb = translateTechnicalFallback(item.text, 'id');
-            resultMap.set(p.id, fb);
-          } else {
-            resultMap.set(p.id, tr);
-          }
+          // Only an untranslated echo of the source is rejected. Technical terms kept in English
+          // (panel, breaker, …) are normal; replacing such answers with a word-by-word fallback
+          // is what produced hybrid sentences.
+          if (!item || tr.toLowerCase() === item.text.trim().toLowerCase()) continue;
+          resultMap.set(p.id, tr);
         }
       }
     } catch (err) {
-      console.warn('[BilingualAI] Gagal memanggil AI chat, menggunakan fallback kamus teknis:', err);
+      console.warn('[BilingualAI] Gagal memanggil AI chat:', err);
+      lastError = err instanceof Error ? err.message : String(err);
     }
   }
 
+  const failed = pendingItems.filter((item) => !resultMap.has(item.id));
+  if (failed.length > 0) {
+    throw new BilingualIncompleteError(failed.length, items.length, lastError, resultMap);
+  }
   return resultMap;
+}
+
+/**
+ * Raised when some fields could not be translated. Carries the translations that did succeed
+ * so the caller can apply them and tell the user exactly how many fields are still missing.
+ */
+export class BilingualIncompleteError<T = unknown> extends Error {
+  partialData?: T;
+  constructor(
+    public failedCount: number,
+    public totalCount: number,
+    public reason: string,
+    public translations: Map<string, string>
+  ) {
+    super(`${failedCount} dari ${totalCount} teks belum berhasil diterjemahkan${reason ? ` (${reason})` : ''}. Kolom tersebut dibiarkan kosong — klik "Bilingual (EN + ID)" lagi atau isi manual.`);
+    this.name = 'BilingualIncompleteError';
+  }
 }
 
 /**
@@ -675,6 +679,13 @@ export async function convertSOPToBilingualWithAI(
     if (updated.ehsRequirements.lotoEn && needsTranslateToId(updated.ehsRequirements.lotoEn, updated.ehsRequirements.lotoId)) {
       queue.push({ id: 'ehs_loto_id', text: updated.ehsRequirements.lotoEn, toLang: 'id' });
     }
+    (updated.ehsRequirements.items || []).forEach((item, idx) => {
+      if (item.textEn && needsTranslateToId(item.textEn, item.textId)) {
+        queue.push({ id: `ehs_item_id_${idx}`, text: item.textEn, toLang: 'id' });
+      } else if (!item.textEn && item.textId) {
+        queue.push({ id: `ehs_item_en_${idx}`, text: item.textId, toLang: 'en' });
+      }
+    });
   }
 
   // 4. Prerequisites
@@ -711,7 +722,16 @@ export async function convertSOPToBilingualWithAI(
   }
 
   onStatusUpdate?.(`AI Agent sedang menerjemahkan ${queue.length} butir ke format bilingual...`);
-  const translations = await translateBatchWithAI(queue);
+  // Apply what was translated even if some fields failed, then report the rest.
+  let incomplete: BilingualIncompleteError | null = null;
+  let translations: Map<string, string>;
+  try {
+    translations = await translateBatchWithAI(queue);
+  } catch (error) {
+    if (!(error instanceof BilingualIncompleteError)) throw error;
+    incomplete = error;
+    translations = error.translations;
+  }
 
   // Pasang hasil terjemahan
   if (translations.has('purpose_id')) updated.documentPurposeId = translations.get('purpose_id')!;
@@ -728,6 +748,12 @@ export async function convertSOPToBilingualWithAI(
     if (translations.has('ehs_jew_id')) updated.ehsRequirements.jewelryId = translations.get('ehs_jew_id')!;
     if (translations.has('ehs_comm_id')) updated.ehsRequirements.commsId = translations.get('ehs_comm_id')!;
     if (translations.has('ehs_loto_id')) updated.ehsRequirements.lotoId = translations.get('ehs_loto_id')!;
+    if (updated.ehsRequirements.items) {
+      updated.ehsRequirements.items = updated.ehsRequirements.items.map((item, idx) => ({
+        textEn: translations.get(`ehs_item_en_${idx}`) ?? item.textEn,
+        textId: translations.get(`ehs_item_id_${idx}`) ?? item.textId,
+      }));
+    }
   }
 
   if (Array.isArray(updated.prerequisites)) {
@@ -753,6 +779,10 @@ export async function convertSOPToBilingualWithAI(
     });
   }
 
+  if (incomplete) {
+    incomplete.partialData = updated;
+    throw incomplete;
+  }
   onStatusUpdate?.('Penyelarasan bilingual SOP selesai!');
   return updated;
 }
@@ -853,7 +883,16 @@ export async function convertEOPToBilingualWithAI(
   }
 
   onStatusUpdate?.(`AI Agent sedang menerjemahkan ${queue.length} butir darurat EOP...`);
-  const translations = await translateBatchWithAI(queue);
+  // Apply what was translated even if some fields failed, then report the rest.
+  let incomplete: BilingualIncompleteError | null = null;
+  let translations: Map<string, string>;
+  try {
+    translations = await translateBatchWithAI(queue);
+  } catch (error) {
+    if (!(error instanceof BilingualIncompleteError)) throw error;
+    incomplete = error;
+    translations = error.translations;
+  }
 
   if (translations.has('purpose_id')) updated.documentPurposeId = translations.get('purpose_id')!;
   if (translations.has('purpose_en')) updated.documentPurposeEn = translations.get('purpose_en')!;
@@ -889,6 +928,10 @@ export async function convertEOPToBilingualWithAI(
     });
   }
 
+  if (incomplete) {
+    incomplete.partialData = updated;
+    throw incomplete;
+  }
   onStatusUpdate?.('Penyelarasan bilingual EOP selesai!');
   return updated;
 }

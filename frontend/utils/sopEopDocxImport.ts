@@ -15,8 +15,7 @@ import {
   EOPWorkStepItem,
   SOPPrerequisiteItem,
   SOPReferencedDocItem,
-  DocumentSigner,
-  DEFAULT_DEFAULT_APPROVERS
+  DocumentSigner
 } from '@/types/sopEopTypes';
 import { ensureBilingualTranslation } from '@/utils/sopEopBilingualAI';
 
@@ -244,15 +243,7 @@ function extractBilingualFromXml(elementXml: string): { en: string; id: string }
     return { en: lines[0], id: '' };
   }
 
-  // Jika baris pertama dan kedua sama persis (data duplikat/kembar), pisahkan bahasanya
-  if (lines[0].trim().toLowerCase() === lines[1].trim().toLowerCase()) {
-    const lang = detectLanguage(lines[0]);
-    if (lang === 'id') {
-      return { en: '', id: lines[0] };
-    }
-    return { en: lines[0], id: '' };
-  }
-
+  // Identical EN and ID lines (e.g. "N/A T/A" twice) are kept exactly as written in the document.
   // Baris pertama English, baris kedua Indonesian
   return {
     en: lines[0],
@@ -314,7 +305,10 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
     return m && m[1] ? decodeEntities(m[1].trim()) : '';
   };
 
-  const docTitleMatch = getMatch(/(?:Document\s*Title|Judul\s*Dokumen)\s*:\s*([\s\S]*?)(?:Document\s*Purpose|Tujuan\s*Dokumen|Work\s*Location)/i);
+  // The title cell holds "Document Title : X" and "Judul Dokumen : X" on separate lines; keep only the value.
+  const docTitleMatch = getMatch(/(?:Document\s*Title|Judul\s*Dokumen)\s*:\s*([\s\S]*?)(?:Document\s*Purpose|Tujuan\s*Dokumen|Work\s*Location)/i)
+    .split(/\n|Judul\s*Dokumen\s*:/i)[0]
+    .trim();
   const title = docTitleMatch && !/template/i.test(docTitleMatch)
     ? docTitleMatch
     : fileName
@@ -329,38 +323,81 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
   }
 
   const locationEn =
-    getMatch(/Work\s*Location\s*:\s*([\s\S]*?)(?:Lokasi\s*Kerja|Section|Seksi)/i) || 'Neutra DC Cikarang';
+    getMatch(/Work\s*Location\s*:\s*([\s\S]*?)(?:Lokasi\s*Kerja|Section|Seksi)/i);
   const locationId =
-    getMatch(/Lokasi\s*Kerja\s*:\s*([\s\S]*?)(?:Section|Seksi|\n\n)/i) || locationEn || 'Neutra DC Cikarang';
+    getMatch(/Lokasi\s*Kerja\s*:\s*([\s\S]*?)(?:Section|Seksi|\n\n)/i) || locationEn;
 
-  const author =
-    extractDocumentAuthor(xml, isEop) ||
-    getMatch(/(?:Author|Penulis|Penyusun)\s*:?\s*([a-zA-Z0-9\s\.\,\'\-]+?)(?:Date\s*of\s*Creation|Tanggal\s*Pembuatan|\n|$)/i) ||
-    'Alif Darmawan';
-  const creationDate =
-    getMatch(
-      /Date\s*of\s*Creation\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Penulis|Tanggal\s*Pembuatan|Date\s*Revision|Next\s*Date\s*Revision|Revision\s*Number|\n|$)/i
-    ) || '07 Sep 2026';
-  const revisionNumber =
-    getMatch(
-      /Revision\s*Number\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Tanggal\s*Revisi|Nomor\s*Revisi|Section|Seksi|\n|$)/i
-    ) || '00';
-  const revisionDate =
-    getMatch(
-      /(?:Date\s*Revision|Next\s*Date\s*Revision)\s*:?\s*([a-zA-Z0-9\s\/\-\.]+?)(?:Revision\s*Number|Nomor\s*Revisi|Tanggal\s*Revisi|\n|$)/i
-    ) || 'N/A';
+  // Values come only from the Document Information table. Free-text regexes over the whole
+  // document matched "author" inside "authorized personnel" and returned label text as dates,
+  // and missing values were filled with made-up defaults.
+  const info = parseDocumentInformation(xml, isEop);
+  const author = info.author || extractDocumentAuthor(xml, isEop);
+  const revisionNumber = info.revisionNumber;
+  const revisionDate = info.revisionDate;
 
   return {
     title,
     purposeEn: purposeEn || '',
     purposeId: purposeId || '',
-    locationEn: locationEn || 'Neutra DC Cikarang',
-    locationId: locationId || 'Neutra DC Cikarang',
-    author: author || 'DME Maintenance Team',
-    creationDate: creationDate || '07 Sep 2026',
-    revisionNumber: revisionNumber === 'T/A' || !revisionNumber ? '00' : revisionNumber,
-    revisionDate: revisionDate === 'T/A' || !revisionDate ? 'N/A' : revisionDate
+    locationEn: locationEn || '',
+    locationId: locationId || '',
+    author,
+    creationDate: info.creationDate,
+    revisionNumber: revisionNumber === 'T/A' ? '' : revisionNumber,
+    revisionDate: revisionDate === 'T/A' ? '' : revisionDate
   };
+}
+
+/**
+ * Reads the Document Information table (SOP Section 12 / EOP Section 5). Each row holds
+ * label/value cell pairs such as "Author / Penulis" | ": Alif Darmawan / : Alif Darmawan".
+ */
+function parseDocumentInformation(xml: string, isEop: boolean): {
+  author: string;
+  creationDate: string;
+  revisionDate: string;
+  revisionNumber: string;
+} {
+  const result = { author: '', creationDate: '', revisionDate: '', revisionNumber: '' };
+  const tables = getSectionBlocks(xml, isEop ? 5 : 12).filter((block) => block.kind === 'table');
+  const firstLine = (cellXml: string) => {
+    const lines = decodeEntities(
+      cellXml.replace(/<w:br\b[^>]*\/?>/gi, '\n').replace(/<\/w:p>/gi, '\n').replace(/<[^>]+>/g, '')
+    )
+      .split('\n')
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    return (lines[0] || '').replace(/^:\s*/, '').trim();
+  };
+
+  for (const table of tables) {
+    for (const row of getTableRows(table.xml)) {
+      for (let i = 0; i + 1 < row.cells.length; i++) {
+        const label = row.cells[i].toLowerCase();
+        const value = firstLine(row.cellXml[i + 1]);
+        if (/^(?:author|penulis|penyusun)\b/.test(label)) result.author = value;
+        else if (/^(?:date\s*of\s*creation|tanggal\s*pembuatan)/.test(label)) result.creationDate = value;
+        else if (/^(?:next\s*)?date\s*revision|^tanggal\s*revisi/.test(label)) result.revisionDate = value;
+        else if (/^(?:revision\s*number|nomor\s*revisi)/.test(label)) result.revisionNumber = value;
+        else continue;
+        i++;
+      }
+    }
+  }
+
+  // Some templates write the same fields as plain text: "Author : X Date of Creation : Y …".
+  const sectionText = getSectionBlocks(xml, isEop ? 5 : 12)
+    .map((block) => block.text)
+    .join(' ')
+    .replace(/\s+/g, ' ');
+  const nextLabel = '(?=\\s*(?:Author|Penulis|Date\\s*of\\s*Creation|Tanggal\\s*Pembuatan|Next\\s*Date\\s*Revision|Date\\s*Revision|Tanggal\\s*Revisi|Revision\\s*Number|Nomor\\s*Revisi|(?:Section|Seksi)\\s*\\d)\\b|$)';
+  const inline = (label: string) =>
+    sectionText.match(new RegExp(`(?:^|\\s)${label}\\s*:\\s*(.*?)${nextLabel}`, 'i'))?.[1]?.trim() || '';
+  if (!result.author) result.author = inline('Author');
+  if (!result.creationDate) result.creationDate = inline('Date\\s*of\\s*Creation');
+  if (!result.revisionDate) result.revisionDate = inline('(?:Next\\s*)?Date\\s*Revision');
+  if (!result.revisionNumber) result.revisionNumber = inline('Revision\\s*Number');
+  return result;
 }
 
 /**
@@ -412,6 +449,9 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
 
   const items: SOPCIEquipmentItem[] = [];
   let currentNo = 1;
+  // Word splits long equipment lists into a headed table plus header-less continuation tables.
+  let previousColMap: Record<string, number> | null = null;
+  let previousColCount = 0;
 
   for (const ciTbl of candidateTables) {
     const trs = ciTbl.match(/<w:tr(?:\s|>)[\s\S]*?<\/w:tr>/g) || [];
@@ -425,7 +465,7 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
       );
     });
 
-    const colMap = {
+    let colMap = {
       no: -1,
       classId: -1,
       ciName: -1,
@@ -472,7 +512,16 @@ function parseCIEquipment(xml: string): SOPCIEquipmentItem[] {
       });
     }
 
-    const rawDataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : 1);
+    const firstRowCells = ((trs[0] || '').match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || []).length;
+    const isContinuation = headerIdx < 0 && previousColMap !== null && firstRowCells === previousColCount;
+    if (isContinuation) colMap = { ...(previousColMap as typeof colMap) };
+    if (headerIdx >= 0) {
+      previousColMap = { ...colMap };
+      previousColCount = ((trs[headerIdx] || '').match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || []).length;
+    }
+
+    // A continuation table has no header row, so its first row is data.
+    const rawDataRows = trs.slice(headerIdx >= 0 ? headerIdx + 1 : isContinuation ? 0 : 1);
     for (const tr of rawDataRows) {
       const tcs = tr.match(/<w:tc(?:\s|>)[\s\S]*?<\/w:tc>/g) || [];
       if (tcs.length < 2) continue;
@@ -730,6 +779,8 @@ function parseEOPEHSRequirementsRobust(xml: string): {
       const rows = getTableRows(block.xml);
       for (const row of rows) {
         if (row.cells.join(' ').toLowerCase().includes('requirements') && row.cells.length === 1) continue;
+        // The "Section 3 – Environmental, Health & Safety" banner is itself a table; it is not an EHS item.
+        if (/^(?:Section|Seksi)\s*\d+\s*[–—-]/i.test(row.cells.join(' ').trim())) continue;
         const cellXml = row.cellXml[0] || '';
         const bilingual = extractBilingualFromXml(cellXml);
         const cleanEn = (bilingual.en || '').replace(/^\s*\d+[\.\)]\s*/, '').trim();
@@ -806,6 +857,27 @@ function parseEOPEHSRequirementsRobust(xml: string): {
     items: parsed,
     additionalItems: parsed.filter((_, index) => index !== commsIndex && index !== ppeIndex)
   };
+}
+
+/**
+ * Ordered EHS items read row-by-row from the SOP Section 6 tables. The 4 legacy slots
+ * (PPE/jewelry/comms/LOTO) cannot hold documents with a different item count, which
+ * dropped and duplicated items on export.
+ */
+function parseSOPEHSItems(xml: string): Array<{ textEn: string; textId: string }> {
+  const items: Array<{ textEn: string; textId: string }> = [];
+  for (const block of getSectionBlocks(xml, 6)) {
+    if (block.kind !== 'table' || /^(?:Section|Seksi)\s*\d+/i.test(block.text.trim())) continue;
+    for (const row of getTableRows(block.xml)) {
+      const text = row.cells.join(' ').trim();
+      if (!text || /^(?:requirements|persyaratan)\b/i.test(text)) continue;
+      const pair = extractBilingualFromXml(row.cellXml[0] || '');
+      const textEn = pair.en.replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      const textId = pair.id.replace(/^\s*\d+[\.\)]\s*/, '').trim();
+      if (textEn || textId) items.push({ textEn, textId });
+    }
+  }
+  return items;
 }
 
 function parseSOPEHSRequirementsRobust(xml: string): {
@@ -887,8 +959,9 @@ function parseDryRun(xml: string, isEop: boolean): {
   date: string;
   signatureBase64?: string;
 } {
+  // A blank Dry Run table in the source stays blank; never invent a job title.
   const defaultDryRun = {
-    jobTitle: 'Teknisi Data Center',
+    jobTitle: '',
     name: '',
     date: '',
     signatureBase64: ''
@@ -896,7 +969,8 @@ function parseDryRun(xml: string, isEop: boolean): {
 
   const sectionNumber = isEop ? 6 : 8;
   const blocks = getSectionBlocks(xml, sectionNumber);
-  const tableBlock = blocks.find((b) => b.kind === 'table');
+  // Skip the "Section 8 – Dry Run" banner table; the form table follows it.
+  const tableBlock = blocks.find((b) => b.kind === 'table' && !/^(?:Section|Seksi)\s*\d+/i.test(b.text.trim()));
   if (!tableBlock) return defaultDryRun;
 
   const rows = getTableRows(tableBlock.xml);
@@ -922,162 +996,53 @@ function parseDryRun(xml: string, isEop: boolean): {
 }
 
 /**
- * Membersihkan nama approver dari teks jabatan bilingual yang mungkin terbawa dari sel DOCX
+ * Reads the Approval table (SOP Section 13 / EOP Section 7) row by row, exactly as written.
+ * Supported layouts:
+ *  - one cell per column: [Job Title (EN<br>ID), Name, Signature, Date]
+ *  - a single cell per row: "<tab>Job Title<tab>Name<br>Job Title (ID)"
+ * Rows, roles and names are never invented: a blank name stays blank.
  */
-function cleanApproverName(raw: string, roleEn: string, roleId: string, fallback: string): string {
-  if (!raw || raw.trim() === '' || raw.trim() === '-') return fallback;
+function parseApprovals(xml: string, isEop: boolean): DocumentSigner[] {
+  const cellLines = (cellXml: string) =>
+    decodeEntities(cellXml.replace(/<w:br\b[^>]*\/?>/gi, '\n').replace(/<\/w:p>/gi, '\n').replace(/<w:tab\b[^>]*\/?>/gi, '\t').replace(/<[^>]+>/g, ''))
+      .split('\n')
+      .map((line) => line.replace(/[^\S\t]+/g, ' ').trim())
+      .filter((line) => line.replace(/\t/g, '').trim());
+  const clean = (value: string) => value.replace(/\s+/g, ' ').trim();
+  const isHeader = (text: string) => /signature|tanda\s*tangan|^job\s*title|^jabatan/i.test(text.trim());
 
-  let cleaned = raw;
+  const sectionTables = getSectionBlocks(xml, isEop ? 7 : 13)
+    .filter((block) => block.kind === 'table' && !/^(?:Section|Seksi)\s*\d+/i.test(block.text.trim()));
+  const tableXml = sectionTables[0]?.xml
+    || (xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || []).find((t) => /signature|tanda\s*tangan/i.test(cleanText(t)) && /name|nama/i.test(cleanText(t)));
+  if (!tableXml) return [];
 
-  // 1. Hapus roleEn dan roleId jika menempel
-  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (roleEn) {
-    cleaned = cleaned.replace(new RegExp(escapeRegExp(roleEn), 'gi'), '');
-  }
-  if (roleId) {
-    cleaned = cleaned.replace(new RegExp(escapeRegExp(roleId), 'gi'), '');
-  }
+  const signers: DocumentSigner[] = [];
+  for (const row of getTableRows(tableXml)) {
+    const rowText = row.cells.join(' ').trim();
+    if (!rowText || isHeader(rowText)) continue;
 
-  // 2. Hapus pola jabatan bilingual umum yang sering menempel di sel nama
-  const commonRolePatterns = [
-    /\b(?:Project\s*Manager|Manajer\s*Proyek)\b/gi,
-    /\b(?:Chief\s*Engineering|Chief\s*Engineer|Kepala\s*Engineering)\b/gi,
-    /\b(?:Facility\s*Manager|Manajer\s*Fasilitas)\b/gi,
-    /\b(?:Assistant\s*Manager(?:\s*HDC)?|Asisten\s*Manajer(?:\s*HDC)?)\b/gi,
-    /\b(?:Operation\s*Manager|Manajer\s*Operasional)\b/gi,
-    /\b(?:Supervisor|Pengawas)\b/gi,
-    /\b(?:Engineer|Teknisi)\b/gi,
-    /\b(?:HDC\s*Facility\s*Management)\b/gi,
-  ];
-
-  for (const pat of commonRolePatterns) {
-    cleaned = cleaned.replace(pat, '');
-  }
-
-  // 3. Bersihkan tanda kurung, pemisah, tanda baca dan spasi sisa
-  cleaned = cleaned
-    .replace(/[()[\]{}]/g, ' ')
-    .replace(/^[–—:\-\s/]+|[–—:\-\s/]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!cleaned || cleaned === '-' || cleaned.length < 2) {
-    return fallback;
-  }
-
-  return cleaned;
-}
-
-/**
- * Mengekstrak tabel Approval / Pengesahan (4 Pejabat Penandatangan)
- * Kebal terhadap baris header dan perbedaan urutan baris.
- */
-function parseApprovals(xml: string): DocumentSigner[] {
-  const tbls = xml.match(/<w:tbl(?:\s|>)[\s\S]*?<\/w:tbl>/g) || [];
-  const appTbl = tbls.find(
-    (t) =>
-      containsLabel(t, 'Project Manager') ||
-      containsLabel(t, 'Chief Engineering') ||
-      containsLabel(t, 'Facility Manager') ||
-      containsLabel(t, 'Manajer Proyek')
-  );
-  if (!appTbl) return [...DEFAULT_DEFAULT_APPROVERS];
-
-  const rows = getTableRows(appTbl);
-  // Filter baris data yang bukan baris header tabel
-  const dataRows = rows.filter((r) => {
-    const text = r.cells.join(' ').toLowerCase();
-    return !text.includes('signature') && !text.includes('tanda tangan') && r.cells.length >= 1;
-  });
-
-  const defaultRoles = [
-    { roleEn: 'Project Manager', roleId: 'Manajer Proyek', fallbackName: 'Dwi Tasmiyadi' },
-    { roleEn: 'Chief Engineering', roleId: 'Kepala Engineering', fallbackName: 'Habib Mulyana' },
-    { roleEn: 'Facility Manager', roleId: 'Manajer Fasilitas', fallbackName: 'Supriyatno' },
-    { roleEn: 'Assistant Manager HDC', roleId: 'Asisten Manajer HDC', fallbackName: 'Budi Susanto' }
-  ];
-
-  return defaultRoles.map((role) => {
-    // Cari baris yang memuat jabatan yang bersangkutan
-    const matchedRow = dataRows.find((r) => {
-      const rowText = r.cells.join(' ').toLowerCase();
-      if (role.roleEn === 'Project Manager') return rowText.includes('project') || rowText.includes('proyek');
-      if (role.roleEn === 'Chief Engineering') return rowText.includes('chief') || rowText.includes('kepala');
-      if (role.roleEn === 'Facility Manager') return rowText.includes('facility') || rowText.includes('fasilitas');
-      if (role.roleEn === 'Assistant Manager HDC') return rowText.includes('assistant') || rowText.includes('asisten');
-      return false;
-    });
-
-    if (matchedRow) {
-      let rawName = '';
-      let rawDate = '';
-
-      const extractCellLines = (cellIndex: number): string[] => {
-        if (!matchedRow.cellXml || !matchedRow.cellXml[cellIndex]) {
-          return [cleanText(matchedRow.cells[cellIndex] || '')];
-        }
-        return matchedRow.cellXml[cellIndex]
-          .replace(/<w:br\s*\/?>/gi, '\n')
-          .replace(/<\/w:p>/gi, '\n')
-          .replace(/<[^>]+>/g, '')
-          .split('\n')
-          .map((l) => cleanText(l))
-          .filter(Boolean);
-      };
-
-      const isRoleOnlyCell = (text: string) => {
-        const t = text.toLowerCase().trim();
-        return (
-          t === role.roleEn.toLowerCase() ||
-          t === role.roleId.toLowerCase() ||
-          t === 'manajer proyek' ||
-          t === 'kepala engineering' ||
-          t === 'manajer fasilitas' ||
-          t === 'asisten manajer hdc' ||
-          t === 'project manager' ||
-          t === 'chief engineering' ||
-          t === 'facility manager' ||
-          t === 'assistant manager hdc'
-        );
-      };
-
-      if (matchedRow.cells.length >= 5 || (matchedRow.cells.length >= 3 && isRoleOnlyCell(matchedRow.cells[1]))) {
-        // Format 5 kolom: [Role EN, Role ID, Name, Signature, Date]
-        const nameCandidates = extractCellLines(2);
-        rawName = nameCandidates.find((line) => !isRoleOnlyCell(line)) || nameCandidates[0] || '';
-        rawDate = matchedRow.cells.length >= 5 ? cleanText(matchedRow.cells[4] || '') : cleanText(matchedRow.cells[3] || '');
-      } else if (matchedRow.cells.length >= 2) {
-        // Format 4 kolom standar: [Job Title, Name, Signature, Date]
-        const nameCandidates = extractCellLines(1);
-        rawName = nameCandidates.find((line) => !isRoleOnlyCell(line)) || nameCandidates[0] || '';
-        rawDate = matchedRow.cells.length >= 4 ? cleanText(matchedRow.cells[3] || '').trim() : '';
-      } else if (matchedRow.cells.length === 1) {
-        // Baris tunggal misalnya "Project Manager Dwi Tasmiyadi"
-        const full = cleanText(matchedRow.cells[0] || '').trim();
-        rawName = full
-          .replace(/^(?:Project\s*Manager|Chief\s*Engineering|Facility\s*Manager|Assistant\s*Manager\s*(?:HDC)?|Manajer\s*Proyek|Kepala\s*Engineering|Manajer\s*Fasilitas|Asisten\s*Manajer\s*(?:HDC)?)\s*:?/i, '')
-          .trim();
-      }
-
-      const cleanedName = cleanApproverName(rawName, role.roleEn, role.roleId, role.fallbackName);
-
-      return {
-        roleEn: role.roleEn,
-        roleId: role.roleId,
-        name: cleanedName,
-        date: rawDate && rawDate !== '-' ? rawDate : '',
-        signature: ''
-      };
+    let roleEn = '';
+    let roleId = '';
+    let name = '';
+    let date = '';
+    if (row.cellXml.length >= 2) {
+      const roleLines = cellLines(row.cellXml[0] || '').map(clean);
+      roleEn = roleLines[0] || '';
+      roleId = roleLines[1] || '';
+      name = clean(cellLines(row.cellXml[1] || '')[0] || '');
+      date = clean(row.cells[3] || '');
+    } else {
+      const lines = cellLines(row.cellXml[0] || '');
+      const parts = (lines[0] || '').split('\t').map(clean).filter(Boolean);
+      roleEn = parts[0] || '';
+      name = parts.slice(1).join(' ');
+      roleId = clean((lines[1] || '').replace(/\t/g, ' '));
     }
-
-    return {
-      roleEn: role.roleEn,
-      roleId: role.roleId,
-      name: role.fallbackName,
-      date: '',
-      signature: ''
-    };
-  });
+    if (!roleEn && !name) continue;
+    signers.push({ roleEn, roleId, name: name === '-' ? '' : name, date: date === '-' ? '' : date });
+  }
+  return signers;
 }
 
 /**
@@ -1176,36 +1141,39 @@ function parseSOPAffectedSystems(xml: string): {
   let detailsId = '';
 
   if (detailMatch && detailMatch[1]) {
-    const bilingual = extractBilingualFromXml(detailMatch[1]);
-    const rawClean = cleanText(detailMatch[1]);
-    if (bilingual.en || bilingual.id) {
-      detailsEn = bilingual.en || rawClean;
-      detailsId = bilingual.id || (detailsEn ? ensureBilingualTranslation(detailsEn) : '');
-    } else if (rawClean.length > 3 && !/^n\/?a$/i.test(rawClean)) {
-      if (detectLanguage(rawClean) === 'id') {
-        detailsId = rawClean;
-        detailsEn = '';
-      } else {
-        detailsEn = rawClean;
-        detailsId = ensureBilingualTranslation(rawClean);
+    // The match starts inside the bilingual instruction ("jika ada item di atas yang dicentang…");
+    // drop those instruction lines so only the user's detail text remains, verbatim.
+    const lines = decodeEntities(
+      detailMatch[1].replace(/<w:br\b[^>]*\/?>/gi, '\n').replace(/<\/w:p>/gi, '\n').replace(/<[^>]+>/g, '')
+    )
+      .split('\n')
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter((line) => line && !/if any of the item|jika ada item di atas|^(?:Section|Seksi)\s*\d+/i.test(line));
+    const numbered = (line: string) => /^\d+[\.\)]\s/.test(line);
+    if (lines.length >= 2 && lines.every(numbered)) {
+      // English-only numbered list ("1. …", "2. …", "3. …"): every line is a detail item.
+      detailsEn = lines.join('\n');
+    } else if (lines.length >= 2) {
+      // Bilingual layout: each English line is followed by its Indonesian line.
+      detailsEn = lines.filter((_, index) => index % 2 === 0).join('\n');
+      detailsId = lines.filter((_, index) => index % 2 === 1).join('\n');
+    } else if (lines.length === 1 && !/^n\/?a$/i.test(lines[0])) {
+      if (detectLanguage(lines[0]) === 'id') detailsId = lines[0];
+      else {
+        detailsEn = lines[0];
+        detailsId = ensureBilingualTranslation(lines[0]);
       }
     }
   }
 
-  const detailText = `${detailsEn} ${detailsId}`.toLowerCase();
-
-  const systems: SOPAffectedSystemItem[] = SOP_SYSTEM_DEFINITIONS.map((sys) => {
-    // 1. Simbol checklist Word seperti ☒, ☑, [x]
-    const checkedByBox = new RegExp('(?:☒|☑|\\[x\\])[^<]*?' + sys.pattern.source, 'i').test(sec4Xml);
-    // 2. Jika disebutkan di rincian dampak (misal '1. Common Area Cooling Impact:' atau 'Lockout/Tag Required')
-    const checkedByDetail = detailText.length > 5 && sys.pattern.test(detailText);
-    return {
-      key: sys.key,
-      labelEn: sys.labelEn,
-      labelId: sys.labelId,
-      checked: checkedByBox || checkedByDetail
-    };
-  });
+  const systems: SOPAffectedSystemItem[] = SOP_SYSTEM_DEFINITIONS.map((sys) => ({
+    key: sys.key,
+    labelEn: sys.labelEn,
+    labelId: sys.labelId,
+    // Only the checkbox symbol in the Word file decides; mentioning a system in the
+    // detail text (e.g. "critical area cooling") must not tick an unticked box.
+    checked: new RegExp('(?:☒|☑|\\[x\\])[^<]*?' + sys.pattern.source, 'i').test(sec4Xml)
+  }));
 
   return { systems, detailsEn, detailsId };
 }
@@ -1218,12 +1186,14 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   const equipmentList = parseCIEquipment(xml);
   const prerequisites = parsePrerequisites(xml);
   const workSteps = parseSOPWorkSteps(xml);
-  const approvals = parseApprovals(xml);
+  const approvals = parseApprovals(xml, false);
   const robustEhsRequirements = parseSOPEHSRequirementsRobust(xml);
   const legacyEhsRequirements = parseSOPEHSRequirements(xml);
-  const ehsRequirements = Object.values(robustEhsRequirements).some(Boolean)
+  const ehsSlots = Object.values(robustEhsRequirements).some(Boolean)
     ? robustEhsRequirements
     : legacyEhsRequirements;
+  const ehsItems = parseSOPEHSItems(xml);
+  const ehsRequirements = ehsItems.length > 0 ? { ...ehsSlots, items: ehsItems } : ehsSlots;
   const conditionsPair = extractSectionBilingual(
     xml,
     /(?:Conditions\s*(?:\/\s*Equipment\s*status)?\s*prior\s*to\s*(?:SOP|EOP)\s*Execution|Kondisi\s*(?:\/\s*Status\s*peralatan)?\s*sebelum\s*Pelaksanaan\s*(?:SOP|EOP))/i,
@@ -1247,6 +1217,20 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   const executedMatch = norm.match(
     /Executed\s*by\s*\(Name\)\s*:\s*(.*?)(?:Job\s*title|Dilaksanakan)/i
   );
+
+  // "Executed by (Name) | Job title" header row, values in the row below it.
+  const executedBy = { name: '', jobTitle: '' };
+  for (const block of getSectionBlocks(xml, 3)) {
+    if (block.kind !== 'table') continue;
+    const rows = getTableRows(block.xml);
+    const headerIndex = rows.findIndex((row) => /executed\s*by|dilaksanakan\s*oleh/i.test(row.cells[0] || ''));
+    const values = headerIndex >= 0 ? rows[headerIndex + 1] : undefined;
+    if (values) {
+      executedBy.name = values.cells[0] && values.cells[0] !== '-' ? values.cells[0] : '';
+      executedBy.jobTitle = values.cells[1] && values.cells[1] !== '-' ? values.cells[1] : '';
+      break;
+    }
+  }
 
   // Seksi 4: Affected Systems
   const parsedAffected = parseSOPAffectedSystems(xml);
@@ -1306,8 +1290,8 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
         : '',
     referenceTicketNumber:
       ticketMatch && ticketMatch[1] && ticketMatch[1].trim() !== '-' ? ticketMatch[1].trim() : '',
-    executedByName: executedMatch && executedMatch[1] ? executedMatch[1].trim() : 'DME Maintenance Team',
-    executedByJobTitle: 'Teknisi Data Center',
+    executedByName: executedBy.name || (executedMatch && executedMatch[1] ? executedMatch[1].trim() : ''),
+    executedByJobTitle: executedBy.jobTitle,
     affectedSystems,
     affectedSystemsDetails,
     affectedSystemsDetailsEn,
@@ -1328,7 +1312,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
     dateRevision: meta.revisionDate,
     revisionNumber: meta.revisionNumber,
     approvals,
-    additionalInformation: additionalEn || additionalId || 'N/A T/A',
+    additionalInformation: additionalEn || additionalId || '',
     additionalInformationEn: additionalEn,
     additionalInformationId: additionalId
   };
@@ -1358,7 +1342,7 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
   }
 
   const workSteps = parseEOPWorkSteps(xml);
-  const approvals = parseApprovals(xml);
+  const approvals = parseApprovals(xml, true);
   const additionalPair = extractSectionBilingual(
     xml,
     /(?:Section\s*8|Seksi\s*8)/i,
@@ -1385,11 +1369,11 @@ function parseEOPData(xml: string, fileName: string): EOPDocumentData {
     workSteps,
     author: meta.author,
     dateOfCreation: meta.creationDate,
-    nextDateRevision: meta.revisionDate || 'N/A',
-    revisionNumber: meta.revisionNumber || '00',
+    nextDateRevision: meta.revisionDate,
+    revisionNumber: meta.revisionNumber,
     dryRun: parseDryRun(xml, true),
     approvals,
-    additionalInformation: additionalEn || additionalId || 'N/A T/A',
+    additionalInformation: additionalEn || additionalId || '',
     additionalInformationEn: additionalEn,
     additionalInformationId: additionalId
   };

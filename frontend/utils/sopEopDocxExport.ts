@@ -24,7 +24,7 @@ import {
   PageBreak,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem, DocumentSigner, DEFAULT_DEFAULT_APPROVERS } from '@/types/sopEopTypes';
+import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem, DocumentSigner } from '@/types/sopEopTypes';
 import { ensureBilingualTranslation } from '@/utils/sopEopBilingualAI';
 import logoDMEOriginal from '@/assets/sop_eop_logo2.jpeg';
 import logoNDCOriginal from '@/assets/sop_eop_logo1.jpeg';
@@ -151,9 +151,12 @@ function createBilingualRuns(
   const fontToUse = opts?.isHeader ? FONT_HEADING : FONT_BODY;
   const effectiveId = opts?.isHeader ? textId : ensureBilingualTranslation(textEn, textId);
 
+  // Word ignores "\n" inside a run, so multi-line values (e.g. numbered details) become explicit breaks.
+  const lineRuns = (text: string, style: Omit<ConstructorParameters<typeof TextRun>[0] & object, 'text' | 'break'>) =>
+    (text || '').split('\n').map((line, index) => new TextRun({ ...style, text: line, break: index > 0 ? 1 : undefined }));
+
   const runs: TextRun[] = [
-    new TextRun({
-      text: textEn,
+    ...lineRuns(textEn, {
       bold: opts?.boldEn ?? false,
       underline: opts?.underlineEn ? { type: UnderlineType.SINGLE } : undefined,
       color: COLOR_BLACK,
@@ -164,8 +167,7 @@ function createBilingualRuns(
       text: '',
       break: 1, // Move to next line in the exact same paragraph
     }),
-    new TextRun({
-      text: effectiveId,
+    ...lineRuns(effectiveId, {
       bold: opts?.boldId ?? false,
       italics: true,
       color: COLOR_GREY_ID,
@@ -426,14 +428,8 @@ function createDocumentFooter(): Footer {
  * (misal "Dwi Tasmiyadi Manajer Proyek" -> "Dwi Tasmiyadi").
  */
 function sanitizeApproverName(rawName?: string, roleEn?: string, roleId?: string): string {
-  if (!rawName || rawName.trim() === '' || rawName.trim() === '-') {
-    const roleLow = ((roleEn || '') + ' ' + (roleId || '')).toLowerCase();
-    if (roleLow.includes('project') || roleLow.includes('proyek')) return 'Dwi Tasmiyadi';
-    if (roleLow.includes('chief') || roleLow.includes('kepala')) return 'Habib Mulyana';
-    if (roleLow.includes('facility') || roleLow.includes('fasilitas')) return 'Supriyatno';
-    if (roleLow.includes('assistant') || roleLow.includes('asisten')) return 'Budi Susanto';
-    return '';
-  }
+  // An empty name stays empty: never substitute a person based on the job title.
+  if (!rawName || rawName.trim() === '' || rawName.trim() === '-') return '';
 
   let cleaned = rawName;
 
@@ -469,15 +465,8 @@ function sanitizeApproverName(rawName?: string, roleEn?: string, roleId?: string
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Jika setelah dibersihkan menjadi kosong (karena ternyata teks sel hanya berisi jabatan), kembalikan default
-  if (!cleaned || cleaned === '-' || cleaned.length < 2) {
-    const roleLow = ((roleEn || '') + ' ' + (roleId || '')).toLowerCase();
-    if (roleLow.includes('project') || roleLow.includes('proyek')) return 'Dwi Tasmiyadi';
-    if (roleLow.includes('chief') || roleLow.includes('kepala')) return 'Habib Mulyana';
-    if (roleLow.includes('facility') || roleLow.includes('fasilitas')) return 'Supriyatno';
-    if (roleLow.includes('assistant') || roleLow.includes('asisten')) return 'Budi Susanto';
-    return rawName.trim();
-  }
+  // The cell held only the job title: there is no name to show.
+  if (!cleaned || cleaned === '-' || cleaned.length < 2) return '';
 
   return cleaned;
 }
@@ -520,9 +509,9 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     createBilingualFieldParagraph(
       'Work Location',
-      data.workLocationEn || 'Neutra DC Cikarang',
+      data.workLocationEn || '',
       'Lokasi Kerja',
-      data.workLocationId || 'Neutra DC Cikarang',
+      data.workLocationId || '',
       80
     )
   );
@@ -910,23 +899,24 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     })
   );
 
-  const ehs = data.ehsRequirements || {
-    ppeEn: 'Wear Personal Protective Equipment (PPE) such as rubber gloves and footwear, protective eye wear, and protective helmet.',
-    ppeId: 'Gunakan Alat Pelindung Diri (APD) seperti sarung tangan karet dan sepatu keselamatan, kacamata pelindung, serta helm pelindung.',
-    jewelryEn: 'Remove rings and metal wrist watches, jewelry, or any metal objects kept in the clothes pocket.',
-    jewelryId: 'Lepaskan cincin dan jam tangan logam, perhiasan, atau benda logam apa pun yang disimpan di dalam saku pakaian.',
-    commsEn: 'Communication device such as handy-talkie (HT) is on hand.',
-    commsId: 'Perangkat komunikasi seperti handy-talkie (HT) siap digunakan.',
-    lotoEn: 'Lock-Out / Tag-Out devices and tools.',
-    lotoId: 'Peralatan dan perlengkapan Lock-Out / Tag-Out.',
-  };
+  // No invented requirements: an absent EHS section exports empty.
+  const ehs = data.ehsRequirements || { ppeEn: '', ppeId: '', jewelryEn: '', jewelryId: '', commsEn: '', commsId: '', lotoEn: '', lotoId: '' };
 
-  const ehsItems: [string, string][] = [
-    [`1. ${ehs.ppeEn}`, `1. ${ensureBilingualTranslation(ehs.ppeEn, ehs.ppeId)}`],
-    [`2. ${ehs.jewelryEn}`, `2. ${ensureBilingualTranslation(ehs.jewelryEn, ehs.jewelryId)}`],
-    [`3. ${ehs.commsEn}`, `3. ${ensureBilingualTranslation(ehs.commsEn, ehs.commsId)}`],
-    [`4. ${ehs.lotoEn}`, `4. ${ensureBilingualTranslation(ehs.lotoEn, ehs.lotoId)}`],
-  ];
+  // An imported document keeps its own ordered list; the 4 slots are the template default.
+  const ehsItems: [string, string][] = ehs.items && ehs.items.length > 0
+    ? ehs.items.map((item, idx): [string, string] => {
+        const rawEn = (item.textEn || item.textId || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim();
+        const rawId = ensureBilingualTranslation(item.textEn || item.textId || '-', item.textId).replace(/^\s*\d+[\.\)]\s*/, '').trim();
+        return [`${idx + 1}. ${rawEn || '-'}`, `${idx + 1}. ${rawId || rawEn || '-'}`];
+      })
+    : [
+        [ehs.ppeEn, ehs.ppeId],
+        [ehs.jewelryEn, ehs.jewelryId],
+        [ehs.commsEn, ehs.commsId],
+        [ehs.lotoEn, ehs.lotoId],
+      ]
+        .filter(([en, id]) => (en || '').trim() || (id || '').trim())
+        .map(([en, id], idx): [string, string] => [`${idx + 1}. ${en || id}`, `${idx + 1}. ${ensureBilingualTranslation(en || id, id)}`]);
 
   children.push(
     new Table({
@@ -1014,18 +1004,12 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     ],
   });
 
-  const prereqs = (data.prerequisites && data.prerequisites.length > 0)
-    ? data.prerequisites
-    : [
-        { requirementEn: '1. Check PTW is approved.', requirementId: '1. Periksa bahwa PTW telah disetujui.', time: '', initial: '' },
-        { requirementEn: '2. Note down vendor arrival Date / Time :', requirementId: '2. Catat Tanggal / Waktu kedatangan vendor :', time: '', initial: '' },
-        { requirementEn: '3. Check all tools and materials are available and in good condition.', requirementId: '3. Periksa semua peralatan dan material telah tersedia dan dalam kondisi baik.', time: '', initial: '' },
-        { requirementEn: '4. Ensure necessary reference documents is attached to this SOP.', requirementId: '4. Pastikan dokumen referensi yang diperlukan telah dilampirkan pada SOP ini.', time: '', initial: '' },
-        { requirementEn: '5. Ensure personnel involving in this work are trained and competent to perform this procedure.', requirementId: '5. Pastikan personel yang terlibat dalam pekerjaan ini telah terlatih dan kompeten untuk melaksanakan prosedur ini.', time: '', initial: '' },
-      ];
+  const prereqs = data.prerequisites || [];
 
-  const prereqRows = prereqs.map((pr) => {
-    const requirementEn = pr.requirementEn || '-';
+  const prereqRows = prereqs.map((pr, index) => {
+    // The importer strips list numbers; restore "1. …" like the master template (skip if already numbered).
+    const rawEn = pr.requirementEn || '-';
+    const requirementEn = rawEn !== '-' && !/^\s*\d+[\.\)]/.test(rawEn) ? `${index + 1}. ${rawEn}` : rawEn;
     const requirementId = ensureBilingualTranslation(requirementEn, pr.requirementId);
 
     return new TableRow({
@@ -1088,7 +1072,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   );
 
   const dryRun = data.dryRun;
-  const dryRunJobTitle = (dryRun?.jobTitle && dryRun.jobTitle !== '-') ? dryRun.jobTitle : 'Teknisi Data Center';
+  const dryRunJobTitle = (dryRun?.jobTitle && dryRun.jobTitle !== '-') ? dryRun.jobTitle : '';
   const dryRunName = (dryRun?.name && dryRun.name !== '-') ? dryRun.name : '';
   const dryRunDate = (dryRun?.date && dryRun.date !== '-') ? dryRun.date : '';
 
@@ -1426,9 +1410,9 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.author || ''}`, size: 20, font: FONT_BODY }),
                   new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.author || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
                 ],
               })],
             }),
@@ -1452,9 +1436,9 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, size: 20, font: FONT_BODY }),
                   new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
                 ],
               })],
             }),
@@ -1529,9 +1513,8 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 13 – Approval', 'Seksi 13 – Persetujuan', false));
   children.push(createSpacer(40));
 
-  const defaultApprovals: DocumentSigner[] = [...DEFAULT_DEFAULT_APPROVERS];
-
-  const approvalList = (data.approvals && data.approvals.length > 0) ? data.approvals : defaultApprovals;
+  // Export exactly the approvers in the document; never substitute default people.
+  const approvalList: DocumentSigner[] = data.approvals || [];
 
   const sopColWidths = [2700, 2700, 2000, 1616];
 
@@ -1750,9 +1733,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(
     createBilingualFieldParagraph(
       'Work Location',
-      data.workLocationEn || 'Neutra DC Cikarang',
+      data.workLocationEn || '',
       'Lokasi Kerja',
-      data.workLocationId || 'Neutra DC Cikarang',
+      data.workLocationId || '',
       80
     )
   );
@@ -1850,12 +1833,8 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     })
   );
 
-  const eopEhs = data.ehsRequirements || {
-    ppeEn: 'Wear Personal Protective Equipment (PPE) such as rubber gloves and footwear, protective eye wear, and protective helmet.',
-    ppeId: 'Gunakan Alat Pelindung Diri (APD) seperti sarung tangan karet dan sepatu bot, kacamata pelindung, dan helm pelindung.',
-    commsEn: 'Communication device such as handy-talkie (HT) is on hand.',
-    commsId: 'Perangkat komunikasi seperti handy-talkie (HT) tersedia / siap digunakan.',
-  };
+  // No invented requirements: an absent EHS section exports empty.
+  const eopEhs = data.ehsRequirements || { ppeEn: '', ppeId: '', commsEn: '', commsId: '' };
 
   const orderedEhsItems = eopEhs.items && eopEhs.items.length > 0
     ? eopEhs.items
@@ -1863,7 +1842,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
         { textEn: eopEhs.ppeEn, textId: eopEhs.ppeId },
         { textEn: eopEhs.commsEn, textId: eopEhs.commsId },
         ...(eopEhs.additionalItems || []),
-      ];
+      ].filter((item) => (item.textEn || '').trim() || (item.textId || '').trim());
   const eopEhsItems: [string, string][] = orderedEhsItems.map((item, idx): [string, string] => {
     const rawEn = (item.textEn || item.textId || '-').replace(/^\s*\d+[\.\)]\s*/, '').trim();
     const rawId = ensureBilingualTranslation(item.textEn || item.textId || '-', item.textId).replace(/^\s*\d+[\.\)]\s*/, '').trim();
@@ -2086,9 +2065,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.author || ''}`, size: 20, font: FONT_BODY }),
                   new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.author || 'Alif Darmawan'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.author || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
                 ],
               })],
             }),
@@ -2112,9 +2091,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, size: 20, font: FONT_BODY }),
                   new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.dateOfCreation || '07 Sep 2026'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
                 ],
               })],
             }),
@@ -2169,9 +2148,9 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.revisionNumber || '00'}`, size: 20, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.revisionNumber || ''}`, size: 20, font: FONT_BODY }),
                   new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.revisionNumber || '00'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  new TextRun({ text: `: ${data.revisionNumber || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
                 ],
               })],
             }),
@@ -2200,7 +2179,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   );
 
   const eopDryRun = data.dryRun;
-  const eopDryRunJobTitle = (eopDryRun?.jobTitle && eopDryRun.jobTitle !== '-') ? eopDryRun.jobTitle : 'Teknisi Data Center';
+  const eopDryRunJobTitle = (eopDryRun?.jobTitle && eopDryRun.jobTitle !== '-') ? eopDryRun.jobTitle : '';
   const eopDryRunName = (eopDryRun?.name && eopDryRun.name !== '-') ? eopDryRun.name : '';
   const eopDryRunDate = (eopDryRun?.date && eopDryRun.date !== '-') ? eopDryRun.date : '';
 
@@ -2276,9 +2255,8 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(createSectionBanner('Section 7 – Approval', 'Seksi 7 – Persetujuan', true));
   children.push(createSpacer(40));
 
-  const eopDefaultApprovals: DocumentSigner[] = [...DEFAULT_DEFAULT_APPROVERS];
-
-  const eopApprovalList = (data.approvals && data.approvals.length > 0) ? data.approvals : eopDefaultApprovals;
+  // Export exactly the approvers in the document; never substitute default people.
+  const eopApprovalList: DocumentSigner[] = data.approvals || [];
 
   const eopColWidths = [2700, 2700, 2000, 1616];
 
