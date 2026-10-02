@@ -42,7 +42,6 @@ import {
     HelpCircle,
     CheckSquare,
     CalendarRange,
-    Link2,
     Unlink,
     XCircle,
     RotateCcw
@@ -514,11 +513,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         note: ''
     });
     const [isSavingRevisionStatus, setIsSavingRevisionStatus] = useState(false);
-
-    // Manual Link CM to SLA State
-    const [isLinkSLAModalOpen, setIsLinkSLAModalOpen] = useState(false);
-    const [selectedCMForLink, setSelectedCMForLink] = useState<CorrectiveReport | null>(null);
-    const [isLinkingSLA, setIsLinkingSLA] = useState(false);
 
     useEffect(() => {
         if (initialSearchQuery !== undefined) {
@@ -1470,6 +1464,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         cmToSLAMap: Map<string, CorrectiveReport>;
         slaToCMMap: Map<string, CorrectiveReport>;
         claimedSLAIds: Set<string>;
+        // Pasangan hasil tebakan (bukan dari tautan ID) yang belum tersimpan di Firestore.
+        inferredPairs: { cmId: string; slaId: string }[];
     }
 
     // ===== Global 1-to-1 CM↔SLA Matching (each SLA can only be claimed once) =====
@@ -1478,14 +1474,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         const matchedCMIds = new Set<string>();    // CM IDs yang sudah punya SLA
         const cmToSLAMap = new Map<string, CorrectiveReport>();
         const slaToCMMap = new Map<string, CorrectiveReport>();
+        const inferredPairs: { cmId: string; slaId: string }[] = [];
 
         // Helper: try to claim an SLA for a CM
-        const tryClaim = (cm: CorrectiveReport, sla: CorrectiveReport): boolean => {
+        const tryClaim = (cm: CorrectiveReport, sla: CorrectiveReport, inferred = false): boolean => {
             if (!cm.id || !sla.id || claimedSLAIds.has(sla.id) || matchedCMIds.has(cm.id)) return false;
             claimedSLAIds.add(sla.id);
             matchedCMIds.add(cm.id);
             cmToSLAMap.set(cm.id, sla);
             slaToCMMap.set(sla.id, cm);
+            if (inferred && !(sla as any).cmReportId && !(sla as any).pirReportId) inferredPairs.push({ cmId: cm.id, slaId: sla.id });
             return true;
         };
 
@@ -1525,80 +1523,76 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     sIdentifiers.includes(cid) || (cid.length >= 4 && sTicketName.includes(cid))
                 );
             });
-            if (match) tryClaim(cm, match);
+            if (match) tryClaim(cm, match, true);
         }
 
-        // Pass 3: Strict Real-Time Incident Matching (Same-Day / 24h Window & Best Candidate Score)
-        // Diperlukan untuk dokumen legacy yang belum tersinkronisasi ID dua arah
+        // Pass 3: Pencocokan dokumen legacy tanpa tautan ID (kemiripan teks + kedekatan waktu).
+        // Semua pasangan CM<->SLA dinilai sekaligus lalu diklaim dari skor tertinggi, sehingga hasilnya
+        // tidak bergantung pada urutan CM (insiden berulang pada alat yang sama tidak saling mencaplok SLA).
+        // Pasangan yang ditemukan di sini disimpan permanen sebagai tautan ID (lihat efek persist di komponen),
+        // jadi perubahan heuristik di masa depan tidak bisa lagi membuka kembali CM yang sudah punya SLA.
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        const TIGHT_WINDOW_DAYS = 3;      // insiden yang sama: SLA dibuat/diisi dalam hitungan hari
+        const LENIENT_WINDOW_DAYS = 180;  // SLA yang baru diisi berbulan-bulan kemudian, wajib bukti teks kuat
+        const eventTimesOf = (r: CorrectiveReport): number[] =>
+            [r.incidentDate, (r as any).timeOrder, (r as any).startOrder].map(parseDateToTimestamp).filter(t => t > 0);
+        const filedAtOf = (r: CorrectiveReport): number => parseDateToTimestamp((r as any).createdAt || r.reportedAt);
+
+        const scoredPairs: { cm: CorrectiveReport; sla: CorrectiveReport; score: number; gapDays: number }[] = [];
         for (const cm of cmList) {
             if (!cm.id || matchedCMIds.has(cm.id)) continue;
             const cmTokens = extractSignificantTokens(`${cm.incidentName || ''} ${cm.equipmentName || ''} ${cm.issue || ''}`);
             if (cmTokens.length === 0) continue;
-            const cmTime = getReportIncidentTime(cm);
+            const cmEvents = eventTimesOf(cm);
+            const cmTimes = cmEvents.length > 0 ? cmEvents : [filedAtOf(cm)].filter(t => t > 0);
             const cmLocation = (cm.location || '').toLowerCase().trim();
-
-            const candidates: { sla: CorrectiveReport; score: number; diffMinutes: number }[] = [];
 
             for (const s of slaList) {
                 if (!s.id || claimedSLAIds.has(s.id)) continue;
-
-                const slaTime = getReportIncidentTime(s);
-
-                // REAL-TIME SAME-DAY ENFORCEMENT:
-                // Wajib dalam rentang maksimal 24 jam (1440 menit) atau memiliki string tanggal kejadian yang sama persis
-                let diffMinutes = 0;
-                if (cmTime > 0 && slaTime > 0) {
-                    const diffMs = Math.abs(cmTime - slaTime);
-                    diffMinutes = Math.round(diffMs / (1000 * 60));
-                    // Jika selisih lebih dari 24 jam, tolak karena bukan insiden real-time yang sama
-                    if (diffMinutes > 1440) continue;
-                } else {
-                    // Jika salah satu tanggal tidak berformat timestamp, periksa kesamaan teks tanggal kejadian
-                    const cmDateStr = (cm.incidentDate || '').trim().toLowerCase();
-                    const slaDateStr = (((s as any).timeOrder || (s as any).incidentDate || '') as string).trim().toLowerCase();
-                    if (!cmDateStr || !slaDateStr || (!cmDateStr.includes(slaDateStr) && !slaDateStr.includes(cmDateStr))) {
-                        continue;
-                    }
-                }
 
                 const slaTokens = extractSignificantTokens(`${s.ticketName || ''} ${s.issue || ''} ${s.remark || ''} ${(s as any).equipmentName || ''}`);
                 if (slaTokens.length === 0) continue;
 
                 // Hitung berapa token non-stopword spesifik yang cocok
                 const sharedTokens = cmTokens.filter(t => slaTokens.some(st => st === t || (st.length >= 6 && st.includes(t)) || (t.length >= 6 && t.includes(st))));
-
                 const hasStrongSpecificToken = sharedTokens.some(t => t.length >= 6 || /^[0-9]+[a-z0-9\-_]+$/i.test(t));
-                if (sharedTokens.length < 2 && !(sharedTokens.length >= 1 && hasStrongSpecificToken)) {
-                    continue;
+                if (sharedTokens.length < 2 && !(sharedTokens.length >= 1 && hasStrongSpecificToken)) continue;
+
+                // Selisih waktu dalam hari (Infinity = tidak cocok)
+                let gapDays = Infinity;
+                const slaEvents = eventTimesOf(s);
+                if (cmTimes.length > 0 && slaEvents.length > 0) {
+                    gapDays = Math.min(...cmTimes.flatMap(c => slaEvents.map(e => Math.abs(c - e) / DAY_MS)));
+                } else if (cmTimes.length > 0) {
+                    // SLA lama tanpa tanggal kejadian: hanya ada waktu pengisian, yang pasti SESUDAH kejadian
+                    const filedAt = filedAtOf(s);
+                    const lagDays = filedAt > 0 ? (filedAt - Math.min(...cmTimes)) / DAY_MS : Infinity;
+                    gapDays = lagDays >= -1 ? Math.max(0, lagDays) : Infinity;
+                } else {
+                    // Tanggal CM tidak terbaca: bandingkan teks tanggal kejadian
+                    const cmDateStr = (cm.incidentDate || '').trim().toLowerCase();
+                    const slaDateStr = (((s as any).timeOrder || (s as any).incidentDate || '') as string).trim().toLowerCase();
+                    if (cmDateStr && slaDateStr && (cmDateStr.includes(slaDateStr) || slaDateStr.includes(cmDateStr))) gapDays = 0;
                 }
+
+                const isTight = gapDays <= TIGHT_WINDOW_DAYS;
+                const isLenient = gapDays <= LENIENT_WINDOW_DAYS && sharedTokens.length >= 2;
+                if (!isTight && !isLenient) continue;
 
                 let score = sharedTokens.length * 10;
                 if (hasStrongSpecificToken) score += 15;
-
-                // Bonus kecocokan lokasi
                 const sLocation = (((s as any).location || '') as string).toLowerCase().trim();
-                if (cmLocation && sLocation && (cmLocation.includes(sLocation) || sLocation.includes(cmLocation))) {
-                    score += 10;
-                }
+                if (cmLocation && sLocation && (cmLocation.includes(sLocation) || sLocation.includes(cmLocation))) score += 10;
+                // Kedekatan waktu: pasangan "tight" selalu mengalahkan pasangan "lenient" dengan teks setara
+                score += isTight ? 30 - Math.round(Math.min(gapDays, TIGHT_WINDOW_DAYS) * 8) : 0;
 
-                // Skor kedekatan waktu real-time: selisih menit terkecil mendapatkan skor paling tinggi
-                if (diffMinutes > 0) {
-                    score += Math.max(0, 30 - Math.round(diffMinutes / 30));
-                } else {
-                    score += 30; // Waktu identik
-                }
-
-                candidates.push({ sla: s, score, diffMinutes });
-            }
-
-            if (candidates.length > 0) {
-                // Pilih kandidat dengan skor tertinggi, jika seri pilih selisih waktu menit real-time paling kecil
-                candidates.sort((a, b) => b.score - a.score || a.diffMinutes - b.diffMinutes);
-                tryClaim(cm, candidates[0].sla);
+                scoredPairs.push({ cm, sla: s, score, gapDays });
             }
         }
+        scoredPairs.sort((a, b) => b.score - a.score || a.gapDays - b.gapDays);
+        for (const { cm, sla } of scoredPairs) tryClaim(cm, sla, true);
 
-        return { matchedCMIds, cmToSLAMap, slaToCMMap, claimedSLAIds };
+        return { matchedCMIds, cmToSLAMap, slaToCMMap, claimedSLAIds, inferredPairs };
     };
 
     const allCMReports = reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR');
@@ -1674,10 +1668,28 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     // BUG FIX: Hanya CM yang require SLA yang dimasukkan ke mapping algorithm.
     // Sebelumnya SEMUA CM (termasuk pergantian sparepart) ikut matching,
     // sehingga SLA bisa "tercaplok" oleh CM yang seharusnya tidak punya SLA.
-    const { matchedCMIds, cmToSLAMap, slaToCMMap } = buildCMSLAMapping(
+    const { matchedCMIds, cmToSLAMap, slaToCMMap, inferredPairs } = buildCMSLAMapping(
         cmRequiringSLAReports,
         allSLAReports
     );
+
+    // Simpan pasangan CM<->SLA hasil tebakan sebagai tautan ID permanen (sekali per pasangan).
+    // Setelah tersimpan, Pass 1 (cocok persis lewat ID) yang menangani, bukan heuristik teks/waktu,
+    // jadi CM yang SLA-nya sudah terbit tidak bisa muncul lagi di pengingat "Belum Dibuatkan SLA".
+    const persistedInferredPairsRef = useRef<Set<string>>(new Set());
+    const inferredPairsKey = inferredPairs.map(p => `${p.cmId}>${p.slaId}`).join('|');
+    useEffect(() => {
+        if (loading || !isAuthorizedRole || !inferredPairsKey) return;
+        for (const { cmId, slaId } of inferredPairs) {
+            const key = `${cmId}>${slaId}`;
+            if (persistedInferredPairsRef.current.has(key)) continue;
+            persistedInferredPairsRef.current.add(key);
+            void Promise.all([
+                updateDoc(doc(db, 'corrective_reports', cmId), { slaReportId: slaId, hasSLA: true }),
+                updateDoc(doc(db, 'corrective_reports', slaId), { cmReportId: cmId }),
+            ]).catch(err => console.warn('Gagal menyimpan tautan CM-SLA otomatis:', cmId, slaId, err));
+        }
+    }, [inferredPairsKey, loading, isAuthorizedRole]);
     const unlinkedCMReports = cmRequiringSLAReports
         .filter(cm => cm.id && !matchedCMIds.has(cm.id))
         .sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
@@ -1953,55 +1965,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }, 150);
 
         toast.success(`Membuka Report PIR: ${pir.ticketName || pir.issue || 'Report PIR'}`);
-    };
-
-    // Handlers untuk Manual Link CM <-> SLA
-    const handleOpenLinkSLAModal = (cm: CorrectiveReport) => {
-        setSelectedCMForLink(cm);
-        setIsLinkSLAModalOpen(true);
-    };
-
-    const handleConfirmLinkSLA = async (cmReport: CorrectiveReport, slaReport: CorrectiveReport) => {
-        if (!cmReport.id || !slaReport.id) return;
-        setIsLinkingSLA(true);
-        try {
-            // Update dokumen CM di 'corrective_reports'
-            await updateDoc(doc(db, 'corrective_reports', cmReport.id), {
-                slaReportId: slaReport.id,
-                hasSLA: true,
-                updatedAt: serverTimestamp()
-            });
-
-            // Update dokumen SLA di 'corrective_reports'
-            await updateDoc(doc(db, 'corrective_reports', slaReport.id), {
-                cmReportId: cmReport.id,
-                updatedAt: serverTimestamp()
-            });
-
-            // Sinkronkan objek lokal dan state React agar UI langsung bereaksi tanpa menunggu snapshot penuh
-            cmReport.slaReportId = slaReport.id;
-            cmReport.hasSLA = true;
-            (slaReport as any).cmReportId = cmReport.id;
-
-            setReports(prev => prev.map(r => {
-                if (r.id === cmReport.id) {
-                    return { ...r, slaReportId: slaReport.id, hasSLA: true };
-                }
-                if (r.id === slaReport.id) {
-                    return { ...r, cmReportId: cmReport.id } as CorrectiveReport;
-                }
-                return r;
-            }));
-
-            toast.success(`Berhasil menautkan CM "${cmReport.incidentName || cmReport.equipmentName || 'CM'}" dengan SLA "${slaReport.ticketName || 'SLA'}"! Pengingat tidak akan muncul lagi.`);
-            setIsLinkSLAModalOpen(false);
-            setSelectedCMForLink(null);
-        } catch (err: any) {
-            console.error('Error linking CM to SLA:', err);
-            toast.error('Gagal menautkan CM ke SLA: ' + (err.message || 'Unknown error'));
-        } finally {
-            setIsLinkingSLA(false);
-        }
     };
 
     const handleUnlinkSLA = async (cmReport: CorrectiveReport, targetSlaId?: string) => {
@@ -2681,15 +2644,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                     <Zap className="w-3.5 h-3.5 fill-current" />
                                                                     <span>+ Buat SLA</span>
                                                                     <ArrowRight className="w-3 h-3 ml-0.5" />
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleOpenLinkSLAModal(cm)}
-                                                                    className="py-2 px-3 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 hover:border-blue-400 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition cursor-pointer"
-                                                                    title="Tautkan manual ke SLA yang sudah dibuat sebelumnya"
-                                                                >
-                                                                    <Link2 className="w-3.5 h-3.5 text-blue-600" />
-                                                                    <span>Tautkan</span>
                                                                 </button>
                                                             </div>
                                                         )}
@@ -4563,15 +4517,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                                                 <Zap className="w-2.5 h-2.5 fill-current" />
                                                                                                 <span>+ Buat SLA</span>
                                                                                             </button>
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={() => handleOpenLinkSLAModal(report)}
-                                                                                                className="px-2 py-0.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 hover:border-blue-400 text-[10px] font-bold rounded-md transition shadow-2xs flex items-center gap-1 cursor-pointer"
-                                                                                                title="Tautkan manual ke dokumen SLA yang sudah pernah dibuat"
-                                                                                            >
-                                                                                                <Link2 className="w-2.5 h-2.5 text-blue-600" />
-                                                                                                <span>Tautkan SLA</span>
-                                                                                            </button>
                                                                                         </>
                                                                                     )}
                                                                                 </div>
@@ -5026,19 +4971,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 setForm={setRevisionForm}
                 onSave={handleSaveRevisionStatus}
                 loading={isSavingRevisionStatus}
-            />
-
-            {/* Modal Dialog Tautkan Manual Dokumen SLA ke Laporan CM */}
-            <LinkSLAModal
-                isOpen={isLinkSLAModalOpen}
-                onClose={() => {
-                    setIsLinkSLAModalOpen(false);
-                    setSelectedCMForLink(null);
-                }}
-                cmReport={selectedCMForLink}
-                allSLAReports={allSLAReports}
-                onLink={handleConfirmLinkSLA}
-                loading={isLinkingSLA}
             />
 
             {/* Floating Quick Jump Pill: Kembali ke Laporan Terpilih / Terakhir Dikerjakan */}
@@ -6113,281 +6045,6 @@ function DocumentRevisionStatusModal({
                                 <span>Simpan Status {isRevisi ? 'Revisi' : 'Final'}</span>
                             </>
                         )}
-                    </button>
-                </div>
-            </motion.div>
-        </div>
-    );
-}
-
-// ============================================================================
-// KOMPONEN: LinkSLAModal
-// Modal dialog untuk menautkan laporan CM ke dokumen SLA yang sudah pernah dibuat
-// secara manual dengan penguncian dua arah (cmReportId <-> slaReportId)
-// ============================================================================
-interface LinkSLAModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    cmReport: CorrectiveReport | null;
-    allSLAReports: CorrectiveReport[];
-    onLink: (cmReport: CorrectiveReport, slaReport: CorrectiveReport) => Promise<void>;
-    loading: boolean;
-}
-
-function LinkSLAModal({
-    isOpen,
-    onClose,
-    cmReport,
-    allSLAReports,
-    onLink,
-    loading
-}: LinkSLAModalProps) {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterCategory, setFilterCategory] = useState<'recommended' | 'all'>('recommended');
-
-    if (!isOpen || !cmReport) return null;
-
-    const cmEquipment = (cmReport.equipmentName || '').toLowerCase().trim();
-    const cmLocation = (cmReport.location || '').toLowerCase().trim();
-    const cmIncident = (cmReport.incidentName || cmReport.issue || '').toLowerCase().trim();
-
-    // Helper cari kecocokan SLA rekomendasi
-    const candidateSLAs = allSLAReports.map(sla => {
-        const sTicketName = (sla.ticketName || '').toLowerCase().trim();
-        const sEquipment = (((sla as any).equipmentName || '') as string).toLowerCase().trim();
-        const sIssue = (sla.issue || '').toLowerCase().trim();
-        const sLocation = (((sla as any).location || '') as string).toLowerCase().trim();
-        const sIncidentId = (sla.incidentId || (sla as any).ticketId || (sla as any).ticketNumber || '').toLowerCase().trim();
-
-        let matchScore = 0;
-        let isMatch = false;
-
-        // Cek kecocokan nomor tiket / incident ID
-        if (sIncidentId && cmReport.incidentId && sIncidentId === cmReport.incidentId.toLowerCase().trim()) {
-            matchScore += 100;
-            isMatch = true;
-        }
-
-        // Cek kecocokan nama peralatan
-        if (cmEquipment && (sTicketName.includes(cmEquipment) || sEquipment.includes(cmEquipment) || (sEquipment && cmEquipment.includes(sEquipment)))) {
-            matchScore += 50;
-            isMatch = true;
-        }
-
-        // Cek kecocokan lokasi
-        if (cmLocation && sLocation && (sLocation.includes(cmLocation) || cmLocation.includes(sLocation))) {
-            matchScore += 20;
-        }
-
-        // Cek kecocokan kata kunci issue / incident
-        if (cmIncident && (sTicketName.includes(cmIncident) || sIssue.includes(cmIncident))) {
-            matchScore += 30;
-            isMatch = true;
-        }
-
-        // Cek apakah sudah pernah ditautkan ke CM ini
-        const isCurrentLinked = (sla as any).cmReportId === cmReport.id || cmReport.slaReportId === sla.id;
-        if (isCurrentLinked) matchScore += 200;
-
-        return {
-            sla,
-            matchScore,
-            isMatch,
-            isCurrentLinked
-        };
-    });
-
-    const filteredList = candidateSLAs.filter(item => {
-        if (searchTerm.trim() !== '') {
-            const term = searchTerm.toLowerCase();
-            const s = item.sla;
-            const fullText = `${s.ticketName || ''} ${(s as any).equipmentName || ''} ${s.issue || ''} ${s.incidentId || ''} ${(s as any).ticketNumber || ''} ${s.location || ''} ${s.reportedByEmail || ''}`.toLowerCase();
-            return fullText.includes(term);
-        }
-        if (filterCategory === 'recommended') {
-            return item.isMatch || item.isCurrentLinked;
-        }
-        return true;
-    }).sort((a, b) => b.matchScore - a.matchScore);
-
-    return (
-        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]"
-            >
-                {/* Modal Header */}
-                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/90">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shadow-2xs">
-                            <Link2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                                Tautkan Dokumen SLA ke Laporan CM
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Kunci relasi permanen dua arah agar pengingat SLA tidak berulang.
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
-                        title="Tutup"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Target CM Info Box */}
-                <div className="p-4 bg-amber-50/70 border-b border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md inline-block mb-1">
-                            Laporan CM Terpilih
-                        </span>
-                        <h4 className="font-bold text-slate-900 text-sm">
-                            {cmReport.incidentName || cmReport.equipmentName || cmReport.issue || 'Corrective Maintenance'}
-                        </h4>
-                        <div className="flex flex-wrap items-center gap-3 text-slate-600 mt-1 text-[11px]">
-                            <span>Lokasi: <strong>{cmReport.location || '-'}</strong></span>
-                            <span>Tanggal: <strong>{cmReport.incidentDate || (cmReport.reportedAt?.toDate ? cmReport.reportedAt.toDate().toLocaleDateString('id-ID') : '-')}</strong></span>
-                            {cmReport.equipmentName && <span>Alat: <strong>{cmReport.equipmentName}</strong></span>}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Filter and Search Bar */}
-                <div className="p-3 sm:p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-center gap-2">
-                    <div className="relative flex-1 w-full">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            placeholder="Cari berdasarkan nama tiket, alat, lokasi, nomor tiket SLA..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
-                        />
-                    </div>
-                    <div className="flex items-center gap-1 w-full sm:w-auto shrink-0">
-                        <button
-                            type="button"
-                            onClick={() => setFilterCategory('recommended')}
-                            className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                filterCategory === 'recommended'
-                                    ? 'bg-blue-600 text-white shadow-2xs'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                        >
-                            Rekomendasi Cocok
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setFilterCategory('all')}
-                            className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                filterCategory === 'all'
-                                    ? 'bg-blue-600 text-white shadow-2xs'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                        >
-                            Semua SLA ({allSLAReports.length})
-                        </button>
-                    </div>
-                </div>
-
-                {/* Candidate SLA List */}
-                <div className="p-3 sm:p-4 overflow-y-auto flex-1 space-y-2.5 max-h-[380px] bg-slate-50/50">
-                    {filteredList.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500">
-                            <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                            <p className="text-sm font-semibold text-slate-700">Tidak ada dokumen SLA yang cocok</p>
-                            <p className="text-xs text-slate-500 mt-1">Coba gunakan tab "Semua SLA" atau cari dengan kata kunci lain.</p>
-                        </div>
-                    ) : (
-                        filteredList.map(({ sla, isMatch, isCurrentLinked }) => {
-                            const isOtherLinked = Boolean((sla as any).cmReportId && (sla as any).cmReportId !== cmReport.id);
-                            return (
-                                <div
-                                    key={sla.id}
-                                    className={`p-3 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                                        isCurrentLinked
-                                            ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-500/20'
-                                            : isMatch
-                                            ? 'bg-white border-blue-200 hover:border-blue-400 shadow-2xs'
-                                            : 'bg-white border-slate-200 hover:border-slate-300'
-                                    }`}
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                            {isCurrentLinked && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                                                    <CheckCircle2 className="w-2.5 h-2.5" /> Sedang Tertaut
-                                                </span>
-                                            )}
-                                            {isMatch && !isCurrentLinked && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                                                    ✨ Sangat Cocok
-                                                </span>
-                                            )}
-                                            {(sla as any).ticketNumber && (
-                                                <span className="px-1.5 py-0.2 bg-slate-100 text-slate-700 text-[10px] font-mono rounded border border-slate-200">
-                                                    {(sla as any).ticketNumber}
-                                                </span>
-                                            )}
-                                            {isOtherLinked && (
-                                                <span className="px-1.5 py-0.2 bg-amber-50 text-amber-700 text-[10px] rounded border border-amber-200" title="SLA ini telah tertaut ke CM lain">
-                                                    ⚠️ Sudah ada link CM
-                                                </span>
-                                            )}
-                                        </div>
-                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={sla.ticketName || sla.issue}>
-                                            {sla.ticketName || sla.issue || 'Form SLA / SLG'}
-                                        </h4>
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 mt-1">
-                                            <span>Waktu/Tgl: <strong>{(sla as any).timeOrder || sla.incidentDate || '-'}</strong></span>
-                                            <span>Lokasi: <strong>{(sla as any).location || '-'}</strong></span>
-                                            {sla.reportedByEmail && <span>Pembuat: <span className="text-slate-700">{sla.reportedByEmail}</span></span>}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {isCurrentLinked ? (
-                                            <span className="px-3 py-1.5 text-emerald-700 text-xs font-bold flex items-center gap-1">
-                                                <Check className="w-4 h-4 text-emerald-600" /> Terkunci
-                                            </span>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                disabled={loading}
-                                                onClick={() => onLink(cmReport, sla)}
-                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                                            >
-                                                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                                                <span>Tautkan</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between">
-                    <p className="text-[11px] text-slate-500 italic">
-                        Menautkan SLA akan menyinkronkan ID kedua dokumen di database secara permanen.
-                    </p>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={loading}
-                        className="px-4 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-                    >
-                        Tutup
                     </button>
                 </div>
             </motion.div>
