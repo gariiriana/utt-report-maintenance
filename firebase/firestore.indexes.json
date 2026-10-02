@@ -29,5 +29,14 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "photos",
+      "fieldPath": "storageType",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    }
+  ]
 }

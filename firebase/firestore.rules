@@ -84,6 +84,11 @@ service cloud.firestore {
       }
     }
 
+    // Export BOQ lists photos across items. Scoped by storageType so other `photos` collections stay closed to drafters.
+    match /{path=**}/photos/{photoId} {
+      allow list: if canManageBOQ() && resource.data.storageType == 'firestore-bytes';
+    }
+
     function getEmail() {
       return request.auth.token.get('email', '');
     }

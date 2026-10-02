@@ -1,4 +1,4 @@
-import { Bytes, collection, deleteDoc, doc, documentId, getDoc, getDocFromServer, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { Bytes, collection, collectionGroup, deleteDoc, doc, documentId, getDoc, getDocFromServer, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import type { BOQFields, BOQOverride, BOQPhoto, RoomBOQItem } from '@/types/boq';
 import { BOQConflictError, assertBOQRevision, validateBOQFields } from '@/utils/boqValidation';
@@ -104,6 +104,10 @@ export async function uploadBOQPhoto(itemId: string, id: string, file: File, uid
 }
 
 export async function getBOQPhotoURL(photo: BOQPhoto): Promise<string> {
+  return URL.createObjectURL(await getBOQPhotoBlob(photo));
+}
+
+export async function getBOQPhotoBlob(photo: BOQPhoto): Promise<Blob> {
   if (photo.storageType !== 'firestore-bytes') throw new Error('Foto BOQ ini belum memakai format Bytes Firestore.');
   if (!Number.isInteger(photo.totalChunks) || !photo.totalChunks || photo.size > MAX_PHOTO_BYTES) {
     throw new Error('Metadata foto BOQ tidak valid.');
@@ -125,7 +129,34 @@ export async function getBOQPhotoURL(photo: BOQPhoto): Promise<string> {
     expectedIndex++;
   }
   if (byteLength !== photo.size) throw new Error('Ukuran foto tidak cocok dengan metadata.');
-  return URL.createObjectURL(new Blob(parts as unknown as BlobPart[], { type: photo.contentType }));
+  return new Blob(parts as unknown as BlobPart[], { type: photo.contentType });
+}
+
+export interface BOQPhotoRef { itemId: string; photo: BOQPhoto; createdAt: number }
+
+// Every item that has a saved text override (a document exists only after the first edit).
+export async function readAllBOQOverrides(): Promise<Record<string, BOQOverride>> {
+  const result = await getDocs(collection(db, 'boq_items'));
+  return Object.fromEntries(result.docs.map(snapshot => [snapshot.id, snapshot.data() as BOQOverride]));
+}
+
+const photoRefOf = (snapshot: QueryDocumentSnapshot): BOQPhotoRef | null => {
+  const itemId = snapshot.ref.parent.parent?.id;
+  if (!itemId || !snapshot.ref.path.startsWith('boq_items/')) return null;
+  const data = snapshot.data();
+  return { itemId, photo: { ...data, id: snapshot.id } as BOQPhoto, createdAt: data.createdAt?.toMillis?.() ?? 0 };
+};
+
+// Photos can exist for items that never had a text edit, so they are discovered through
+// a collection-group query. Needs the scoped `photos` rule + index override to be deployed.
+export async function readAllBOQPhotoRefs(): Promise<BOQPhotoRef[]> {
+  const result = await getDocs(query(collectionGroup(db, 'photos'), where('storageType', '==', 'firestore-bytes')));
+  return result.docs.map(photoRefOf).filter((ref): ref is BOQPhotoRef => ref !== null);
+}
+
+export async function readBOQItemPhotoRefs(itemId: string): Promise<BOQPhotoRef[]> {
+  const result = await getDocs(collection(db, 'boq_items', itemId, 'photos'));
+  return result.docs.map(photoRefOf).filter((ref): ref is BOQPhotoRef => ref !== null);
 }
 
 export async function deleteBOQPhoto(itemId: string, photo: Pick<BOQPhoto, 'id' | 'totalChunks'>): Promise<void> {

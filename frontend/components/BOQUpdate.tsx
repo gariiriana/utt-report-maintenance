@@ -659,6 +659,21 @@ export function BOQUpdate() {
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
   const [selected, setSelected] = useState<RoomBOQItem | null>(null);
+  const [exportStatus, setExportStatus] = useState('');
+  const exporting = exportStatus !== '';
+  const exportExcel = async () => {
+    if (exporting) return;
+    setExportStatus('Menyiapkan export…');
+    try {
+      const { exportDrafterBOQExcel } = await import('@/utils/boqDrafterExcelExport');
+      const result = await exportDrafterBOQExcel(items, setExportStatus);
+      toast.success(`${result.fileName}: ${result.itemCount} item, ${result.roomCount} ruangan, ${result.photoCount - result.failedPhotos} foto.`);
+      if (result.failedPhotos) toast.warning(`${result.failedPhotos} foto gagal dimuat dan ditandai di Excel.`);
+      result.warnings.forEach(warning => toast.warning(warning));
+    } catch (exportError) {
+      toast.error('Export BOQ gagal: ' + boqErrorMessage(exportError));
+    } finally { setExportStatus(''); }
+  };
   const rooms = useMemo(() => [...new Set(items.map(item => item.room))].sort(), []);
   const classes = useMemo(() => [...new Set(items.filter(item => room === 'all' || item.room === room).map(item => item.classId))].sort(), [room]);
   const filtered = useMemo(() => {
@@ -690,7 +705,10 @@ export function BOQUpdate() {
   return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-xl font-bold sm:text-2xl">Update BOQ</h1><p className="mt-1 text-sm text-slate-500">2.359 item dari BOQ PER RUANGAN · ROOM & NO ROOM</p></div>
-      <button className={buttonClass} disabled={loading} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /> Muat ulang</button>
+      <div className="flex flex-wrap gap-2">
+        <button className={buttonClass} disabled={loading || exporting} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /> Muat ulang</button>
+        <button className={buttonClass} disabled={exporting} onClick={() => void exportExcel()}>{exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {exporting ? exportStatus : 'Export BOQ (Excel)'}</button>
+      </div>
     </div>
     <div className="mt-5 grid gap-3 sm:grid-cols-3">
       <label className="text-sm font-medium">Ruangan<select className={inputClass + ' mt-1'} value={room} onChange={event => { setRoom(event.target.value); setClassId('all'); setPage(1); }}><option value="all">Semua ruangan</option>{rooms.map(value => <option key={value} value={value}>{value || 'Tanpa ruangan'}</option>)}</select></label>
