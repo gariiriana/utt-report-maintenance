@@ -45,6 +45,19 @@ const CATEGORY_DEFAULT_LOCATIONS = {
   'MV & RMU Panel': { floor: '1F', room: 'MV Room' }
 };
 
+// ExcelJS cell values can be rich text, hyperlinks ({ text, hyperlink }), formulas ({ formula, result })
+// or errors; flatten all of them to plain text so no cell ever becomes "[object Object]".
+function cellText(v) {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return v.toISOString().split('T')[0];
+  if (typeof v !== 'object') return String(v).trim();
+  if (v.richText) return v.richText.map(t => t.text).join('').trim();
+  if (v.result !== undefined) return cellText(v.result);
+  if (v.text !== undefined) return cellText(v.text);
+  if (v.error) return '';
+  return '';
+}
+
 // Read existing boqAssetData.ts for location lookup
 console.log('Reading existing boqAssetData.ts for location lookup...');
 const existingBoqContent = fs.readFileSync('frontend/data/boqAssetData.ts', 'utf8');
@@ -70,56 +83,69 @@ console.log(`Loaded ${existingLocationMap.size} location mappings.`);
 
 async function extractBOQ() {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.readFile('temp_sheet.xlsx');
+  // Usage: node scripts/extract_new_boq.cjs [path-to-xlsx]  (defaults to temp_sheet.xlsx)
+  await wb.xlsx.readFile(process.argv[2] || 'temp_sheet.xlsx');
 
   const categoriesConfig = [
-    { id: 'cat_1', name: 'Trafo', group: 'Power & Distribution', sheetIdx: 8 },
-    { id: 'cat_2', name: 'ATS', group: 'Power & Distribution', sheetIdx: 9 },
-    { id: 'cat_3', name: 'MV & RMU Panel', group: 'Power & Distribution', sheetIdx: 10 },
-    { id: 'cat_4', name: 'LV Panel', group: 'Power & Distribution', sheetIdx: 11 },
-    { id: 'cat_5', name: 'Grounding', group: 'Grounding, Protection & Leak', sheetIdx: 12 },
-    { id: 'cat_6', name: 'PDU', group: 'Power & Distribution', sheetIdx: 13 },
-    { id: 'cat_7', name: 'LDB-RDB Panel', group: 'Power & Distribution', sheetIdx: 14 },
-    { id: 'cat_8', name: 'UPS', group: 'Power & Distribution', sheetIdx: 15 },
-    { id: 'cat_9', name: 'Lightning Protection', group: 'Grounding, Protection & Leak', sheetIdx: 16 },
-    { id: 'cat_10', name: 'Genset', group: 'Power Generation & Fuel', sheetIdx: 17, splitPart: 'genset' },
-    { id: 'cat_11', name: 'Fuel System', group: 'Power Generation & Fuel', sheetIdx: 17, splitPart: 'fuel' },
-    { id: 'cat_12', name: 'Load Bank', group: 'Power Generation & Fuel', sheetIdx: 18, splitPart: 'loadbank' },
-    { id: 'cat_13', name: 'Cap Bank (APFCR)', group: 'Power & Distribution', sheetIdx: 18, splitPart: 'capbank' },
-    { id: 'cat_14', name: 'Exhaust Fan', group: 'HVAC & Cooling Systems', sheetIdx: 19 },
-    { id: 'cat_15', name: 'BUSDUCT', group: 'Power & Distribution', sheetIdx: 20 },
-    { id: 'cat_16', name: 'CT', group: 'HVAC & Cooling Systems', sheetIdx: 21 },
-    { id: 'cat_17', name: 'Physical Cooling Automation & T', group: 'HVAC & Cooling Systems', sheetIdx: 22 },
-    { id: 'cat_18', name: 'Cooling Pump', group: 'HVAC & Cooling Systems', sheetIdx: 23 },
-    { id: 'cat_19', name: 'CRAC', group: 'HVAC & Cooling Systems', sheetIdx: 24 },
-    { id: 'cat_20', name: 'FCU', group: 'HVAC & Cooling Systems', sheetIdx: 25 },
-    { id: 'cat_21', name: 'Chiller', group: 'HVAC & Cooling Systems', sheetIdx: 26 },
-    { id: 'cat_22', name: 'VRV', group: 'HVAC & Cooling Systems', sheetIdx: 27 },
-    { id: 'cat_23', name: 'PAHU', group: 'HVAC & Cooling Systems', sheetIdx: 28 },
-    { id: 'cat_24', name: 'Degassing Pressurization', group: 'HVAC & Cooling Systems', sheetIdx: 29 },
-    { id: 'cat_25', name: 'Splitwall', group: 'HVAC & Cooling Systems', sheetIdx: 30 },
-    { id: 'cat_26', name: 'FSS', group: 'Fire Safety & Mechanical', sheetIdx: 31 },
-    { id: 'cat_27', name: 'HYDRANT & PREACTION', group: 'Fire Safety & Mechanical', sheetIdx: 32 },
-    { id: 'cat_28', name: 'PREACTION', group: 'Fire Safety & Mechanical', sheetIdx: 33 },
-    { id: 'cat_29', name: 'Hydrant Actual', group: 'Fire Safety & Mechanical', sheetIdx: 34 },
-    { id: 'cat_30', name: 'Lift', group: 'Fire Safety & Mechanical', sheetIdx: 35, splitPart: 'lift' },
-    { id: 'cat_31', name: 'Dock Leveler', group: 'Fire Safety & Mechanical', sheetIdx: 35, splitPart: 'dock' },
-    { id: 'cat_32', name: 'Water & Fuel Leak', group: 'Grounding, Protection & Leak', sheetIdx: 36 },
-    { id: 'cat_33', name: 'Water Softener', group: 'HVAC & Cooling Systems', sheetIdx: 37 },
-    { id: 'cat_34', name: 'CT Water Treatment', group: 'HVAC & Cooling Systems', sheetIdx: 38 },
-    { id: 'cat_35', name: 'Pompa', group: 'Fire Safety & Mechanical', sheetIdx: 39 },
-    { id: 'cat_36', name: 'Gate', group: 'Security & Building Facility', sheetIdx: 40 },
-    { id: 'cat_37', name: 'STP & Plumbing', group: 'Fire Safety & Mechanical', sheetIdx: 41 },
-    { id: 'cat_38', name: 'Road Blocker', group: 'Security & Building Facility', sheetIdx: 42 },
-    { id: 'cat_39', name: 'Door', group: 'Security & Building Facility', sheetIdx: 43 },
-    { id: 'cat_40', name: 'X-RAY', group: 'Security & Building Facility', sheetIdx: 44 },
-    { id: 'cat_41', name: 'Lighting', group: 'Grounding, Protection & Leak', sheetIdx: 45 },
+    { id: 'cat_1', name: 'Trafo', group: 'Power & Distribution', sheet: 'Trafo' },
+    { id: 'cat_2', name: 'ATS', group: 'Power & Distribution', sheet: 'ATS' },
+    { id: 'cat_3', name: 'MV & RMU Panel', group: 'Power & Distribution', sheet: 'MV & RMU Panel' },
+    { id: 'cat_4', name: 'LV Panel', group: 'Power & Distribution', sheet: 'LV Panel' },
+    { id: 'cat_5', name: 'Grounding', group: 'Grounding, Protection & Leak', sheet: 'Grounding' },
+    { id: 'cat_6', name: 'PDU', group: 'Power & Distribution', sheet: 'PDU' },
+    { id: 'cat_7', name: 'LDB-RDB Panel', group: 'Power & Distribution', sheet: 'LDB-RDB Panel' },
+    { id: 'cat_8', name: 'UPS', group: 'Power & Distribution', sheet: 'UPS' },
+    { id: 'cat_9', name: 'Lightning Protection', group: 'Grounding, Protection & Leak', sheet: 'Lightning Protection' },
+    { id: 'cat_10', name: 'Genset', group: 'Power Generation & Fuel', sheet: 'Genset & Fuel System', splitPart: 'genset' },
+    { id: 'cat_11', name: 'Fuel System', group: 'Power Generation & Fuel', sheet: 'Genset & Fuel System', splitPart: 'fuel' },
+    { id: 'cat_12', name: 'Load Bank', group: 'Power Generation & Fuel', sheet: 'Load & Cap Bank', splitPart: 'loadbank' },
+    { id: 'cat_13', name: 'Cap Bank (APFCR)', group: 'Power & Distribution', sheet: 'Load & Cap Bank', splitPart: 'capbank' },
+    { id: 'cat_14', name: 'Exhaust Fan', group: 'HVAC & Cooling Systems', sheet: 'Exhaust Fan' },
+    { id: 'cat_15', name: 'BUSDUCT', group: 'Power & Distribution', sheet: 'BUSDUCT' },
+    { id: 'cat_16', name: 'CT', group: 'HVAC & Cooling Systems', sheet: 'CT' },
+    { id: 'cat_17', name: 'Physical Cooling Automation & T', group: 'HVAC & Cooling Systems', sheet: 'Physical Cooling Automation & T' },
+    { id: 'cat_18', name: 'Cooling Pump', group: 'HVAC & Cooling Systems', sheet: 'Cooling Pump' },
+    { id: 'cat_19', name: 'CRAC', group: 'HVAC & Cooling Systems', sheet: 'CRAC' },
+    { id: 'cat_20', name: 'FCU', group: 'HVAC & Cooling Systems', sheet: 'FCU' },
+    { id: 'cat_21', name: 'Chiller', group: 'HVAC & Cooling Systems', sheet: 'Chiller' },
+    { id: 'cat_22', name: 'VRV', group: 'HVAC & Cooling Systems', sheet: 'VRV' },
+    { id: 'cat_23', name: 'PAHU', group: 'HVAC & Cooling Systems', sheet: 'PAHU' },
+    { id: 'cat_24', name: 'Degassing Pressurization', group: 'HVAC & Cooling Systems', sheet: 'Degassing Pressurization' },
+    { id: 'cat_25', name: 'Splitwall', group: 'HVAC & Cooling Systems', sheet: 'Splitwall' },
+    { id: 'cat_26', name: 'FSS', group: 'Fire Safety & Mechanical', sheet: 'FSS' },
+    { id: 'cat_27', name: 'HYDRANT & PREACTION', group: 'Fire Safety & Mechanical', sheet: 'HYDRANT & PREACTION' },
+    { id: 'cat_28', name: 'PREACTION', group: 'Fire Safety & Mechanical', sheet: 'PREACTION' },
+    { id: 'cat_29', name: 'Hydrant Actual', group: 'Fire Safety & Mechanical', sheet: 'Hydrant Actual' },
+    { id: 'cat_30', name: 'Lift', group: 'Fire Safety & Mechanical', sheet: 'Lift & Dock Level', splitPart: 'lift' },
+    { id: 'cat_31', name: 'Dock Leveler', group: 'Fire Safety & Mechanical', sheet: 'Lift & Dock Level', splitPart: 'dock' },
+    { id: 'cat_32', name: 'Water & Fuel Leak', group: 'Grounding, Protection & Leak', sheet: 'Water & Fuel Leak' },
+    { id: 'cat_33', name: 'Water Softener', group: 'HVAC & Cooling Systems', sheet: 'Water Softener' },
+    { id: 'cat_34', name: 'CT Water Treatment', group: 'HVAC & Cooling Systems', sheet: 'CT Water Treatment' },
+    { id: 'cat_35', name: 'Pompa', group: 'Fire Safety & Mechanical', sheet: 'Pompa' },
+    { id: 'cat_36', name: 'Gate', group: 'Security & Building Facility', sheet: 'Gate' },
+    { id: 'cat_37', name: 'STP & Plumbing', group: 'Fire Safety & Mechanical', sheet: 'STP & Plumbing' },
+    { id: 'cat_38', name: 'Road Blocker', group: 'Security & Building Facility', sheet: 'Road Blocker' },
+    { id: 'cat_39', name: 'Door', group: 'Security & Building Facility', sheet: 'Door' },
+    { id: 'cat_40', name: 'X-RAY', group: 'Security & Building Facility', sheet: 'X-RAY' },
+    { id: 'cat_41', name: 'Lighting', group: 'Grounding, Protection & Leak', sheet: 'Lighting' },
   ];
 
   const categories = [];
 
+  // Tabs are matched by NAME, never by position: the spreadsheet owners reorder and insert tabs.
+  // These tabs hold planning/progress data, not BOQ assets, and are never imported.
+  const EXCLUDED_TABS = ['Progress MOS & Instal CM', 'consumable parts 2026', 'Plan ManPower Agu', 'Plan ManPower Agustus', 'Plan ManPower Sep', 'Progress', 'Resume Q3', '2026 Schedule', 'Sheet1'];
+  const norm = name => name.trim().toLowerCase();
+  const usedTabs = new Set(categoriesConfig.map(cfg => norm(cfg.sheet)));
+  const excluded = new Set(EXCLUDED_TABS.map(norm));
+  const unmapped = wb.worksheets.filter(w => !usedTabs.has(norm(w.name)) && !excluded.has(norm(w.name)));
+  if (unmapped.length) {
+    console.warn(`WARNING: ${unmapped.length} tab(s) are neither imported nor excluded: ${unmapped.map(w => JSON.stringify(w.name)).join(', ')}. Add them to categoriesConfig or EXCLUDED_TABS.`);
+  }
+
   for (const cfg of categoriesConfig) {
-    const ws = wb.worksheets[cfg.sheetIdx - 1];
+    const ws = wb.worksheets.find(w => norm(w.name) === norm(cfg.sheet));
+    if (!ws) throw new Error(`Worksheet "${cfg.sheet}" for category "${cfg.name}" was not found in the spreadsheet.`);
 
     // Find header row
     let headerRowIdx = -1;
@@ -129,10 +155,7 @@ async function extractBOQ() {
       const row = ws.getRow(r);
       const cells = [];
       row.eachCell({ includeEmpty: true }, (c, col) => {
-        let v = c.value;
-        if (v && typeof v === 'object' && v.result !== undefined) v = v.result;
-        if (v && typeof v === 'object' && v.richText) v = v.richText.map(t => t.text).join('');
-        cells[col] = v !== null && v !== undefined ? String(v).trim() : '';
+        cells[col] = cellText(c.value);
       });
       const nonEmpties = cells.filter(Boolean);
       const lower = nonEmpties.map(v => v.toLowerCase());
@@ -180,9 +203,8 @@ async function extractBOQ() {
           const sRow = ws.getRow(sr);
           const sVals = [];
           sRow.eachCell({ includeEmpty: false }, c => {
-            let v = c.value;
-            if (v && typeof v === 'object' && v.richText) v = v.richText.map(t => t.text).join('');
-            if (v) sVals.push(String(v).trim());
+            const v = cellText(c.value);
+            if (v) sVals.push(v);
           });
           if (sVals.length > 0) signatures.push(sVals.join(' | '));
         }
@@ -198,11 +220,7 @@ async function extractBOQ() {
       const rowObj = {};
       let hasMeaningfulData = false;
       for (const [col, h] of Object.entries(colMap)) {
-        let val = row.getCell(parseInt(col, 10)).value;
-        if (val && typeof val === 'object' && val.result !== undefined) val = val.result;
-        if (val && typeof val === 'object' && val.richText) val = val.richText.map(t => t.text).join('');
-        if (val instanceof Date) val = val.toISOString().split('T')[0];
-        const strVal = val !== null && val !== undefined ? String(val).trim() : '';
+        const strVal = cellText(row.getCell(parseInt(col, 10)).value);
         rowObj[h] = strVal;
         if (strVal && h !== 'No') {
           hasMeaningfulData = true;

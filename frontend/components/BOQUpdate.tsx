@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Download, Eye, Loader2, Pencil, RefreshCw, Save, Scissors, Search, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Download, Eye, Loader2, Pencil, Plus, RefreshCw, Save, Scissors, Search, Trash2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import baseline from '@/data/boqRoomItems.json';
-import { deleteBOQPhoto, getBOQPhotoURL, photoDigest, readBOQItem, readBOQPage, readBOQPhotos, saveBOQItem, uploadBOQPhoto } from '@/api/boq';
-import type { BOQFields, BOQOverride, BOQPhoto, RoomBOQItem } from '@/types/boq';
+import { createBOQItem, deleteBOQItem, deleteBOQPhoto, getBOQPhotoURL, photoDigest, readBOQItem, readBOQPage, readBOQPhotos, readCustomBOQItems, readDeletedBOQIds, saveBOQItem, uploadBOQPhoto } from '@/api/boq';
+import type { BOQFields, BOQOverride, BOQPhoto, NewBOQItemInput, RoomBOQItem } from '@/types/boq';
 import { boqErrorMessage } from '@/utils/boqValidation';
 import { enqueueBOQPhoto, readBOQPhotoQueue, getQueuedBOQPhoto, removeBOQPhotoFromQueue, type QueuedBOQPhoto } from '@/utils/boqPhotoQueue';
 import { useAuth } from './AuthContext';
@@ -648,6 +648,77 @@ function BOQEditor({ item, uid, onClose, onSaved }: {
     </div>;
 }
 
+const emptyNewItem: NewBOQItemInput = { room: '', classId: '', floor: '', ciName: '', ciDescription: '', capacity: '', serialNumber: '', productionYear: '', manufacturer: '' };
+
+function AddItemModal({ rooms, classIds, floorByRoom, initialRoom, saving, error, onCancel, onSubmit }: {
+  rooms: string[]; classIds: string[]; floorByRoom: Map<string, string>; initialRoom: string; saving: boolean; error: string;
+  onCancel: () => void; onSubmit: (input: NewBOQItemInput) => void;
+}) {
+  const [form, setForm] = useState<NewBOQItemInput>({ ...emptyNewItem, room: initialRoom, floor: floorByRoom.get(initialRoom) || '' });
+  const set = (patch: Partial<NewBOQItemInput>) => setForm(previous => ({ ...previous, ...patch }));
+  const canSubmit = !saving && form.room.trim() !== '' && form.classId.trim() !== '' && form.ciName.trim() !== '';
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Tambah Class ID" className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      onKeyDown={event => { if (event.key === 'Escape' && !saving) onCancel(); }}>
+      <form className="flex max-h-[100dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl" onSubmit={event => { event.preventDefault(); if (canSubmit) onSubmit(form); }}>
+        <header className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
+          <div className="min-w-0"><h3 className="text-base font-bold">Tambah Class ID</h3><p className="text-xs text-slate-500">Item baru masuk ke ruangan yang dipilih. Foto bisa ditambahkan setelah disimpan.</p></div>
+          <button type="button" aria-label="Tutup" disabled={saving} onClick={onCancel} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50"><X size={18} /></button>
+        </header>
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className="block text-sm font-medium">Ruangan *<input className={inputClass + ' mt-1'} list="boq-add-rooms" value={form.room} maxLength={200} autoFocus disabled={saving} placeholder="Pilih / ketik ruangan"
+              onChange={event => { const room = event.target.value; set({ room, floor: floorByRoom.get(room) ?? form.floor }); }} /></label>
+            <label className="block text-sm font-medium sm:col-span-1">Class Id *<input className={inputClass + ' mt-1'} list="boq-add-classes" value={form.classId} maxLength={200} disabled={saving} placeholder="Contoh: MV (MV Panel)" onChange={event => set({ classId: event.target.value })} /></label>
+            <label className="block text-sm font-medium">Lantai<input className={inputClass + ' mt-1'} value={form.floor} maxLength={50} disabled={saving} placeholder="Contoh: 1F" onChange={event => set({ floor: event.target.value })} /></label>
+          </div>
+          <datalist id="boq-add-rooms">{rooms.filter(Boolean).map(value => <option key={value} value={value} />)}</datalist>
+          <datalist id="boq-add-classes">{classIds.filter(Boolean).map(value => <option key={value} value={value} />)}</datalist>
+          <label className="block text-sm font-medium">CI Name *<input className={inputClass + ' mt-1'} value={form.ciName} maxLength={500} disabled={saving} onChange={event => set({ ciName: event.target.value })} /></label>
+          <label className="block text-sm font-medium">CI Description<textarea className={inputClass + ' mt-1 min-h-24'} value={form.ciDescription} maxLength={2000} disabled={saving} onChange={event => set({ ciDescription: event.target.value })} /></label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium">Capacity<input className={inputClass + ' mt-1'} value={form.capacity} maxLength={500} disabled={saving} onChange={event => set({ capacity: event.target.value })} /></label>
+            <label className="block text-sm font-medium">Serial Number<input className={inputClass + ' mt-1 font-mono text-xs sm:text-sm'} value={form.serialNumber} maxLength={500} disabled={saving} onChange={event => set({ serialNumber: event.target.value })} /></label>
+            <label className="block text-sm font-medium">Production Year<input className={inputClass + ' mt-1'} value={form.productionYear} maxLength={20} disabled={saving} placeholder="Contoh: 2019" onChange={event => set({ productionYear: event.target.value })} /></label>
+            <label className="block text-sm font-medium">Manufacturer / Principle<input className={inputClass + ' mt-1'} value={form.manufacturer} maxLength={500} disabled={saving} onChange={event => set({ manufacturer: event.target.value })} /></label>
+          </div>
+          {error && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>}
+        </div>
+        <footer className="flex items-center justify-end gap-2.5 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+          <button type="button" className={buttonClass} disabled={saving} onClick={onCancel}>Batal</button>
+          <button type="submit" disabled={!canSubmit} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? <Loader2 className="animate-spin" size={17} /> : <Plus size={17} />} Simpan & lanjut ke foto</button>
+        </footer>
+      </form>
+    </div>,
+    document.body
+  );
+}
+
+function DeleteItemModal({ item, deleting, onCancel, onConfirm }: { item: RoomBOQItem; deleting: boolean; onCancel: () => void; onConfirm: () => void }) {
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Konfirmasi Hapus Class ID" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      onClick={() => !deleting && onCancel()} onKeyDown={event => { if (event.key === 'Escape' && !deleting) onCancel(); }}>
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6" onClick={event => event.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600"><Trash2 size={22} /></div>
+          <div className="min-w-0"><h3 className="text-base font-bold text-slate-900">Hapus Class ID dari ruangan?</h3><p className="text-xs text-slate-500">Item tidak akan tampil lagi di daftar dan export Excel</p></div>
+        </div>
+        <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm">
+          <p className="break-words font-semibold text-slate-800">{item.ciName}</p>
+          <p className="mt-1 break-words text-xs text-slate-500">{item.classId || 'Tanpa Class Id'} · {item.room || 'Tanpa ruangan'}</p>
+        </div>
+        <div className="mt-5 flex items-center justify-end gap-2.5">
+          <button type="button" disabled={deleting} autoFocus onClick={onCancel} className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Batal</button>
+          <button type="button" disabled={deleting} onClick={onConfirm} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50">
+            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}<span>{deleting ? 'Menghapus…' : 'Ya, Hapus'}</span>
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export function BOQUpdate() {
   const { user } = useAuth();
   const [room, setRoom] = useState('all');
@@ -659,8 +730,48 @@ export function BOQUpdate() {
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
   const [selected, setSelected] = useState<RoomBOQItem | null>(null);
+  const [customItems, setCustomItems] = useState<RoomBOQItem[]>([]);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [addOpen, setAddOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [toDelete, setToDelete] = useState<RoomBOQItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [exportStatus, setExportStatus] = useState('');
   const exporting = exportStatus !== '';
+  // Baseline workbook rows plus drafter-added items, minus anything soft-deleted.
+  const allItems = useMemo(() => [...items, ...customItems].filter(item => !deletedIds.has(item.id)), [customItems, deletedIds]);
+  useEffect(() => {
+    let active = true;
+    Promise.all([readCustomBOQItems(), readDeletedBOQIds()]).then(([custom, deleted]) => {
+      if (active) { setCustomItems(custom); setDeletedIds(deleted); }
+    }).catch(loadError => { if (active) setError(boqErrorMessage(loadError)); });
+    return () => { active = false; };
+  }, [refresh]);
+  const addItem = async (input: NewBOQItemInput) => {
+    if (!user || adding) return;
+    setAdding(true); setAddError('');
+    try {
+      const created = await createBOQItem(input, user.uid);
+      setCustomItems(previous => [...previous, created]);
+      setAddOpen(false);
+      setRoom(created.room); setClassId('all'); setSearch(''); setPage(1);
+      toast.success(`"${created.ciName}" ditambahkan ke ${created.room}.`);
+      setSelected(created);
+    } catch (addFailure) { setAddError(boqErrorMessage(addFailure)); }
+    finally { setAdding(false); }
+  };
+  const confirmDelete = async () => {
+    if (!user || !toDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteBOQItem(toDelete, user.uid);
+      setDeletedIds(previous => new Set(previous).add(toDelete.id));
+      toast.success(`"${toDelete.ciName}" dihapus dari ${toDelete.room || 'daftar'}.`);
+      setToDelete(null);
+    } catch (deleteError) { toast.error('Gagal menghapus: ' + boqErrorMessage(deleteError)); }
+    finally { setDeleting(false); }
+  };
   const exportExcel = async () => {
     if (exporting) return;
     setExportStatus('Menyiapkan export…');
@@ -674,13 +785,19 @@ export function BOQUpdate() {
       toast.error('Export BOQ gagal: ' + boqErrorMessage(exportError));
     } finally { setExportStatus(''); }
   };
-  const rooms = useMemo(() => [...new Set(items.map(item => item.room))].sort(), []);
-  const classes = useMemo(() => [...new Set(items.filter(item => room === 'all' || item.room === room).map(item => item.classId))].sort(), [room]);
+  const rooms = useMemo(() => [...new Set(allItems.map(item => item.room))].sort(), [allItems]);
+  const allClassIds = useMemo(() => [...new Set(allItems.map(item => item.classId))].sort(), [allItems]);
+  const floorByRoom = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of allItems) if (item.floor && !map.has(item.room)) map.set(item.room, item.floor);
+    return map;
+  }, [allItems]);
+  const classes = useMemo(() => [...new Set(allItems.filter(item => room === 'all' || item.room === room).map(item => item.classId))].sort(), [room, allItems]);
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return items.filter(item => (room === 'all' || item.room === room) && (classId === 'all' || item.classId === classId) &&
+    return allItems.filter(item => (room === 'all' || item.room === room) && (classId === 'all' || item.classId === classId) &&
       (!term || [item.room, item.classId, item.ciName, item.ciDescription, item.capacity, item.serialNumber, item.productionYear, item.manufacturer, overrides[item.id]?.ciName, overrides[item.id]?.ciDescription, overrides[item.id]?.capacity, overrides[item.id]?.serialNumber, overrides[item.id]?.productionYear, overrides[item.id]?.manufacturer].some(value => value?.toLowerCase().includes(term))));
-  }, [room, classId, search, overrides]);
+  }, [room, classId, search, overrides, allItems]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -704,8 +821,9 @@ export function BOQUpdate() {
   }
   return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h1 className="text-xl font-bold sm:text-2xl">Update BOQ</h1><p className="mt-1 text-sm text-slate-500">2.359 item dari BOQ PER RUANGAN · ROOM & NO ROOM</p></div>
+      <div><h1 className="text-xl font-bold sm:text-2xl">Update BOQ</h1><p className="mt-1 text-sm text-slate-500">{allItems.length.toLocaleString('id-ID')} item dari BOQ PER RUANGAN · ROOM & NO ROOM{customItems.length > 0 && ` · ${customItems.length} ditambahkan`}</p></div>
       <div className="flex flex-wrap gap-2">
+        <button className={buttonClass + ' !border-blue-600 !bg-blue-600 text-white'} disabled={exporting} onClick={() => { setAddError(''); setAddOpen(true); }}><Plus size={16} /> Tambah Class ID</button>
         <button className={buttonClass} disabled={loading || exporting} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /> Muat ulang</button>
         <button className={buttonClass} disabled={exporting} onClick={() => void exportExcel()}>{exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {exporting ? exportStatus : 'Export BOQ (Excel)'}</button>
       </div>
@@ -719,9 +837,11 @@ export function BOQUpdate() {
     {error && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error} Data sumber tetap ditampilkan; versi server belum terverifikasi.</p>}
     {loading && <p role="status" className="mt-4 text-sm text-slate-500">Memuat perubahan halaman ini…</p>}
     <div className="mt-5 hidden overflow-x-auto md:block"><table className="w-full min-w-[1120px] text-left text-sm"><thead className="bg-slate-50 text-slate-600"><tr>{['Class Id / Ruangan', 'CI Name', 'CI Description', 'Capacity', 'Serial Number', 'Production Year', 'Manufacturer / Principle', 'Foto / Edit'].map(title => <th key={title} className="px-3 py-3">{title}</th>)}</tr></thead>
-      <tbody>{visible.map(item => { const value = { ...item, ...overrides[item.id] }; return <tr key={item.id} className="border-b border-slate-100 align-top"><td className="px-3 py-4"><p className="font-medium">{item.classId || '—'}</p><p className="mt-1 text-xs text-slate-500">{item.room || 'Tanpa ruangan'}</p></td><td className="max-w-64 break-words px-3 py-4 font-medium">{value.ciName}</td><td className="max-w-80 whitespace-pre-wrap break-words px-3 py-4">{value.ciDescription || '—'}</td><td className="px-3 py-4">{value.capacity || '—'}</td><td className="max-w-48 break-all px-3 py-4 font-mono text-xs">{value.serialNumber || '—'}</td><td className="px-3 py-4">{value.productionYear || '—'}</td><td className="max-w-48 break-words px-3 py-4">{value.manufacturer || '—'}</td><td className="px-3 py-4"><button className={buttonClass} aria-label={'Edit dan foto ' + value.ciName} onClick={() => setSelected(item)}><Camera size={16} /><Pencil size={15} /></button></td></tr>; })}</tbody></table></div>
-    <div className="mt-4 space-y-3 md:hidden">{visible.map(item => { const value = { ...item, ...overrides[item.id] }; return <article key={item.id} className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-semibold text-blue-700">{item.classId || 'Tanpa Class Id'}</p><h2 className="mt-1 break-words font-semibold">{value.ciName}</h2><p className="mt-1 text-xs text-slate-500">{item.room || 'Tanpa ruangan'} · {item.floor || '—'}</p><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-xs text-slate-500">CI Description</dt><dd className="whitespace-pre-wrap break-words">{value.ciDescription || '—'}</dd></div><div><dt className="text-xs text-slate-500">Capacity</dt><dd>{value.capacity || '—'}</dd></div><div><dt className="text-xs text-slate-500">Serial Number</dt><dd className="break-all font-mono text-xs">{value.serialNumber || '—'}</dd></div><div><dt className="text-xs text-slate-500">Production Year</dt><dd>{value.productionYear || '—'}</dd></div><div><dt className="text-xs text-slate-500">Manufacturer / Principle</dt><dd className="break-words">{value.manufacturer || '—'}</dd></div></dl><button className={buttonClass + ' mt-4 w-full'} onClick={() => setSelected(item)}><Camera size={17} /> Foto & edit item</button></article>; })}</div>
+      <tbody>{visible.map(item => { const value = { ...item, ...overrides[item.id] }; return <tr key={item.id} className="border-b border-slate-100 align-top"><td className="px-3 py-4"><p className="font-medium">{item.classId || '—'}</p><p className="mt-1 text-xs text-slate-500">{item.room || 'Tanpa ruangan'}</p></td><td className="max-w-64 break-words px-3 py-4 font-medium">{value.ciName}</td><td className="max-w-80 whitespace-pre-wrap break-words px-3 py-4">{value.ciDescription || '—'}</td><td className="px-3 py-4">{value.capacity || '—'}</td><td className="max-w-48 break-all px-3 py-4 font-mono text-xs">{value.serialNumber || '—'}</td><td className="px-3 py-4">{value.productionYear || '—'}</td><td className="max-w-48 break-words px-3 py-4">{value.manufacturer || '—'}</td><td className="px-3 py-4"><div className="flex gap-2"><button className={buttonClass} aria-label={'Edit dan foto ' + value.ciName} onClick={() => setSelected(item)}><Camera size={16} /><Pencil size={15} /></button><button className={buttonClass + ' text-red-600 hover:bg-red-50'} title="Hapus Class ID dari ruangan ini" aria-label={'Hapus ' + value.ciName} onClick={() => setToDelete(item)}><Trash2 size={16} /></button></div></td></tr>; })}</tbody></table></div>
+    <div className="mt-4 space-y-3 md:hidden">{visible.map(item => { const value = { ...item, ...overrides[item.id] }; return <article key={item.id} className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-semibold text-blue-700">{item.classId || 'Tanpa Class Id'}</p><h2 className="mt-1 break-words font-semibold">{value.ciName}</h2><p className="mt-1 text-xs text-slate-500">{item.room || 'Tanpa ruangan'} · {item.floor || '—'}</p><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-xs text-slate-500">CI Description</dt><dd className="whitespace-pre-wrap break-words">{value.ciDescription || '—'}</dd></div><div><dt className="text-xs text-slate-500">Capacity</dt><dd>{value.capacity || '—'}</dd></div><div><dt className="text-xs text-slate-500">Serial Number</dt><dd className="break-all font-mono text-xs">{value.serialNumber || '—'}</dd></div><div><dt className="text-xs text-slate-500">Production Year</dt><dd>{value.productionYear || '—'}</dd></div><div><dt className="text-xs text-slate-500">Manufacturer / Principle</dt><dd className="break-words">{value.manufacturer || '—'}</dd></div></dl><div className="mt-4 flex gap-2"><button className={buttonClass + ' flex-1'} onClick={() => setSelected(item)}><Camera size={17} /> Foto & edit item</button><button className={buttonClass + ' text-red-600 hover:bg-red-50'} aria-label={'Hapus ' + value.ciName} onClick={() => setToDelete(item)}><Trash2 size={17} /></button></div></article>; })}</div>
     {!visible.length && <p className="py-8 text-center text-sm text-slate-500">Tidak ada item sesuai filter.</p>}
     <div className="mt-5 flex items-center justify-between gap-2 border-t pt-4"><p className="text-xs text-slate-500">{filtered.length} item · {currentPage}/{totalPages}</p><div className="flex gap-2"><button className={buttonClass} aria-label="Halaman sebelumnya" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={18} /></button><button className={buttonClass} aria-label="Halaman berikutnya" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}><ChevronRight size={18} /></button></div></div>
+    {addOpen && <AddItemModal rooms={rooms} classIds={allClassIds} floorByRoom={floorByRoom} initialRoom={room === 'all' ? '' : room} saving={adding} error={addError} onCancel={() => setAddOpen(false)} onSubmit={input => void addItem(input)} />}
+    {toDelete && <DeleteItemModal item={toDelete} deleting={deleting} onCancel={() => setToDelete(null)} onConfirm={() => void confirmDelete()} />}
   </section>;
 }

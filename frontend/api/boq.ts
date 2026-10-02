@@ -1,7 +1,7 @@
 import { Bytes, collection, collectionGroup, deleteDoc, doc, documentId, getDoc, getDocFromServer, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
-import type { BOQFields, BOQOverride, BOQPhoto, RoomBOQItem } from '@/types/boq';
-import { BOQConflictError, assertBOQRevision, validateBOQFields } from '@/utils/boqValidation';
+import type { BOQFields, BOQOverride, BOQPhoto, NewBOQItemInput, RoomBOQItem } from '@/types/boq';
+import { BOQConflictError, assertBOQRevision, validateBOQFields, validateNewBOQItem } from '@/utils/boqValidation';
 const itemRef = (id: string) => doc(db, 'boq_items', id);
 const PHOTO_CHUNK_BYTES = 900 * 1024;
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
@@ -15,7 +15,48 @@ export async function readBOQItem(id: string): Promise<BOQOverride | null> {
   const snapshot = await getDoc(itemRef(id));
   return snapshot.exists() ? snapshot.data() as BOQOverride : null;
 }
-export async function saveBOQItem(item: RoomBOQItem, fields: BOQFields, expectedRevision: number, uid: string) {
+// Custom items (added by a drafter) keep their placement in the document itself.
+const customFieldsOf = (item: RoomBOQItem) => item.custom ? { custom: true, room: item.room, classId: item.classId, floor: item.floor } : {};
+export const customBOQItemOf = (id: string, data: BOQOverride): RoomBOQItem => ({
+  id, sourceSheet: 'CUSTOM', sourceRow: 0, custom: true,
+  room: data.room || '', classId: data.classId || '', floor: data.floor || '', model: '',
+  ciName: data.ciName, ciDescription: data.ciDescription, capacity: data.capacity,
+  serialNumber: data.serialNumber || '', productionYear: data.productionYear || '', manufacturer: data.manufacturer || '',
+});
+// Items added in the app: every document with `custom: true` that is not deleted.
+export async function readCustomBOQItems(): Promise<RoomBOQItem[]> {
+  const result = await getDocs(query(collection(db, 'boq_items'), where('custom', '==', true)));
+  return result.docs
+    .filter(snapshot => !snapshot.data().deleted)
+    .map(snapshot => customBOQItemOf(snapshot.id, snapshot.data() as BOQOverride))
+    .sort((a, b) => a.room.localeCompare(b.room) || a.classId.localeCompare(b.classId) || a.ciName.localeCompare(b.ciName));
+}
+// Baseline items hidden by a drafter. A tombstone is kept instead of removing the document.
+export async function readDeletedBOQIds(): Promise<Set<string>> {
+  const result = await getDocs(query(collection(db, 'boq_items'), where('deleted', '==', true)));
+  return new Set(result.docs.map(snapshot => snapshot.id));
+}
+export async function createBOQItem(input: NewBOQItemInput, uid: string): Promise<RoomBOQItem> {
+  const clean = validateNewBOQItem(input);
+  const id = 'room-v1-custom-' + crypto.randomUUID().replace(/-/g, '');
+  await setDoc(itemRef(id), {
+    ...clean, custom: true, revision: 1, sourceSheet: 'CUSTOM', sourceRow: 0, updatedBy: uid, updatedAt: serverTimestamp(),
+  });
+  return customBOQItemOf(id, { ...clean, revision: 1 });
+}
+// Soft delete: photos and history stay in Firestore, the item just stops being listed and exported.
+export async function deleteBOQItem(item: RoomBOQItem, uid: string): Promise<void> {
+  const latest = await readBOQItem(item.id);
+  const fields = latest ?? item;
+  await writeBOQItem(item, fieldsOfDoc(fields), latest?.revision ?? 0, uid, true);
+}
+const fieldsOfDoc = (value: BOQFields): BOQFields => ({
+  ciName: value.ciName, ciDescription: value.ciDescription, capacity: value.capacity,
+  serialNumber: value.serialNumber || '', productionYear: value.productionYear || '', manufacturer: value.manufacturer || '',
+});
+export const saveBOQItem = (item: RoomBOQItem, fields: BOQFields, expectedRevision: number, uid: string) =>
+  writeBOQItem(item, fields, expectedRevision, uid, false);
+async function writeBOQItem(item: RoomBOQItem, fields: BOQFields, expectedRevision: number, uid: string, deleted: boolean) {
   const clean = validateBOQFields(fields);
   const nextRevision = expectedRevision + 1;
   const ref = itemRef(item.id);
@@ -24,6 +65,8 @@ export async function saveBOQItem(item: RoomBOQItem, fields: BOQFields, expected
     // so a transaction read is unnecessary and would double the request count.
     await setDoc(ref, {
       ...clean,
+      ...customFieldsOf(item),
+      ...(deleted ? { deleted: true } : {}),
       revision: nextRevision,
       sourceSheet: item.sourceSheet,
       sourceRow: item.sourceRow,

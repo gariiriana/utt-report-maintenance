@@ -15,25 +15,51 @@ service cloud.firestore {
       return isDrafter() || isAdminOrQcDme();
     }
 
-    function validBOQItem(itemId, data) {
-      return data.keys().hasAll(['ciName', 'ciDescription', 'capacity', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt'])
-        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt'])
-        && isValidString(data.ciName, 500) && data.ciName.size() > 0
+    // Text, revision and audit fields shared by baseline and custom items.
+    // `deleted` is a soft-delete tombstone; documents are never physically removed.
+    function validBOQCommon(data) {
+      return isValidString(data.ciName, 500) && data.ciName.size() > 0
         && isValidString(data.ciDescription, 2000) && isValidString(data.capacity, 500)
         && (!('serialNumber' in data.keys()) || isValidString(data.serialNumber, 500))
         && (!('productionYear' in data.keys()) || isValidString(data.productionYear, 20))
         && (!('manufacturer' in data.keys()) || isValidString(data.manufacturer, 500))
+        && (!('deleted' in data.keys()) || data.deleted is bool)
         && data.revision is int && data.revision > 0
         && data.sourceRow is int
-        && ((data.sourceSheet == 'ROOM' && data.sourceRow >= 3 && data.sourceRow <= 1738 && itemId == 'room-v1-room-' + string(data.sourceRow))
-          || (data.sourceSheet == 'NO ROOM' && data.sourceRow >= 2 && data.sourceRow <= 680 && itemId == 'room-v1-no-room-' + string(data.sourceRow)))
         && data.updatedBy == request.auth.uid && data.updatedAt == request.time;
+    }
+
+    function validBOQItem(itemId, data) {
+      return data.keys().hasAll(['ciName', 'ciDescription', 'capacity', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt'])
+        && validBOQCommon(data)
+        && ((data.sourceSheet == 'ROOM' && data.sourceRow >= 3 && data.sourceRow <= 1738 && itemId == 'room-v1-room-' + string(data.sourceRow))
+          || (data.sourceSheet == 'NO ROOM' && data.sourceRow >= 2 && data.sourceRow <= 680 && itemId == 'room-v1-no-room-' + string(data.sourceRow)));
+    }
+
+    // Items added by a drafter: not part of the bundled workbook, so they carry their own room/class placement.
+    function validBOQCustomItem(itemId, data) {
+      return data.keys().hasAll(['ciName', 'ciDescription', 'capacity', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt', 'custom', 'room', 'classId', 'floor'])
+        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt', 'custom', 'room', 'classId', 'floor'])
+        && validBOQCommon(data)
+        && itemId.matches('room-v1-custom-[0-9a-f]{32}')
+        && data.custom == true && data.sourceSheet == 'CUSTOM' && data.sourceRow == 0
+        && isValidString(data.room, 200) && data.room.size() > 0
+        && isValidString(data.classId, 200) && data.classId.size() > 0
+        && isValidString(data.floor, 50);
     }
 
     match /boq_items/{itemId} {
       allow read: if canManageBOQ();
-      allow create: if canManageBOQ() && validBOQItem(itemId, request.resource.data) && request.resource.data.revision == 1;
-      allow update: if canManageBOQ() && validBOQItem(itemId, request.resource.data)
+      allow create: if canManageBOQ()
+        && (validBOQItem(itemId, request.resource.data) || validBOQCustomItem(itemId, request.resource.data))
+        && request.resource.data.revision == 1;
+      allow update: if canManageBOQ()
+        && (validBOQItem(itemId, request.resource.data)
+          || (validBOQCustomItem(itemId, request.resource.data)
+            && request.resource.data.room == resource.data.room
+            && request.resource.data.classId == resource.data.classId
+            && request.resource.data.floor == resource.data.floor))
         && request.resource.data.revision == resource.data.revision + 1
         && request.resource.data.sourceSheet == resource.data.sourceSheet
         && request.resource.data.sourceRow == resource.data.sourceRow;
@@ -43,7 +69,7 @@ service cloud.firestore {
       match /photos/{photoId} {
         allow read: if canManageBOQ();
         allow create: if canManageBOQ()
-          && itemId.matches('room-v1-(room|no-room)-[0-9]+')
+          && itemId.matches('room-v1-((room|no-room)-[0-9]+|custom-[0-9a-f]{32})')
           && photoId.matches('[0-9a-f]{64}')
           && request.resource.data.keys().hasAll(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
           && request.resource.data.keys().hasOnly(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
@@ -55,7 +81,7 @@ service cloud.firestore {
           && request.resource.data.contentType in ['image/jpeg', 'image/png', 'image/webp']
           && request.resource.data.uploadedBy == request.auth.uid && request.resource.data.createdAt == request.time;
         allow update: if canManageBOQ()
-          && itemId.matches('room-v1-(room|no-room)-[0-9]+')
+          && itemId.matches('room-v1-((room|no-room)-[0-9]+|custom-[0-9a-f]{32})')
           && photoId.matches('[0-9a-f]{64}')
           && request.resource.data.keys().hasAll(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
           && request.resource.data.keys().hasOnly(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
@@ -71,7 +97,7 @@ service cloud.firestore {
         match /chunks/{chunkId} {
           allow read: if canManageBOQ();
           allow create, update: if canManageBOQ()
-            && itemId.matches('room-v1-(room|no-room)-[0-9]+')
+            && itemId.matches('room-v1-((room|no-room)-[0-9]+|custom-[0-9a-f]{32})')
             && photoId.matches('[0-9a-f]{64}')
             && chunkId.matches('[0-9]{5}')
             && request.resource.data.keys().hasAll(['index', 'data', 'createdAt'])

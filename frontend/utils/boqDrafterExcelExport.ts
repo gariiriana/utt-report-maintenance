@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { getBOQPhotoBlob, readAllBOQOverrides, readAllBOQPhotoRefs, readBOQItemPhotoRefs, type BOQPhotoRef } from '@/api/boq';
+import { customBOQItemOf, getBOQPhotoBlob, readAllBOQOverrides, readAllBOQPhotoRefs, readBOQItemPhotoRefs, type BOQPhotoRef } from '@/api/boq';
 import type { BOQFields, BOQOverride, RoomBOQItem } from '@/types/boq';
 
 const NO_ROOM = 'Tanpa Ruangan';
@@ -86,8 +86,12 @@ export async function exportDrafterBOQExcel(items: RoomBOQItem[], onProgress: (m
   for (const ref of refs) photosByItem.set(ref.itemId, [...(photosByItem.get(ref.itemId) || []), ref]);
   for (const list of photosByItem.values()) list.sort((a, b) => a.createdAt - b.createdAt || a.photo.name.localeCompare(b.photo.name));
 
+  // Added items live only in Firestore; deleted ones keep a tombstone and are left out.
+  const customItems = Object.entries(overrides).filter(([, value]) => value.custom).map(([id, value]) => customBOQItemOf(id, value));
+  const exportItems = [...items, ...customItems].filter(item => !overrides[item.id]?.deleted);
+
   const rooms = new Map<string, Entry[]>();
-  for (const item of items) {
+  for (const item of exportItems) {
     const override = overrides[item.id];
     const photos = photosByItem.get(item.id) || [];
     const room = roomOf(item);
