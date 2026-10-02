@@ -41,7 +41,8 @@ import {
   getDocs,
   query,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
@@ -139,6 +140,12 @@ export function SOPEOPManagement() {
   });
   const [deleteReasonInput, setDeleteReasonInput] = useState('');
   const [isDeletingArchiveDoc, setIsDeletingArchiveDoc] = useState(false);
+
+  // Multi-select for bulk delete in the archive
+  const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteReason, setBulkDeleteReason] = useState('');
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const [resetModal, setResetModal] = useState<{
     isOpen: boolean;
@@ -784,6 +791,90 @@ export function SOPEOPManagement() {
     const matchesTo = !archiveUploadedTo || (uploadedDate && uploadedDate <= archiveUploadedTo);
     return matchesType && matchesSearch && matchesFrom && matchesTo;
   });
+
+  // Bulk actions only ever touch documents that are selected AND currently visible,
+  // so a hidden selection can never be deleted after the filter changes.
+  const selectedVisibleArchive = filteredArchive.filter((item) => selectedArchiveIds.has(item.id));
+  const allVisibleSelected = filteredArchive.length > 0 && selectedVisibleArchive.length === filteredArchive.length;
+
+  const toggleArchiveSelection = (id: string) => {
+    setSelectedArchiveIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllVisibleArchive = () => {
+    setSelectedArchiveIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) filteredArchive.forEach((item) => next.delete(item.id));
+      else filteredArchive.forEach((item) => next.add(item.id));
+      return next;
+    });
+  };
+
+  const confirmBulkDeleteArchive = async () => {
+    // Non-QC users can only request deletion; documents already awaiting QC are skipped.
+    const targets = isQcDme ? selectedVisibleArchive : selectedVisibleArchive.filter((item) => !item.deleteRequested);
+    if (targets.length === 0) return;
+    const reason = bulkDeleteReason.trim();
+    if (!isQcDme && !reason) {
+      toast.error('Wajib mengisi alasan/remark pengajuan hapus ke QC DME!');
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    const done: string[] = [];
+    try {
+      // Firestore batches hold at most 500 writes.
+      for (let i = 0; i < targets.length; i += 450) {
+        const chunk = targets.slice(i, i + 450);
+        const batch = writeBatch(db);
+        for (const item of chunk) {
+          const ref = doc(db, 'sop_eop_documents', item.id);
+          if (isQcDme) batch.delete(ref);
+          else batch.update(ref, {
+            deleteRequested: true,
+            deleteRequestedBy: user?.email || 'User',
+            deleteRequestedTo: 'qcdme@dme.com',
+            deleteReason: reason,
+            deleteRequestedAt: serverTimestamp(),
+          });
+        }
+        await batch.commit();
+        done.push(...chunk.map((item) => item.id));
+      }
+    } catch (err: any) {
+      toast.error(`Gagal memproses sebagian dokumen: ${err?.message || err}`);
+    } finally {
+      const doneIds = new Set(done);
+      if (doneIds.size > 0) {
+        if (isQcDme) {
+          setArchiveList((prev) => prev.filter((d) => !doneIds.has(d.id)));
+          if (currentSopDocId && doneIds.has(currentSopDocId)) setCurrentSopDocId(null);
+          if (currentEopDocId && doneIds.has(currentEopDocId)) setCurrentEopDocId(null);
+          toast.success(`${doneIds.size} dokumen berhasil dihapus secara permanen`);
+        } else {
+          setArchiveList((prev) => prev.map((d) => (doneIds.has(d.id)
+            ? { ...d, deleteRequested: true, deleteRequestedBy: user?.email || 'User', deleteReason: reason }
+            : d)));
+          toast.success(`Permohonan hapus ${doneIds.size} dokumen telah dikirim ke QC DME (qcdme@dme.com)`);
+        }
+        setSelectedArchiveIds((prev) => {
+          const next = new Set(prev);
+          doneIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+      if (doneIds.size === targets.length) {
+        setBulkDeleteOpen(false);
+        setBulkDeleteReason('');
+      }
+      setIsBulkDeleting(false);
+    }
+  };
 
   const userEmail = (user?.email || '').trim().toLowerCase();
   const isAuthorized = userEmail === 'dwimitra@co.id' || userEmail === 'qcdme@dme.com' || isQcDme;
@@ -2787,14 +2878,62 @@ export function SOPEOPManagement() {
               </p>
             </div>
           ) : (
+            <div className="space-y-3">
+            {/* Bulk selection bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm">
+              <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  ref={(el) => { if (el) el.indeterminate = selectedVisibleArchive.length > 0 && !allVisibleSelected; }}
+                  onChange={toggleSelectAllVisibleArchive}
+                  className="w-4 h-4 accent-red-600 cursor-pointer"
+                  aria-label="Pilih semua dokumen yang tampil"
+                />
+                <span>Pilih Semua ({filteredArchive.length})</span>
+                {selectedVisibleArchive.length > 0 && (
+                  <span className="text-slate-500 font-semibold">· {selectedVisibleArchive.length} terpilih</span>
+                )}
+              </label>
+              {selectedVisibleArchive.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedArchiveIds(new Set())}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+                  >
+                    Batal Pilih
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setBulkDeleteReason(''); setBulkDeleteOpen(true); }}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-sm transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isQcDme ? 'Hapus' : 'Ajukan Hapus'} Terpilih ({selectedVisibleArchive.length})</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredArchive.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                  className={`bg-white rounded-2xl p-5 shadow-sm border hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
+                    selectedArchiveIds.has(item.id) ? 'border-red-400 ring-2 ring-red-200' : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedArchiveIds.has(item.id)}
+                        onChange={() => toggleArchiveSelection(item.id)}
+                        className="w-4 h-4 accent-red-600 cursor-pointer"
+                        aria-label={`Pilih ${item.documentTitle || 'dokumen'}`}
+                      />
                       <span
                         className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
                           item.type === 'SOP'
@@ -2804,8 +2943,9 @@ export function SOPEOPManagement() {
                       >
                         {item.type}
                       </span>
+                      </div>
                       <span className="text-[11px] text-slate-400">
-                        {item.workLocationEn || 'Neutra DC Cikarang'}
+                        {item.workLocationEn || '-'}
                       </span>
                     </div>
 
@@ -2881,9 +3021,118 @@ export function SOPEOPManagement() {
                 </div>
               ))}
             </div>
+            </div>
           )}
         </div>
       )}
+
+      {/* ─── MODAL IN-APP: KONFIRMASI HAPUS BANYAK DOKUMEN ARSIP ──────────── */}
+      <AnimatePresence>
+        {bulkDeleteOpen && (() => {
+          const skipped = isQcDme ? 0 : selectedVisibleArchive.filter((item) => item.deleteRequested).length;
+          const targetCount = selectedVisibleArchive.length - skipped;
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => !isBulkDeleting && setBulkDeleteOpen(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Konfirmasi hapus dokumen terpilih"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.2 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-200/80 max-w-md w-full relative shadow-2xl text-slate-800"
+              >
+                <div className="flex items-center justify-center mb-5">
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+                    <Trash2 className="w-8 h-8 text-rose-600" />
+                  </div>
+                </div>
+                <div className="text-center mb-5">
+                  <h3 className="text-xl font-black text-slate-900 mb-2">
+                    {isQcDme ? `Hapus ${targetCount} Dokumen Permanen?` : `Ajukan Hapus ${targetCount} Dokumen ke QC DME`}
+                  </h3>
+                  <p className="text-slate-600 text-sm">
+                    {isQcDme
+                      ? 'Dokumen berikut akan dihapus secara permanen dari arsip Cloud.'
+                      : 'Permohonan hapus akan diteruskan ke akun QC DME (qcdme@dme.com) untuk ditinjau dan disetujui.'}
+                  </p>
+                </div>
+
+                <ul className="max-h-40 overflow-y-auto bg-slate-50 rounded-2xl p-3 border border-slate-200/80 space-y-1.5 text-left">
+                  {selectedVisibleArchive.map((item) => (
+                    <li key={item.id} className="flex items-start gap-2 text-xs">
+                      <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded-md shrink-0 ${
+                        item.type === 'SOP' ? 'bg-red-100 text-red-700' : 'bg-fuchsia-100 text-fuchsia-700'
+                      }`}>
+                        {item.type}
+                      </span>
+                      <span className="font-semibold text-slate-800 line-clamp-1">{item.documentTitle || 'Dokumen Tanpa Judul'}</span>
+                      {!isQcDme && item.deleteRequested && (
+                        <span className="ml-auto shrink-0 text-[10px] font-bold text-amber-600">sudah diajukan</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {skipped > 0 && (
+                  <p className="mt-2 text-[11px] text-amber-700">{skipped} dokumen sudah menunggu persetujuan QC dan akan dilewati.</p>
+                )}
+
+                {!isQcDme && targetCount > 0 && (
+                  <div className="mt-3 text-left">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                      Alasan / Remark Hapus <span className="text-rose-600 lowercase">* (wajib diisi)</span>
+                    </label>
+                    <textarea
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-amber-500 rounded-xl p-2.5 text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20 text-xs h-20 resize-none placeholder-slate-400"
+                      placeholder="Alasan penghapusan berlaku untuk semua dokumen terpilih..."
+                      value={bulkDeleteReason}
+                      onChange={(e) => setBulkDeleteReason(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <p className="text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 bg-rose-50/80 border border-rose-200/60 rounded-xl py-2 px-3 mt-3">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>
+                    {isQcDme
+                      ? 'Penghapusan bersifat permanen dan tidak dapat dibatalkan'
+                      : 'Hanya akun QC DME (qcdme@dme.com) yang berwenang mengeksekusi hapus permanen'}
+                  </span>
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => setBulkDeleteOpen(false)}
+                    disabled={isBulkDeleting}
+                    className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm border border-slate-200 disabled:opacity-60 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmBulkDeleteArchive}
+                    disabled={isBulkDeleting || targetCount === 0 || (!isQcDme && !bulkDeleteReason.trim())}
+                    className="py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                  >
+                    {isBulkDeleting ? <RotateCcw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    <span>{isBulkDeleting ? 'Memproses...' : isQcDme ? 'Ya, Hapus Semua' : 'Kirim Pengajuan'}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ─── MODAL IN-APP: KONFIRMASI HAPUS DOKUMEN ARSIP ─────────────────── */}
       <AnimatePresence>
