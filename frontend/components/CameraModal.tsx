@@ -14,6 +14,9 @@ interface CameraModalProps {
   description?: string;
   maintenanceName?: string;
   specificDetail?: string;
+  // Asks the camera for its highest resolution and keeps native-camera photos at full size
+  // (drafter BOQ photos). Reports stay at 1280 px.
+  fullResolution?: boolean;
 }
 
 interface LocationCache {
@@ -25,7 +28,7 @@ interface LocationCache {
 }
 let lastLocationCache: LocationCache | null = null;
 
-export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentasi', description, maintenanceName, specificDetail }: CameraModalProps) {
+export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentasi', description, maintenanceName, specificDetail, fullResolution = false }: CameraModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -251,8 +254,8 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         const constraints = {
           video: {
             facingMode: facingMode,
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            width: { ideal: fullResolution ? 4096 : 1280 },
+            height: { ideal: fullResolution ? 3072 : 720 }
           }
         };
         const newStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -446,7 +449,9 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
     try {
       toast.loading('Memproses foto kamera HP...', { id: 'native-cam' });
-      const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.85, maxFileSizeMB: 10 });
+      const compressed = await compressImage(file, fullResolution
+        ? { maxWidth: 8192, maxHeight: 8192, quality: 0.92, maxFileSizeMB: 40 }
+        : { maxWidth: 1280, maxHeight: 1280, quality: 0.85, maxFileSizeMB: 10 });
 
       capturedTimestampRef.current = new Date().toLocaleString('id-ID', {
         day: '2-digit', month: '2-digit', year: 'numeric',

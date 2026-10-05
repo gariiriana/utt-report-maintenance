@@ -9,6 +9,7 @@ import { BOQ_EDITABLE_FIELDS, BOQ_FIELD_LABELS, BOQ_SOURCE, CUSTOM_CATEGORY, NO_
 import { boqErrorMessage } from '@/utils/boqValidation';
 import { cancelBOQPhotoUpload, onBOQOutboxEvent, queueBOQCreate, queueBOQPhotoDelete, queueBOQPhotos, queueBOQText, resolveBOQConflict, useBOQOutbox, type BOQTextOp } from '@/utils/boqOutbox';
 import { useAuth } from './AuthContext';
+import { CameraModal } from './CameraModal';
 import { ImageEditor } from './ImageEditor';
 
 const inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -373,7 +374,8 @@ function BOQEditor({ item, uid, override, onClose }: { item: BOQItem; uid: strin
   const [hasMore, setHasMore] = useState(false);
   const [photosLoading, setPhotosLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const draftKey = 'dwimitra-boq-draft-v3:' + uid + ':' + item.id;
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const draftKey ='dwimitra-boq-draft-v3:' + uid + ':' + item.id;
   const dirty = !sameFields(fields, savedFields);
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
@@ -459,6 +461,15 @@ function BOQEditor({ item, uid, override, onClose }: { item: BOQItem; uid: strin
       if (queued) toast.success(`${queued} foto masuk antrean dan dikirim otomatis.`);
     } finally { setPreparing(false); }
   };
+  // The camera returns a watermarked JPEG data URL; it joins the same queue as uploaded files.
+  // Decoded by hand: the production CSP does not allow fetch() on data: URLs.
+  const handleCameraCapture = async (dataUrl: string) => {
+    const binary = atob(dataUrl.slice(dataUrl.indexOf(',') + 1));
+    const blob = new Blob([Uint8Array.from(binary, char => char.charCodeAt(0))], { type: 'image/jpeg' });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
+    const name = `${item.ciName.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').slice(0, 40) || 'foto'}_${stamp}.jpg`;
+    await selectFiles([new File([blob], name, { type: 'image/jpeg' })]);
+  };
   const handleDeletePhoto = async (photo: BOQPhoto) => {
     await queueBOQPhotoDelete(item.id, photo);
     toast.success(navigator.onLine ? `Foto "${photo.name}" dihapus.` : `Foto "${photo.name}" dihapus; server diperbarui saat ada sinyal.`);
@@ -493,8 +504,11 @@ function BOQEditor({ item, uid, override, onClose }: { item: BOQItem; uid: strin
         {notice && <p className="mb-4 rounded-xl bg-sky-50 p-3 text-xs text-sky-900">{notice}</p>}
         {error && <div role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</div>}
         <div className="mb-6 border-b pb-6">
-          <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Foto item{visiblePhotos.length + jobs.length > 0 && <span className="ml-1.5 text-sm font-normal text-slate-500">({visiblePhotos.length + jobs.length})</span>}</h3><button className={buttonClass} disabled={preparing || !outbox.ready} onClick={() => fileInput.current?.click()}>{preparing ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />} {preparing ? 'Memproses…' : 'Upload foto'}</button></div>
-          <p className="mt-2 text-xs text-slate-500">JPG, PNG, WebP · resolusi asli, dikompres otomatis sebelum dikirim. Foto disimpan di HP dulu, jadi aman walau sinyal putus.</p>
+          <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Foto item{visiblePhotos.length + jobs.length > 0 && <span className="ml-1.5 text-sm font-normal text-slate-500">({visiblePhotos.length + jobs.length})</span>}</h3><div className="flex gap-2">
+            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={preparing || !outbox.ready} onClick={() => setCameraOpen(true)}><Camera size={17} /> Ambil foto</button>
+            <button className={buttonClass} disabled={preparing || !outbox.ready} onClick={() => fileInput.current?.click()}>{preparing ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />} {preparing ? 'Memproses…' : 'Upload'}</button>
+          </div></div>
+          <p className="mt-2 text-xs text-slate-500">Ambil langsung dari kamera atau upload JPG, PNG, WebP · resolusi asli, dikompres otomatis sebelum dikirim. Foto disimpan di HP dulu, jadi aman walau sinyal putus.</p>
           <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; void selectFiles(files); }} />
           {photoError && <div role="status" className="mt-3 text-xs text-amber-800">{photoError}<button className="ml-2 font-semibold underline" disabled={photosLoading} onClick={() => void loadPhotos()}>Coba muat lagi</button></div>}
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -512,7 +526,15 @@ function BOQEditor({ item, uid, override, onClose }: { item: BOQItem; uid: strin
             ))}
           </div>
           {photosLoading && <p className="mt-3 text-sm text-slate-500">Memuat foto…</p>}
-          {!photosLoading && !visiblePhotos.length && !jobs.length && <button type="button" disabled={preparing || !outbox.ready} onClick={() => fileInput.current?.click()} className="mt-3 flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500 transition-colors hover:border-blue-400 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-60"><Camera size={26} className="text-slate-400" /><span className="font-semibold text-slate-700">Belum ada foto. Ketuk untuk ambil / upload foto</span></button>}
+          {!photosLoading && !visiblePhotos.length && !jobs.length && <button type="button" disabled={preparing || !outbox.ready} onClick={() => setCameraOpen(true)} className="mt-3 flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500 transition-colors hover:border-blue-400 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-60"><Camera size={26} className="text-slate-400" /><span className="font-semibold text-slate-700">Belum ada foto. Ketuk untuk ambil foto</span></button>}
+          {cameraOpen && <CameraModal
+            fullResolution
+            title="Ambil Foto Aset"
+            maintenanceName="BOQ"
+            specificDetail={item.room ? `${item.ciName} · ${roomLabel(item.room)}` : item.ciName}
+            description={item.classId || item.sheet}
+            onCapture={dataUrl => void handleCameraCapture(dataUrl).catch(captureError => toast.error('Foto kamera gagal diproses: ' + boqErrorMessage(captureError)))}
+            onClose={() => setCameraOpen(false)} />}
           {hasMore && <button className={buttonClass + ' mt-3 w-full'} disabled={photosLoading} onClick={() => void loadPhotos(true)}>Muat 20 foto berikutnya</button>}
         </div>
         <h3 className="mb-3 font-semibold">Data aset</h3>
