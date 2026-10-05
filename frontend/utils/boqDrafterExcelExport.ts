@@ -1,9 +1,9 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { customBOQItemOf, getBOQPhotoBlob, readAllBOQOverrides, readAllBOQPhotoRefs, readBOQItemPhotoRefs, type BOQPhotoRef } from '@/api/boq';
-import type { BOQFields, BOQOverride, RoomBOQItem } from '@/types/boq';
+import type { BOQEditableField, BOQItem, BOQOverride } from '@/types/boq';
+import { BOQ_EDITABLE_FIELDS, NO_ROOM, cellValue, roomKeyOf, roomLabelsOf, tableOf, tableOrder } from './boqCatalog';
 
-const NO_ROOM = 'Tanpa Ruangan';
 const THUMB_EDGE = 480;
 const THUMB_QUALITY = 0.75;
 const PHOTO_COL_WIDTH = 24;
@@ -11,26 +11,31 @@ const PHOTO_COL_PX = PHOTO_COL_WIDTH * 7 + 5;
 const PHOTO_ROW_PT = 96;
 const PHOTO_ROW_PX = Math.round(PHOTO_ROW_PT * 4 / 3);
 const PHOTO_BOX = { width: 160, height: 120 };
-const TEXT_COLUMNS = 11;
-const EDITABLE: (keyof BOQFields)[] = ['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer'];
-const COLUMNS: { header: string; width: number }[] = [
-  { header: 'No', width: 5 }, { header: 'Room', width: 18 }, { header: 'Class Id', width: 32 },
-  { header: 'CI Name*', width: 34 }, { header: 'CI Description*', width: 38 }, { header: 'Capacity', width: 16 },
-  { header: 'Model/Version', width: 20 }, { header: 'Floor', width: 8 }, { header: 'Serial Number', width: 22 },
-  { header: 'Production Year', width: 12 }, { header: 'Manufacturer / Principle', width: 24 },
+// Every sheet of the BOQ has its own columns; the export keeps the shared ones as columns and
+// lists the remaining non-empty BOQ columns of each row in "Data BOQ lainnya".
+const COLUMNS: { header: string; width: number; field?: BOQEditableField }[] = [
+  { header: 'No', width: 5 }, { header: 'Room', width: 20 }, { header: 'Kategori', width: 20 }, { header: 'Class Id', width: 20 },
+  { header: 'CI Name*', width: 34, field: 'ciName' }, { header: 'CI Description*', width: 34, field: 'ciDescription' },
+  { header: 'Capacity', width: 16, field: 'capacity' }, { header: 'Serial Number', width: 22, field: 'serialNumber' },
+  { header: 'Production Year', width: 12, field: 'productionYear' }, { header: 'Manufacturer / Principle', width: 22, field: 'manufacturer' },
+  { header: 'Asset ID', width: 16, field: 'assetId' }, { header: 'TAG', width: 16, field: 'tag' }, { header: 'Model/Version', width: 20, field: 'model' },
+  { header: 'Floor', width: 8 }, { header: 'Data BOQ lainnya', width: 44 },
 ];
+const TEXT_COLUMNS = COLUMNS.length;
+const SHARED_FIELDS = new Set<string>([...BOQ_EDITABLE_FIELDS, 'no', 'classId', 'room', 'floor']);
 const FONT: Partial<ExcelJS.Font> = { name: 'Times New Roman', size: 10, color: { argb: 'FF000000' } };
 const THIN: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF000000' } };
 const BORDER: Partial<ExcelJS.Borders> = { top: THIN, left: THIN, bottom: THIN, right: THIN };
 
-interface Entry { item: RoomBOQItem; override?: BOQOverride; photos: BOQPhotoRef[] }
+interface Entry { item: BOQItem; override?: BOQOverride; photos: BOQPhotoRef[] }
 interface Thumb { base64: string; width: number; height: number }
 export interface BOQExportResult { fileName: string; itemCount: number; roomCount: number; photoCount: number; failedPhotos: number; warnings: string[] }
 
-const roomOf = (item: RoomBOQItem) => {
-  const room = item.room?.trim();
-  return !room || room.toUpperCase() === 'N/A' ? NO_ROOM : room;
-};
+const otherColumns = (item: BOQItem, override?: BOQOverride) => tableOf(item).columns
+  .map((column, index) => ({ column, value: cellValue(item, index, override) }))
+  .filter(({ column, value }) => value && !SHARED_FIELDS.has(column.field || ''))
+  .map(({ column, value }) => `${column.label}: ${value}`)
+  .join('\n');
 
 function sheetNameFor(room: string, used: Set<string>) {
   const base = (room.replace(/[\\/?*[\]:]/g, '-').replace(/^'+|'+$/g, '').trim() || NO_ROOM).slice(0, 31);
@@ -66,7 +71,7 @@ async function toThumbnail(blob: Blob): Promise<Thumb> {
   return { base64: canvas.toDataURL('image/jpeg', THUMB_QUALITY).split(',')[1], width, height };
 }
 
-export async function exportDrafterBOQExcel(items: RoomBOQItem[], onProgress: (message: string) => void): Promise<BOQExportResult> {
+export async function exportDrafterBOQExcel(items: BOQItem[], onProgress: (message: string) => void): Promise<BOQExportResult> {
   const warnings: string[] = [];
   onProgress('Membaca perubahan BOQ…');
   const overrides = await readAllBOQOverrides();
@@ -90,12 +95,14 @@ export async function exportDrafterBOQExcel(items: RoomBOQItem[], onProgress: (m
   const customItems = Object.entries(overrides).filter(([, value]) => value.custom).map(([id, value]) => customBOQItemOf(id, value));
   const exportItems = [...items, ...customItems].filter(item => !overrides[item.id]?.deleted);
 
+  // Grouped like the page: case-insensitive room key, labelled with the same spelling.
   const rooms = new Map<string, Entry[]>();
-  for (const item of exportItems) {
-    const override = overrides[item.id];
-    const photos = photosByItem.get(item.id) || [];
-    const room = roomOf(item);
-    rooms.set(room, [...(rooms.get(room) || []), { item, override, photos }]);
+  const roomLabels = roomLabelsOf(exportItems);
+  const sorted = [...exportItems].sort((a, b) => tableOrder(a.tableId) - tableOrder(b.tableId) || a.sourceRow - b.sourceRow);
+  for (const item of sorted) {
+    const key = roomKeyOf(item.room);
+    const room = key ? roomLabels.get(key)! : NO_ROOM;
+    rooms.set(room, [...(rooms.get(room) || []), { item, override: overrides[item.id], photos: photosByItem.get(item.id) || [] }]);
   }
 
   const allPhotos = [...rooms.values()].flat().flatMap(entry => entry.photos);
@@ -134,23 +141,28 @@ export async function exportDrafterBOQExcel(items: RoomBOQItem[], onProgress: (m
 
     entries.forEach((entry, index) => {
       const { item, override, photos } = entry;
-      const value = { ...item, ...override };
       const rowNumber = index + 2;
       const row = sheet.getRow(rowNumber);
-      [index + 1, roomOf(item), item.classId, value.ciName, value.ciDescription, value.capacity, item.model, item.floor, value.serialNumber || '', value.productionYear || '', value.manufacturer || '']
-        .forEach((cellValue, column) => { row.getCell(column + 1).value = cellValue; });
+      const fixed: Record<string, string | number> = {
+        'No': index + 1,
+        'Room': item.room ? item.room + (item.roomFromLookup ? ' (BOQ per ruangan)' : '') : NO_ROOM,
+        'Kategori': item.sheet + (item.section ? ' — ' + item.section : ''),
+        'Class Id': item.classId, 'Floor': item.floor, 'Data BOQ lainnya': otherColumns(item, override),
+      };
+      COLUMNS.forEach((column, columnIndex) => {
+        row.getCell(columnIndex + 1).value = column.field ? override?.[column.field] ?? item[column.field] : fixed[column.header];
+      });
       for (let column = 1; column <= TEXT_COLUMNS + photoColumns; column++) {
         const cell = row.getCell(column);
         cell.font = FONT;
         cell.border = BORDER;
         cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
       }
-      if (override) {
-        for (const field of EDITABLE) {
-          if ((override[field] ?? '') === (item[field] ?? '')) continue;
-          const column = { ciName: 4, ciDescription: 5, capacity: 6, serialNumber: 9, productionYear: 10, manufacturer: 11 }[field];
-          row.getCell(column).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
-        }
+      if (override && !item.custom) {
+        COLUMNS.forEach((column, columnIndex) => {
+          if (!column.field || (override[column.field] ?? item[column.field]) === item[column.field]) return;
+          row.getCell(columnIndex + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
+        });
       }
       if (photos.length) row.height = PHOTO_ROW_PT;
       photos.forEach((ref, photoIndex) => {

@@ -6,9 +6,11 @@ interface LogoutConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   userEmail: string;
+  // Shown prominently, e.g. when work is still waiting to be sent.
+  warning?: string;
 }
 
-export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: LogoutConfirmModalProps) {
+export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail, warning }: LogoutConfirmModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -67,6 +69,11 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                 <p className="text-slate-900 font-bold text-sm sm:text-base bg-slate-50 rounded-xl px-4 py-2 mt-3 border border-slate-200 truncate">
                   {userEmail}
                 </p>
+                {warning && (
+                  <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-left text-xs font-semibold text-red-800 sm:text-sm">
+                    ⚠️ {warning}
+                  </p>
+                )}
                 <p className="text-amber-700 font-medium text-xs sm:text-sm mt-3">
                   💡 Anda harus masuk kembali untuk mengakses aplikasi
                 </p>

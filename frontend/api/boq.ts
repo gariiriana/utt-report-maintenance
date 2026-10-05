@@ -1,30 +1,35 @@
 import { Bytes, collection, collectionGroup, deleteDoc, doc, documentId, getDoc, getDocFromServer, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
-import type { BOQFields, BOQOverride, BOQPhoto, NewBOQItemInput, RoomBOQItem } from '@/types/boq';
-import { BOQConflictError, assertBOQRevision, validateBOQFields, validateNewBOQItem } from '@/utils/boqValidation';
+import type { BOQFields, BOQItem, BOQOverride, BOQPhoto, NewBOQItemInput } from '@/types/boq';
+import { BOQ_EDITABLE_FIELDS, validateBOQFields, validateNewBOQItem } from '@/utils/boqValidation';
 const itemRef = (id: string) => doc(db, 'boq_items', id);
-const PHOTO_CHUNK_BYTES = 900 * 1024;
-const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+// Firestore accepts at most 30 values in an `in` filter.
+const IN_LIMIT = 30;
 // Only changed items have documents; the inspected workbook remains the baseline.
 export async function readBOQPage(ids: string[]): Promise<Record<string, BOQOverride>> {
-  if (!ids.length) return {};
-  const result = await getDocs(query(collection(db, 'boq_items'), where(documentId(), 'in', ids)));
-  return Object.fromEntries(result.docs.map(snapshot => [snapshot.id, snapshot.data() as BOQOverride]));
+  const batches = Array.from({ length: Math.ceil(ids.length / IN_LIMIT) }, (_, index) => ids.slice(index * IN_LIMIT, (index + 1) * IN_LIMIT));
+  const results = await Promise.all(batches.map(batch => getDocs(query(collection(db, 'boq_items'), where(documentId(), 'in', batch)))));
+  return Object.fromEntries(results.flatMap(result => result.docs.map(snapshot => [snapshot.id, snapshot.data() as BOQOverride])));
 }
 export async function readBOQItem(id: string): Promise<BOQOverride | null> {
   const snapshot = await getDoc(itemRef(id));
   return snapshot.exists() ? snapshot.data() as BOQOverride : null;
 }
-// Custom items (added by a drafter) keep their placement in the document itself.
-const customFieldsOf = (item: RoomBOQItem) => item.custom ? { custom: true, room: item.room, classId: item.classId, floor: item.floor } : {};
-export const customBOQItemOf = (id: string, data: BOQOverride): RoomBOQItem => ({
-  id, sourceSheet: 'CUSTOM', sourceRow: 0, custom: true,
-  room: data.room || '', classId: data.classId || '', floor: data.floor || '', model: '',
-  ciName: data.ciName, ciDescription: data.ciDescription, capacity: data.capacity,
-  serialNumber: data.serialNumber || '', productionYear: data.productionYear || '', manufacturer: data.manufacturer || '',
+const fieldsOfDoc = (value: Partial<BOQFields>): BOQFields =>
+  Object.fromEntries(BOQ_EDITABLE_FIELDS.map(field => [field, value[field] || ''])) as BOQFields;
+// Custom items (added by a drafter) keep their placement in the document itself. Older custom
+// documents have no category; they are listed under "Item Tambahan".
+const customFieldsOf = (item: BOQItem) => item.custom
+  ? { custom: true, room: item.room, classId: item.classId, floor: item.floor, ...(item.sheet && item.sheet !== 'Item Tambahan' ? { category: item.sheet } : {}) }
+  : {};
+export const customBOQItemOf = (id: string, data: BOQOverride): BOQItem => ({
+  ...fieldsOfDoc(data),
+  id, tableId: 'custom', sheet: data.category || 'Item Tambahan', sourceSheet: 'CUSTOM', sourceRow: 0, custom: true, values: [],
+  room: data.room || '', roomFromLookup: false, classId: data.classId || '', floor: data.floor || '',
 });
 // Items added in the app: every document with `custom: true` that is not deleted.
-export async function readCustomBOQItems(): Promise<RoomBOQItem[]> {
+export async function readCustomBOQItems(): Promise<BOQItem[]> {
   const result = await getDocs(query(collection(db, 'boq_items'), where('custom', '==', true)));
   return result.docs
     .filter(snapshot => !snapshot.data().deleted)
@@ -36,115 +41,77 @@ export async function readDeletedBOQIds(): Promise<Set<string>> {
   const result = await getDocs(query(collection(db, 'boq_items'), where('deleted', '==', true)));
   return new Set(result.docs.map(snapshot => snapshot.id));
 }
-export async function createBOQItem(input: NewBOQItemInput, uid: string): Promise<RoomBOQItem> {
-  const clean = validateNewBOQItem(input);
-  const id = 'room-v1-custom-' + crypto.randomUUID().replace(/-/g, '');
-  await setDoc(itemRef(id), {
-    ...clean, custom: true, revision: 1, sourceSheet: 'CUSTOM', sourceRow: 0, updatedBy: uid, updatedAt: serverTimestamp(),
-  });
-  return customBOQItemOf(id, { ...clean, revision: 1 });
+export const newCustomBOQItemId = () => 'boq-v2-custom-' + crypto.randomUUID().replace(/-/g, '');
+export function customBOQItemFromInput(id: string, input: NewBOQItemInput): BOQItem {
+  const { category, ...clean } = validateNewBOQItem(input);
+  return customBOQItemOf(id, { ...clean, ...(category ? { category } : {}), revision: 1 });
 }
-// Soft delete: photos and history stay in Firestore, the item just stops being listed and exported.
-export async function deleteBOQItem(item: RoomBOQItem, uid: string): Promise<void> {
-  const latest = await readBOQItem(item.id);
-  const fields = latest ?? item;
-  await writeBOQItem(item, fieldsOfDoc(fields), latest?.revision ?? 0, uid, true);
+
+// Writes go through the offline outbox (utils/boqOutbox), which reads the server version first,
+// merges per field and then writes the next revision. The rules reject a write whose revision
+// is not exactly one above the stored one, so concurrent edits are never silently overwritten.
+export interface ServerBOQItem {
+  exists: boolean; fields: BOQFields; revision: number; deleted: boolean;
+  updatedBy?: string; updatedByName?: string; updatedAt?: number;
 }
-const fieldsOfDoc = (value: BOQFields): BOQFields => ({
-  ciName: value.ciName, ciDescription: value.ciDescription, capacity: value.capacity,
-  serialNumber: value.serialNumber || '', productionYear: value.productionYear || '', manufacturer: value.manufacturer || '',
-});
-export const saveBOQItem = (item: RoomBOQItem, fields: BOQFields, expectedRevision: number, uid: string) =>
-  writeBOQItem(item, fields, expectedRevision, uid, false);
-async function writeBOQItem(item: RoomBOQItem, fields: BOQFields, expectedRevision: number, uid: string, deleted: boolean) {
+export async function readBOQItemFromServer(item: BOQItem): Promise<ServerBOQItem> {
+  const snapshot = await getDocFromServer(itemRef(item.id));
+  // Older documents may lack newer fields; those keep the workbook value.
+  if (!snapshot.exists()) return { exists: false, fields: fieldsOfDoc(item), revision: 0, deleted: false };
+  const data = snapshot.data();
+  return {
+    exists: true, fields: fieldsOfDoc({ ...fieldsOfDoc(item), ...data }), revision: data.revision || 0, deleted: !!data.deleted,
+    updatedBy: data.updatedBy, updatedByName: data.updatedByName, updatedAt: data.updatedAt?.toMillis?.(),
+  };
+}
+export async function putBOQItem(item: BOQItem, fields: BOQFields, revision: number, user: { uid: string; name?: string }, deleted: boolean): Promise<BOQOverride> {
   const clean = validateBOQFields(fields);
-  const nextRevision = expectedRevision + 1;
-  const ref = itemRef(item.id);
-  try {
-    // Firestore rules compare this revision with the stored document atomically,
-    // so a transaction read is unnecessary and would double the request count.
-    await setDoc(ref, {
-      ...clean,
-      ...customFieldsOf(item),
-      ...(deleted ? { deleted: true } : {}),
-      revision: nextRevision,
-      sourceSheet: item.sourceSheet,
-      sourceRow: item.sourceRow,
-      updatedBy: uid,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    // An update rejected by the revision rule is a concurrent edit. Confirm only
-    // on this error path so normal saves stay a single Firestore write.
-    if ((error as { code?: string })?.code === 'permission-denied') {
-      try {
-        const latest = await getDocFromServer(ref);
-        const currentRevision = latest.exists() ? latest.data().revision : 0;
-        if (currentRevision !== expectedRevision) assertBOQRevision(currentRevision, expectedRevision);
-      } catch (checkError) {
-        if (checkError instanceof BOQConflictError) throw checkError;
-      }
-    }
-    throw error;
-  }
-  return { ...clean, revision: nextRevision };
+  await setDoc(itemRef(item.id), {
+    ...clean,
+    ...customFieldsOf(item),
+    ...(deleted ? { deleted: true } : {}),
+    revision,
+    sourceSheet: item.sourceSheet,
+    sourceRow: item.sourceRow,
+    updatedBy: user.uid,
+    ...(user.name ? { updatedByName: user.name.slice(0, 200) } : {}),
+    updatedAt: serverTimestamp(),
+  });
+  return { ...clean, revision, ...(deleted ? { deleted: true } : {}), ...(item.custom ? { custom: true, room: item.room, classId: item.classId, floor: item.floor } : {}) };
 }
+
 export async function readBOQPhotos(id: string, cursor?: QueryDocumentSnapshot) {
   const photos = collection(db, 'boq_items', id, 'photos');
   const snapshot = await getDocs(query(photos, orderBy(documentId()), ...(cursor ? [startAfter(cursor)] : []), limit(21)));
   const visible = snapshot.docs.slice(0, 20);
   return { photos: visible.map(snapshot => ({ ...snapshot.data(), id: snapshot.id }) as BOQPhoto), cursor: visible[visible.length - 1], hasMore: snapshot.docs.length > 20 };
 }
-export async function photoDigest(file: File) {
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size <= 0 || file.size > MAX_PHOTO_BYTES) {
-    throw new Error(file.name + ': gunakan JPG, PNG, atau WebP maksimal 10 MB per foto.');
-  }
-  const hash = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
-}
-// Content-addressed chunk IDs make retries idempotent without a Firestore read.
-export async function uploadBOQPhoto(itemId: string, id: string, file: File, uid: string, progress: (value: number) => void) {
-  const metadataRef = doc(db, 'boq_items', itemId, 'photos', id);
-  const totalChunks = Math.ceil(file.size / PHOTO_CHUNK_BYTES);
-  let nextIndex = 0;
-  let uploadedBytes = 0;
-  const workers = Array.from({ length: Math.min(3, totalChunks) }, async () => {
-    while (nextIndex < totalChunks) {
-      const index = nextIndex++;
-      const start = index * PHOTO_CHUNK_BYTES;
-      const bytes = new Uint8Array(await file.slice(start, Math.min(start + PHOTO_CHUNK_BYTES, file.size)).arrayBuffer());
-      const chunkRef = doc(db, 'boq_items', itemId, 'photos', id, 'chunks', String(index).padStart(5, '0'));
-      await setDoc(chunkRef, { index, data: Bytes.fromUint8Array(bytes), createdAt: serverTimestamp() });
-      uploadedBytes += bytes.byteLength;
-      progress(Math.min(99, Math.round(uploadedBytes / file.size * 100)));
-    }
-  });
-  await Promise.all(workers);
 
-  const photo: BOQPhoto = {
-    id,
-    path: `boq_items/${itemId}/photos/${id}`,
-    storageType: 'firestore-bytes',
-    totalChunks,
-    name: file.name.slice(0, 500),
-    size: file.size,
-    contentType: file.type,
-    uploadedBy: uid,
-  };
-  // Publish the manifest last: interrupted uploads remain invisible and can be retried safely.
-  await setDoc(metadataRef, {
-    path: photo.path,
-    storageType: photo.storageType,
+// Small chunks keep each request short on a weak connection; the outbox records finished
+// chunks, so an interrupted upload resumes instead of starting over. Chunk IDs are
+// positional within a content-addressed photo, so repeating a write is harmless.
+export const PHOTO_CHUNK_BYTES = 256 * 1024;
+export async function putBOQPhotoChunk(itemId: string, photoId: string, index: number, bytes: Uint8Array) {
+  const chunkRef = doc(db, 'boq_items', itemId, 'photos', photoId, 'chunks', String(index).padStart(5, '0'));
+  await setDoc(chunkRef, { index, data: Bytes.fromUint8Array(bytes), createdAt: serverTimestamp() });
+}
+// Published last: an incomplete upload stays invisible to readers.
+export async function publishBOQPhoto(itemId: string, photo: Pick<BOQPhoto, 'id' | 'totalChunks' | 'name' | 'size' | 'contentType' | 'uploadedBy'>, thumb: Uint8Array): Promise<BOQPhoto> {
+  const value = {
+    path: `boq_items/${itemId}/photos/${photo.id}`,
+    storageType: 'firestore-bytes' as const,
     totalChunks: photo.totalChunks,
-    name: photo.name,
+    name: photo.name.slice(0, 500),
     size: photo.size,
     contentType: photo.contentType,
     uploadedBy: photo.uploadedBy,
-    createdAt: serverTimestamp(),
-  });
-  progress(100);
-  return photo;
+    thumb: Bytes.fromUint8Array(thumb),
+  };
+  await setDoc(doc(db, 'boq_items', itemId, 'photos', photo.id), { ...value, createdAt: serverTimestamp() });
+  return { ...value, id: photo.id };
 }
+// Thumbnails are stored inside the photo document, so listing photos does not download full images.
+export const getBOQThumbURL = (photo: BOQPhoto) => photo.thumb ? URL.createObjectURL(new Blob([photo.thumb.toUint8Array() as BlobPart], { type: 'image/jpeg' })) : '';
 
 export async function getBOQPhotoURL(photo: BOQPhoto): Promise<string> {
   return URL.createObjectURL(await getBOQPhotoBlob(photo));

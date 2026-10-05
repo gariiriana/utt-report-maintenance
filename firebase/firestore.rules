@@ -23,26 +23,41 @@ service cloud.firestore {
         && (!('serialNumber' in data.keys()) || isValidString(data.serialNumber, 500))
         && (!('productionYear' in data.keys()) || isValidString(data.productionYear, 20))
         && (!('manufacturer' in data.keys()) || isValidString(data.manufacturer, 500))
+        && (!('assetId' in data.keys()) || isValidString(data.assetId, 500))
+        && (!('tag' in data.keys()) || isValidString(data.tag, 500))
+        && (!('model' in data.keys()) || isValidString(data.model, 500))
         && (!('deleted' in data.keys()) || data.deleted is bool)
+        && (!('updatedByName' in data.keys()) || isValidString(data.updatedByName, 200))
         && data.revision is int && data.revision > 0
         && data.sourceRow is int
         && data.updatedBy == request.auth.uid && data.updatedAt == request.time;
     }
 
+    // v1: "BOQ PER RUANGAN" workbook (ROOM / NO ROOM sheets). v2: per-equipment BOQ workbook,
+    // where sourceSheet is the sheet key (e.g. "lv-panel") and the ID is derived from it and the source row.
     function validBOQItem(itemId, data) {
       return data.keys().hasAll(['ciName', 'ciDescription', 'capacity', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt'])
-        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'assetId', 'tag', 'model', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedByName', 'updatedAt'])
         && validBOQCommon(data)
         && ((data.sourceSheet == 'ROOM' && data.sourceRow >= 3 && data.sourceRow <= 1738 && itemId == 'room-v1-room-' + string(data.sourceRow))
-          || (data.sourceSheet == 'NO ROOM' && data.sourceRow >= 2 && data.sourceRow <= 680 && itemId == 'room-v1-no-room-' + string(data.sourceRow)));
+          || (data.sourceSheet == 'NO ROOM' && data.sourceRow >= 2 && data.sourceRow <= 680 && itemId == 'room-v1-no-room-' + string(data.sourceRow))
+          || (data.sourceSheet is string && data.sourceSheet.size() <= 60 && data.sourceSheet.matches('[a-z0-9]+(-[a-z0-9]+)*')
+            && data.sourceSheet != 'custom' && data.sourceRow >= 1 && data.sourceRow <= 5000
+            && itemId == 'boq-v2-' + data.sourceSheet + '-' + string(data.sourceRow)));
+    }
+
+    function isBOQItemId(itemId) {
+      return itemId.matches('room-v1-((room|no-room)-[0-9]+|custom-[0-9a-f]{32})')
+        || itemId.matches('boq-v2-([a-z0-9]+(-[a-z0-9]+)*-[0-9]+|custom-[0-9a-f]{32})');
     }
 
     // Items added by a drafter: not part of the bundled workbook, so they carry their own room/class placement.
     function validBOQCustomItem(itemId, data) {
       return data.keys().hasAll(['ciName', 'ciDescription', 'capacity', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt', 'custom', 'room', 'classId', 'floor'])
-        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt', 'custom', 'room', 'classId', 'floor'])
+        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'assetId', 'tag', 'model', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedByName', 'updatedAt', 'custom', 'room', 'classId', 'floor', 'category'])
         && validBOQCommon(data)
-        && itemId.matches('room-v1-custom-[0-9a-f]{32}')
+        && (itemId.matches('room-v1-custom-[0-9a-f]{32}') || itemId.matches('boq-v2-custom-[0-9a-f]{32}'))
+        && (!('category' in data.keys()) || isValidString(data.category, 100))
         && data.custom == true && data.sourceSheet == 'CUSTOM' && data.sourceRow == 0
         && isValidString(data.room, 200) && data.room.size() > 0
         && isValidString(data.classId, 200) && data.classId.size() > 0
@@ -59,7 +74,8 @@ service cloud.firestore {
           || (validBOQCustomItem(itemId, request.resource.data)
             && request.resource.data.room == resource.data.room
             && request.resource.data.classId == resource.data.classId
-            && request.resource.data.floor == resource.data.floor))
+            && request.resource.data.floor == resource.data.floor
+            && request.resource.data.get('category', '') == resource.data.get('category', '')))
         && request.resource.data.revision == resource.data.revision + 1
         && request.resource.data.sourceSheet == resource.data.sourceSheet
         && request.resource.data.sourceRow == resource.data.sourceRow;
@@ -69,22 +85,24 @@ service cloud.firestore {
       match /photos/{photoId} {
         allow read: if canManageBOQ();
         allow create: if canManageBOQ()
-          && itemId.matches('room-v1-((room|no-room)-[0-9]+|custom-[0-9a-f]{32})')
+          && isBOQItemId(itemId)
           && photoId.matches('[0-9a-f]{64}')
           && request.resource.data.keys().hasAll(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
-          && request.resource.data.keys().hasOnly(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt', 'thumb'])
+          && (!('thumb' in request.resource.data.keys()) || (request.resource.data.thumb is bytes && request.resource.data.thumb.size() <= 150 * 1024))
           && request.resource.data.path == 'boq_items/' + itemId + '/photos/' + photoId
           && request.resource.data.storageType == 'firestore-bytes'
-          && request.resource.data.totalChunks is int && request.resource.data.totalChunks >= 1 && request.resource.data.totalChunks <= 12
+          && request.resource.data.totalChunks is int && request.resource.data.totalChunks >= 1 && request.resource.data.totalChunks <= 48
           && isValidString(request.resource.data.name, 500)
           && request.resource.data.size is int && request.resource.data.size > 0 && request.resource.data.size <= 10 * 1024 * 1024
           && request.resource.data.contentType in ['image/jpeg', 'image/png', 'image/webp']
           && request.resource.data.uploadedBy == request.auth.uid && request.resource.data.createdAt == request.time;
         allow update: if canManageBOQ()
-          && itemId.matches('room-v1-((room|no-room)-[0-9]+|custom-[0-9a-f]{32})')
+          && isBOQItemId(itemId)
           && photoId.matches('[0-9a-f]{64}')
           && request.resource.data.keys().hasAll(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
-          && request.resource.data.keys().hasOnly(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['path', 'storageType', 'totalChunks', 'name', 'size', 'contentType', 'uploadedBy', 'createdAt', 'thumb'])
+          && (!('thumb' in request.resource.data.keys()) || (request.resource.data.thumb is bytes && request.resource.data.thumb.size() <= 150 * 1024))
           && request.resource.data.path == resource.data.path
           && request.resource.data.storageType == 'firestore-bytes'
           && request.resource.data.totalChunks == resource.data.totalChunks
@@ -97,12 +115,12 @@ service cloud.firestore {
         match /chunks/{chunkId} {
           allow read: if canManageBOQ();
           allow create, update: if canManageBOQ()
-            && itemId.matches('room-v1-((room|no-room)-[0-9]+|custom-[0-9a-f]{32})')
+            && isBOQItemId(itemId)
             && photoId.matches('[0-9a-f]{64}')
             && chunkId.matches('[0-9]{5}')
             && request.resource.data.keys().hasAll(['index', 'data', 'createdAt'])
             && request.resource.data.keys().hasOnly(['index', 'data', 'createdAt'])
-            && request.resource.data.index is int && request.resource.data.index >= 0 && request.resource.data.index < 12
+            && request.resource.data.index is int && request.resource.data.index >= 0 && request.resource.data.index < 48
             && request.resource.data.data is bytes && request.resource.data.data.size() <= 900 * 1024
             && request.resource.data.createdAt == request.time;
           allow delete: if canManageBOQ();

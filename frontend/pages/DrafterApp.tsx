@@ -1,9 +1,10 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { ClipboardList, FolderOpen, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { AppSidebar, NavItemDef } from '@/components/AppSidebar';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
+import { startBOQOutbox, stopBOQOutbox, useBOQOutbox } from '@/utils/boqOutbox';
 
 const BOQUpdate = lazy(() => import('@/components/BOQUpdate').then(module => ({ default: module.BOQUpdate })));
 const FileManagement = lazy(() => import('@/components/FileManagement').then(module => ({ default: module.FileManagement })));
@@ -20,6 +21,20 @@ export function DrafterApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const currentNavItem = DRAFTER_NAV_ITEMS.find(item => item.id === tab);
+  const outbox = useBOQOutbox();
+  const waiting = outbox.pendingTexts + outbox.pendingPhotos + outbox.pendingDeletes + outbox.conflicts;
+
+  // The BOQ outbox keeps sending queued edits and photos while the drafter is anywhere in the app.
+  useEffect(() => {
+    if (!user?.uid) return;
+    void startBOQOutbox({ uid: user.uid, name: user.displayName || user.email || '' });
+    return () => stopBOQOutbox();
+  }, [user?.uid]);
+  useEffect(() => {
+    const guard = (event: BeforeUnloadEvent) => { if (waiting > 0) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [waiting]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-slate-50">
@@ -75,6 +90,7 @@ export function DrafterApp() {
         onClose={() => setLogoutModalOpen(false)}
         onConfirm={logout}
         userEmail={user?.email || ''}
+        warning={waiting > 0 ? `${waiting} data/foto BOQ belum terkirim ke server. Datanya tetap tersimpan di HP ini dan akan dikirim saat Anda login lagi di HP ini — jangan hapus data browser.` : undefined}
       />
     </div>
   );

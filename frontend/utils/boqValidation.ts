@@ -1,19 +1,13 @@
-import type { BOQFields, NewBOQItemInput } from '@/types/boq';
+import type { BOQEditableField, BOQFields, NewBOQItemInput } from '@/types/boq';
+export const BOQ_EDITABLE_FIELDS: BOQEditableField[] = ['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'assetId', 'tag', 'model'];
 export class BOQConflictError extends Error {
   constructor() { super('Item telah diubah pengguna lain. Muat versi terbaru sebelum menyimpan.'); }
 }
 export function validateBOQFields(fields: BOQFields): BOQFields {
-  const result = {
-    ciName: fields.ciName.trim(),
-    ciDescription: fields.ciDescription.trim(),
-    capacity: fields.capacity.trim(),
-    serialNumber: fields.serialNumber?.trim() || '',
-    productionYear: fields.productionYear?.trim() || '',
-    manufacturer: fields.manufacturer?.trim() || '',
-  };
-  if (!result.ciName || result.ciName.length > 500 || result.ciDescription.length > 2000 || result.capacity.length > 500 ||
-      result.serialNumber.length > 500 || result.productionYear.length > 20 || result.manufacturer.length > 500) {
-    throw new Error('CI Name wajib diisi (maks. 500 karakter); deskripsi maks. 2.000; kapasitas, serial number, dan manufacturer maks. 500; tahun produksi maks. 20.');
+  const result = Object.fromEntries(BOQ_EDITABLE_FIELDS.map(field => [field, fields[field]?.trim() || ''])) as BOQFields;
+  const limit = (field: keyof BOQFields) => field === 'ciDescription' ? 2000 : field === 'productionYear' ? 20 : 500;
+  if (!result.ciName || BOQ_EDITABLE_FIELDS.some(field => result[field].length > limit(field))) {
+    throw new Error('CI Name wajib diisi (maks. 500 karakter); deskripsi maks. 2.000; tahun produksi maks. 20; kolom lain maks. 500.');
   }
   return result;
 }
@@ -23,10 +17,11 @@ export function validateNewBOQItem(input: NewBOQItemInput): NewBOQItemInput {
     room: input.room.trim(),
     classId: input.classId.trim(),
     floor: input.floor.trim(),
+    category: input.category.trim(),
   };
   if (!result.room || !result.classId) throw new Error('Ruangan dan Class Id wajib diisi.');
-  if (result.room.length > 200 || result.classId.length > 200 || result.floor.length > 50) {
-    throw new Error('Ruangan dan Class Id maks. 200 karakter; lantai maks. 50.');
+  if (result.room.length > 200 || result.classId.length > 200 || result.floor.length > 50 || result.category.length > 100) {
+    throw new Error('Ruangan dan Class Id maks. 200 karakter; kategori maks. 100; lantai maks. 50.');
   }
   return result;
 }

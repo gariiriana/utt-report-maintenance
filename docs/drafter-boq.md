@@ -12,46 +12,56 @@
 
 Drafter sees exactly two modules: Management File and Update BOQ. The general AI widget and other dashboards are excluded.
 
-Update BOQ provides room and Class Id filters, CI Name, CI Description, Capacity, and a photo/edit action beside each row. On small screens, rows become cards and the editor fills the screen. The editor traps keyboard focus, supports Escape, and blocks closing during a save/upload.
+Update BOQ is organised by room first, in three steps:
 
-CI Name, CI Description, and Capacity are editable. Room, Class Id, source sheet/row, model and floor identify the original item. File Management uses the existing files collection and excludes corrective-report aggregation. Upload/download and requests to QC for file deletion remain available; permanent deletion remains a QC action.
+1. Room overview: a search box and a grid of room cards (item count, main categories). "Tanpa Ruangan" is last. Typing in the search shows matching rooms and matching assets (name, S/N, TAG, any BOQ column) across all rooms.
+2. Room page: the room's assets grouped by equipment category, as simple rows (name, description, Class / S/N / TAG / capacity). A search and a category select narrow the list; 40 rows load at a time.
+3. Item page: photos first, then the editable data. The original workbook values are not repeated there; the Excel export keeps every other BOQ column in "Data BOQ lainnya". The editor fills the screen on small devices, supports Escape, and blocks closing during a save/upload.
+
+CI Name, CI Description, Capacity, Serial Number, Production Year, Manufacturer / Principle, Asset ID, TAG and Model/Version are editable, as far as the item's BOQ table has that column (CI Name always). Edited items carry a "Diedit" badge, and edited cells are highlighted in the Excel export. File Management uses the existing files collection and excludes corrective-report aggregation. Upload/download and requests to QC for file deletion remain available; permanent deletion remains a QC action.
 
 ## Source data
 
-Source: `D:/Users/Downloads/BOQ PER RUANGAN (1).xlsx`.
+Source: Google Sheets `Progres PM Q3 - 2026` (`1WGV1Mr9Zv0mG4OdQuU6XH8gOsVcHdH1V`), imported on 2026-10-05.
 
-- ROOM: 1,680 actual CI records.
-- NO ROOM: 679 actual CI records.
-- Total: 2,359 CI groups, preserving 2,415 source detail rows.
-- Stable ID: `room-v1-room-{sourceRow}` or `room-v1-no-room-{sourceRow}`.
-- Merged grouping cells resolve to their masters. Vertically merged CI Name cells do not generate duplicate parent item records. All 56 continuation rows contain UPS module descriptions; these are joined as separate description lines on their parent CI, with their source row numbers retained. Thus 2,359 CI groups preserve all 2,415 source detail rows.
-- Repeated CI names in different rooms or source rows remain distinct.
+- Imported: the 38 equipment sheets (Trafo … Lighting), 41 asset tables, 2,652 items.
+- Not imported: the planning sheets Progress MOS & Instal CM, consumable parts 2026, Plan ManPower Agu/Sep, Progress, Resume Q3, 2026 Schedule and Sheet1; and in every sheet the PM block from the `PM DATE` column to the right (QTY, progress, Dokumen Service Report OCS/TDE, TOTAL, STATUS, REMARK).
+- Each sheet's asset table starts at its header row (`No` plus `Class Id`/`CI Name*`). A later header row in the same sheet starts a second table (Genset → Fuel System, Load Bank → Cap Bank, Lift → Dock Leveler). A row carrying its own `PM DATE` heading starts a titled block (Water & Fuel Leak → Fuel Leak).
+- The signature block (`Cikarang, …`, `Disiapkan oleh`, …) ends a sheet. In FSS, the rows after `Note : Tidak termasuk dalam BOQ` are therefore excluded.
+- Sheets that repeat the same assets per month (Lift: July/August/September; CT Water Treatment: Juli/Agustus/September) keep only the first month block.
+- Vertical merges propagate their value to every row. A vertically merged CI Name means the row is another module of the item above (UPS); its values are joined as extra lines on that item and its row number is kept in `sourceRows`.
+- Sheets without a CI Name column name the asset in Class Id (or CI Description). Columns with a numeric or empty header right before `PM DATE` are progress helpers and are dropped; other unlabeled columns with data are kept as `Kolom <letter>`.
+- Room is the sheet's `Room` column. When a sheet has no Room column or it is empty/`N/A`/`-`, the room is looked up in the earlier "BOQ PER RUANGAN" workbook by CI Name, used only when that name maps to exactly one room (1,079 items). The page marks these items with a door icon; the original Room cell is left unchanged. 760 items remain without a room.
+- Rooms are grouped ignoring case, spaces, hyphens, a leading `1F` prefix and a few typos (CHILER, TRAFOO, INTERCONECTING, KORIDOOR), so "Crac Room 1", "1f crac room 1" and "1F-CRAC ROOM 1" are one room (278 spellings → 222 rooms). Each room is labelled with its most common spelling; all-lowercase names are re-cased.
+- Stable ID: `boq-v2-{sheet key}-{sourceRow}`, e.g. `boq-v2-lv-panel-7`. Items added in the app use `boq-v2-custom-{32 hex}` and may carry a `category`.
 
-The generated baseline is `frontend/data/boqRoomItems.json`. Regenerate only from this source/version using `node scripts/import-room-boq.cjs`. Changing the workbook structure requires an explicit migration; do not reuse row-based IDs for a reordered replacement workbook.
+The generated baseline is `frontend/data/boqItems.json` (tables with column definitions, items with positional values). Regenerate with `node scripts/import-boq.cjs "<path to Progres PM Q3 - 2026.xlsx>"`; the room lookup reads `scripts/data/boqRoomItems.v1.json` (the former v1 baseline). Do not regenerate from a workbook whose rows were reordered without a migration, because IDs are row-based.
+
+Firestore documents of the former v1 baseline (`room-v1-room-*`, `room-v1-no-room-*`) and their photos are no longer listed. Custom items created under v1 (`room-v1-custom-*`) still appear, under "Item Tambahan".
 
 ## Firestore
 
-`boq_items/{itemId}` stores only edited text, source identity, revision, updatedBy and server updatedAt. The initial workbook is bundled locally; opening the page never seeds 2,359 documents. Each displayed page requests at most 20 item overrides.
+`boq_items/{itemId}` stores only edited text, source identity, revision, updatedBy and server updatedAt. The initial workbook is bundled locally; opening the page never seeds 2,652 documents. Overrides are fetched only for listed items not fetched before (in batches of 30 IDs); "Muat ulang" clears them.
 
-Saves use a transaction with the revision that was loaded for editing. If another editor changes the record, the revision check fails and the user's draft remains visible. The user explicitly reloads the latest version. Rules enforce the same revision increment and immutable source identity.
+All writes go through the offline outbox (see below); the stored `revision` must increase by exactly one, which the rules enforce together with immutable source identity. `updatedByName` records who saved last, for the conflict screen.
 
 Photos are separate immutable documents at `boq_items/{itemId}/photos/{sha256}`. They can exist before the baseline item's first text edit. There are no photo arrays or base64 images in the item document. Photo metadata is read 20 records per page. Photo writes do not change the text revision.
 
 Search covers the source inventory plus edited values already loaded in the current browsing session. It is not a global full-text search over unloaded Firestore overrides.
 
-## Photo uploads and recovery
+## Offline outbox (weak signal)
 
-Objects: `boq_photos/{itemId}/{sha256}`.
+Drafters work where the signal drops or lags (Android + Chrome). `frontend/utils/boqOutbox.ts` makes every change local-first:
 
-- JPG, PNG and WebP only; at most 10 MB per photo.
-- Three upload workers, resumable Storage uploads, per-file progress and errors.
-- The file is persisted in IndexedDB before upload. Workers fetch one persisted file each instead of retaining all queued file contents in React state.
-- Metadata is committed after the Storage upload. The queue record is removed only after metadata succeeds.
-- The SHA-256 key makes retries and repeated selection of identical bytes idempotent for the same item.
-- If metadata fails after Storage succeeds, the object may temporarily be unreferenced. Its queued file and stable path support retry; this release does not provide automatic orphan deletion.
-- Failed queues can be resumed by opening the same item on the same browser/device. Clearing browser storage removes local drafts and queued files.
+- Text edits, item creation/deletion, photo uploads and photo deletions are stored in IndexedDB (`dwimitra-boq-outbox-v1`) first, so a save never fails in front of the drafter. The browser is asked to keep this storage (`navigator.storage.persist`).
+- `DrafterApp` starts the sync engine after login. It sends while the app is open on any tab, retries with backoff (5 s doubling to 5 min), and resumes immediately when the browser goes online. Requests time out (20–60 s) instead of hanging on a lagging link.
+- There is no global status bar (removed at the team's request). Assets show "⏳ Belum terkirim" or "⚠️ Bentrok". Logging out or closing the tab with queued work shows a warning; the queue stays on the device and continues after the same account logs in again.
+- Photos (option agreed with the team): original resolution, re-encoded as JPEG quality 85% (the original is kept if that is not smaller), max 10 MB after compression, plus a 360 px thumbnail (~10–40 KB) stored in the photo document. Uploads go in 256 KB chunks, two at a time; finished chunks are recorded, so an interrupted upload resumes from the first missing chunk. The photo document (manifest) is written last and the SHA-256 ID keeps retries idempotent. Photo lists show thumbnails; the full image is downloaded only to view, download or crop.
+- Text conflicts: each queued edit keeps the version the drafter started from. Before writing, the engine reads the server version and merges per field. Fields changed by only one side are combined automatically; a field changed differently by both becomes a conflict, shown in the editor with both values, who changed it and when. Nothing is sent until the drafter chooses. Photos never conflict.
+- Unsaved text in the form is also kept as a localStorage draft and restored when the item is reopened.
+- Verified with a flaky fake backend (40% failed requests): saves arrive, per-field merge and conflicts behave as above, a 7.9 MB 4000×3000 photo became 2.5 MB at 4000×3000 and uploaded in 11 chunks over 15 attempts, and a queue created offline was delivered after the browser was closed and reopened.
 
-Text drafts are stored separately in localStorage, scoped to UID/item/revision. Unavailable local storage is explicitly reported.
+Drafter routine: open the app once with good signal (or install it via "Add to Home screen") so it works offline, and after leaving the area keep it open until no asset shows "⏳ Belum terkirim".
 
 ## Authorization
 
