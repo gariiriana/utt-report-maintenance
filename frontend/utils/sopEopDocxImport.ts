@@ -307,16 +307,20 @@ function extractMetadata(xml: string, fileName: string, isEop: boolean) {
     return m && m[1] ? decodeEntities(m[1].trim()) : '';
   };
 
+  // The title comes from the file name: the "Document Title" cell of most documents holds a
+  // generic value ("Standard Operating Procedure"). Exported files use underscores for spaces,
+  // and a browser-added " (1)" copy suffix is dropped.
+  const fileTitle = fileName
+    .replace(/\.docx$/i, '')
+    .replace(/\s*\(\d+\)\s*$/g, '')
+    .replace(/_+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   // The title cell holds "Document Title : X" and "Judul Dokumen : X" on separate lines; keep only the value.
   const docTitleMatch = getMatch(/(?:Document\s*Title|Judul\s*Dokumen)\s*:\s*([\s\S]*?)(?:Document\s*Purpose|Tujuan\s*Dokumen|Work\s*Location)/i)
     .split(/\n|Judul\s*Dokumen\s*:/i)[0]
     .trim();
-  const title = docTitleMatch && !/template/i.test(docTitleMatch)
-    ? docTitleMatch
-    : fileName
-        .replace(/\.docx$/i, '')
-        .replace(/\s*\(\d+\)\s*$/g, '')
-        .trim();
+  const title = fileTitle || (!/template/i.test(docTitleMatch) ? docTitleMatch : '');
 
   const purposeEn = getMatch(/Document\s*Purpose\s*:\s*([\s\S]*?)(?:Tujuan\s*Dokumen|Work\s*Location)/i);
   let purposeId = getMatch(/Tujuan\s*Dokumen\s*:\s*([\s\S]*?)(?:Work\s*Location|Section|Seksi)/i);
