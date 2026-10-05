@@ -216,12 +216,36 @@ export function translateFromDictionary(text: string, toLang: 'id' | 'en'): stri
   return null;
 }
 
+// Daftar singkatan teknis yang memang sama di ID dan EN
+const technicalAbbreviations = new Set([
+  'mcb', 'mccb', 'acb', 'loto', 'ptw', 'apd', 'ppe', 'ups', 'trafo', 'bms',
+  'pju', 'led', 'dc', 'ac', 'kwh', 'megger', 'hv', 'mv', 'lv', 'kv', 'kva',
+  'kw', 'ohm', 'v', 'a', 'crah', 'pac', 'ats', 'sts'
+]);
+const englishStopwordsRegex =
+  /\b(the|is|are|was|were|and|or|in|on|at|to|for|of|with|by|from|through|into|during|before|after|which|that|this|these|those|all|any|each|every|between|under|over|above|below|without|within|while|when|where|why|how|been|being|have|has|had|does|did|will|would|shall|should|can|could|may|might|must)\b/gi;
+
+/**
+ * Text that reads the same in both languages: names, codes and abbreviations such as
+ * "Neutra DC Cikarang", "Panel LV" or "MCB 3P 100A". Every word is an abbreviation, a code
+ * containing a digit, or capitalised, at least one is an abbreviation/code, and there is no
+ * English grammar word. Such text needs no translation, so an identical "translation" is correct.
+ */
+export function isLanguageNeutral(text: string): boolean {
+  const tokens = (text || '').split(/[\s/,()\-–:;.]+/).filter(Boolean);
+  if (!tokens.length || tokens.length > 8 || (text.match(englishStopwordsRegex) || []).length) return false;
+  const isCode = (token: string) => /\d/.test(token) || technicalAbbreviations.has(token.toLowerCase()) || /^[A-Z]{2,}$/.test(token);
+  return tokens.every(token => isCode(token) || /^[A-Z]/.test(token)) && tokens.some(isCode);
+}
+
 /**
  * Mendeteksi apakah sebuah teks Bahasa Indonesia masih berupa kalimat hybrid
  * (campuran Inggris-Indonesia) atau masih 100% Bahasa Inggris.
  */
 export function isHybridOrEnglish(text: string, originalEn: string): boolean {
   if (!text || !text.trim()) return true;
+  // Names and codes are kept as they are; otherwise they would be queued for translation forever.
+  if (isLanguageNeutral(originalEn)) return false;
   const cleanText = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
   const cleanEn = (originalEn || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
 
@@ -229,8 +253,6 @@ export function isHybridOrEnglish(text: string, originalEn: string): boolean {
   if (cleanText === cleanEn) return true;
 
   // 2. Cek Stopwords bahasa Inggris yang TIDAK PERNAH ada dalam Bahasa Indonesia
-  const englishStopwordsRegex =
-    /\b(the|is|are|was|were|and|or|in|on|at|to|for|of|with|by|from|through|into|during|before|after|which|that|this|these|those|all|any|each|every|between|under|over|above|below|without|within|while|when|where|why|how|been|being|have|has|had|does|did|will|would|shall|should|can|could|may|might|must)\b/gi;
   const stopwordMatches = cleanText.match(englishStopwordsRegex) || [];
 
   // Jika terdapat 2 atau lebih kata gramatikal Inggris, pasti kalimat campuran atau Inggris
@@ -241,13 +263,6 @@ export function isHybridOrEnglish(text: string, originalEn: string): boolean {
   const words = cleanText.split(/\s+/).filter((w) => w.length > 2);
   const originalWords = cleanEn.split(/\s+/).filter((w) => w.length > 2);
   if (words.length === 0) return false;
-
-  // Daftar singkatan teknis yang memang sama di ID dan EN
-  const technicalAbbreviations = new Set([
-    'mcb', 'mccb', 'acb', 'loto', 'ptw', 'apd', 'ppe', 'ups', 'trafo', 'bms',
-    'pju', 'led', 'dc', 'ac', 'kwh', 'megger', 'hv', 'mv', 'lv', 'kv', 'kva',
-    'kw', 'ohm', 'v', 'a', 'crah', 'pac', 'ats', 'sts'
-  ]);
 
   let unchangedCount = 0;
   for (const word of words) {
@@ -520,6 +535,8 @@ async function translateBatchWithAI(
     const dictResult = translateFromDictionary(item.text, item.toLang);
     if (dictResult) {
       resultMap.set(item.id, dictResult);
+    } else if (isLanguageNeutral(item.text)) {
+      resultMap.set(item.id, item.text.trim());
     } else {
       pendingItems.push(item);
     }
@@ -534,8 +551,7 @@ async function translateBatchWithAI(
 
   // 3. Panggil Google Gemini AI dalam kelompok batch (maksimal 15 item per permintaan)
   const CHUNK_SIZE = 15;
-  for (let i = 0; i < pendingItems.length; i += CHUNK_SIZE) {
-    const chunk = pendingItems.slice(i, i + CHUNK_SIZE);
+  const translateChunk = async (chunk: typeof pendingItems) => {
     try {
       const prompt = `Anda adalah AI Senior Ahli Penerjemah Teknis SOP & EOP Data Center PT Dwimitra Ekatama Mandiri / NeutraDC Cikarang.
 Tugas Anda: Terjemahkan setiap butir ke bahasa target ('id' = Bahasa Indonesia teknis formal, 'en' = Technical English).
@@ -560,10 +576,10 @@ ${JSON.stringify(chunk, null, 2)}`;
         console.error('[BilingualAI] Gagal parse JSON dari AI:', parseErr);
         console.error('[BilingualAI] Raw response:', rawJson);
         lastError = 'Respons AI tidak dapat dibaca.';
-        continue;
+        return;
       }
 
-      for (const p of parsed) {
+      for (const p of Array.isArray(parsed) ? parsed : []) {
         if (p.id && p.translation && p.translation.trim().length > 0) {
           const item = chunk.find((c) => c.id === p.id);
           const tr = p.translation.trim();
@@ -578,11 +594,20 @@ ${JSON.stringify(chunk, null, 2)}`;
       console.warn('[BilingualAI] Gagal memanggil AI chat:', err);
       lastError = err instanceof Error ? err.message : String(err);
     }
+  };
+  for (let i = 0; i < pendingItems.length; i += CHUNK_SIZE) {
+    await translateChunk(pendingItems.slice(i, i + CHUNK_SIZE));
+  }
+  // The model occasionally skips or echoes an item in a large batch; retry those once on their own.
+  const missing = pendingItems.filter((item) => !resultMap.has(item.id));
+  for (let i = 0; i < missing.length; i += CHUNK_SIZE) {
+    await translateChunk(missing.slice(i, i + CHUNK_SIZE));
   }
 
   const failed = pendingItems.filter((item) => !resultMap.has(item.id));
   if (failed.length > 0) {
-    throw new BilingualIncompleteError(failed.length, items.length, lastError, resultMap);
+    const which = failed.slice(0, 3).map((item) => `"${item.text.trim().slice(0, 60)}"`).join(', ') + (failed.length > 3 ? ', …' : '');
+    throw new BilingualIncompleteError(failed.length, items.length, lastError ? `${lastError}; teks: ${which}` : `teks: ${which}`, resultMap);
   }
   return resultMap;
 }
