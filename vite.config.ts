@@ -29,26 +29,24 @@ export default defineConfig({
       // Never serve/register a PWA worker from Vite. A stale worker can keep
       // controlling localhost and return cached production HTML during dev.
       devOptions: { enabled: false },
-      includeAssets: ['logo_utt.png', 'logo-neutradc.png'],
+      includeAssets: ['logo-dwimitra.png', 'logo-neutradc.png', 'apple-touch-icon.png'],
+      // Installed-app name and icon. Icons are square versions of logo-dwimitra.png on white;
+      // the maskable one keeps the logo inside Android's safe zone.
       manifest: {
-        name: 'Report UTT',
-        short_name: 'Report UTT',
-        description: 'Multi-unit maintenance reporting system',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        id: '/',
+        name: 'Dwimitra System',
+        short_name: 'Dwimitra System',
+        description: 'Sistem Pemeliharaan Data Center PT Dwimitra Ekatama Mandiri',
+        start_url: '/',
+        scope: '/',
+        lang: 'id',
+        theme_color: '#1b6db3',
+        background_color: '#ffffff',
         display: 'standalone',
         icons: [
-          {
-            src: 'logo_utt.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'logo_utt.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
       workbox: {
