@@ -14,14 +14,16 @@ import {
   buildH60Message,
   sendWhatsAppFonnte
 } from './wa-service';
+import { requireFaceSession } from './face-session';
 
 /**
- * Validasi otentikasi user (khusus dwimitra@co.id atau admin)
+ * Validasi otentikasi user (khusus dwimitra@co.id atau admin) + sesi scan wajah
  */
-function assertAuthorizedUser(request: CallableRequest<any>) {
+async function assertAuthorizedUser(request: CallableRequest<any>) {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Permintaan harus diautentikasi.');
   }
+  await requireFaceSession(request);
   const email = request.auth.token.email?.toLowerCase() || '';
   if (email !== 'dwimitra@co.id' && !email.includes('admin')) {
     throw new HttpsError('permission-denied', 'Hanya akun administrator dwimitra@co.id yang memiliki izin.');
@@ -35,7 +37,7 @@ function assertAuthorizedUser(request: CallableRequest<any>) {
 export const sendTestWhatsAppCloud = onCall(
   { region: 'asia-southeast1', cors: true, timeoutSeconds: 60 },
   async (request: CallableRequest<{ targetPhone?: string; message?: string }>) => {
-    const userEmail = assertAuthorizedUser(request);
+    const userEmail = await assertAuthorizedUser(request);
     const config = await getWAReminderConfig();
 
     const target = request.data?.targetPhone?.trim() || config.targetPhone?.trim();
@@ -89,7 +91,7 @@ export const sendTestWhatsAppCloud = onCall(
 export const triggerWAReminderH60Cloud = onCall(
   { region: 'asia-southeast1', cors: true, timeoutSeconds: 60 },
   async (request: CallableRequest<any>) => {
-    const userEmail = assertAuthorizedUser(request);
+    const userEmail = await assertAuthorizedUser(request);
     const config = await getWAReminderConfig();
 
     if (!config.targetPhone) {
@@ -175,7 +177,7 @@ export const updateWAReminderConfigCloud = onCall(
     autoRemindEnabled?: boolean;
     fonnte_token?: string;
   }>) => {
-    const userEmail = assertAuthorizedUser(request);
+    const userEmail = await assertAuthorizedUser(request);
     const data = request.data || {};
 
     await saveWAReminderConfig({

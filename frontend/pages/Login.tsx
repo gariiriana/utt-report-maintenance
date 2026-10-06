@@ -12,8 +12,15 @@ import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { USE_EMULATORS } from '@/api/firebase';
 
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
+
+// Site key tes resmi Cloudflare (selalu lolos) untuk mode emulator: domain tunnel
+// *.trycloudflare.com tidak terdaftar di site key production.
+const TURNSTILE_SITE_KEY = USE_EMULATORS
+  ? '1x00000000000000000000AA'
+  : (import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD_fWrDH129FQ_Rm');
 
 export function Login() {
   // State form login
@@ -110,6 +117,14 @@ export function Login() {
               </p>
             </div>
 
+            {/* Mode tes lokal: akun production tidak ada di emulator (hilang dari build production) */}
+            {USE_EMULATORS && (
+              <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] sm:text-xs text-amber-800">
+                <b>Mode tes (emulator):</b> akun production tidak berlaku di sini. Pakai akun tes{' '}
+                <code>qcdme@dme.com</code>, <code>ats@gmail.com</code>, atau <code>admin@test.local</code> dengan password <code>tes12345</code>.
+              </div>
+            )}
+
             {/* Form Input Email, Password, & CAPTCHA */}
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               {/* Input Email */}
@@ -162,7 +177,7 @@ export function Login() {
               {/* Cloudflare Turnstile Anti-Bot Security */}
               <div className="pt-0.5 pb-0.5 flex justify-center items-center cf-turnstile" data-action="turnstile-spin-v2">
                 <Turnstile
-                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD_fWrDH129FQ_Rm'}
+                  siteKey={TURNSTILE_SITE_KEY}
                   onSuccess={(token) => setTurnstileToken(token)}
                   onExpire={() => setTurnstileToken(null)}
                   onError={() => setTurnstileToken(null)}

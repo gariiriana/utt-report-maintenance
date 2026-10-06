@@ -13,12 +13,31 @@ import {
   signInWithCustomToken,
   signOut,
   onAuthStateChanged,
+  onIdTokenChanged,
   setPersistence,
   browserLocalPersistence
 } from 'firebase/auth';
 import { auth, db } from '@/api/firebase';
 import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
-import { RegisteredFace } from '@/types/faceAuthTypes';
+
+/** Sesi hasil scan wajah (klaim faceUntil/facePerson di ID token perangkat ini). */
+export interface FaceSession {
+  person: string;
+  until: number; // epoch detik
+}
+
+/**
+ * Baca sesi wajah dari klaim token memakai jam SERVER (klaim iat), bukan jam perangkat:
+ * HP/PC yang jamnya salah (misal maju sehari) tetap bisa masuk. Batas pastinya tetap
+ * ditegakkan server (rules memakai request.time, FaceGate mengecek faceCheckSession).
+ * remainingMs dihitung dari waktu token terbit, jadi bisa telat maksimal 1 jam.
+ */
+function faceSessionFromClaims(claims: Record<string, unknown>): { session: FaceSession; remainingMs: number } | null {
+  const until = Number(claims.faceUntil || 0);
+  const issuedAt = Number(claims.iat || 0);
+  if (!until || !issuedAt || until <= issuedAt) return null;
+  return { session: { person: String(claims.facePerson || ''), until }, remainingMs: (until - issuedAt) * 1000 };
+}
 
 // Interface struktur data profil user yang tersimpan di Firestore ('users' collection)
 interface UserData {
@@ -63,7 +82,14 @@ interface AuthContextType {
   isQcDme: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithFaceVerified: (face: RegisteredFace) => Promise<void>;
+  /** null = belum lolos scan wajah di perangkat ini (atau sudah kedaluwarsa). */
+  faceSession: FaceSession | null;
+  /** false selama klaim token belum selesai dibaca. */
+  faceChecked: boolean;
+  /** Tukar custom token dari faceVerify/faceBreakGlass menjadi sesi berklaim wajah. */
+  completeFaceVerification: (customToken: string) => Promise<void>;
+  /** Akhiri sesi wajah di perangkat ini (minta scan ulang) tanpa logout password. */
+  endFaceSession: () => void;
   logout: () => Promise<void>;
 }
 
@@ -74,6 +100,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | 'drafter' | null>(null);
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | 'k2' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [faceSession, setFaceSession] = useState<FaceSession | null>(null);
+  const [faceChecked, setFaceChecked] = useState(false);
+
+  // Sign-in ulang dengan custom token memakai uid yang sama, sehingga onAuthStateChanged
+  // tidak terpicu. Klaim wajah dibaca dari onIdTokenChanged.
+  useEffect(() => {
+    let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = onIdTokenChanged(auth, async (tokenUser) => {
+      if (expiryTimer) clearTimeout(expiryTimer);
+      if (!tokenUser) {
+        setFaceSession(null);
+        setFaceChecked(true);
+        return;
+      }
+      try {
+        const { claims } = await tokenUser.getIdTokenResult();
+        const face = faceSessionFromClaims(claims);
+        setFaceSession(face ? face.session : null);
+        // Minta scan ulang saat sesi wajah habis.
+        if (face) expiryTimer = setTimeout(() => setFaceSession(null), face.remainingMs);
+      } catch {
+        setFaceSession(null);
+      }
+      setFaceChecked(true);
+    });
+    return () => {
+      unsubscribe();
+      if (expiryTimer) clearTimeout(expiryTimer);
+    };
+  }, []);
 
   useEffect(() => {
     let unsubscribeDoc: (() => void) | null = null;
@@ -339,68 +395,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Fungsi Login Otomatis Berbasis Verifikasi Biometrik Wajah (Face ID)
-   * Berjalan seketika saat wajah berhasil diverifikasi cocok dengan data yang didaftarkan QC
+   * Selesaikan verifikasi wajah: custom token dari server (uid sama dengan akun yang
+   * sedang login) membawa klaim faceUntil + facePerson untuk sesi perangkat ini.
    */
-  const loginWithFaceVerified = async (face: RegisteredFace) => {
-    if (!face || !face.name) {
-      throw new Error('Data identitas wajah tidak valid.');
+  const completeFaceVerification = async (customToken: string) => {
+    const currentUid = auth.currentUser?.uid;
+    const cred = await signInWithCustomToken(auth, customToken);
+    if (currentUid && cred.user.uid !== currentUid) {
+      await signOut(auth);
+      throw new Error('Token verifikasi wajah tidak sesuai dengan akun yang login.');
     }
-
-    const targetEmail = face.accountEmail?.trim().toLowerCase() || `${face.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@utt.com`;
-
-    // 1. Coba login kredensial Firebase Auth jika ada password yang disimpan saat pendaftaran QC
-    if (face.accountPassword && face.accountEmail) {
-      try {
-        await login(targetEmail, face.accountPassword);
-        return;
-      } catch (credErr) {
-        console.warn('Direct Firebase password login failed, falling back to authenticated face session:', credErr);
-      }
-    }
-
-    // 2. Aktifkan sesi autentikasi resmi sistem untuk akun tersebut
-    const initialRole = face.role || getRoleFromEmail(targetEmail) || 'engineer';
-    const initialCompanyType = (initialRole === 'Engineer_K2' || initialRole === 'engineer_k2') ? 'k2' : 'neutra';
-    const faceUid = face.id ? `face_${face.id}` : `face_${Date.now()}`;
-
-    const faceUser = {
-      uid: faceUid,
-      email: targetEmail,
-      displayName: face.name,
-      emailVerified: true,
-      isAnonymous: false,
-      metadata: {},
-      providerData: [],
-      refreshToken: '',
-      tenantId: null,
-      delete: async () => {},
-      getIdToken: async () => `face_token_${Date.now()}`,
-      getIdTokenResult: async () => ({ token: `face_token_${Date.now()}` }),
-      reload: async () => {},
-      toJSON: () => ({ uid: faceUid, email: targetEmail, displayName: face.name }),
-      phoneNumber: null,
-      photoURL: face.photoBase64 || null,
-      providerId: 'face_biometric'
-    } as unknown as User;
-
-    setUser(faceUser);
-    setUserRole(initialRole as any);
-    setCompanyType(initialCompanyType);
-    setLoading(false);
-
-    try {
-      localStorage.setItem('dwimitra_fallback_session', JSON.stringify({
-        uid: faceUid,
-        email: targetEmail,
-        displayName: face.name,
-        role: initialRole,
-        companyType: initialCompanyType,
-        authProvider: 'face_biometric',
-        timestamp: Date.now()
-      }));
-    } catch (e) {}
+    const { claims } = await cred.user.getIdTokenResult();
+    setFaceSession(faceSessionFromClaims(claims)?.session ?? null);
   };
+
+  const endFaceSession = () => setFaceSession(null);
 
   /**
    * Fungsi Logout Utama: Membersihkan sesi lokal & mereset state autentikasi
@@ -424,7 +433,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isQcDme: isQcDmeEmail(user?.email),
     loading,
     login,
-    loginWithFaceVerified,
+    faceSession,
+    faceChecked,
+    completeFaceVerification,
+    endFaceSession,
     logout
   };
 

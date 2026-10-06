@@ -8,12 +8,19 @@
 
 // Import modul-modul Firebase yang dibutuhkan
 import { initializeApp } from "firebase/app";             // Inisialisasi app Firebase
-import { getAuth } from "firebase/auth";                   // Autentikasi (login/logout)
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, setLogLevel } from "firebase/firestore"; // Database NoSQL (Firestore)
+import { getAuth, connectAuthEmulator } from "firebase/auth"; // Autentikasi (login/logout)
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, setLogLevel } from "firebase/firestore"; // Database NoSQL (Firestore)
 import { getStorage } from "firebase/storage";             // Penyimpanan file (foto, dokumen)
 import { getDatabase } from "firebase/database";           // Realtime Database (untuk data live/realtime)
 import { getAnalytics, isSupported } from "firebase/analytics"; // Analytics (tracking penggunaan app)
 import { getFunctions } from "firebase/functions";         // Cloud Functions (HTTPS Callable & Cloud Tasks)
+
+// === MODE EMULATOR (tes lokal) ===
+// Aktif hanya jika VITE_USE_EMULATORS=true (`npm run dev:emulator`). Semua layanan diakses
+// lewat proxy Vite di origin yang sama (lihat vite.config.ts), sehingga juga jalan dari HP
+// melalui tunnel HTTPS. Data & akun berada di emulator lokal, bukan project production.
+export const USE_EMULATORS = import.meta.env.VITE_USE_EMULATORS === 'true';
+const emulatorOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
 
 // Konfigurasi Firebase — semua value diambil dari file .env (environment variables)
 // PENTING: Jangan pernah hardcode API key di sini, selalu pakai import.meta.env
@@ -25,7 +32,9 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-  databaseURL: "https://report-utt-default-rtdb.asia-southeast1.firebasedatabase.app"
+  databaseURL: USE_EMULATORS
+    ? `${emulatorOrigin}/?ns=report-utt-default-rtdb`
+    : "https://report-utt-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 // Inisialisasi Firebase App — ini adalah titik awal semua layanan Firebase
@@ -101,11 +110,18 @@ export const auth = getAuth(app);
 // Firestore — database utama NoSQL untuk menyimpan laporan, user data, dll.
 // Menggunakan persistent local cache + multi-tab manager supaya data tetap tersedia
 // meskipun offline, dan sinkron antar tab browser yang terbuka
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+export const db = initializeFirestore(app, USE_EMULATORS
+  ? {
+      // Cache memori saja: cache IndexedDB tidak membedakan emulator vs production.
+      localCache: memoryLocalCache(),
+      host: new URL(emulatorOrigin).host,
+      ssl: emulatorOrigin.startsWith('https:')
+    }
+  : {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
 
 // Storage — untuk upload/download file (foto laporan, dokumen PDF, dll.)
 export const storage = getStorage(app);
@@ -115,5 +131,12 @@ export const storage = getStorage(app);
 export const rtdb = getDatabase(app);
 
 // Cloud Functions — untuk memanggil callable functions (AI, WhatsApp Cloud Reminder, dll)
-export const functions = getFunctions(app, "asia-southeast1");
+export const functions = getFunctions(app, USE_EMULATORS
+  ? `${emulatorOrigin}/__functions/${firebaseConfig.projectId}/asia-southeast1`
+  : "asia-southeast1");
+
+if (USE_EMULATORS) {
+  connectAuthEmulator(auth, emulatorOrigin, { disableWarnings: true });
+  console.info('[firebase] Menggunakan Firebase Emulator lokal via', emulatorOrigin);
+}
 

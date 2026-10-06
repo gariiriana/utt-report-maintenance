@@ -1,3 +1,10 @@
+// Kredensial dari environment (jangan hardcode password di repo).
+function requireEnv(name) {
+  const v = process.env[name];
+  if (!v) { console.error(`Set env ${name} dulu.`); process.exit(1); }
+  return v;
+}
+
 const { initializeApp } = require('firebase/app');
 const { getAuth, signInWithEmailAndPassword } = require('firebase/auth');
 const { getFirestore, doc, getDoc } = require('firebase/firestore');
@@ -13,7 +20,7 @@ async function main() {
   const app = initializeApp({ apiKey, projectId, authDomain, appId });
   const auth = getAuth(app);
   const db = getFirestore(app);
-  await signInWithEmailAndPassword(auth, 'Qcdme@dme.com', 'Alhabra12345');
+  await signInWithEmailAndPassword(auth, requireEnv('DWIMITRA_SCRIPT_EMAIL'), requireEnv('DWIMITRA_SCRIPT_PASSWORD'));
 
   for (const id of ['BNuUofpmMdFUPvoDQyUR', 't8UePrYavb1FJJ3mdskj', 'gYlprA64NYHBwewKMfDB']) {
     const s = await getDoc(doc(db, 'findings', id));

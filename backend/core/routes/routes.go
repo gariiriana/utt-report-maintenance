@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"cloud.google.com/go/firestore"
 	firebaseAuth "firebase.google.com/go/v4/auth"
 	"github.com/gariiriana/DwimitraSystem/backend/core/config"
 	"github.com/gariiriana/DwimitraSystem/backend/core/controllers"
@@ -26,10 +27,12 @@ type AppDeps struct {
 	AICtrl                  *controllers.AIController
 	VoiceCtrl               *controllers.VoiceController
 	WACtrl                  *controllers.WAController
+	FaceCtrl                *controllers.FaceController
 	RateLimiter             *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
 	ThrottleStandard        *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
 	AuthClient              *firebaseAuth.Client     // Firebase Auth client for token verification
+	Firestore               *firestore.Client        // dipakai cek profil wajah (face_profiles)
 }
 
 func NewAppDeps(ctx context.Context) (*AppDeps, error) {
@@ -70,6 +73,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	voiceSvc := services.NewVoiceService(firestoreClient)
 	voiceCtrl := controllers.NewVoiceController(voiceSvc)
 	waCtrl := controllers.NewWAController()
+	faceCtrl := controllers.NewFaceController(services.NewFaceService(firestoreClient, authClient))
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
 	throttleHeavy := middlewares.NewThrottle(5, 10)     // expensive write/delete ops
@@ -87,10 +91,12 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		AICtrl:                  aiCtrl,
 		VoiceCtrl:               voiceCtrl,
 		WACtrl:                  waCtrl,
+		FaceCtrl:                faceCtrl,
 		RateLimiter:             rateLimiter,
 		ThrottleHeavy:           throttleHeavy,
 		ThrottleStandard:        throttleStandard,
 		AuthClient:              authClient,
+		Firestore:               firestoreClient,
 	}, nil
 }
 
@@ -103,7 +109,7 @@ func SetupRouter(deps *AppDeps) http.HandlerFunc {
 // OR the legacy X-API-Secret header. Firebase Auth is preferred.
 // Health/ready/metrics endpoints are unauthenticated.
 func buildHandler(deps *AppDeps) http.HandlerFunc {
-	firebaseAuthMw := middlewares.RequireFirebaseAuth(deps.AuthClient)
+	firebaseAuthMw := middlewares.RequireFirebaseAuth(deps.AuthClient, deps.Firestore)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		chain := BuildMiddlewareChain(
@@ -133,11 +139,15 @@ func buildHandler(deps *AppDeps) http.HandlerFunc {
 					// Verify the Firebase ID token from query param
 					decoded, err := deps.AuthClient.VerifyIDToken(r.Context(), token)
 					if err == nil {
+						if !middlewares.HasValidFaceSession(r.Context(), deps.Firestore, decoded) {
+							helpers.SendError(w, "Forbidden: face verification required", http.StatusForbidden)
+							return
+						}
 						if role, _ := decoded.Claims["role"].(string); role == "drafter" {
 							helpers.SendError(w, "Forbidden: voice is unavailable for Drafter", http.StatusForbidden)
 							return
 						}
-						ctx := r.Context()
+						ctx := middlewares.WithFaceRecheck(r.Context(), deps.Firestore, decoded)
 						ctx = context.WithValue(ctx, middlewares.ClaimsKeyExported, decoded)
 						ctx = context.WithValue(ctx, middlewares.UserUIDKeyExported, decoded.UID)
 						if email, ok := decoded.Claims["email"].(string); ok {

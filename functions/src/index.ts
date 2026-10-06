@@ -1,5 +1,6 @@
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import { requireFaceSession } from "./face-session";
 
 admin.initializeApp();
 
@@ -239,10 +240,8 @@ Return ONLY this JSON array:
 // ─── Cloud Function HTTPS Callable Handler ──────────────────────────────────
 
 export const analyzeATSReport = onCall({ region: "asia-southeast1", cors: true, timeoutSeconds: 300 }, async (request: CallableRequest<any>) => {
-  // Check auth
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Request must be authenticated.");
-  }
+  // Check auth + sesi scan wajah (akun bersama)
+  await requireFaceSession(request);
 
   const photos = request.data.photos as ATSPhotoInput[];
   if (!photos || !Array.isArray(photos) || photos.length === 0) {
@@ -389,4 +388,7 @@ export {
   triggerWAReminderH60Cloud,
   updateWAReminderConfigCloud
 } from './manual-wa-send';
+
+// Face 2FA (scan wajah) berjalan di backend Go (POST /api/face/*), bukan di sini:
+// project Firebase memakai paket Spark yang tidak bisa menjalankan Cloud Functions.
 

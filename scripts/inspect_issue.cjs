@@ -1,3 +1,10 @@
+// Kredensial dari environment (jangan hardcode password di repo).
+function requireEnv(name) {
+  const v = process.env[name];
+  if (!v) { console.error(`Set env ${name} dulu.`); process.exit(1); }
+  return v;
+}
+
 const { initializeApp } = require('firebase/app');
 const { getAuth, signInWithEmailAndPassword } = require('firebase/auth');
 const { getFirestore, collection, getDocs, doc, getDoc, query, where } = require('firebase/firestore');
@@ -49,7 +56,7 @@ async function main() {
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  await signInWithEmailAndPassword(auth, 'Qcdme@dme.com', 'Alhabra12345');
+  await signInWithEmailAndPassword(auth, requireEnv('DWIMITRA_SCRIPT_EMAIL'), requireEnv('DWIMITRA_SCRIPT_PASSWORD'));
 
   console.log('--- Inspecting OU.BRAVO.AC-1 (64XpOh2U3q55WjjvpwSX) ---');
   const vrvSnap = await getDoc(doc(db, 'findings', '64XpOh2U3q55WjjvpwSX'));

@@ -42,5 +42,7 @@ func Routes() []struct{ Method, Path, Description string } {
 		{"DELETE", "/api/archive/{id}", "Permanently delete archive (admin)"},
 		{"GET", "/api/audit", "Get all audit logs (admin)"},
 		{"GET", "/api/audit/me", "Get my audit log"},
+		{"POST", "/api/face/{state|verify|check-session|enroll|scan-issue|break-glass}", "Face 2FA gate (login password, sebelum sesi wajah)"},
+		{"POST", "/api/face/admin/{list|audit|review|merge|delete}", "Pusat Biometrik (QC DME / admin + sesi wajah)"},
 	}
 }

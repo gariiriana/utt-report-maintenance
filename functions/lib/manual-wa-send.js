@@ -10,13 +10,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateWAReminderConfigCloud = exports.triggerWAReminderH60Cloud = exports.sendTestWhatsAppCloud = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const wa_service_1 = require("./wa-service");
+const face_session_1 = require("./face-session");
 /**
- * Validasi otentikasi user (khusus dwimitra@co.id atau admin)
+ * Validasi otentikasi user (khusus dwimitra@co.id atau admin) + sesi scan wajah
  */
-function assertAuthorizedUser(request) {
+async function assertAuthorizedUser(request) {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Permintaan harus diautentikasi.');
     }
+    await (0, face_session_1.requireFaceSession)(request);
     const email = request.auth.token.email?.toLowerCase() || '';
     if (email !== 'dwimitra@co.id' && !email.includes('admin')) {
         throw new https_1.HttpsError('permission-denied', 'Hanya akun administrator dwimitra@co.id yang memiliki izin.');
@@ -27,7 +29,7 @@ function assertAuthorizedUser(request) {
  * Callable Function: Mengirim pesan test WhatsApp via Cloud (Fonnte)
  */
 exports.sendTestWhatsAppCloud = (0, https_1.onCall)({ region: 'asia-southeast1', cors: true, timeoutSeconds: 60 }, async (request) => {
-    const userEmail = assertAuthorizedUser(request);
+    const userEmail = await assertAuthorizedUser(request);
     const config = await (0, wa_service_1.getWAReminderConfig)();
     const target = request.data?.targetPhone?.trim() || config.targetPhone?.trim();
     if (!target) {
@@ -72,7 +74,7 @@ exports.sendTestWhatsAppCloud = (0, https_1.onCall)({ region: 'asia-southeast1',
  * Callable Function: Memicu pengiriman reminder H-60 sekarang langsung dari Cloud
  */
 exports.triggerWAReminderH60Cloud = (0, https_1.onCall)({ region: 'asia-southeast1', cors: true, timeoutSeconds: 60 }, async (request) => {
-    const userEmail = assertAuthorizedUser(request);
+    const userEmail = await assertAuthorizedUser(request);
     const config = await (0, wa_service_1.getWAReminderConfig)();
     if (!config.targetPhone) {
         throw new https_1.HttpsError('failed-precondition', 'Nomor WhatsApp tujuan belum diisi.');
@@ -140,7 +142,7 @@ exports.triggerWAReminderH60Cloud = (0, https_1.onCall)({ region: 'asia-southeas
  * Callable Function: Menyimpan pengaturan WhatsApp Reminder ke Firestore
  */
 exports.updateWAReminderConfigCloud = (0, https_1.onCall)({ region: 'asia-southeast1', cors: true, timeoutSeconds: 30 }, async (request) => {
-    const userEmail = assertAuthorizedUser(request);
+    const userEmail = await assertAuthorizedUser(request);
     const data = request.data || {};
     await (0, wa_service_1.saveWAReminderConfig)({
         targetPhone: data.targetPhone,
