@@ -736,19 +736,22 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           if (!item) {
             return new TableCell({
               width: { size: affColsWidth[cIdx], type: WidthType.DXA },
-              borders: CELL_NO_BORDER,
+              borders: CELL_BORDERS_BOX,
               children: [new Paragraph({})],
             });
           }
-          const checkMark = item.checked ? '✓ ' : '• ';
+          // Checklist kotak: dicentang = kotak + centang, tidak dicentang = kotak kosong
+          const checkMark = item.checked ? '☑ ' : '☐ ';
           return new TableCell({
             width: { size: affColsWidth[cIdx], type: WidthType.DXA },
-            borders: CELL_NO_BORDER,
+            borders: CELL_BORDERS_BOX,
             margins: { top: 30, bottom: 30, left: 40, right: 40 },
             children: [
               new Paragraph({
                 children: [
-                  new TextRun({ text: `${checkMark}${item.labelEn}`, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                  // Satu font untuk ☐ dan ☑ agar ukuran kotak sama dan label sejajar
+                  new TextRun({ text: checkMark, size: 18, color: COLOR_BLACK, font: 'Segoe UI Symbol' }),
+                  new TextRun({ text: item.labelEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                   new TextRun({ text: '', break: 1 }),
                   new TextRun({ text: `    ${item.labelId}`, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                 ],
@@ -763,7 +766,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      borders: TABLE_NO_BORDER,
+      columnWidths: affColsWidth,
       rows: affRows,
     })
   );
