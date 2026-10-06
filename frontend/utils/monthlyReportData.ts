@@ -1810,7 +1810,73 @@ export function isValidBOQItem(item: any): boolean {
   if (classIdLower === 'total' || classIdLower.includes('sub total') || classIdLower === 'note') return false;
   const noLower = no.toLowerCase();
   if (noLower === 'total' || noLower === 'grand total') return false;
+  if (isBOQMonthHeaderItem(item)) return false;
   return true;
+}
+
+const BOQ_MONTH_HEADER_NAMES = new Set(
+  [...MONTH_NAMES_ID, ...MONTH_NAMES_EN].map(m => m.toLowerCase())
+);
+
+/** Baris section bulan di BOQ (cth: "Juli", "Agustus") — bukan equipment/CI. Bulan laporan diatur dari Periode. */
+export function isBOQMonthHeaderItem(item: any): boolean {
+  if (!item) return false;
+  const ci = (item['CI Name*'] || item['CI Name'] || '').trim().toLowerCase();
+  const classId = (item['Class Id'] || '').trim().toLowerCase();
+  return BOQ_MONTH_HEADER_NAMES.has(ci) || (!ci && BOQ_MONTH_HEADER_NAMES.has(classId));
+}
+
+function dedupeBOQItemsByIdentifier(items: any[]): any[] {
+  const seen = new Set<string>();
+  return items.filter(it => {
+    const id = getBOQItemIdentifier(it);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+/**
+ * Item BOQ yang bisa dipilih sebagai CI Name di modal: tanpa baris bulan/total.
+ * Kategori yang dibagi per section bulan (cth: CT Water Treatment) mengulang CI yang sama
+ * tiap bulan, jadi digabung jadi satu per CI. Kategori lain dibiarkan (CI kembar = unit fisik berbeda).
+ */
+export function getSelectableBOQItems(items: any[]): any[] {
+  const list = items || [];
+  const valid = list.filter(isValidBOQItem);
+  return list.some(isBOQMonthHeaderItem) ? dedupeBOQItemsByIdentifier(valid) : valid;
+}
+
+/**
+ * Item BOQ untuk bulan laporan. Kategori dengan section bulan: ambil item di luar section
+ * (sebelum header bulan pertama) + item di section bulan laporan; jika section bulan itu
+ * tidak ada, fallback ke daftar unik per CI. Kategori tanpa section bulan: semua item valid.
+ */
+export function getBOQItemsForReportMonth(items: any[], monthName: string): any[] {
+  const list = items || [];
+  if (!list.some(isBOQMonthHeaderItem)) return list.filter(isValidBOQItem);
+
+  const target = (monthName || '').trim().toLowerCase();
+  const idx = Math.max(
+    MONTH_NAMES_ID.findIndex(m => m.toLowerCase() === target),
+    MONTH_NAMES_EN.findIndex(m => m.toLowerCase() === target)
+  );
+  const aliases = idx >= 0 ? [MONTH_NAMES_ID[idx].toLowerCase(), MONTH_NAMES_EN[idx].toLowerCase()] : [target];
+
+  let section: string | null = null;
+  let foundTarget = false;
+  const picked: any[] = [];
+  for (const it of list) {
+    if (isBOQMonthHeaderItem(it)) {
+      const header = (it['CI Name*'] || it['CI Name'] || it['Class Id'] || '').trim().toLowerCase();
+      section = header;
+      if (aliases.includes(header)) foundTarget = true;
+      continue;
+    }
+    if (!isValidBOQItem(it)) continue;
+    if (section === null || aliases.includes(section)) picked.push(it);
+  }
+  return foundTarget ? picked : dedupeBOQItemsByIdentifier(list.filter(isValidBOQItem));
 }
 
 export function extractBOQItemDetails(item: any) {
@@ -5987,8 +6053,7 @@ export function buildCustomScopeTablesFromBOQ(
     if (!cat) return;
 
     const ciSet = new Set(sel.selectedCINames);
-    const chosenItems = cat.items.filter(it => {
-      if (!isValidBOQItem(it)) return false;
+    const chosenItems = getBOQItemsForReportMonth(cat.items, monthNameEn).filter(it => {
       const ciIdentifier = getBOQItemIdentifier(it);
       const ciName = (it['CI Name*'] || it['CI Name'] || it['Class Name'] || it['Equipment Name'] || it['Class Id'] || '').trim();
       return ciSet.has(ciIdentifier) || ciSet.has(ciName) || (it['Class Id'] && ciSet.has(it['Class Id'])) || (it['CI Name*'] && ciSet.has(it['CI Name*']));

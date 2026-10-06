@@ -75,6 +75,7 @@ import {
   findBOQCategoryForScope,
   extractBOQItemDetails,
   isValidBOQItem,
+  getSelectableBOQItems,
   PrimaryGoalItem,
   generatePrimaryGoalsFromEquipments,
   getEquipmentPrimaryGoal,
@@ -341,9 +342,13 @@ export function MonthlyReportGenerator() {
   const [isAddScopeTableModalOpen, setIsAddScopeTableModalOpen] = useState(false);
   const [newScopeSearchQuery, setNewScopeSearchQuery] = useState('');
 
-  // Maintenance Categories dari BOQ (tanpa Spareparts)
+  // Maintenance Categories dari BOQ (tanpa Spareparts). Items hanya CI yang bisa dipilih:
+  // baris section bulan ("Juli", "Agustus", ...) dibuang & CI duplikat per bulan digabung,
+  // karena bulan laporan sudah ditentukan dari Periode.
   const MAINTENANCE_BOQ_CATEGORIES = useMemo(() => {
-    return BOQ_CATEGORIES_DATA.filter(cat => !cat.isSparepart);
+    return BOQ_CATEGORIES_DATA
+      .filter(cat => !cat.isSparepart)
+      .map(cat => ({ ...cat, items: getSelectableBOQItems(cat.items) }));
   }, []);
 
   // Filtered categories berdasarkan pencarian di modal BOQ
@@ -1019,7 +1024,7 @@ export function MonthlyReportGenerator() {
         // Auto select all CIs in this category
         const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
         if (cat) {
-          const all = new Set(cat.items.map(it => getBOQItemIdentifier(it)).filter(Boolean));
+          const all = new Set(getSelectableBOQItems(cat.items).map(it => getBOQItemIdentifier(it)).filter(Boolean));
           setSelectedCINames(old => {
             const m = new Map(old);
             m.set(catId, all);
@@ -1057,7 +1062,7 @@ export function MonthlyReportGenerator() {
     if (!cat) return;
     setSelectedCINames(prev => {
       const m = new Map(prev);
-      const all = new Set(cat.items.map(item => getBOQItemIdentifier(item)).filter(Boolean));
+      const all = new Set(getSelectableBOQItems(cat.items).map(item => getBOQItemIdentifier(item)).filter(Boolean));
       m.set(catId, all);
       return m;
     });
