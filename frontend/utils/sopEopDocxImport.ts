@@ -1082,20 +1082,87 @@ const SOP_SYSTEM_DEFINITIONS: Array<{
   { key: 'lockout_tagout', labelEn: 'Lockout / Tag Required', labelId: 'Wajib Lockout / Tagout', pattern: /lockout\s*(?:\/|\s*)\s*tag/i },
 ];
 
-function parseSOPAffectedSystems(xml: string): {
+function xmlAttribute(tag: string, name: string): string {
+  const value = tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i'))?.[1] || '';
+  return decodeEntities(value).replace(/&#(?:x([0-9a-f]+)|(\d+));/gi, (_, hex, decimal) =>
+    String.fromCodePoint(parseInt(hex || decimal, hex ? 16 : 10)));
+}
+
+/** Wingdings stores checkmarks as private-use glyphs, not Unicode checkmarks. */
+function isCheckedGlyph(text: string, font = ''): boolean {
+  if (/[✓✔☒☑√]|\[x\]/i.test(text)) return true;
+  return /^Wingdings$/i.test(font) && /[\u00fc\u00fe\uf0fc\uf0fe]/i.test(text);
+}
+
+/** Resolve numId -> abstractNum -> level, including per-list level overrides. */
+function getCheckedListLevels(numberingXml: string): Map<string, boolean> {
+  const abstracts = new Map<string, Map<string, boolean>>();
+  const readLevels = (xml: string) => {
+    const levels = new Map<string, boolean>();
+    for (const match of xml.matchAll(/<w:lvl\b[^>]*>[\s\S]*?<\/w:lvl>/gi)) {
+      const level = match[0];
+      const format = xmlAttribute(level.match(/<w:numFmt\b[^>]*>/i)?.[0] || '', 'w:val');
+      const marker = xmlAttribute(level.match(/<w:lvlText\b[^>]*>/i)?.[0] || '', 'w:val');
+      const font = xmlAttribute(level.match(/<w:rFonts\b[^>]*>/i)?.[0] || '', 'w:ascii');
+      levels.set(xmlAttribute(level, 'w:ilvl'), format === 'bullet' && isCheckedGlyph(marker, font));
+    }
+    return levels;
+  };
+
+  for (const match of numberingXml.matchAll(/<w:abstractNum\b[^>]*>[\s\S]*?<\/w:abstractNum>/gi)) {
+    abstracts.set(xmlAttribute(match[0], 'w:abstractNumId'), readLevels(match[0]));
+  }
+
+  const result = new Map<string, boolean>();
+  for (const match of numberingXml.matchAll(/<w:num\b[^>]*>[\s\S]*?<\/w:num>/gi)) {
+    const num = match[0];
+    const numId = xmlAttribute(num, 'w:numId');
+    const abstractId = xmlAttribute(num.match(/<w:abstractNumId\b[^>]*>/i)?.[0] || '', 'w:val');
+    const levels = new Map(abstracts.get(abstractId));
+    for (const [level, checked] of readLevels(num)) levels.set(level, checked);
+    for (const [level, checked] of levels) result.set(`${numId}:${level}`, checked);
+  }
+  return result;
+}
+
+function hasCheckedParagraphMarker(paragraphXml: string, checkedListLevels: Map<string, boolean>): boolean {
+  if (isCheckedGlyph(cleanText(paragraphXml))) return true;
+  for (const match of paragraphXml.matchAll(/<w:sym\b[^>]*>/gi)) {
+    const code = xmlAttribute(match[0], 'w:char');
+    if (/^[0-9a-f]{1,6}$/i.test(code) && isCheckedGlyph(
+      String.fromCodePoint(parseInt(code, 16)), xmlAttribute(match[0], 'w:font')
+    )) return true;
+  }
+  for (const match of paragraphXml.matchAll(/<w:r\b[^>]*>[\s\S]*?<\/w:r>/gi)) {
+    const font = xmlAttribute(match[0].match(/<w:rFonts\b[^>]*>/i)?.[0] || '', 'w:ascii');
+    if (isCheckedGlyph(cleanText(match[0]), font)) return true;
+  }
+  const numPr = paragraphXml.match(/<w:numPr\b[^>]*>[\s\S]*?<\/w:numPr>/i)?.[0] || '';
+  const numId = xmlAttribute(numPr.match(/<w:numId\b[^>]*>/i)?.[0] || '', 'w:val');
+  const level = xmlAttribute(numPr.match(/<w:ilvl\b[^>]*>/i)?.[0] || '', 'w:val') || '0';
+  return numId !== '0' && checkedListLevels.get(`${numId}:${level}`) === true;
+}
+
+function parseSOPAffectedSystems(xml: string, numberingXml: string): {
   systems: SOPAffectedSystemItem[];
   detailsEn: string;
   detailsId: string;
 } {
-  const m = xml.match(/(?:Section|Seksi)\s*4[\s\S]*?(?:Section|Seksi)\s*5/i);
-  if (!m) {
+  const blocks = getSectionBlocks(xml, 4);
+  if (blocks.length === 0) {
     return {
       systems: SOP_SYSTEM_DEFINITIONS.map((d) => ({ key: d.key, labelEn: d.labelEn, labelId: d.labelId, checked: false })),
       detailsEn: '',
       detailsId: ''
     };
   }
-  const sec4Xml = m[0];
+  const sec4Xml = blocks.map((block) => block.xml).join('\n');
+  const checkedListLevels = getCheckedListLevels(numberingXml);
+  // Stop at the instructions: details can mention systems without selecting them.
+  const paragraphs = sec4Xml.match(/<w:p(?:\s|>)[\s\S]*?<\/w:p>/gi) || [];
+  const instructionIndex = paragraphs.findIndex((paragraph) =>
+    /if any of the item|jika ada item di atas/i.test(cleanText(paragraph)));
+  const checklist = instructionIndex >= 0 ? paragraphs.slice(0, instructionIndex) : paragraphs;
 
   // Extract detail section
   const detailMatch = sec4Xml.match(/if any of the item above is checked[\s\S]*?:\s*([\s\S]*?)$/i);
@@ -1132,9 +1199,9 @@ function parseSOPAffectedSystems(xml: string): {
     key: sys.key,
     labelEn: sys.labelEn,
     labelId: sys.labelId,
-    // Only the checkbox symbol in the Word file decides; mentioning a system in the
-    // detail text (e.g. "critical area cooling") must not tick an unticked box.
-    checked: new RegExp('(?:☒|☑|\\[x\\])[^<]*?' + sys.pattern.source, 'i').test(sec4Xml)
+    // Match normalized text across runs; read only this item's own marker.
+    checked: checklist.some((paragraph) => sys.pattern.test(cleanText(paragraph)) &&
+      hasCheckedParagraphMarker(paragraph, checkedListLevels))
   }));
 
   return { systems, detailsEn, detailsId };
@@ -1143,7 +1210,7 @@ function parseSOPAffectedSystems(xml: string): {
 /**
  * Parsing berkas Word SOP (14 Seksi) secara komprehensif
  */
-function parseSOPData(xml: string, fileName: string): SOPDocumentData {
+function parseSOPData(xml: string, fileName: string, numberingXml: string): SOPDocumentData {
   const meta = extractMetadata(xml, fileName, false);
   const { items: equipmentList, columns: equipmentColumns } = parseCIEquipment(xml);
   const prerequisites = parsePrerequisites(xml);
@@ -1195,7 +1262,7 @@ function parseSOPData(xml: string, fileName: string): SOPDocumentData {
   }
 
   // Seksi 4: Affected Systems
-  const parsedAffected = parseSOPAffectedSystems(xml);
+  const parsedAffected = parseSOPAffectedSystems(xml, numberingXml);
   const affectedSystems = parsedAffected.systems;
   const affectedSystemsDetails = parsedAffected.detailsEn || parsedAffected.detailsId || '';
   const affectedSystemsDetailsEn = parsedAffected.detailsEn;
@@ -1396,7 +1463,9 @@ export async function importSopEopFromDocx(file: File): Promise<ParsedSopEopResu
       warnings
     };
   } else {
-    const sopData = parseSOPData(xml, file.name);
+    // Word list bullets (including checked Wingdings glyphs) live in numbering.xml.
+    const numberingXml = await zip.file('word/numbering.xml')?.async('text') || '';
+    const sopData = parseSOPData(xml, file.name, numberingXml);
     const warnings = getImportWarnings(sopData);
     return {
       type: 'SOP',

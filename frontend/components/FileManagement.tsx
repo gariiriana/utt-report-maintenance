@@ -75,6 +75,7 @@ const FILE_CATEGORIES = [
     'MOP',
     'Risk Register',
     'D-DAY',
+    'BA (Berita Acara)',
     'Report CM',
     'Form SLA/SLG',
     'Report PIR',
@@ -298,7 +299,9 @@ export function parseFilenameMetadata(filename: string): ParsedFileMetadata {
     }
 
     // 3. Deteksi Kategori Dokumen
-    if (/\b(?:LAYOUT|DENAH)\b/i.test(cleanName)) {
+    if (/(?:^|[^a-z0-9])(?:BA|BERITA[\s_-]+ACARA)(?=$|[^a-z0-9])/i.test(cleanName)) {
+        result.category = 'BA (Berita Acara)';
+    } else if (/\b(?:LAYOUT|DENAH)\b/i.test(cleanName)) {
         result.category = 'Layout';
     } else if (/\b(?:PREDICTIVE[\s_-]*REPORT|PREDICTIVE)\b/i.test(cleanName)) {
         result.category = 'Predictive Report';
@@ -2232,6 +2235,28 @@ export function FileManagement({
                                 Reset
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {initialFolder && selectedFolder === 'BA (Berita Acara)' && (
+                    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/90 p-3">
+                        <label className="flex items-center gap-3 text-sm font-bold text-slate-700">
+                            <span>Tahun Berita Acara</span>
+                            <select
+                                value={filterYear}
+                                onChange={(e) => {
+                                    const year = e.target.value;
+                                    setFilterYear(year);
+                                    if (YEARS.includes(year)) setSelectedUploadYear(year);
+                                }}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            >
+                                <option value="All">Semua Tahun</option>
+                                {YEARS.map((year) => (
+                                    <option key={year} value={year}>{year}</option>
+                                ))}
+                            </select>
+                        </label>
                     </div>
                 )}
 

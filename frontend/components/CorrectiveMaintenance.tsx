@@ -166,6 +166,9 @@ interface CorrectiveReport {
     ticketStatus?: 'open' | 'closed';
     slaReportId?: string;
     hasSLA?: boolean;
+    // Per-report reminder exceptions do not change SLA eligibility or CM classification.
+    slaReminderExcluded?: boolean;
+    slaReminderExcludedReason?: string;
     slaTicketNumber?: string;
     slaTicketStatus?: 'open' | 'closed';
     postmortemOwner?: string;
@@ -1691,7 +1694,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
     }, [inferredPairsKey, loading, isAuthorizedRole]);
     const unlinkedCMReports = cmRequiringSLAReports
-        .filter(cm => cm.id && !matchedCMIds.has(cm.id))
+        .filter(cm => cm.id && !matchedCMIds.has(cm.id) && cm.slaReminderExcluded !== true)
         .sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
 
     // ===== DIAGNOSTIC DATA (Untuk Modal Investigasi & Console) =====
@@ -4456,6 +4459,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                                 <option value="consumable">📦 Consumable (Wajib SLA)</option>
                                                                                 <option value="sparepart_dme">🔩 DME/Baut (Tanpa SLA)</option>
                                                                             </select>
+                                                                        )}
+
+                                                                        {report.slaReminderExcluded === true && (
+                                                                            <span
+                                                                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200"
+                                                                                title={report.slaReminderExcludedReason || 'Laporan ini dikecualikan dari reminder SLA/SLG'}
+                                                                            >
+                                                                                Reminder SLA/SLG Dikecualikan
+                                                                            </span>
                                                                         )}
 
                                                                         {/* 2. BADGE STATUS SLA (Hanya jika wajib SLA) */}

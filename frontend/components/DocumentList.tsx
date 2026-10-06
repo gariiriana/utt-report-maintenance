@@ -2441,6 +2441,7 @@ export function DocumentList({
     );
 
     const managementFolders = [
+      { name: 'BA (Berita Acara)', desc: 'Arsip Berita Acara berdasarkan Quarter dan Tahun' },
       { name: 'D-DAY', desc: 'Dokumen D-DAY & Prosedur Operational' },
       { name: 'Laporan Harian', desc: 'Laporan Harian Maintenance Data Center' },
       { name: 'Layout', desc: 'Layout & Denah Fasilitas Data Center' },

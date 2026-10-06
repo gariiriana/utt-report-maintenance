@@ -740,7 +740,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({})],
             });
           }
-          const checkMark = item.checked ? '☒ ' : '☐ ';
+          const checkMark = item.checked ? '✓ ' : '• ';
           return new TableCell({
             width: { size: affColsWidth[cIdx], type: WidthType.DXA },
             borders: CELL_NO_BORDER,
@@ -763,6 +763,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      borders: TABLE_NO_BORDER,
       rows: affRows,
     })
   );

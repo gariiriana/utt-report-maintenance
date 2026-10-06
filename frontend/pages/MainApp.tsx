@@ -178,6 +178,7 @@ export function MainApp() {
     const isBatch = /\d+\s+berkas\s+baru/i.test(item.fileName || '') ||
                     (item.fileName || '').toLowerCase().includes('berkas baru');
     const managementFoldersList = [
+      'BA (Berita Acara)',
       'D-DAY', 'Laporan Harian', 'Layout', 'MOP', 'Monthly', 'Predictive Report',
       'Risk Register', 'JSEA', 'Report CM', 'Form SLA/SLG', 'Report PIR',
       'Laporan Temuan', 'SLD', 'Service Report', 'Service Report Approved'
