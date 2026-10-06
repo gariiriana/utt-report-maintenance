@@ -25,8 +25,7 @@ import {
   HeadingLevel,
   VerticalMergeType,
   VerticalAlign,
-  PageNumber,
-  HeightRule
+  PageNumber
 } from 'docx';
 import { saveAs } from 'file-saver';
 import {
@@ -40,6 +39,7 @@ import {
   getDefaultExecutiveSummaryParagraphs
 } from './monthlyReportData';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from './engineerSignatures';
+import { fetchAbnormalItemsForMonth, buildAbnormalPhotoMap } from './abnormalFindingsData';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 
 /** Enforces Times New Roman font on every TextRun throughout the DOCX export */
@@ -904,7 +904,7 @@ export async function generateMonthlyReportDOCX(
   );
 
 
-  // Tables 2 - 17: Task Performance per Scope (Authentic 10 Columns matching PDF 237 pages)
+  // Tables 2 - 17: Task Performance per Scope (6 kolom: No s.d. Task Preventive Maintenance)
   if (data.taskPerformanceTables && data.taskPerformanceTables.length > 0) {
     data.taskPerformanceTables.forEach(t => {
       bodyChildren.push(
@@ -918,31 +918,15 @@ export async function generateMonthlyReportDOCX(
           rows: [
             new TableRow({
               children: [
-                new TableCell({ width: { size: 4, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Class Name", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Capacity", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Product Name", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 19, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Task Preventif Maintenance", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Critical Repairs", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Operational Status", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Issues", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Recommendations", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 5, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 17, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Class Name", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 13, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Capacity", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 17, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Product Name", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 33, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Task Preventif Maintenance", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
               ]
             }),
             ...t.items.map(item => {
-              const statusMode = (item as any).statusMode;
-              let opStatus = (item.operationalStatus || '').replace(/\r\n/g, '\n').trim();
-              if (statusMode === 'custom') {
-                if (!opStatus) opStatus = 'Operational / Running\nBeroperasi Normal';
-              } else if (statusMode === 'not_good' || (!opStatus && statusMode === 'not_good')) {
-                opStatus = 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
-              } else if (statusMode === 'good' && !opStatus) {
-                opStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
-              } else if (!opStatus) {
-                opStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
-              }
-
               return new TableRow({
                 children: [
                   new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${item.no}.`, size: 18, font: "Times New Roman" })] })] }),
@@ -951,10 +935,6 @@ export async function generateMonthlyReportDOCX(
                   new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.location || "-", size: 18, font: "Times New Roman" })] })] }),
                   new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.productName || "N/A", size: 18, font: "Times New Roman" })] })] }),
                   new TableCell({ borders: borderThin, children: formatBilingualCell(item.taskPM, "Inspect, clean, and test equipment to ensure reliable operation.\nInspeksi, bersihkan, dan uji peralatan untuk memastikan pengoperasian yang andal.") }),
-                  new TableCell({ borders: borderThin, children: formatBilingualCell(item.criticalRepairs, "No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.") }),
-                  new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: formatBilingualCell(opStatus, "Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal", true, true) }),
-                  new TableCell({ borders: borderThin, children: formatBilingualCell(item.issues, "No abnormality was observed during normal operation.\nTidak ditemukan adanya kelainan selama pengoperasian normal.") }),
-                  new TableCell({ borders: borderThin, children: formatBilingualCell(item.recommendations, "Continue routine monitoring and preventive maintenance to ensure reliable operation.\nLanjutkan pemantauan rutin dan pemeliharaan preventif untuk memastikan pengoperasian yang andal.") }),
                 ]
               });
             })
@@ -1549,13 +1529,31 @@ export async function generateMonthlyReportDOCX(
       children: [
         new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18 })] })] }),
         new TableCell({ width: { size: 32, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Component", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 31, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Condition Before", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 31, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Issue", bold: true, color: "FFFFFF", size: 18 })] })] }),
         new TableCell({ width: { size: 31, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Inspection Notes", bold: true, color: "FFFFFF", size: 18 })] })] }),
       ]
     })
   ];
 
-  data.observationTable23.forEach(sec => {
+  if (!data.observationTable23 || data.observationTable23.length === 0) {
+    obsRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 4,
+            borders: borderThin,
+            children: formatBilingualCell(
+              `No abnormal finding was recorded during ${data.monthNameEn} ${data.year}.`,
+              "",
+              true
+            )
+          })
+        ]
+      })
+    );
+  }
+
+  (data.observationTable23 || []).forEach(sec => {
     obsRows.push(
       new TableRow({
         children: [
@@ -1604,37 +1602,79 @@ export async function generateMonthlyReportDOCX(
     })
   );
 
-  const rcaItems = (data.rootCauseAnalyses && data.rootCauseAnalyses.length > 0)
-    ? data.rootCauseAnalyses
-    : [
-        {
-          title: "A. Penerangan Jalan Umum (PJU)",
-          system: "PJU",
-          description: "The abnormal PJU operation is primarily caused by battery degradation or failure, which reduces the available DC supply and prevents the lighting system from operating properly. Possible contributing factors include battery aging, repeated charge-discharge cycles, insufficient charging performance, loose or corroded connections, and exposure to high environmental temperatures.\nAnalisis akar masalah menunjukkan bahwa operasi PJU yang abnormal terutama disebabkan oleh penurunan kondisi atau kerusakan baterai, sehingga suplai DC menjadi tidak mencukupi dan lampu tidak dapat beroperasi dengan baik. Faktor pendukung yang mungkin meliputi usia baterai, siklus pengisian dan pengosongan berulang, performa pengisian yang kurang optimal, koneksi yang longgar atau berkarat, serta paparan suhu lingkungan yang tinggi.",
-          photos: []
-        },
-        {
-          title: "B. AC Split",
-          system: "AC Split",
-          description: "The AC Split abnormality is primarily caused by a short circuit in the compressor, which triggers the protection system and causes the outdoor unit to shut down. Possible contributing factors include compressor winding damage, insulation deterioration, electrical connection faults, overheating, unstable power supply, or internal compressor failure.\nAnalisis akar masalah menunjukkan bahwa abnormalitas AC Split terutama disebabkan oleh short circuit pada compressor, yang memicu sistem proteksi dan menyebabkan unit outdoor berhenti beroperasi. Faktor yang mungkin berkontribusi meliputi kerusakan winding compressor, penurunan kualitas isolasi, gangguan koneksi listrik, overheating, suplai daya yang tidak stabil, atau kerusakan internal compressor.",
-          photos: []
-        },
-        {
-          title: "C. Road Blocker",
-          system: "Road Blocker",
-          description: "The Road Blocker abnormalities are likely caused by mechanical wear or loosening of the hinge shaft, failure or power supply issues affecting the panel fan/blower, and improper panel lock configuration resulting in bypass condition. These conditions may be influenced by continuous operation, vibration, component aging, and insufficient periodic inspection.\nAnalisis akar masalah Road Blocker kemungkinan disebabkan oleh keausan mekanis atau kelonggaran pada as engsel, gangguan atau masalah suplai daya pada kipas/blower panel, serta konfigurasi kunci panel yang tidak sesuai sehingga berada dalam kondisi bypass. Kondisi tersebut dapat dipengaruhi oleh operasi terus-menerus, getaran, usia komponen, dan kurangnya pemeriksaan berkala.",
-          photos: []
-        }
-      ];
+  const rcaItems = data.rootCauseAnalyses || [];
 
+  // Foto RCA otomatis tidak disimpan di laporan; ambil dari Pusat Temuan Abnormal saat export
+  // Cadangan: RCA yang fotonya belum terlampir di data (mis. foto masih dimuat) diambil langsung dari temuan
+  if (rcaItems.some(r => r.sourceId && !(r.photos || []).some(p => p?.url))) {
+    try {
+      const photoMap = buildAbnormalPhotoMap(await fetchAbnormalItemsForMonth(data.monthNumber, data.year));
+      rcaItems.forEach(r => {
+        if (!r.sourceId || (r.photos || []).some(p => p?.url)) return;
+        r.photos = (photoMap[r.sourceId] || []).map((url, i) => ({ caption: `${r.title} - Photo ${i + 1}`, url }));
+      });
+    } catch (err) {
+      console.warn('[MonthlyReport DOCX] Gagal memuat foto temuan untuk RCA:', err);
+    }
+  }
+
+  // Siapkan byte + ukuran asli tiap foto (URL diunduh dulu) karena pembuatan tabel di bawah berjalan sinkron
+  const rcaPhotoInfo = new Map<string, { bytes: Uint8Array; width: number; height: number }>();
+  for (const r of rcaItems) {
+    for (const ph of (r.photos || []).slice(0, 2)) {
+      if (!ph?.url || rcaPhotoInfo.has(ph.url)) continue;
+      const bytes = /^https?:/i.test(ph.url) ? await loadImageAsUint8Array(ph.url) : base64ToUint8Array(ph.url);
+      if (bytes.length === 0) continue;
+      let width = 4;
+      let height = 3;
+      try {
+        const bitmap = await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>]));
+        width = bitmap.width || width;
+        height = bitmap.height || height;
+        bitmap.close();
+      } catch {
+        // ukuran tidak terbaca -> pakai rasio 4:3
+      }
+      rcaPhotoInfo.set(ph.url, { bytes, width, height });
+    }
+  }
+  // Ukuran tampil di DOCX (px) menjaga rasio asli: 1 foto lebih besar, 2 foto berdampingan
+  const toRcaImageRun = (url: string, photoCount: number): ImageRun | null => {
+    const info = rcaPhotoInfo.get(url);
+    if (!info) return null;
+    const maxW = photoCount === 1 ? 460 : 300;
+    const maxH = photoCount === 1 ? 360 : 280;
+    const scale = Math.min(maxW / info.width, maxH / info.height);
+    const isPng = info.bytes[0] === 0x89 && info.bytes[1] === 0x50;
+    return new ImageRun({
+      data: info.bytes,
+      transformation: { width: Math.round(info.width * scale), height: Math.round(info.height * scale) },
+      type: isPng ? 'png' : 'jpg'
+    });
+  };
+
+  if (rcaItems.length === 0) {
+    bodyChildren.push(
+      new Paragraph({
+        spacing: { before: 80, after: 200 },
+        children: [
+          new TextRun({ text: `No root cause analysis is required as no abnormal finding was recorded during ${data.monthNameEn} ${data.year}.`, size: 20, font: "Times New Roman", color: "000000" })
+        ]
+      })
+    );
+  }
   rcaItems.forEach((rca, rcaIdx) => {
     const letter = String.fromCharCode(65 + rcaIdx);
     const cleanTitle = rca.title.replace(/^[A-Z]\.\s*/, '').trim();
     const displayTitle = `${letter}. ${cleanTitle}`;
+    // RCA berfoto: judul + analisis + tabel foto dijaga utuh di satu halaman (keep with next / baris tidak terpotong)
+    const keepTogether = (rca.photos || []).some(ph => ph?.url);
 
     // Item Title: 10 pt bold (size: 20)
     bodyChildren.push(
       new Paragraph({
+        keepNext: keepTogether,
+        keepLines: true,
         spacing: { before: 200, after: 80 },
         children: [
           new TextRun({ text: displayTitle, bold: true, size: 20, font: "Times New Roman", color: "000000" })
@@ -1657,6 +1697,8 @@ export async function generateMonthlyReportDOCX(
     if (descEn) {
       bodyChildren.push(
         new Paragraph({
+          keepNext: keepTogether,
+          keepLines: true,
           alignment: AlignmentType.JUSTIFIED,
           spacing: { before: 40, after: descId ? 40 : 120 },
           children: [
@@ -1669,6 +1711,8 @@ export async function generateMonthlyReportDOCX(
     if (descId) {
       bodyChildren.push(
         new Paragraph({
+          keepNext: keepTogether,
+          keepLines: true,
           alignment: AlignmentType.JUSTIFIED,
           spacing: { before: 40, after: 140 },
           children: [
@@ -1678,37 +1722,51 @@ export async function generateMonthlyReportDOCX(
       );
     }
 
-    // Photo Table: Documentasi Photo (2 columns, 50% each)
-    const photo1 = rca.photos?.[0];
-    const photo2 = rca.photos?.[1];
-
-    let p1ImageRun: ImageRun | null = null;
-    let p2ImageRun: ImageRun | null = null;
-
-    if (photo1?.url) {
-      const bytes = base64ToUint8Array(photo1.url);
-      if (bytes.length > 0) {
-        p1ImageRun = new ImageRun({ data: bytes, transformation: { width: 280, height: 180 }, type: 'jpg' });
-      }
-    }
-
-    if (photo2?.url) {
-      const bytes = base64ToUint8Array(photo2.url);
-      if (bytes.length > 0) {
-        p2ImageRun = new ImageRun({ data: bytes, transformation: { width: 280, height: 180 }, type: 'jpg' });
-      }
-    }
+    // Photo Table: Documentasi Photo — hanya jika temuan punya foto; jumlah kolom = jumlah foto
+    const shownPhotos = (rca.photos || []).filter(ph => ph?.url).slice(0, 2);
+    if (shownPhotos.length === 0) return;
+    const colWidthPct = shownPhotos.length === 1 ? 100 : 50;
+    const imageCells = shownPhotos.map(ph => {
+      const run = toRcaImageRun(ph.url, shownPhotos.length);
+      return new TableCell({
+        width: { size: colWidthPct, type: WidthType.PERCENTAGE },
+        borders: borderThin,
+        verticalAlign: VerticalAlign.CENTER,
+        children: [
+          new Paragraph({
+            keepNext: true,
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 80, after: 80 },
+            children: run ? [run] : [new TextRun({ text: " ", size: 18 })]
+          })
+        ]
+      });
+    });
+    const captionCells = shownPhotos.map(ph => new TableCell({
+      width: { size: colWidthPct, type: WidthType.PERCENTAGE },
+      borders: borderThin,
+      verticalAlign: VerticalAlign.CENTER,
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 60, after: 60 },
+          children: [new TextRun({ text: ph.caption || cleanTitle, size: 18, font: "Times New Roman" })]
+        })
+      ]
+    }));
 
     const photoRows: TableRow[] = [
       // Header: Documentasi Photo
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
-            columnSpan: 2,
+            columnSpan: shownPhotos.length,
             shading: { fill: "2E74B5" },
             borders: borderThin,
             children: [
               new Paragraph({
+                keepNext: true,
                 alignment: AlignmentType.CENTER,
                 spacing: { before: 80, after: 80 },
                 children: [
@@ -1719,73 +1777,8 @@ export async function generateMonthlyReportDOCX(
           })
         ]
       }),
-      // Row 2: Photos / Visual area (height ~2056 dxa)
-      new TableRow({
-        height: { value: 2056, rule: HeightRule.ATLEAST },
-        children: [
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            borders: borderThin,
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 60, after: 60 },
-                children: p1ImageRun ? [p1ImageRun] : [
-                  new TextRun({ text: photo1?.caption ? "" : " ", size: 18, italics: true, color: "6B7280" })
-                ]
-              })
-            ]
-          }),
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            borders: borderThin,
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 60, after: 60 },
-                children: p2ImageRun ? [p2ImageRun] : [
-                  new TextRun({ text: photo2?.caption ? "" : " ", size: 18, italics: true, color: "6B7280" })
-                ]
-              })
-            ]
-          })
-        ]
-      }),
-      // Row 3: Captions
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            borders: borderThin,
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 60, after: 60 },
-                children: [
-                  new TextRun({ text: photo1?.caption || `${cleanTitle} - Pre/Issue`, size: 18, font: "Times New Roman" })
-                ]
-              })
-            ]
-          }),
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            borders: borderThin,
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 60, after: 60 },
-                children: [
-                  new TextRun({ text: photo2?.caption || `${cleanTitle} - Post/Rectified`, size: 18, font: "Times New Roman" })
-                ]
-              })
-            ]
-          })
-        ]
-      })
+      new TableRow({ cantSplit: true, children: imageCells }),
+      new TableRow({ cantSplit: true, children: captionCells })
     ];
 
     bodyChildren.push(

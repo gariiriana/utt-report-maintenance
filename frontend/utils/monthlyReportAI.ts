@@ -20,6 +20,16 @@ import {
   buildDynamicMitigationTable33,
   buildDynamicLessonsLearnedTable34
 } from './monthlyReportData';
+import { auth } from '@/api/firebase';
+import { getApiEndpoint } from '@/utils/apiConfig';
+
+// Backend /api/ai/chat mewajibkan Firebase ID token; tanpa ini request selalu ditolak.
+async function aiChatHeaders(): Promise<Record<string, string>> {
+  const token = await auth.currentUser?.getIdToken();
+  return token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
+}
 
 export interface AICopilotResponse {
   success: boolean;
@@ -676,7 +686,7 @@ Kembalikan respon dalam format JSON SAJA tanpa markdown lain:
 
     const res = await fetch(chatUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await aiChatHeaders(),
       body: JSON.stringify({
         messages: [
           { role: 'system', content: 'Anda adalah asisten data engineer pengeksekusi perintah JSON untuk laporan maintenance data center.' },
@@ -772,9 +782,7 @@ Total Temuan: ${reportData.observationTable23.reduce((acc, s) => acc + s.items.l
 
     const res = await fetch(chatUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await aiChatHeaders(),
       body: JSON.stringify({
         messages: [
           {
@@ -816,9 +824,18 @@ Total Temuan: ${reportData.observationTable23.reduce((acc, s) => acc + s.items.l
  * Uses backend Gemini AI (/api/ai/chat) to intelligently translate dynamic technician field notes,
  * and combines it with official NeutraDC bilingual standard templates for all 13 chapters and 36 tables.
  */
+export interface BilingualConversionStats {
+  total: number;
+  translated: number;
+  failed: number;
+  lastError?: string;
+}
+
 export async function convertReportToBilingualWithAI(
   data: FullMonthlyReportData,
-  onStatusUpdate?: (status: string) => void
+  onStatusUpdate?: (status: string) => void,
+  // Diisi dengan hasil terjemahan AI (berapa teks gagal) supaya UI tidak mengklaim 100% bila AI gagal
+  stats?: BilingualConversionStats
 ): Promise<FullMonthlyReportData> {
   onStatusUpdate?.('AI Agent sedang menganalisis catatan teknisi & struktur laporan...');
 
@@ -835,6 +852,16 @@ export async function convertReportToBilingualWithAI(
           itemsToTranslate.push({ id: `obs_notes_${sIdx}_${iIdx}`, originalText: it.inspectionNotes });
         }
       });
+    });
+  }
+
+  // Root Cause Analysis (Bab 7): paragraf analisis English dari AI -> tambah baris Bahasa Indonesia
+  if (Array.isArray(data.rootCauseAnalyses)) {
+    data.rootCauseAnalyses.forEach((rca, idx) => {
+      const desc = (rca.description || '').trim();
+      if (desc && !desc.includes('\n') && !rca.descriptionEn && !rca.descriptionId) {
+        itemsToTranslate.push({ id: `rca_${idx}`, originalText: desc });
+      }
     });
   }
 
@@ -940,20 +967,30 @@ export async function convertReportToBilingualWithAI(
     return updated;
   }
 
-  // 3. Query Google Gemini AI Agent to translate dynamic notes into dual-line technical format
-  try {
-    onStatusUpdate?.(`AI Agent menerjemahkan ${itemsToTranslate.length} catatan lapangan teknisi...`);
-    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-    const chatUrl = apiBaseUrl.endsWith('/api') ? `${apiBaseUrl}/ai/chat` : `${apiBaseUrl}/api/ai/chat`;
-
+  // 3. Terjemahkan per batch (berurutan) supaya SEMUA teks terkirim — dulu hanya 40 teks pertama
+  //    dalam satu request, sehingga Tabel 23 (puluhan temuan) tidak ikut / balasan AI terpotong.
+  const transMap = new Map<string, string>();
+  const BATCH = 15;
+  let failed = 0;
+  let lastError: string | undefined;
+  let consecutiveFails = 0;
+  for (let i = 0; i < itemsToTranslate.length; i += BATCH) {
+    const chunk = itemsToTranslate.slice(i, i + BATCH);
+    if (consecutiveFails >= 2) {
+      // AI sedang bermasalah: jangan buat user menunggu lama, sisanya dilaporkan gagal
+      failed += chunk.length;
+      continue;
+    }
+    onStatusUpdate?.(`AI Agent menerjemahkan catatan lapangan ${Math.min(i + chunk.length, itemsToTranslate.length)}/${itemsToTranslate.length}...`);
     const prompt = `
 Tugas: Anda adalah AI Agent Senior Penerjemah Teknis Fasilitas Data Center NeutraDC Cikarang.
 Terjemahkan dan formatkan setiap teks catatan lapangan berikut menjadi Format Bilingual Dua Baris:
 Baris 1: Bahasa Inggris Formal Teknik (English)
 Baris 2: Bahasa Indonesia Formal Teknik (Bahasa Indonesia)
+Pertahankan kode unit, tag peralatan, merek, part number, dan angka persis seperti aslinya. Jangan menambah informasi.
 
 Daftar teks yang perlu diformat:
-${JSON.stringify(itemsToTranslate.slice(0, 40), null, 2)}
+${JSON.stringify(chunk, null, 2)}
 
 Format Jawaban HANYA berupa JSON array valid tanpa tanda kutip markdown pembungkus:
 [
@@ -964,30 +1001,59 @@ Format Jawaban HANYA berupa JSON array valid tanpa tanda kutip markdown pembungk
 ]
     `.trim();
 
-    const res = await fetch(chatUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: 'Anda adalah AI Agent Penerjemah Khusus Laporan Bulanan Data Center. Selalu jawab dalam JSON array murni.' },
-          { role: 'user', content: prompt }
-        ]
-      })
-    });
-
-    if (res.ok) {
-      const json = await res.json();
-      const reply = json.reply || '';
-      const cleanJson = reply.replace(/```json/gi, '').replace(/```/gi, '').trim();
-      const parsedTranslations: { id: string; bilingual: string }[] = JSON.parse(cleanJson);
-
-      const transMap = new Map<string, string>();
-      parsedTranslations.forEach(pt => {
-        if (pt.id && pt.bilingual) {
-          transMap.set(pt.id, pt.bilingual);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90_000);
+    try {
+      const res = await fetch(getApiEndpoint('/api/ai/chat'), {
+        signal: controller.signal,
+        method: 'POST',
+        headers: await aiChatHeaders(),
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'Anda adalah AI Agent Penerjemah Khusus Laporan Bulanan Data Center. Selalu jawab dalam JSON array murni.' },
+            { role: 'user', content: prompt }
+          ]
+        })
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.reply) {
+        throw new Error(json?.error || json?.message || `AI HTTP ${res.status}`);
+      }
+      const reply = String(json.reply).replace(/```json/gi, '').replace(/```/gi, '').trim();
+      const start = reply.indexOf('[');
+      const end = reply.lastIndexOf(']');
+      const parsedTranslations: { id: string; bilingual: string }[] = JSON.parse(start >= 0 && end > start ? reply.slice(start, end + 1) : reply);
+      const chunkIds = new Set(chunk.map(c => c.id));
+      let okInChunk = 0;
+      (Array.isArray(parsedTranslations) ? parsedTranslations : []).forEach(pt => {
+        const bilingual = typeof pt?.bilingual === 'string' ? pt.bilingual.replace(/\r\n/g, '\n').trim() : '';
+        const [enLine, ...idLines] = bilingual.split('\n');
+        // Wajib dua baris (EN di atas, ID di bawah)
+        if (pt?.id && chunkIds.has(pt.id) && enLine?.trim() && idLines.join(' ').trim()) {
+          transMap.set(pt.id, `${enLine.trim()}\n${idLines.join(' ').trim()}`);
+          okInChunk++;
         }
       });
+      failed += chunk.length - okInChunk;
+      consecutiveFails = 0;
+    } catch (err: any) {
+      console.warn('[MonthlyReport] Batch terjemahan bilingual gagal:', err);
+      failed += chunk.length;
+      lastError = err?.name === 'AbortError' ? 'AI tidak merespons dalam 90 detik' : (err?.message || String(err));
+      consecutiveFails++;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (stats) {
+    stats.total = itemsToTranslate.length;
+    stats.translated = transMap.size;
+    stats.failed = failed;
+    stats.lastError = lastError;
+  }
 
+  try {
+    {
       // Apply AI translations back to observationTable23
       if (Array.isArray(updated.observationTable23)) {
         updated.observationTable23.forEach((sec, sIdx) => {
@@ -997,6 +1063,14 @@ Format Jawaban HANYA berupa JSON array valid tanpa tanda kutip markdown pembungk
             if (transMap.has(cKey)) it.conditionBefore = transMap.get(cKey)!;
             if (transMap.has(nKey)) it.inspectionNotes = transMap.get(nKey)!;
           });
+        });
+      }
+
+      // Apply AI translations to Root Cause Analysis (EN di atas, ID di bawah)
+      if (Array.isArray(updated.rootCauseAnalyses)) {
+        updated.rootCauseAnalyses.forEach((rca, idx) => {
+          const key = `rca_${idx}`;
+          if (transMap.has(key)) rca.description = transMap.get(key)!;
         });
       }
 
@@ -1076,7 +1150,9 @@ Format Jawaban HANYA berupa JSON array valid tanpa tanda kutip markdown pembungk
         });
       }
 
-      onStatusUpdate?.('AI Agent berhasil menerjemahkan seluruh data!');
+      onStatusUpdate?.(failed > 0
+        ? `AI Agent menerjemahkan ${transMap.size} dari ${itemsToTranslate.length} catatan.`
+        : 'AI Agent berhasil menerjemahkan seluruh data!');
     }
   } catch (err) {
     console.warn('AI Agent translation fallback to built-in template dictionary:', err);
@@ -1150,7 +1226,7 @@ ${JSON.stringify(batch.map(item => ({ id: item.id, indonesian: item.source })), 
     try {
       const response = await fetch(chatUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await aiChatHeaders(),
         body: JSON.stringify({
           messages: [
             { role: 'system', content: 'Return only a valid JSON array. Translate Indonesian maintenance notes into formal technical English.' },

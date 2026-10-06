@@ -9,9 +9,11 @@
 // ============================================================================
 
 import { collection, getDocs, query, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/api/firebase';
+import { db, auth } from '@/api/firebase';
+import { getApiEndpoint } from '@/utils/apiConfig';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 import { SparepartLogItem } from '@/types/sparepartTypes';
+import { AbnormalItem, fetchAbnormalItemsForMonth, getItemMonthData, getAbnormalItemPhotos } from '@/utils/abnormalFindingsData';
 
 export interface MonthlyReportOptions {
   month: number; // 1 - 12
@@ -67,6 +69,13 @@ export interface RootCauseItem {
   descriptionEn?: string;
   descriptionId?: string;
   photos: { caption: string; url: string }[];
+  // RCA otomatis (AI) untuk satu baris Tabel 23: id temuan sumber & isi temuan saat RCA dibuat
+  sourceId?: string;
+  sourceSnapshot?: string;
+  // Jumlah foto temuan; fotonya dimuat saat tampil/export, tidak disimpan di laporan
+  photoCount?: number;
+  // RCA yang ditambahkan manual lewat tombol, dipertahankan saat sinkronisasi
+  manual?: boolean;
 }
 
 export interface ScopeOfWorkCategory {
@@ -162,6 +171,30 @@ export interface PrimaryGoalItem {
   equipment: string;
   goalEn: string;
   goalId: string;
+}
+
+export interface ObservationFindingItem {
+  no: number;
+  component: string;
+  conditionBefore: string;
+  inspectionNotes: string;
+  // Baris hasil generate dari temuan abnormal (id AbnormalItem). Kosong = baris lama/manual.
+  sourceId?: string;
+  // Isi asli saat digenerate; dipakai sinkronisasi untuk tahu apakah sumbernya berubah.
+  sourceSnapshot?: string;
+  findingDate?: string;
+  // Jumlah foto bukti temuan (maks 2) untuk dilampirkan di RCA
+  photoCount?: number;
+  // Baris yang ditambahkan manual lewat tombol, dipertahankan saat sinkronisasi.
+  manual?: boolean;
+  // Teks sudah diterjemahkan ke bahasa Inggris (isi Tabel 23 wajib English).
+  translated?: boolean;
+}
+
+export interface ObservationSyncInfo {
+  monthKey: string;
+  count: number;
+  syncedAt: string;
 }
 
 export interface FullMonthlyReportData {
@@ -277,8 +310,13 @@ export interface FullMonthlyReportData {
   // Bab 7 & 8
   observationTable23: {
     scope: string;
-    items: { no: number; component: string; conditionBefore: string; inspectionNotes: string }[];
+    items: ObservationFindingItem[];
+    // Nama lingkup asli dari temuan abnormal (sebelum diterjemahkan / diubah user)
+    scopeSource?: string;
+    scopeTranslated?: boolean;
   }[];
+  // Jejak sinkronisasi Tabel 23 dengan Pusat Temuan Abnormal (bulan laporan)
+  observationSync?: ObservationSyncInfo;
   rootCauseAnalyses: RootCauseItem[];
   repairsTable29: {
     equipment: string;
@@ -3785,6 +3823,485 @@ export function getDefaultExecutiveSummaryParagraphs(
   return paragraphs;
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// BAB 7: TABEL 23 DARI PUSAT TEMUAN ABNORMAL
+// ══════════════════════════════════════════════════════════════════════════
+type ObservationSection = FullMonthlyReportData['observationTable23'][number];
+
+// Teks satu baris supaya agent bilingual (EN\nID) mengenalinya sebagai catatan yang perlu diterjemahkan.
+const toSingleLine = (s?: string) => (s || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).join(' ');
+
+const formatFindingDate = (d: Date) =>
+  d.getTime() > 0
+    ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+    : '';
+
+export function buildObservationTableFromAbnormal(items: AbnormalItem[]): ObservationSection[] {
+  const sorted = [...items].sort((a, b) => {
+    const diff = getItemMonthData(a).date.getTime() - getItemMonthData(b).date.getTime();
+    if (diff !== 0) return diff;
+    return (a.abnormalFinding?.unitName || a.specificDetail || '').localeCompare(b.abnormalFinding?.unitName || b.specificDetail || '', 'id');
+  });
+
+  const byScope = new Map<string, ObservationFindingItem[]>();
+  sorted.forEach(it => {
+    const af = it.abnormalFinding || ({} as AbnormalItem['abnormalFinding']);
+    const scope = (it.maintenanceName || 'Temuan Lapangan').trim().toUpperCase();
+
+    const unit = toSingleLine(af.unitName || it.specificDetail || it.maintenanceName) || 'Unit';
+    const partName = toSingleLine(af.partName || it.partName);
+    const brand = toSingleLine(af.brandName || it.brandName);
+    const partNumber = toSingleLine(af.partNumber || it.partNumber);
+    let component = unit;
+    if (partName && !unit.toLowerCase().includes(partName.toLowerCase())) {
+      component += `\nPart: ${partName}${brand ? ` (${brand})` : ''}${partNumber ? ` - P/N ${partNumber}` : ''}`;
+    }
+
+    const conditionBefore = toSingleLine(af.description || af.remark);
+    const inspectionNotes = toSingleLine(af.actionRecommendation || af.recommendation);
+
+    if (!byScope.has(scope)) byScope.set(scope, []);
+    const rows = byScope.get(scope)!;
+    rows.push({
+      no: rows.length + 1,
+      component,
+      conditionBefore,
+      inspectionNotes,
+      sourceId: it.id,
+      sourceSnapshot: JSON.stringify([component, conditionBefore, inspectionNotes]),
+      findingDate: formatFindingDate(getItemMonthData(it).date),
+      photoCount: getAbnormalItemPhotos(it).length,
+    });
+  });
+
+  return Array.from(byScope.entries())
+    .sort(([a], [b]) => a.localeCompare(b, 'id'))
+    .map(([scope, rows]) => ({ scope, scopeSource: scope, items: rows }));
+}
+
+export interface ObservationSyncResult {
+  table: ObservationSection[];
+  total: number;
+  added: number;
+  removed: number;
+  refreshed: number;
+}
+
+/**
+ * Susun ulang Tabel 23 dari temuan abnormal bulan laporan:
+ * - temuan di luar bulan / sudah ditandai normal dibuang (termasuk baris lama tanpa sumber),
+ * - temuan yang sumbernya tidak berubah tetap memakai teks hasil edit/terjemahan di laporan,
+ * - baris yang ditambahkan manual tetap dipertahankan.
+ */
+export function mergeObservationTableWithAbnormal(
+  current: ObservationSection[],
+  freshItems: AbnormalItem[]
+): ObservationSyncResult {
+  const fresh = buildObservationTableFromAbnormal(freshItems);
+
+  const existingBySource = new Map<string, ObservationFindingItem>();
+  (current || []).forEach(sec => sec.items.forEach(it => {
+    if (it.sourceId) existingBySource.set(it.sourceId, it);
+  }));
+
+  const freshIds = new Set<string>();
+  let added = 0;
+  let refreshed = 0;
+  const table: ObservationSection[] = fresh.map(sec => {
+    // Nama lingkup hasil terjemahan / rename user dipertahankan selama sumbernya sama
+    const prevSec = (current || []).find(s => s.scopeSource && s.scopeSource === sec.scopeSource);
+    return {
+      scope: prevSec ? prevSec.scope : sec.scope,
+      scopeSource: sec.scopeSource,
+      scopeTranslated: prevSec?.scopeTranslated,
+      items: sec.items.map(row => {
+        freshIds.add(row.sourceId!);
+        const prev = existingBySource.get(row.sourceId!);
+        if (!prev) {
+          added++;
+          return row;
+        }
+        if (prev.sourceSnapshot === row.sourceSnapshot) {
+          return {
+            ...row,
+            component: prev.component,
+            conditionBefore: prev.conditionBefore,
+            inspectionNotes: prev.inspectionNotes,
+            translated: prev.translated
+          };
+        }
+        refreshed++;
+        return row;
+      })
+    };
+  });
+
+  let removed = 0;
+  (current || []).forEach(sec => sec.items.forEach(it => {
+    if (it.manual) return;
+    if (!it.sourceId || !freshIds.has(it.sourceId)) removed++;
+  }));
+
+  // Baris manual masuk kembali ke lingkup yang sama (atau lingkup baru) di akhir.
+  (current || []).forEach(sec => {
+    const manualRows = sec.items.filter(it => it.manual);
+    if (manualRows.length === 0) return;
+    const secScope = sec.scope.trim().toLowerCase();
+    let target = table.find(s =>
+      s.scope.trim().toLowerCase() === secScope ||
+      (s.scopeSource || '').trim().toLowerCase() === (sec.scopeSource || secScope).trim().toLowerCase()
+    );
+    if (!target) {
+      target = { scope: sec.scope, items: [] };
+      table.push(target);
+    }
+    target.items.push(...manualRows.map(r => ({ ...r })));
+  });
+  table.forEach(sec => sec.items.forEach((it, idx) => { it.no = idx + 1; }));
+
+  return { table, total: freshIds.size, added, removed, refreshed };
+}
+
+// ── Terjemahan isi Tabel 23 ke bahasa Inggris (data temuan abnormal ditulis teknisi dalam B. Indonesia) ──
+export interface ObservationTranslations {
+  rows: Map<string, { sourceSnapshot?: string; component: string; conditionBefore: string; inspectionNotes: string }>;
+  scopes: Map<string, string>;
+  // Jumlah baris temuan yang masih gagal diterjemahkan
+  failed: number;
+  // Pesan error terakhir dari backend AI (untuk ditampilkan ke user)
+  lastError?: string;
+}
+
+// Batch kecil + berurutan: backend AI punya timeout 60 dtk & batas kuota per menit
+const OBS_TRANSLATE_CHUNK = 10;
+const OBS_TRANSLATE_TIMEOUT_MS = 90_000;
+// Berhenti setelah N batch berturut-turut gagal (AI sedang down / kuota habis), sisanya dicoba di sinkron berikutnya
+const OBS_TRANSLATE_MAX_CONSECUTIVE_FAILS = 2;
+
+async function requestObservationTranslation(
+  rows: { id: string; component: string; issue: string; notes: string }[],
+  scopes: { id: string; text: string }[]
+): Promise<{ rows: { id: string; component: string; issue: string; notes: string }[]; scopes: { id: string; text: string }[] }> {
+  const prompt = `
+Translate the following data center facility maintenance findings into formal technical ENGLISH for a client monthly report.
+Rules:
+- Output English only. If a text is already English, keep it (fix grammar only).
+- Keep equipment tags, unit codes, brand names, part numbers, model numbers and numbers exactly as written.
+- Keep line breaks inside "component" (the second line usually starts with "Part:").
+- Do not add information that is not in the source. Empty strings stay empty.
+
+Input JSON:
+${JSON.stringify({ rows, scopes })}
+
+Answer ONLY with valid JSON in the same shape, without markdown fences:
+{"rows":[{"id":"r0","component":"...","issue":"...","notes":"..."}],"scopes":[{"id":"s0","text":"..."}]}
+  `.trim();
+
+  const parsed = await callMonthlyAiJson(
+    'You are a technical translator for NeutraDC data center monthly maintenance reports. Always answer with pure JSON. Do not add markdown, commentary, or action tokens.',
+    prompt
+  );
+  return {
+    rows: Array.isArray(parsed?.rows) ? parsed.rows : [],
+    scopes: Array.isArray(parsed?.scopes) ? parsed.scopes : []
+  };
+}
+
+// Panggil backend /api/ai/chat (wajib Firebase ID token) dan kembalikan balasan JSON yang sudah di-parse
+async function callMonthlyAiJson(systemPrompt: string, prompt: string): Promise<any> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Sesi login diperlukan untuk menjalankan AI.');
+  const token = await user.getIdToken();
+
+  // Batasi waktu tunggu per batch supaya tombol tidak menggantung (backend bisa retry berkali-kali)
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), OBS_TRANSLATE_TIMEOUT_MS);
+  const res = await fetch(getApiEndpoint('/api/ai/chat'), {
+    signal: controller.signal,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ]
+    })
+  }).catch(err => {
+    throw new Error(err?.name === 'AbortError' ? 'AI tidak merespons dalam 90 detik' : (err?.message || 'Gagal menghubungi server AI'));
+  }).finally(() => clearTimeout(timer));
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.reply) {
+    throw new Error(json?.error || json?.message || `AI HTTP ${res.status}`);
+  }
+  const reply = String(json.reply).replace(/```json/gi, '').replace(/```/g, '').trim();
+  const start = reply.indexOf('{');
+  const end = reply.lastIndexOf('}');
+  return JSON.parse(start >= 0 && end > start ? reply.slice(start, end + 1) : reply);
+}
+
+export async function translateObservationTableToEnglish(
+  table: ObservationSection[],
+  // Dipanggil setelah tiap batch selesai, membawa hasil terjemahan sejauh ini (bisa langsung diterapkan ke tabel)
+  onProgress?: (done: number, total: number, partial: ObservationTranslations) => void
+): Promise<ObservationTranslations> {
+  const pendingRows = (table || []).flatMap(s => s.items).filter(r => r.sourceId && !r.translated);
+  const pendingScopes = Array.from(new Set(
+    (table || []).filter(s => s.scopeSource && !s.scopeTranslated && s.scope === s.scopeSource).map(s => s.scope)
+  ));
+  const result: ObservationTranslations = { rows: new Map(), scopes: new Map(), failed: 0 };
+  if (pendingRows.length === 0 && pendingScopes.length === 0) return result;
+
+  const chunks: ObservationFindingItem[][] = [];
+  for (let i = 0; i < pendingRows.length; i += OBS_TRANSLATE_CHUNK) {
+    chunks.push(pendingRows.slice(i, i + OBS_TRANSLATE_CHUNK));
+  }
+  if (chunks.length === 0) chunks.push([]);
+
+  let done = 0;
+  let consecutiveFails = 0;
+  for (let cIdx = 0; cIdx < chunks.length; cIdx++) {
+    const chunk = chunks[cIdx];
+    if (consecutiveFails >= OBS_TRANSLATE_MAX_CONSECUTIVE_FAILS) {
+      result.failed += chunk.length;
+      continue;
+    }
+    const reqRows = chunk.map((r, i) => ({ id: `r${i}`, component: r.component, issue: r.conditionBefore, notes: r.inspectionNotes }));
+    const reqScopes = cIdx === 0 ? pendingScopes.map((text, i) => ({ id: `s${i}`, text })) : [];
+    try {
+      const out = await requestObservationTranslation(reqRows, reqScopes);
+      const byId = new Map(out.rows.map(r => [r.id, r]));
+      chunk.forEach((row, i) => {
+        const tr = byId.get(`r${i}`);
+        if (!tr || typeof tr.component !== 'string' || typeof tr.issue !== 'string' || typeof tr.notes !== 'string' || (row.component && !tr.component.trim())) {
+          result.failed++;
+          return;
+        }
+        result.rows.set(row.sourceId!, {
+          sourceSnapshot: row.sourceSnapshot,
+          component: tr.component.trim(),
+          conditionBefore: toSingleLine(tr.issue),
+          inspectionNotes: toSingleLine(tr.notes)
+        });
+      });
+      out.scopes.forEach(s => {
+        const original = pendingScopes[Number(String(s.id).replace(/^s/, ''))];
+        if (original && typeof s.text === 'string' && s.text.trim()) {
+          result.scopes.set(original, s.text.trim().toUpperCase());
+        }
+      });
+      consecutiveFails = 0;
+    } catch (err: any) {
+      console.warn('[MonthlyReport] Gagal menerjemahkan Tabel 23 ke English:', err);
+      result.failed += chunk.length;
+      result.lastError = err?.message || String(err);
+      consecutiveFails++;
+    }
+    done += chunk.length;
+    onProgress?.(done, pendingRows.length, result);
+  }
+
+  return result;
+}
+
+export function applyObservationTranslations(
+  table: ObservationSection[],
+  translations: ObservationTranslations
+): ObservationSection[] {
+  return (table || []).map(sec => {
+    const scopeEn = sec.scopeSource && !sec.scopeTranslated && sec.scope === sec.scopeSource
+      ? translations.scopes.get(sec.scope)
+      : undefined;
+    return {
+      ...sec,
+      ...(scopeEn ? { scope: scopeEn, scopeTranslated: true } : {}),
+      items: sec.items.map(row => {
+        const tr = row.sourceId && !row.translated ? translations.rows.get(row.sourceId) : undefined;
+        // Hanya terapkan jika baris masih berasal dari sumber yang sama dengan yang diterjemahkan
+        if (!tr || tr.sourceSnapshot !== row.sourceSnapshot) return row;
+        return {
+          ...row,
+          component: tr.component,
+          conditionBefore: tr.conditionBefore,
+          inspectionNotes: tr.inspectionNotes,
+          translated: true
+        };
+      })
+    };
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BAB 7: ROOT CAUSE ANALYSIS OTOMATIS (AGENTIC AI) — satu RCA per temuan Tabel 23
+// ══════════════════════════════════════════════════════════════════════════
+export interface RcaTarget {
+  row: ObservationFindingItem;
+  scope: string;
+}
+
+const RCA_CHUNK = 6;
+
+// Temuan Tabel 23 (dari Pusat Temuan Abnormal) sesuai urutan tabel = urutan RCA A, B, C, ...
+export function listRcaTargets(table: ObservationSection[]): RcaTarget[] {
+  return (table || []).flatMap(sec => sec.items
+    .filter(row => row.sourceId)
+    .map(row => ({ row, scope: sec.scope })));
+}
+
+// Temuan yang belum punya RCA, atau RCA-nya dibuat dari isi temuan yang sudah berubah
+export function getPendingRcaTargets(data: Pick<FullMonthlyReportData, 'observationTable23' | 'rootCauseAnalyses'>, force = false): RcaTarget[] {
+  const bySource = new Map((data.rootCauseAnalyses || []).filter(r => r.sourceId).map(r => [r.sourceId!, r]));
+  return listRcaTargets(data.observationTable23).filter(({ row }) => {
+    if (force) return true;
+    const rca = bySource.get(row.sourceId!);
+    return !rca || rca.sourceSnapshot !== row.sourceSnapshot;
+  });
+}
+
+export interface GeneratedRcaResult {
+  items: Map<string, RootCauseItem>;
+  failed: number;
+  lastError?: string;
+}
+
+export async function generateRcaWithAI(
+  targets: RcaTarget[],
+  onProgress?: (done: number, total: number, partial: GeneratedRcaResult) => void
+): Promise<GeneratedRcaResult> {
+  const result: GeneratedRcaResult = { items: new Map(), failed: 0 };
+  let done = 0;
+  let consecutiveFails = 0;
+
+  for (let i = 0; i < targets.length; i += RCA_CHUNK) {
+    const chunk = targets.slice(i, i + RCA_CHUNK);
+    if (consecutiveFails >= OBS_TRANSLATE_MAX_CONSECUTIVE_FAILS) {
+      result.failed += chunk.length;
+      continue;
+    }
+
+    const findings = chunk.map(({ row, scope }, idx) => ({
+      id: `f${idx}`,
+      system: scope,
+      component: row.component,
+      issue: row.conditionBefore,
+      notes: row.inspectionNotes
+    }));
+    const prompt = `
+You are a senior data center M&E maintenance engineer writing the "Root Cause Analysis" section of the NeutraDC monthly maintenance report.
+Write one root cause analysis for EACH finding below (findings come from Table 23 Observation & Finding; text may be English or Indonesian).
+
+For each finding return:
+- "title": short formal ENGLISH title "<equipment/unit> - <affected component or symptom>", max 12 words, no numbering or letter prefix.
+- "analysis": ONE paragraph of formal technical ENGLISH (3-5 sentences) covering the most probable root cause, contributing factors, the operational impact/risk, and the recommended corrective and preventive action.
+
+Rules:
+- Base the analysis strictly on the finding data. Use cautious wording ("most likely", "possibly") for causes that are not stated.
+- Do not invent measurements, dates, part numbers, brands or work that was not reported.
+- Keep equipment tags, unit codes and part numbers exactly as written. English only, no line breaks inside "analysis".
+
+Findings JSON:
+${JSON.stringify(findings)}
+
+Answer ONLY with valid JSON, without markdown fences:
+{"items":[{"id":"f0","title":"...","analysis":"..."}]}
+    `.trim();
+
+    try {
+      const parsed = await callMonthlyAiJson(
+        'You are a senior data center maintenance engineer writing root cause analyses for NeutraDC monthly reports. Always answer with pure JSON. Do not add markdown, commentary, or action tokens.',
+        prompt
+      );
+      const byId = new Map<string, any>((Array.isArray(parsed?.items) ? parsed.items : []).map((it: any) => [String(it?.id), it]));
+      chunk.forEach(({ row, scope }, idx) => {
+        const out = byId.get(`f${idx}`);
+        const title = typeof out?.title === 'string' ? toSingleLine(out.title).replace(/^[A-Z]\.\s*/, '') : '';
+        const analysis = typeof out?.analysis === 'string' ? toSingleLine(out.analysis) : '';
+        if (!title || !analysis) {
+          result.failed++;
+          return;
+        }
+        result.items.set(row.sourceId!, {
+          title,
+          system: scope,
+          description: analysis,
+          photos: [],
+          sourceId: row.sourceId,
+          sourceSnapshot: row.sourceSnapshot,
+          photoCount: row.photoCount || 0
+        });
+      });
+      consecutiveFails = 0;
+    } catch (err: any) {
+      console.warn('[MonthlyReport] Gagal membuat RCA dengan AI:', err);
+      result.failed += chunk.length;
+      result.lastError = err?.message || String(err);
+      consecutiveFails++;
+    }
+    done += chunk.length;
+    onProgress?.(done, targets.length, result);
+  }
+
+  return result;
+}
+
+/**
+ * Susun daftar RCA mengikuti urutan Tabel 23:
+ * - RCA otomatis untuk tiap temuan (hasil AI terbaru menggantikan yang lama),
+ * - RCA temuan yang sudah tidak ada di Tabel 23 dibuang, begitu juga RCA contoh lama tanpa sumber,
+ * - RCA manual dipertahankan di bagian akhir.
+ */
+export function reconcileRootCauseAnalyses(
+  table: ObservationSection[],
+  current: RootCauseItem[],
+  generated?: Map<string, RootCauseItem>
+): RootCauseItem[] {
+  const existing = new Map((current || []).filter(r => r.sourceId).map(r => [r.sourceId!, r]));
+  const ordered: RootCauseItem[] = [];
+  listRcaTargets(table).forEach(({ row }) => {
+    const rca = generated?.get(row.sourceId!) || existing.get(row.sourceId!);
+    // Jumlah foto selalu mengikuti data temuan terbaru
+    if (rca) ordered.push({ ...rca, photoCount: row.photoCount || 0 });
+  });
+  // RCA lama tanpa sumber: buang hanya teks contoh bawaan; RCA yang diketik user dianggap manual
+  const keptManual = (current || [])
+    .filter(r => !r.sourceId && (r.manual || !isDefaultTemplateRca(r)))
+    .map(r => (r.manual ? r : { ...r, manual: true }));
+  return [...ordered, ...keptManual];
+}
+
+const DEFAULT_RCA_DESCRIPTION_PREFIXES = [
+  'The abnormal PJU operation is primarily caused',
+  'The AC Split abnormality is primarily caused',
+  'The Road Blocker abnormalities are likely caused',
+  'The system operates within normal limits following the corrective action'
+];
+
+function isDefaultTemplateRca(r: RootCauseItem): boolean {
+  const desc = (r.description || '').trim();
+  return !desc || DEFAULT_RCA_DESCRIPTION_PREFIXES.some(prefix => desc.startsWith(prefix));
+}
+
+export async function syncObservationTableForMonth(
+  current: ObservationSection[],
+  month: number,
+  year: number
+): Promise<ObservationSyncResult & { syncInfo: ObservationSyncInfo }> {
+  // Tanpa terjemahan supaya generate laporan tidak menunggu AI; editor menerjemahkan
+  // baris yang belum English secara bertahap setelah laporan tampil.
+  const items = await fetchAbnormalItemsForMonth(month, year);
+  const result = mergeObservationTableWithAbnormal(current, items);
+  return {
+    ...result,
+    syncInfo: {
+      monthKey: `${year}-${String(month).padStart(2, '0')}`,
+      count: result.total,
+      syncedAt: new Date().toISOString(),
+    },
+  };
+}
+
 export async function aggregateMonthlyReportData(options: MonthlyReportOptions): Promise<FullMonthlyReportData> {
   const { month, year } = options;
   const monthName = MONTH_NAMES_ID[month - 1] || 'Februari';
@@ -4553,152 +5070,22 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   // ══════════════════════════════════════════════════════════════════════════
   // 7. OBSERVATION & FINDINGS (Table 23)
   // ══════════════════════════════════════════════════════════════════════════
-  const observationTable23: FullMonthlyReportData['observationTable23'] = [];
-
-  // Extract Not Good items from taskPerformanceTables
-  const notGoodByScope = new Map<string, string[]>();
-  (taskPerformanceTables || []).forEach(tTable => {
-    const scope = tTable.scope || 'EQUIPMENT';
-    (tTable.items || []).forEach(item => {
-      const opLower = (item.operationalStatus || '').toLowerCase();
-      const isNotGood = (item as any).statusMode === 'not_good' ||
-        opLower.includes('not good') ||
-        opLower.includes('tidak baik') ||
-        opLower.includes('abnormal') ||
-        opLower.includes('rusak') ||
-        opLower.includes('trouble') ||
-        opLower.includes('alarm') ||
-        opLower.includes('faulty');
-
-      if (isNotGood && item.className && item.className.trim()) {
-        if (!notGoodByScope.has(scope)) {
-          notGoodByScope.set(scope, []);
-        }
-        if (!notGoodByScope.get(scope)!.includes(item.className.trim())) {
-          notGoodByScope.get(scope)!.push(item.className.trim());
-        }
-      }
-    });
-  });
-
-  if (notGoodByScope.size > 0) {
-    notGoodByScope.forEach((compNames, scope) => {
-      observationTable23.push({
-        scope: scope,
-        items: compNames.map((comp, idx) => ({
-          no: idx + 1,
-          component: comp,
-          conditionBefore: '',
-          inspectionNotes: ''
-        }))
-      });
-    });
-  }
-
-  if (monthFindings.length > 0) {
-    // Group findings by system
-    const findingsBySys = new Map<string, any[]>();
-    monthFindings.forEach(f => {
-      const sys = f.system || f.category || 'Mechanical & Electrical';
-      if (!findingsBySys.has(sys)) findingsBySys.set(sys, []);
-      findingsBySys.get(sys)!.push(f);
-    });
-
-    findingsBySys.forEach((items, sysName) => {
-      const existingSec = observationTable23.find(s => s.scope.toLowerCase() === sysName.toLowerCase());
-      if (existingSec) {
-        items.forEach(f => {
-          existingSec.items.push({
-            no: existingSec.items.length + 1,
-            component: f.equipment || f.equipmentName || 'Facility Component',
-            conditionBefore: f.finding || f.description || 'Anomali terdeteksi saat inspeksi berkala.',
-            inspectionNotes: f.actionTaken || f.correctiveAction || 'Pemeriksaan lanjutan dan rekomendasi perbaikan.'
-          });
-        });
-      } else {
-        observationTable23.push({
-          scope: sysName.toUpperCase(),
-          items: items.map((f, idx) => ({
-            no: idx + 1,
-            component: f.equipment || f.equipmentName || 'Facility Component',
-            conditionBefore: f.finding || f.description || 'Anomali terdeteksi saat inspeksi berkala.',
-            inspectionNotes: f.actionTaken || f.correctiveAction || 'Pemeriksaan lanjutan dan rekomendasi perbaikan.'
-          }))
-        });
-      }
-    });
-  } else if (observationTable23.length === 0) {
-    // Check abnormal items from submitted monthly PDF docs
-    const abnormalDocs = monthPdfDocs.filter(d => d.hasAbnormal);
-    if (abnormalDocs.length > 0) {
-      observationTable23.push({
-        scope: 'FACILITY ANOMALIES RECORDED',
-        items: abnormalDocs.map((d, idx) => ({
-          no: idx + 1,
-          component: d.specificDetail || d.maintenanceName || 'Asset Unit',
-          conditionBefore: d.issues || 'Fluktuasi parameter / keausan komponen terdeteksi saat PM.',
-          inspectionNotes: d.recommendations || 'Telah dilakukan perbaikan awal dan monitoring lanjutan.'
-        }))
-      });
-    } else {
-      observationTable23.push({
-        scope: 'Cooling Tower',
-        items: [
-          { no: 1, component: 'V belt fan cooling tower (CT 1, 2 and 3)', conditionBefore: 'there is noise at the rotation of the CT fan', inspectionNotes: 'Belt in the fan slip occurs between motor fan operational' }
-        ]
-      });
-      observationTable23.push({
-        scope: 'Fire suppression (FSS)',
-        items: [
-          { no: 1, component: 'Modul Card 9', conditionBefore: '', inspectionNotes: '' },
-          { no: 2, component: 'Battery', conditionBefore: 'Tests showed that some VESDA batteries had voltages below 24 VDC, which could compromise system stability.', inspectionNotes: 'Low voltages like this can disrupt system stability, especially in emergency situations where the system must work optimally to detect smoke early.' },
-          { no: 3, component: 'Power Supply', conditionBefore: "The power supply's charging output was not producing the expected 24 VDC.", inspectionNotes: 'This can cause the battery to not fully charge and worsen the system condition, making VESDA function unreliably when needed.' }
-        ]
-      });
-      observationTable23.push({
-        scope: 'FCU',
-        items: [
-          { no: 1, component: 'V-Belt 1F-FCU-CR-2', conditionBefore: 'Unit no operational', inspectionNotes: 'The belt damage, unit Off need replace' }
-        ]
-      });
-      observationTable23.push({
-        scope: 'VRV',
-        items: [
-          { no: 1, component: 'Flow switch IU.2.CC.1-A', conditionBefore: 'Motor drain pump not respond, unit notify alarm A3', inspectionNotes: 'The flow switch not respon, need Replace control drainage, type FXMQ-P' }
-        ]
-      });
-      observationTable23.push({
-        scope: 'AC Split',
-        items: [
-          { no: 1, component: 'The compressor faulty\na. IU.AC.FCC-2\nb. AC Split Lift 01\nc. AC Split Lift 01\nd. AC Split Lift Service', conditionBefore: 'Existing at 2024 the cable power to compressor no installed', inspectionNotes: 'Check unit compressor, the line winding any loss connected (compressor faulty)' }
-        ]
-      });
-    }
+  // Diambil dari Pusat Temuan Abnormal untuk bulan laporan (aturan bulan & dedup yang sama).
+  let observationTable23: FullMonthlyReportData['observationTable23'] = [];
+  let observationSync: ObservationSyncInfo | undefined;
+  try {
+    const synced = await syncObservationTableForMonth([], month, year);
+    observationTable23 = synced.table;
+    observationSync = synced.syncInfo;
+  } catch (err) {
+    console.warn('[MonthlyReport] Gagal memuat temuan abnormal untuk Tabel 23:', err);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
   // 8. ROOT CAUSE ANALYSES
   // ══════════════════════════════════════════════════════════════════════════
-  const rootCauseAnalyses: RootCauseItem[] = [
-    {
-      title: 'A. Penerangan Jalan Umum (PJU)',
-      system: 'PJU',
-      description: 'The abnormal PJU operation is primarily caused by battery degradation or failure, which reduces the available DC supply and prevents the lighting system from operating properly. Possible contributing factors include battery aging, repeated charge-discharge cycles, insufficient charging performance, loose or corroded connections, and exposure to high environmental temperatures.\nAnalisis akar masalah menunjukkan bahwa operasi PJU yang abnormal terutama disebabkan oleh penurunan kondisi atau kerusakan baterai, sehingga suplai DC menjadi tidak mencukupi dan lampu tidak dapat beroperasi dengan baik. Faktor pendukung yang mungkin meliputi usia baterai, siklus pengisian dan pengosongan berulang, performa pengisian yang kurang optimal, koneksi yang longgar atau berkarat, serta paparan suhu lingkungan yang tinggi.',
-      photos: monthPhotos.slice(0, 2).map(p => ({ caption: p.caption, url: p.photo }))
-    },
-    {
-      title: 'B. AC Split',
-      system: 'AC Split',
-      description: 'The AC Split abnormality is primarily caused by a short circuit in the compressor, which triggers the protection system and causes the outdoor unit to shut down. Possible contributing factors include compressor winding damage, insulation deterioration, electrical connection faults, overheating, unstable power supply, or internal compressor failure.\nAnalisis akar masalah menunjukkan bahwa abnormalitas AC Split terutama disebabkan oleh short circuit pada compressor, yang memicu sistem proteksi dan menyebabkan unit outdoor berhenti beroperasi. Faktor yang mungkin berkontribusi meliputi kerusakan winding compressor, penurunan kualitas isolasi, gangguan koneksi listrik, overheating, suplai daya yang tidak stabil, atau kerusakan internal compressor.',
-      photos: monthPhotos.slice(2, 4).map(p => ({ caption: p.caption, url: p.photo }))
-    },
-    {
-      title: 'C. Road Blocker',
-      system: 'Road Blocker',
-      description: 'The Road Blocker abnormalities are likely caused by mechanical wear or loosening of the hinge shaft, failure or power supply issues affecting the panel fan/blower, and improper panel lock configuration resulting in bypass condition. These conditions may be influenced by continuous operation, vibration, component aging, and insufficient periodic inspection.\nAnalisis akar masalah Road Blocker kemungkinan disebabkan oleh keausan mekanis atau kelonggaran pada as engsel, gangguan atau masalah suplai daya pada kipas/blower panel, serta konfigurasi kunci panel yang tidak sesuai sehingga berada dalam kondisi bypass. Kondisi tersebut dapat dipengaruhi oleh operasi terus-menerus, getaran, usia komponen, dan kurangnya pemeriksaan berkala.',
-      photos: monthPhotos.slice(4, 6).map(p => ({ caption: p.caption, url: p.photo }))
-    }
-  ];
+  // RCA dibuat otomatis oleh AI per temuan Tabel 23 setelah laporan tampil (lihat generateRcaWithAI)
+  const rootCauseAnalyses: RootCauseItem[] = [];
 
   // ══════════════════════════════════════════════════════════════════════════
   // 9. REPAIRS & SPAREPARTS (Table 29)
@@ -4809,7 +5196,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
       totalPlanned: scheduleTable1.length,
       totalCompleted: totalCompletedDocs,
       completionRate: pmFinishRate,
-      totalFindings: monthFindings.length,
+      totalFindings: observationSync ? observationSync.count : monthFindings.length,
       totalRepairs: repairsTable29.length,
       systemAvailability: 100.0,
       operatingHoursTotal: baseRunningHours,
@@ -4857,6 +5244,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
     systemOverviewTable21,
     scopeOfWorkTable22,
     observationTable23,
+    observationSync,
     rootCauseAnalyses,
     repairsTable29,
     calibrationTable30,
@@ -5413,6 +5801,9 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
   if (Array.isArray(updated.observationTable23)) {
     updated.observationTable23.forEach(sec => {
       sec.items = sec.items.map(item => {
+        // Temuan abnormal asli tidak boleh diganti kalimat template; biarkan agent AI yang menerjemahkan.
+        if (item.sourceId) return item;
+
         let cond = item.conditionBefore || '';
         if (cond.trim() !== '' && !cond.includes('\n')) {
           const cLower = cond.toLowerCase();

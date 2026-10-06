@@ -745,6 +745,17 @@ service cloud.firestore {
       allow update: if !isDrafter() && (request.auth != null
                     && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail() || request.resource.data.createdBy == getEmail()));
       allow delete: if !isDrafter() && (isStrictQcDme());
+
+      // Subkoleksi: assets — gambar arsip (foto RCA, photo log) dipisah per dokumen
+      // supaya dokumen utama laporan tidak melewati batas 1 MiB Firestore.
+      match /assets/{assetId} {
+        allow read: if !isDrafter() && (request.auth != null);
+        allow create, update: if !isDrafter() && (request.auth != null)
+                      && request.resource.data.keys().hasOnly(['data', 'createdAt'])
+                      && request.resource.data.data is string
+                      && request.resource.data.data.size() <= 1000000;
+        allow delete: if !isDrafter() && (request.auth != null);
+      }
     }
 
     // ============================================================================

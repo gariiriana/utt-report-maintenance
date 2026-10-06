@@ -10,7 +10,7 @@
 //            - Fitur Ekspor ke Word (.docx) 100% Presisi & Cetak PDF Resmi
 // ============================================================================
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   FileText,
@@ -53,12 +53,14 @@ import { toast } from 'sonner';
 import { draftStorage } from '@/utils/draftStorage';
 import { useAuth } from '@/components/AuthContext';
 import { db } from '@/api/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, Timestamp, serverTimestamp, deleteField } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, setDoc, deleteDoc, updateDoc, doc, Timestamp, serverTimestamp, deleteField } from 'firebase/firestore';
+import { offloadReportAssets, hydrateReportAssets, deleteReportAssets, compressImageDataUrl } from '@/utils/monthlyReportArchiveAssets';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 
 import {
   aggregateMonthlyReportData,
   FullMonthlyReportData,
+  RootCauseItem,
   EquipmentDetailItem,
   convertReportToBilingual,
   getScopeOfWorkForScope,
@@ -78,18 +80,36 @@ import {
   getEquipmentPrimaryGoal,
   fetchMonthCmReports,
   convertMonthlyCmReportsToBilingual,
-  getDefaultExecutiveSummaryParagraphs
+  getDefaultExecutiveSummaryParagraphs,
+  mergeObservationTableWithAbnormal,
+  translateObservationTableToEnglish,
+  applyObservationTranslations,
+  getPendingRcaTargets,
+  generateRcaWithAI,
+  reconcileRootCauseAnalyses
 } from '@/utils/monthlyReportData';
+import { AbnormalItem, fetchAbnormalItemsForMonth, buildAbnormalPhotoMap } from '@/utils/abnormalFindingsData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
   generateRecommendationsFromFindings,
   generateTestingAndValidation,
   generateChallengesAndMitigations,
   convertReportToBilingualWithAI,
-  translateMonthlyCmSummariesWithAI
+  translateMonthlyCmSummariesWithAI,
+  BilingualConversionStats
 } from '@/utils/monthlyReportAI';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+
+// Foto temuan untuk RCA dikompres (maks 1280 px JPEG) agar ringan di draft & arsip
+async function buildCompressedRcaPhotoMap(items: AbnormalItem[]): Promise<Record<string, string[]>> {
+  const raw = buildAbnormalPhotoMap(items);
+  const out: Record<string, string[]> = {};
+  for (const [id, photos] of Object.entries(raw)) {
+    out[id] = await Promise.all(photos.map(src => compressImageDataUrl(src)));
+  }
+  return out;
+}
 
 const MONTH_OPTIONS = [
   { value: 1, label: 'Januari' },
@@ -382,6 +402,15 @@ export function MonthlyReportGenerator() {
   // State Pilihan Bulan & Tahun (Default: Juli 2026 sesuai file acuan)
   const [selectedMonth, setSelectedMonth] = useState<number>(7);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [isSyncingObservation, setIsSyncingObservation] = useState<boolean>(false);
+  const [observationSyncStage, setObservationSyncStage] = useState<string>('');
+  // RCA otomatis (Agentic AI) per temuan Tabel 23
+  const [isGeneratingRca, setIsGeneratingRca] = useState<boolean>(false);
+  const [rcaStage, setRcaStage] = useState<string>('');
+  // Foto temuan untuk RCA hanya disimpan di memori (bukan di data laporan / arsip Firestore)
+  const [rcaPhotoState, setRcaPhotoState] = useState<{ monthKey: string; map: Record<string, string[]> } | null>(null);
+  // Di-set sinkron saat sinkron Tabel 23 mulai, supaya effect RCA di render yang sama tidak ikut jalan
+  const observationSyncRunningRef = useRef<boolean>(false);
 
   // ─── Nama File / Judul Laporan Monthly ─────────────────────────────
   const [reportTitle, setReportTitle] = useState<string>('Laporan Bulanan Maintenance Juli 2026');
@@ -550,10 +579,7 @@ export function MonthlyReportGenerator() {
       setReportData(enrichedData);
       setIsSavedLocally(true);
 
-      // 2. Sanitasi payload (hilangkan undefined fields agar Firestore SDK tidak melempar exception)
-      const sanitizedReportData = JSON.parse(JSON.stringify(enrichedData));
-
-      // 3. Simpan / Perbarui langsung ke Cloud Firestore (monthly_reports)
+      // 2. Simpan / Perbarui langsung ke Cloud Firestore (monthly_reports)
       const eqNames = (enrichedData.scheduleTable1 || []).map(s => s.device);
       const totalCI = (enrichedData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
 
@@ -569,9 +595,13 @@ export function MonthlyReportGenerator() {
         }
       }
 
+      // 3. Pindahkan foto (RCA, photo log) ke subkoleksi aset agar dokumen arsip < 1 MiB,
+      //    sekaligus sanitasi payload (hilangkan undefined fields)
+      const archiveRef = targetId ? doc(db, 'monthly_reports', targetId) : doc(collection(db, 'monthly_reports'));
+      const sanitizedReportData = await offloadReportAssets(archiveRef.id, enrichedData);
+
       if (targetId) {
         // Update arsip dokumen yang sudah ada di Firestore
-        const archiveRef = doc(db, 'monthly_reports', targetId);
         await updateDoc(archiveRef, {
           title: finalTitle,
           fileName: cleanFileName,
@@ -594,7 +624,7 @@ export function MonthlyReportGenerator() {
         });
       } else {
         // Simpan sebagai dokumen baru di arsip Firestore
-        const newDocRef = await addDoc(collection(db, 'monthly_reports'), {
+        await setDoc(archiveRef, {
           title: finalTitle,
           fileName: cleanFileName,
           monthNumber: selectedMonth,
@@ -610,7 +640,7 @@ export function MonthlyReportGenerator() {
           createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
           reportData: sanitizedReportData
         });
-        setActiveArchiveId(newDocRef.id);
+        setActiveArchiveId(archiveRef.id);
         toast.success(`Laporan "${finalTitle}" berhasil disimpan dan masuk ke Arsip!`, {
           action: {
             label: 'Buka Arsip',
@@ -1304,9 +1334,18 @@ export function MonthlyReportGenerator() {
   }, [reportData]);
 
   // ─── Archive Handlers ─────────────────────────────────────────────
-  const handleLoadArchiveToEditor = useCallback((archive: any) => {
+  const handleLoadArchiveToEditor = useCallback(async (archive: any) => {
     if (!archive.reportData) {
       toast.error('Data laporan arsip tidak ditemukan.');
+      return;
+    }
+    // Foto arsip (RCA, photo log) tersimpan di subkoleksi aset; satukan kembali sebelum dibuka
+    let archiveReportData = archive.reportData;
+    try {
+      archiveReportData = await hydrateReportAssets(archive.id, archive.reportData);
+    } catch (err: any) {
+      console.error('Gagal memuat foto arsip:', err);
+      toast.error('Gagal memuat foto arsip: ' + (err?.message || 'Kesalahan jaringan'));
       return;
     }
     setActiveArchiveId(archive.id);
@@ -1314,7 +1353,7 @@ export function MonthlyReportGenerator() {
     const cleanFileName = archive.fileName || `${sanitizeFileName(title)}.docx`;
     setReportTitle(title);
     setReportData({
-      ...archive.reportData,
+      ...archiveReportData,
       reportTitle: title,
       fileName: cleanFileName
     });
@@ -1334,8 +1373,9 @@ export function MonthlyReportGenerator() {
     try {
       const fileName = archive.fileName || `${sanitizeFileName(archive.title || 'Laporan_Bulanan')}.docx`;
       toast.info(`Menyusun file DOCX "${fileName}"...`);
+      const archiveReportData = await hydrateReportAssets(archive.id, archive.reportData);
       await generateMonthlyReportDOCX({
-        ...archive.reportData,
+        ...archiveReportData,
         reportTitle: archive.title,
         fileName: fileName
       }, fileName);
@@ -1352,6 +1392,8 @@ export function MonthlyReportGenerator() {
     try {
       if (isQcDme) {
         await deleteDoc(doc(db, 'monthly_reports', archiveToDelete.id));
+        // Bersihkan foto arsip di subkoleksi aset (tidak ikut terhapus otomatis oleh Firestore)
+        await deleteReportAssets(archiveToDelete.id).catch(err => console.warn('Gagal menghapus aset arsip:', err));
         setArchives((prev) => prev.filter((a) => a.id !== archiveToDelete.id));
         toast.success('Arsip dokumen berhasil dihapus permanen dari cloud.');
       } else {
@@ -1450,81 +1492,222 @@ export function MonthlyReportGenerator() {
     }
   };
 
-  // Synchronize Not Good items from Task Performance (Chapter 4) to Table 23 Observation & Finding (Chapter 7)
-  const handleSyncNotGoodToObservationTable = () => {
-    if (!reportData) return;
-    const currentObs = [...(reportData.observationTable23 || [])];
-    let addedCount = 0;
+  // Sinkronisasi Tabel 23 (Bab 7) dengan Pusat Temuan Abnormal sesuai bulan laporan yang dipilih
+  const runObservationSync = useCallback(async (target: FullMonthlyReportData, silent: boolean) => {
+    const month = target.monthNumber;
+    const year = target.year;
+    const periodLabel = `${target.monthName} ${year}`;
+    const isSameReport = (prev: FullMonthlyReportData | null): prev is FullMonthlyReportData =>
+      !!prev && prev.monthNumber === month && prev.year === year;
+    observationSyncRunningRef.current = true;
+    setIsSyncingObservation(true);
+    setObservationSyncStage('Mengambil temuan...');
+    const toastId = silent ? undefined : toast.loading(`Mengambil temuan abnormal ${periodLabel}...`);
+    try {
+      const freshItems = await fetchAbnormalItemsForMonth(month, year);
+      let result = mergeObservationTableWithAbnormal(target.observationTable23 || [], freshItems);
+      const syncInfo = {
+        monthKey: `${year}-${String(month).padStart(2, '0')}`,
+        count: result.total,
+        syncedAt: new Date().toISOString()
+      };
 
-    (reportData.taskPerformanceTables || []).forEach(tTable => {
-      const eqScope = tTable.scope || 'EQUIPMENT';
-      (tTable.items || []).forEach(item => {
-        const opLower = (item.operationalStatus || '').toLowerCase();
-        const isNotGood = (item as any).statusMode === 'not_good' ||
-          opLower.includes('not good') ||
-          opLower.includes('tidak baik') ||
-          opLower.includes('abnormal') ||
-          opLower.includes('rusak') ||
-          opLower.includes('trouble') ||
-          opLower.includes('alarm') ||
-          opLower.includes('faulty');
+      // 1) Tampilkan data temuan bulan ini dulu, tanpa menunggu terjemahan selesai
+      setReportData(prev => {
+        // Abaikan hasil jika user sudah pindah ke laporan bulan lain selama proses fetch
+        if (!isSameReport(prev)) return prev;
+        // Gabung ke state terbaru (bukan snapshot saat klik) supaya editan selama fetch tidak hilang
+        result = mergeObservationTableWithAbnormal(prev.observationTable23 || [], freshItems);
+        return {
+          ...prev,
+          observationTable23: result.table,
+          // RCA ikut Tabel 23: temuan yang hilang dibuang, RCA contoh lama tanpa sumber dibersihkan
+          rootCauseAnalyses: reconcileRootCauseAnalyses(result.table, prev.rootCauseAnalyses || []),
+          observationSync: syncInfo,
+          executiveSummary: { ...prev.executiveSummary, totalFindings: result.total }
+        };
+      });
+      void buildCompressedRcaPhotoMap(freshItems)
+        .then(map => setRcaPhotoState({ monthKey: syncInfo.monthKey, map }))
+        .catch(err => console.warn('Gagal menyiapkan foto RCA:', err));
 
-        const compName = (item.className || '').trim();
-        if (isNotGood && compName) {
-          let secIndex = currentObs.findIndex(s => s.scope.trim().toLowerCase() === eqScope.trim().toLowerCase());
-          if (secIndex === -1) {
-            currentObs.push({
-              scope: eqScope,
-              items: [{
-                no: 1,
-                component: compName,
-                conditionBefore: '',
-                inspectionNotes: ''
-              }]
-            });
-            addedCount++;
-          } else {
-            const sec = { ...currentObs[secIndex], items: [...currentObs[secIndex].items] };
-            const exists = sec.items.some(it => it.component.trim().toLowerCase() === compName.toLowerCase());
-            if (!exists) {
-              sec.items.push({
-                no: sec.items.length + 1,
-                component: compName,
-                conditionBefore: '',
-                inspectionNotes: ''
-              });
-              currentObs[secIndex] = sec;
-              addedCount++;
-            }
-          }
+      // 2) Isi Tabel 23 wajib English: terjemahkan per batch & terapkan bertahap ke tabel
+      const pendingCount = result.table.flatMap(s => s.items).filter(r => r.sourceId && !r.translated).length;
+      if (pendingCount > 0) setObservationSyncStage(`Menerjemahkan 0/${pendingCount}...`);
+      const translations = await translateObservationTableToEnglish(result.table, (done, total, partial) => {
+        setObservationSyncStage(`Menerjemahkan ${done}/${total}...`);
+        if (toastId !== undefined) {
+          toast.loading(`Menerjemahkan temuan ${periodLabel} ke English... (${done}/${total})`, { id: toastId });
         }
+        setReportData(prev => isSameReport(prev)
+          ? { ...prev, observationTable23: applyObservationTranslations(prev.observationTable23 || [], partial) }
+          : prev
+        );
       });
-    });
+      setReportData(prev => isSameReport(prev)
+        ? { ...prev, observationTable23: applyObservationTranslations(prev.observationTable23 || [], translations) }
+        : prev
+      );
 
-    if (addedCount > 0) {
-      setReportData({
-        ...reportData,
-        observationTable23: currentObs
-      });
-      toast.success(`Berhasil menarik ${addedCount} item Not Good ke Tabel 23 Observation & Finding!`);
-    } else {
-      toast.info('Semua item Not Good dari Task Performance sudah tercatat di Tabel 23.');
+      const untranslatedNote = translations.failed > 0
+        ? ` ${translations.failed} baris gagal diterjemahkan ke English${translations.lastError ? ` (${translations.lastError})` : ''} — klik Sinkronkan lagi untuk mencoba ulang.`
+        : '';
+      if (!silent) {
+        const changes = [
+          result.added ? `${result.added} baru` : '',
+          result.refreshed ? `${result.refreshed} diperbarui` : '',
+          result.removed ? `${result.removed} dihapus (bukan ${periodLabel} / sudah normal)` : ''
+        ].filter(Boolean).join(', ');
+        const message = `Tabel 23 sinkron: ${result.total} temuan abnormal ${periodLabel}${changes ? ` — ${changes}` : ' — sudah sesuai'}.${untranslatedNote}`;
+        if (translations.failed > 0) toast.warning(message, { id: toastId });
+        else toast.success(message, { id: toastId });
+      } else if (result.total > 0 || result.removed > 0 || translations.failed > 0) {
+        toast.info(`Tabel 23 otomatis diisi ${result.total} temuan abnormal ${periodLabel}.${untranslatedNote}`);
+      }
+    } catch (err: any) {
+      console.error('Gagal sinkronisasi temuan abnormal:', err);
+      toast.error(`Gagal sinkronisasi temuan abnormal ${periodLabel}: ${err?.message || 'Kesalahan jaringan'}`, { id: toastId });
+    } finally {
+      observationSyncRunningRef.current = false;
+      setIsSyncingObservation(false);
+      setObservationSyncStage('');
     }
+  }, []);
+
+  const handleSyncAbnormalToObservationTable = () => {
+    if (!reportData || isSyncingObservation) return;
+    void runObservationSync(reportData, false);
   };
 
-  const totalNotGoodCount = (reportData?.taskPerformanceTables || []).reduce((acc, t) => {
-    return acc + (t.items || []).filter(it => {
-      const opLower = (it.operationalStatus || '').toLowerCase();
-      return (it as any).statusMode === 'not_good' ||
-        opLower.includes('not good') ||
-        opLower.includes('tidak baik') ||
-        opLower.includes('abnormal') ||
-        opLower.includes('rusak') ||
-        opLower.includes('trouble') ||
-        opLower.includes('alarm') ||
-        opLower.includes('faulty');
-    }).length;
-  }, 0);
+  // Draft/arsip yang Tabel 23-nya belum disinkron untuk bulan ini, atau masih ada temuan
+  // yang belum berbahasa Inggris -> sinkron + terjemahkan otomatis sekali per sesi
+  const autoObservationSyncKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reportData?.monthNumber || !reportData.year) return;
+    const monthKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
+    const hasUntranslated = (reportData.observationTable23 || []).some(s => s.items.some(r => r.sourceId && !r.translated));
+    if (reportData.observationSync?.monthKey === monthKey && !hasUntranslated) return;
+    const attemptKey = `${monthKey}|${activeArchiveId || 'draft'}`;
+    if (autoObservationSyncKeyRef.current === attemptKey) return;
+    autoObservationSyncKeyRef.current = attemptKey;
+    void runObservationSync(reportData, true);
+  }, [reportData, activeArchiveId, runObservationSync]);
+
+  // Agentic AI: baca setiap temuan Tabel 23 lalu tulis RCA-nya (A, B, C, ... mengikuti urutan tabel)
+  const runRcaGeneration = useCallback(async (target: FullMonthlyReportData, force: boolean, silent: boolean) => {
+    const month = target.monthNumber;
+    const year = target.year;
+    const periodLabel = `${target.monthName} ${year}`;
+    const isSameReport = (prev: FullMonthlyReportData | null): prev is FullMonthlyReportData =>
+      !!prev && prev.monthNumber === month && prev.year === year;
+
+    const targets = getPendingRcaTargets(target, force);
+    if (targets.length === 0) {
+      if (!silent) toast.info(`Semua temuan ${periodLabel} sudah memiliki RCA.`);
+      return;
+    }
+
+    setIsGeneratingRca(true);
+    setRcaStage(`AI menyusun RCA 0/${targets.length}...`);
+    const toastId = silent ? undefined : toast.loading(`AI menyusun RCA untuk ${targets.length} temuan ${periodLabel}...`);
+    try {
+      const applyGenerated = (generated: Map<string, RootCauseItem>) => {
+        setReportData(prev => isSameReport(prev)
+          ? { ...prev, rootCauseAnalyses: reconcileRootCauseAnalyses(prev.observationTable23 || [], prev.rootCauseAnalyses || [], generated) }
+          : prev
+        );
+      };
+      const result = await generateRcaWithAI(targets, (done, total, partial) => {
+        setRcaStage(`AI menyusun RCA ${done}/${total}...`);
+        if (toastId !== undefined) toast.loading(`AI menyusun RCA ${periodLabel}... (${done}/${total})`, { id: toastId });
+        applyGenerated(partial.items);
+      });
+      applyGenerated(result.items);
+
+      const generatedCount = result.items.size;
+      const failNote = result.failed > 0
+        ? ` ${result.failed} RCA gagal dibuat${result.lastError ? ` (${result.lastError})` : ''} — klik "Generate RCA" untuk mencoba ulang.`
+        : '';
+      if (result.failed > 0) {
+        toast.warning(`RCA ${periodLabel}: ${generatedCount} berhasil disusun AI.${failNote}`, { id: toastId });
+      } else if (!silent) {
+        toast.success(`RCA ${periodLabel}: ${generatedCount} RCA berhasil disusun AI dari Tabel 23.`, { id: toastId });
+      } else {
+        toast.info(`AI menyusun ${generatedCount} RCA dari temuan ${periodLabel}.`);
+      }
+    } catch (err: any) {
+      console.error('Gagal membuat RCA:', err);
+      toast.error(`Gagal membuat RCA: ${err?.message || 'Kesalahan jaringan'}`, { id: toastId });
+    } finally {
+      setIsGeneratingRca(false);
+      setRcaStage('');
+    }
+  }, []);
+
+  // Otomatis: setelah Tabel 23 selesai sinkron/terjemah, buat RCA untuk temuan yang belum punya RCA
+  const autoRcaKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Tunggu sinkron/terjemah Tabel 23 selesai supaya tidak membebani AI bersamaan
+    if (!reportData || isSyncingObservation || observationSyncRunningRef.current || isGeneratingRca) return;
+    const pending = getPendingRcaTargets(reportData);
+    if (pending.length === 0) return;
+    const attemptKey = `${reportData.year}-${reportData.monthNumber}|${activeArchiveId || 'draft'}|${pending.map(p => p.row.sourceId).join(',')}`;
+    if (autoRcaKeyRef.current === attemptKey) return;
+    autoRcaKeyRef.current = attemptKey;
+    void runRcaGeneration(reportData, false, true);
+  }, [reportData, isSyncingObservation, isGeneratingRca, activeArchiveId, runRcaGeneration]);
+
+  const handleGenerateRca = () => {
+    if (!reportData || isGeneratingRca || isSyncingObservation) return;
+    const hasRca = (reportData.rootCauseAnalyses || []).some(r => r.sourceId);
+    if (hasRca && !window.confirm('Susun ulang SEMUA RCA temuan dengan AI? RCA otomatis yang sudah ada (termasuk editan) akan diganti.')) return;
+    void runRcaGeneration(reportData, true, false);
+  };
+
+  // Muat foto temuan (untuk lampiran RCA) bila belum ada di memori untuk bulan laporan ini
+  const rcaPhotoLoadingRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reportData?.monthNumber || !reportData.year) return;
+    const monthKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
+    if (rcaPhotoState?.monthKey === monthKey || rcaPhotoLoadingRef.current === monthKey) return;
+    // Selalu cek ke data temuan (tidak bergantung photoCount: baris lama belum punya field itu)
+    const needsPhotos = (reportData.rootCauseAnalyses || []).some(r => r.sourceId);
+    if (!needsPhotos) return;
+    rcaPhotoLoadingRef.current = monthKey;
+    fetchAbnormalItemsForMonth(reportData.monthNumber, reportData.year)
+      .then(buildCompressedRcaPhotoMap)
+      .then(map => setRcaPhotoState({ monthKey, map }))
+      .catch(err => {
+        console.warn('Gagal memuat foto temuan untuk RCA:', err);
+        rcaPhotoLoadingRef.current = null;
+      });
+  }, [reportData, rcaPhotoState]);
+
+  // Foto temuan masuk ke data RCA (rca.photos) — ikut tersimpan di draft & arsip (via subkoleksi aset)
+  useEffect(() => {
+    if (!reportData || !rcaPhotoState) return;
+    const monthKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
+    if (rcaPhotoState.monthKey !== monthKey) return;
+    const photoKey = (photos: RootCauseItem['photos'] | undefined) => (photos || []).map(ph => ph?.url || '').join('|');
+    const isOutdated = (r: RootCauseItem) => !!r.sourceId && photoKey(r.photos) !== (rcaPhotoState.map[r.sourceId] || []).join('|');
+    if (!(reportData.rootCauseAnalyses || []).some(isOutdated)) return;
+    setReportData(prev => {
+      if (!prev || prev.monthNumber !== reportData.monthNumber || prev.year !== reportData.year) return prev;
+      return {
+        ...prev,
+        rootCauseAnalyses: (prev.rootCauseAnalyses || []).map(r => {
+          if (!isOutdated(r)) return r;
+          const urls = rcaPhotoState.map[r.sourceId!] || [];
+          const title = (r.title || '').replace(/^[A-Z]\.\s*/, '').trim();
+          return {
+            ...r,
+            photoCount: urls.length,
+            photos: urls.map((url, i) => ({ url, caption: `${title} - Photo ${i + 1}` }))
+          };
+        })
+      };
+    });
+  }, [reportData, rcaPhotoState]);
 
   // Quick Action AI Triggers
   const handleAIRecs = () => {
@@ -1586,7 +1769,6 @@ export function MonthlyReportGenerator() {
 
       // Auto-save / update arsip ke Firestore: monthly_reports
       try {
-        const sanitizedReportData = JSON.parse(JSON.stringify(enrichedReportData));
         const eqNames = (enrichedReportData.scheduleTable1 || []).map(s => s.device);
         const totalCI = (enrichedReportData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
 
@@ -1599,8 +1781,11 @@ export function MonthlyReportGenerator() {
           if (found) targetId = found.id;
         }
 
+        // Foto dipindah ke subkoleksi aset agar dokumen arsip < 1 MiB
+        const archiveRef = targetId ? doc(db, 'monthly_reports', targetId) : doc(collection(db, 'monthly_reports'));
+        const sanitizedReportData = await offloadReportAssets(archiveRef.id, enrichedReportData);
+
         if (targetId) {
-          const archiveRef = doc(db, 'monthly_reports', targetId);
           await updateDoc(archiveRef, {
             title: finalTitle,
             fileName: cleanFileName,
@@ -1616,7 +1801,7 @@ export function MonthlyReportGenerator() {
           });
           setActiveArchiveId(targetId);
         } else {
-          const newDocRef = await addDoc(collection(db, 'monthly_reports'), {
+          await setDoc(archiveRef, {
             title: finalTitle,
             fileName: cleanFileName,
             monthNumber: selectedMonth,
@@ -1632,7 +1817,7 @@ export function MonthlyReportGenerator() {
             createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
             reportData: sanitizedReportData
           });
-          setActiveArchiveId(newDocRef.id);
+          setActiveArchiveId(archiveRef.id);
         }
         toast.success(`Dokumen "${finalTitle}" otomatis tersimpan di Arsip Dokumen Monthly Report!`, {
           action: {
@@ -1677,11 +1862,19 @@ export function MonthlyReportGenerator() {
     setIsTranslatingBilingual(true);
     const toastId = toast.loading('🤖 AI Agent sedang menyelaraskan format bilingual (EN + ID) untuk seluruh bab & tabel...');
     try {
+      const stats: BilingualConversionStats = { total: 0, translated: 0, failed: 0 };
       const bilingual = await convertReportToBilingualWithAI(reportData, (statusMsg) => {
         toast.loading(`🤖 ${statusMsg}`, { id: toastId });
-      });
+      }, stats);
       setReportData(bilingual);
-      toast.success('🎉 100% Seluruh Bab & Tabel berhasil diformat ke Bilingual (Inggris di atas, Indonesia di bawah)!', { id: toastId });
+      if (stats.failed > 0) {
+        toast.warning(
+          `Bilingual diterapkan, tetapi ${stats.failed} dari ${stats.total} catatan lapangan (Tabel 23, RCA, dll) belum diterjemahkan AI${stats.lastError ? ` (${stats.lastError})` : ''}. Klik "Format Bilingual" lagi untuk melanjutkan sisanya.`,
+          { id: toastId, duration: 12000 }
+        );
+      } else {
+        toast.success('🎉 100% Seluruh Bab & Tabel berhasil diformat ke Bilingual (Inggris di atas, Indonesia di bawah)!', { id: toastId });
+      }
     } catch (err: any) {
       console.warn('AI Agent translation error, using instant baseline:', err);
       const fallback = convertReportToBilingual(reportData);
@@ -3228,10 +3421,6 @@ export function MonthlyReportGenerator() {
                             <th className="py-2.5 px-2 border-r border-black w-28">Location</th>
                             <th className="py-2.5 px-2 border-r border-black w-24">Product Name</th>
                             <th className="py-2.5 px-2 border-r border-black">Task Preventive Maintenance</th>
-                            <th className="py-2.5 px-2 border-r border-black min-w-[135px] w-36">Critical Repairs</th>
-                            <th className="py-2.5 px-2 border-r border-black w-28">Operational Status</th>
-                            <th className="py-2.5 px-2 border-r border-black w-28">Issues</th>
-                            <th className="py-2.5 px-2 w-28 border-r border-black">Recommendations</th>
                             <th className="py-2.5 px-2 text-center w-8 print:hidden">Aksi</th>
                           </tr>
                         </thead>
@@ -3299,250 +3488,6 @@ export function MonthlyReportGenerator() {
                                   }}
                                   classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
                                   classNameId="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
-                                  indentId={true}
-                                />
-                              </td>
-                              <td className="py-1 px-1 border-r border-black text-[10px]">
-                                <BilingualTextarea
-                                  value={item.criticalRepairs}
-                                  placeholderEn="No critical repair..."
-                                  placeholderId="Tidak ada perbaikan... (garis miring)"
-                                  onChange={(val) => {
-                                    const updated = { ...reportData };
-                                    updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs = val;
-                                    setReportData(updated);
-                                  }}
-                                  classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
-                                  classNameId="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
-                                  indentId={true}
-                                />
-                              </td>
-                              <td className="py-1 px-1 border-r border-black font-semibold text-[10px]">
-                                {(() => {
-                                  const status = (item.operationalStatus || '').replace(/\r\n/g, '\n').trim();
-                                  const statusLower = status.toLowerCase();
-
-                                  const isNotGoodPreset = (item as any).statusMode === 'not_good' ||
-                                    statusLower.includes('not good') ||
-                                    statusLower.includes('tidak baik') ||
-                                    statusLower.includes('abnormal') ||
-                                    statusLower.includes('rusak');
-
-                                  const isGoodPreset = (item as any).statusMode === 'good' ||
-                                    (!isNotGoodPreset && (
-                                      statusLower.includes('good condition') ||
-                                      statusLower.includes('kondisi baik') ||
-                                      statusLower === 'good' ||
-                                      statusLower === 'baik' ||
-                                      statusLower === 'normal'
-                                    ));
-
-                                  // Determine mode: if explicit item.statusMode exists, use it; otherwise infer from text
-                                  const selectValue: 'good' | 'not_good' | 'custom' =
-                                    (item as any).statusMode || (isNotGoodPreset ? 'not_good' : isGoodPreset ? 'good' : (status ? 'custom' : 'good'));
-
-                                  const isGood = selectValue === 'good';
-                                  const isNotGood = selectValue === 'not_good';
-                                  const isCustom = selectValue === 'custom';
-
-                                  return (
-                                    <div className="flex flex-col space-y-1">
-                                      {/* Dropdown Selector */}
-                                      <div className="print:hidden">
-                                        <select
-                                          value={selectValue}
-                                          onChange={(e) => {
-                                            const val = e.target.value as 'good' | 'not_good' | 'custom';
-                                            const eqScope = tTable.scope || 'EQUIPMENT';
-                                            const compName = (item.className || '').trim();
-
-                                            let updatedObs = [...(reportData.observationTable23 || [])];
-                                            if (val === 'not_good' && compName) {
-                                              const secIndex = updatedObs.findIndex(s => s.scope.trim().toLowerCase() === eqScope.trim().toLowerCase());
-                                              if (secIndex === -1) {
-                                                updatedObs.push({
-                                                  scope: eqScope,
-                                                  items: [{
-                                                    no: 1,
-                                                    component: compName,
-                                                    conditionBefore: '',
-                                                    inspectionNotes: ''
-                                                  }]
-                                                });
-                                                toast.info(`"${compName}" (${eqScope}) otomatis masuk ke Tabel 23 Observation & Finding.`);
-                                              } else {
-                                                const sec = { ...updatedObs[secIndex], items: [...updatedObs[secIndex].items] };
-                                                const exists = sec.items.some(it => it.component.trim().toLowerCase() === compName.toLowerCase());
-                                                if (!exists) {
-                                                  sec.items.push({
-                                                    no: sec.items.length + 1,
-                                                    component: compName,
-                                                    conditionBefore: '',
-                                                    inspectionNotes: ''
-                                                  });
-                                                  updatedObs[secIndex] = sec;
-                                                  toast.info(`"${compName}" (${eqScope}) otomatis masuk ke Tabel 23 Observation & Finding.`);
-                                                }
-                                              }
-                                            } else if (val === 'good' && compName) {
-                                              const secIndex = updatedObs.findIndex(s => s.scope.trim().toLowerCase() === eqScope.trim().toLowerCase());
-                                              if (secIndex !== -1) {
-                                                const sec = { ...updatedObs[secIndex], items: [...updatedObs[secIndex].items] };
-                                                const itemIdx = sec.items.findIndex(it =>
-                                                  it.component.trim().toLowerCase() === compName.toLowerCase() &&
-                                                  !it.conditionBefore.trim() &&
-                                                  !it.inspectionNotes.trim()
-                                                );
-                                                if (itemIdx !== -1) {
-                                                  sec.items.splice(itemIdx, 1);
-                                                  sec.items.forEach((it, idx) => { it.no = idx + 1; });
-                                                  if (sec.items.length === 0) {
-                                                    updatedObs.splice(secIndex, 1);
-                                                  } else {
-                                                    updatedObs[secIndex] = sec;
-                                                  }
-                                                }
-                                              }
-                                            }
-
-                                            const updated = {
-                                              ...reportData,
-                                              observationTable23: updatedObs,
-                                              taskPerformanceTables: (reportData.taskPerformanceTables || []).map((tbl, ti) => {
-                                                if (ti !== tIdx) return tbl;
-                                                return {
-                                                  ...tbl,
-                                                  items: (tbl.items || []).map((it, ii) => {
-                                                    if (ii !== iIdx) return it;
-                                                    let newStatus = it.operationalStatus;
-                                                    if (val === 'good') {
-                                                      newStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
-                                                    } else if (val === 'not_good') {
-                                                      newStatus = 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
-                                                    } else if (val === 'custom') {
-                                                      const itLower = (it.operationalStatus || '').toLowerCase();
-                                                      if (!it.operationalStatus || isGoodPreset || isNotGoodPreset || itLower.includes('good condition') || itLower.includes('not good condition')) {
-                                                        newStatus = 'Operational / Running\nBeroperasi Normal';
-                                                      }
-                                                    }
-                                                    return {
-                                                      ...it,
-                                                      statusMode: val,
-                                                      operationalStatus: newStatus
-                                                    };
-                                                  })
-                                                };
-                                              })
-                                            };
-                                            setReportData(updated);
-                                          }}
-                                          className={`w-full text-[10px] font-sans font-medium px-1.5 py-0.5 rounded border transition-colors cursor-pointer outline-none ${
-                                            isGood
-                                              ? 'bg-emerald-50/90 border-emerald-300 text-emerald-800 hover:bg-emerald-100/70'
-                                              : isNotGood
-                                              ? 'bg-rose-50/90 border-rose-300 text-rose-800 font-bold hover:bg-rose-100/70'
-                                              : 'bg-blue-50/90 border-blue-300 text-blue-800 font-medium'
-                                          }`}
-                                        >
-                                          <option value="good">Good Condition</option>
-                                          <option value="not_good">Not Good Condition</option>
-                                          <option value="custom">Custom / Manual (Ketik)</option>
-                                        </select>
-                                      </div>
-
-                                      {/* Display / Editable Content */}
-                                      {isCustom ? (
-                                        <BilingualTextarea
-                                          value={item.operationalStatus}
-                                          placeholderEn="Type operational status (English)..."
-                                          placeholderId="Ketik status operasional (Bahasa Indonesia)..."
-                                          onChange={(val) => {
-                                            const updated = {
-                                              ...reportData,
-                                              taskPerformanceTables: (reportData.taskPerformanceTables || []).map((tbl, ti) => {
-                                                if (ti !== tIdx) return tbl;
-                                                return {
-                                                  ...tbl,
-                                                  items: (tbl.items || []).map((it, ii) => {
-                                                    if (ii !== iIdx) return it;
-                                                    return {
-                                                      ...it,
-                                                      statusMode: 'custom',
-                                                      operationalStatus: val
-                                                    };
-                                                  })
-                                                };
-                                              })
-                                            };
-                                            setReportData(updated);
-                                          }}
-                                          classNameEn="w-full text-[10px] font-semibold leading-tight py-0.5 px-1 bg-white border border-blue-300 focus:border-blue-500 rounded outline-none resize-none font-sans text-slate-800 shadow-2xs print:bg-transparent print:border-none print:shadow-none"
-                                          classNameId="w-full text-[9.5px] font-semibold italic text-slate-600 leading-tight py-0.5 px-1 bg-white border border-blue-300 focus:border-blue-500 rounded outline-none resize-none font-sans shadow-2xs print:bg-transparent print:border-none print:shadow-none"
-                                          indentId={true}
-                                        />
-                                      ) : (
-                                        <div className="font-serif leading-tight py-0.5 px-0.5">
-                                          {(() => {
-                                            const displayVal = item.operationalStatus || (isGood
-                                              ? 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal'
-                                              : 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal');
-                                            const parts = displayVal.split('\n');
-                                            const en = parts[0] || '';
-                                            const id = parts.slice(1).join('\n') || '';
-                                            return (
-                                              <>
-                                                <div className={`font-semibold text-[10px] ${
-                                                  isGood
-                                                    ? 'text-emerald-950 print:text-black'
-                                                    : 'text-rose-950 print:text-black font-bold'
-                                                }`}>
-                                                  {en}
-                                                </div>
-                                                {id && (
-                                                  <div className={`pl-2 border-l-2 text-[9px] italic mt-0.5 ${
-                                                    isGood
-                                                      ? 'border-emerald-400 text-emerald-800 print:border-black print:text-black'
-                                                      : 'border-rose-400 text-rose-800 print:border-black print:text-black'
-                                                  }`}>
-                                                    {id}
-                                                  </div>
-                                                )}
-                                              </>
-                                            );
-                                          })()}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </td>
-                              <td className="py-1 px-1 border-r border-black text-[10px] text-amber-900">
-                                <BilingualTextarea
-                                  value={item.issues}
-                                  placeholderEn="No abnormality..."
-                                  placeholderId="Tidak ditemukan kelainan... (garis miring)"
-                                  onChange={(val) => {
-                                    const updated = { ...reportData };
-                                    updated.taskPerformanceTables[tIdx].items[iIdx].issues = val;
-                                    setReportData(updated);
-                                  }}
-                                  classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-amber-900"
-                                  classNameId="w-full text-[9.5px] italic text-amber-800/80 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
-                                  indentId={true}
-                                />
-                              </td>
-                              <td className="py-1 px-1 border-r border-black text-[10px] text-blue-900">
-                                <BilingualTextarea
-                                  value={item.recommendations}
-                                  placeholderEn="Continue routine..."
-                                  placeholderId="Lanjutkan pemantauan... (garis miring)"
-                                  onChange={(val) => {
-                                    const updated = { ...reportData };
-                                    updated.taskPerformanceTables[tIdx].items[iIdx].recommendations = val;
-                                    setReportData(updated);
-                                  }}
-                                  classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-blue-900"
-                                  classNameId="w-full text-[9.5px] italic text-blue-800/80 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
                                   indentId={true}
                                 />
                               </td>
@@ -5318,12 +5263,15 @@ export function MonthlyReportGenerator() {
                 <div className="flex items-center gap-2 print:hidden">
                   <button
                     type="button"
-                    onClick={handleSyncNotGoodToObservationTable}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer shadow-2xs"
-                    title="Tarik semua item dengan status Not Good dari Bab 4 ke tabel ini"
+                    onClick={handleSyncAbnormalToObservationTable}
+                    disabled={isSyncingObservation}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-wait"
+                    title={`Cek ulang & tarik temuan abnormal ${reportData.monthName} ${reportData.year} dari Pusat Temuan Abnormal`}
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Sinkronkan Status Not Good {totalNotGoodCount > 0 ? `(${totalNotGoodCount})` : ''}</span>
+                    {isSyncingObservation
+                      ? <Loader2 className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                      : <RefreshCw className="w-3.5 h-3.5 text-amber-600" />}
+                    <span>{isSyncingObservation ? (observationSyncStage || 'Menyinkronkan...') : `Sinkronkan Temuan Abnormal ${reportData.monthName}`}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -5335,7 +5283,8 @@ export function MonthlyReportGenerator() {
                             no: 1,
                             component: 'Komponen Baru',
                             conditionBefore: '',
-                            inspectionNotes: ''
+                            inspectionNotes: '',
+                            manual: true
                           }
                         ]
                       });
@@ -5350,6 +5299,38 @@ export function MonthlyReportGenerator() {
                 </div>
               </div>
 
+              {(() => {
+                const expectedKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
+                const sync = reportData.observationSync;
+                const rows = reportData.observationTable23.flatMap(s => s.items);
+                const fromAbnormal = rows.filter(r => r.sourceId).length;
+                const manualRows = rows.filter(r => r.manual).length;
+                const untranslatedRows = rows.filter(r => r.sourceId && !r.translated).length;
+                const isInSync = sync?.monthKey === expectedKey && untranslatedRows === 0;
+                const syncedAt = sync?.syncedAt ? new Date(sync.syncedAt) : null;
+                return (
+                  <div className={`print:hidden flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 rounded-xl border text-[11px] font-sans ${
+                    isInSync ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-amber-50/80 border-amber-200 text-amber-900'
+                  }`}>
+                    <span className="flex items-center gap-1.5 font-bold">
+                      <AlertTriangle className={`w-3.5 h-3.5 ${isInSync ? 'text-emerald-600' : 'text-amber-600'}`} />
+                      Sumber: Pusat Temuan Abnormal · Periode {reportData.monthName} {reportData.year}
+                    </span>
+                    <span><b>{fromAbnormal}</b> temuan abnormal{manualRows > 0 ? <> + <b>{manualRows}</b> baris manual</> : null}</span>
+                    {untranslatedRows > 0 && (
+                      <span className="font-bold text-amber-700">
+                        {untranslatedRows} baris belum berbahasa Inggris — klik Sinkronkan untuk menerjemahkan
+                      </span>
+                    )}
+                    <span className="text-slate-500">
+                      {sync?.monthKey === expectedKey && syncedAt
+                        ? `Sinkron terakhir: ${syncedAt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                        : 'Belum disinkronkan untuk bulan ini — klik "Sinkronkan Temuan Abnormal".'}
+                    </span>
+                  </div>
+                );
+              })()}
+
               <p className="font-bold text-center text-slate-900 text-sm my-3">
                 Table 23. Observation & Finding
               </p>
@@ -5360,12 +5341,19 @@ export function MonthlyReportGenerator() {
                     <tr className="bg-[#0066B3] text-white font-bold border-b border-black">
                       <th className="py-2.5 px-3 text-center w-12 border-r border-black">No</th>
                       <th className="py-2.5 px-3 border-r border-black w-[32%]">Component</th>
-                      <th className="py-2.5 px-3 border-r border-black w-[31%]">Condition Before</th>
+                      <th className="py-2.5 px-3 border-r border-black w-[31%]">Issue</th>
                       <th className="py-2.5 px-3 border-r border-black w-[31%]">Inspection Notes</th>
                       <th className="py-2.5 px-2 text-center w-14 print:hidden">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black text-slate-800">
+                    {reportData.observationTable23.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-4 px-3 text-center text-xs text-slate-600">
+                          No abnormal finding was recorded during {reportData.monthNameEn} {reportData.year}.
+                        </td>
+                      </tr>
+                    )}
                     {reportData.observationTable23.map((sec, sIdx) => (
                       <React.Fragment key={`sec-${sIdx}`}>
                         <tr className="bg-[#92B8DE] text-slate-900 font-bold border-b border-black">
@@ -5392,7 +5380,8 @@ export function MonthlyReportGenerator() {
                                     no: newNo,
                                     component: '',
                                     conditionBefore: '',
-                                    inspectionNotes: ''
+                                    inspectionNotes: '',
+                                    manual: true
                                   });
                                   setReportData(updated);
                                   toast.success('Baris temuan ditambahkan!');
@@ -5407,9 +5396,12 @@ export function MonthlyReportGenerator() {
                                   if (window.confirm(`Hapus seluruh lingkup "${sec.scope}" dari Table 23?`)) {
                                     setReportData(prev => {
                                       if (!prev) return prev;
+                                      const removedIds = new Set((prev.observationTable23[sIdx]?.items || []).map(it => it.sourceId).filter(Boolean));
                                       return {
                                         ...prev,
-                                        observationTable23: prev.observationTable23.filter((_, i) => i !== sIdx)
+                                        observationTable23: prev.observationTable23.filter((_, i) => i !== sIdx),
+                                        // RCA mengikuti Tabel 23
+                                        rootCauseAnalyses: (prev.rootCauseAnalyses || []).filter(r => !r.sourceId || !removedIds.has(r.sourceId))
                                       };
                                     });
                                     toast.info(`Lingkup "${sec.scope}" dihapus.`);
@@ -5438,6 +5430,18 @@ export function MonthlyReportGenerator() {
                                 placeholder="Nama komponen..."
                                 className="w-full text-xs font-bold py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-serif leading-snug"
                               />
+                              {(item.findingDate || item.manual) && (
+                                <div className="print:hidden flex flex-wrap items-center gap-1 px-1 pb-1 font-sans font-normal">
+                                  {item.findingDate && (
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9.5px]" title="Tanggal temuan">
+                                      {item.findingDate}
+                                    </span>
+                                  )}
+                                  {item.manual && (
+                                    <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[9.5px] font-semibold">Manual</span>
+                                  )}
+                                </div>
+                              )}
                             </td>
                             <td className="py-1 px-2 border-r border-black align-top">
                               <BilingualTextarea
@@ -5447,8 +5451,8 @@ export function MonthlyReportGenerator() {
                                   updated.observationTable23[sIdx].items[iIdx].conditionBefore = val;
                                   setReportData(updated);
                                 }}
-                                placeholderEn="Condition before (leave blank if none)..."
-                                placeholderId="Kondisi awal (kosongkan jika belum ada)..."
+                                placeholderEn="Issue (leave blank if none)..."
+                                placeholderId="Masalah / temuan (kosongkan jika belum ada)..."
                                 classNameEn="w-full text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none font-sans"
                                 classNameId="w-full text-[11px] italic text-slate-600 py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none font-sans"
                                 indentId={true}
@@ -5475,6 +5479,7 @@ export function MonthlyReportGenerator() {
                                 onClick={() => {
                                   setReportData(prev => {
                                     if (!prev) return prev;
+                                    const removedId = prev.observationTable23[sIdx]?.items[iIdx]?.sourceId;
                                     const newObs = prev.observationTable23.map((s, idx) => {
                                       if (idx !== sIdx) return s;
                                       const newItems = s.items.filter((_, itemIndex) => itemIndex !== iIdx).map((it, nIdx) => ({
@@ -5483,7 +5488,14 @@ export function MonthlyReportGenerator() {
                                       }));
                                       return { ...s, items: newItems };
                                     });
-                                    return { ...prev, observationTable23: newObs };
+                                    return {
+                                      ...prev,
+                                      observationTable23: newObs,
+                                      // RCA mengikuti Tabel 23
+                                      rootCauseAnalyses: removedId
+                                        ? (prev.rootCauseAnalyses || []).filter(r => r.sourceId !== removedId)
+                                        : prev.rootCauseAnalyses
+                                    };
                                   });
                                   toast.info('Baris temuan dihapus.');
                                 }}
@@ -5501,115 +5513,171 @@ export function MonthlyReportGenerator() {
                 </table>
               </div>
 
-              {/* Root Cause Analyses Section (Sub-section Bab 7) */}
+              {/* Root Cause Analyses Section (Sub-section Bab 7) — disusun otomatis oleh AI per temuan Tabel 23 */}
               <div className="space-y-6 pt-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h3 className="text-[10pt] font-bold text-slate-900">Root Cause Analysis:</h3>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newRca = [
-                        ...(reportData.rootCauseAnalyses || []),
-                        {
-                          title: 'Analisis Root Cause Baru',
+                  <div className="flex items-center gap-2 print:hidden">
+                    <button
+                      type="button"
+                      onClick={handleGenerateRca}
+                      disabled={isGeneratingRca || isSyncingObservation}
+                      className="flex items-center gap-1.5 px-3 py-1 bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                      title="AI membaca setiap temuan Tabel 23 lalu menyusun RCA-nya"
+                    >
+                      {isGeneratingRca
+                        ? <Loader2 className="w-3.5 h-3.5 text-violet-600 animate-spin" />
+                        : <Sparkles className="w-3.5 h-3.5 text-violet-600" />}
+                      <span>{isGeneratingRca ? (rcaStage || 'AI menyusun RCA...') : 'Generate RCA dengan AI'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRca: RootCauseItem = {
+                          title: 'New Root Cause Analysis',
                           system: 'General Facility System',
-                          description: 'The system operates within normal limits following the corrective action.\nSistem beroperasi dalam batas normal setelah tindakan korektif dilakukan.',
-                          photos: []
-                        }
-                      ];
-                      setReportData({ ...reportData, rootCauseAnalyses: newRca });
-                      toast.success('RCA baru berhasil ditambahkan!');
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer print:hidden"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Tambah Root Cause</span>
-                  </button>
+                          description: '',
+                          photos: [],
+                          manual: true
+                        };
+                        setReportData(prev => prev ? { ...prev, rootCauseAnalyses: [...(prev.rootCauseAnalyses || []), newRca] } : prev);
+                        toast.success('RCA manual ditambahkan!');
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah RCA Manual</span>
+                    </button>
+                  </div>
                 </div>
+
+                {(() => {
+                  const findingCount = reportData.observationTable23.reduce((acc, s) => acc + s.items.filter(r => r.sourceId).length, 0);
+                  const pendingCount = getPendingRcaTargets(reportData).length;
+                  if (findingCount === 0) return null;
+                  return (
+                    <div className={`print:hidden flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-xl border text-[11px] font-sans ${
+                      pendingCount === 0 ? 'bg-violet-50/60 border-violet-200 text-violet-900' : 'bg-amber-50/80 border-amber-200 text-amber-900'
+                    }`}>
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        RCA disusun otomatis oleh AI dari {findingCount} temuan Tabel 23
+                      </span>
+                      <span>
+                        {pendingCount === 0
+                          ? 'Semua temuan sudah punya RCA. Foto dilampirkan hanya untuk temuan yang memiliki foto.'
+                          : `${pendingCount} temuan belum punya RCA${isGeneratingRca ? ' — sedang disusun...' : ' — klik "Generate RCA dengan AI".'}`}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {(reportData.rootCauseAnalyses || []).length === 0 && (
+                  <p className="text-[10pt] text-slate-700 font-serif">
+                    {reportData.observationTable23.some(s => s.items.some(r => r.sourceId))
+                      ? <span className="italic text-slate-500 font-sans text-xs print:hidden">RCA sedang / belum disusun oleh AI.</span>
+                      : `No root cause analysis is required as no abnormal finding was recorded during ${reportData.monthNameEn} ${reportData.year}.`}
+                  </p>
+                )}
 
                 {(reportData.rootCauseAnalyses || []).map((rca, rIdx) => {
                   const letter = String.fromCharCode(65 + rIdx);
                   const cleanTitle = (rca.title || '').replace(/^[A-Z]\.\s*/, '').trim();
-                  const displayTitle = `${letter}. ${cleanTitle}`;
+                  const monthKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
+                  // Foto temuan tersimpan di data RCA (rca.photos)
+                  const photos = (rca.photos || []).filter(ph => ph?.url);
+                  const photosLoading = !!rca.sourceId && photos.length === 0 && rcaPhotoState?.monthKey !== monthKey;
+                  const updateRca = (patch: Partial<RootCauseItem>) => {
+                    setReportData(prev => prev ? {
+                      ...prev,
+                      rootCauseAnalyses: (prev.rootCauseAnalyses || []).map((r, i) => (i === rIdx ? { ...r, ...patch } : r))
+                    } : prev);
+                  };
 
                   return (
-                    <div key={rIdx} className="p-4 border border-black rounded-xl space-y-3 bg-slate-50/40">
-                      <div className="flex items-center justify-between">
-                        <textarea
-                          rows={rca.title?.includes('\n') ? 2 : 1}
-                          value={rca.title || displayTitle}
-                          onChange={(e) => {
-                            const updated = { ...reportData };
-                            updated.rootCauseAnalyses[rIdx].title = e.target.value;
-                            setReportData(updated);
-                          }}
-                          className="text-[10pt] font-bold text-slate-950 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none w-3/4 resize-none leading-tight font-serif whitespace-pre-line"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            setReportData(prev => {
-                              if (!prev) return prev;
-                              const newRca = (prev.rootCauseAnalyses || []).filter((_, i) => i !== rIdx);
-                              return { ...prev, rootCauseAnalyses: newRca };
-                            });
-                            toast.info('RCA dihapus.');
-                          }}
-                          className="p-1 hover:text-red-600 transition-colors cursor-pointer print:hidden"
-                          title="Hapus RCA"
-                        >
-                          <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
-                        </button>
+                    <div key={rca.sourceId || `manual-${rIdx}`} className="p-4 border border-black rounded-xl space-y-3 bg-slate-50/40">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-1 w-full">
+                          <span className="text-[10pt] font-bold text-slate-950 font-serif py-1 pl-2">{letter}.</span>
+                          <textarea
+                            rows={1}
+                            value={cleanTitle}
+                            onChange={(e) => updateRca({ title: e.target.value })}
+                            placeholder="RCA title (English)..."
+                            className="text-[10pt] font-bold text-slate-950 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1 py-1 outline-none w-full resize-none leading-tight font-serif"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 print:hidden shrink-0">
+                          {rca.sourceId ? (
+                            <span className="px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-[9.5px] font-sans font-semibold whitespace-nowrap" title={`Disusun AI dari temuan lingkup ${rca.system}`}>
+                              AI · {rca.system}
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[9.5px] font-sans font-semibold">Manual</span>
+                          )}
+                          {!rca.sourceId && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReportData(prev => prev ? { ...prev, rootCauseAnalyses: (prev.rootCauseAnalyses || []).filter((_, i) => i !== rIdx) } : prev);
+                                toast.info('RCA manual dihapus.');
+                              }}
+                              className="p-1 hover:text-red-600 transition-colors cursor-pointer"
+                              title="Hapus RCA manual (RCA otomatis mengikuti baris Tabel 23)"
+                            >
+                              <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <textarea
                         value={rca.description}
                         rows={4}
-                        placeholder="Baris 1: Deskripsi bahasa Inggris (regular)&#10;Baris 2: Terjemahan bahasa Indonesia (italic)"
-                        onChange={(e) => {
-                          const updated = { ...reportData };
-                          updated.rootCauseAnalyses[rIdx].description = e.target.value;
-                          setReportData(updated);
-                        }}
-                        className="w-full text-[10pt] text-slate-800 p-2 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-y font-serif leading-relaxed"
+                        placeholder="Root cause analysis (English)..."
+                        onChange={(e) => updateRca({ description: e.target.value })}
+                        className="w-full text-[10pt] text-slate-800 p-2 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-y font-serif leading-relaxed text-justify"
                       />
-                      {/* Tabel Documentasi Photo Sesuai Standar Template NeutraDC */}
-                      <div className="border border-black overflow-hidden font-serif mt-3">
-                        <table className="w-full border-collapse text-[9pt]">
-                          <thead>
-                            <tr className="bg-[#2E74B5] text-white">
-                              <th colSpan={2} className="py-1 px-2 text-center font-bold">Documentasi Photo</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="h-32 divide-x divide-black border-t border-black">
-                              <td className="w-1/2 p-2 text-center align-middle bg-slate-50/20">
-                                {rca.photos?.[0]?.url ? (
-                                  <img src={rca.photos[0].url} alt="Photo 1" className="max-h-28 mx-auto object-contain" />
-                                ) : (
-                                  <span className="text-slate-400 italic text-xs">[ Area Foto 1 ]</span>
-                                )}
-                              </td>
-                              <td className="w-1/2 p-2 text-center align-middle bg-slate-50/20">
-                                {rca.photos?.[1]?.url ? (
-                                  <img src={rca.photos[1].url} alt="Photo 2" className="max-h-28 mx-auto object-contain" />
-                                ) : (
-                                  <span className="text-slate-400 italic text-xs">[ Area Foto 2 ]</span>
-                                )}
-                              </td>
-                            </tr>
-                            <tr className="divide-x divide-black border-t border-black bg-white">
-                              <td className="w-1/2 py-1 px-2 text-center text-slate-800 font-sans text-xs">
-                                {rca.photos?.[0]?.caption || `${cleanTitle} - Pre / Condition`}
-                              </td>
-                              <td className="w-1/2 py-1 px-2 text-center text-slate-800 font-sans text-xs">
-                                {rca.photos?.[1]?.caption || `${cleanTitle} - Post / Rectified`}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                      {photosLoading && (
+                        <p className="print:hidden text-[11px] text-slate-500 font-sans flex items-center gap-1.5">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Memuat foto temuan...
+                        </p>
+                      )}
+                      {/* Tabel Dokumentasi Foto — hanya jika temuan memiliki foto; kolom mengikuti jumlah foto */}
+                      {photos.length > 0 && (() => {
+                        const shown = photos.slice(0, 2);
+                        const cellWidth = shown.length === 1 ? 'w-full' : 'w-1/2';
+                        return (
+                          <div className="border border-black overflow-hidden font-serif mt-3">
+                            <table className="w-full border-collapse text-[9pt] table-fixed">
+                              <thead>
+                                <tr className="bg-[#2E74B5] text-white">
+                                  <th colSpan={shown.length} className="py-1 px-2 text-center font-bold">Documentasi Photo</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr className="divide-x divide-black border-t border-black">
+                                  {shown.map((ph, pi) => (
+                                    <td key={pi} className={`${cellWidth} p-3 text-center align-middle bg-white`}>
+                                      <img
+                                        src={/^(data:|https?:)/.test(ph.url) ? ph.url : `data:image/jpeg;base64,${ph.url}`}
+                                        alt={`Photo ${pi + 1}`}
+                                        className={`mx-auto object-contain ${shown.length === 1 ? 'max-h-[380px] max-w-full' : 'max-h-[300px] max-w-full'}`}
+                                      />
+                                    </td>
+                                  ))}
+                                </tr>
+                                <tr className="divide-x divide-black border-t border-black bg-white">
+                                  {shown.map((ph, pi) => (
+                                    <td key={pi} className={`${cellWidth} py-1 px-2 text-center text-slate-800 font-sans text-xs`}>
+                                      {ph.caption}
+                                    </td>
+                                  ))}
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
