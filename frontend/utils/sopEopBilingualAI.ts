@@ -494,7 +494,7 @@ async function callTranslationBackend(prompt: string): Promise<string> {
   if (!user) throw new Error('Sesi login diperlukan untuk menjalankan penerjemahan bilingual.');
 
   const token = await user.getIdToken();
-  const response = await fetch(getApiEndpoint('/ai/chat'), {
+  const response = await fetch(getApiEndpoint('/api/ai/chat'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -22,7 +22,7 @@ async function callReliabilityAI(systemPrompt: string, userPrompt: string): Prom
   const user = auth.currentUser;
   if (!user) throw new Error('Login diperlukan untuk menjalankan analisis predictive.');
 
-  const response = await fetch(getApiEndpoint('/ai/chat'), {
+  const response = await fetch(getApiEndpoint('/api/ai/chat'), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${await user.getIdToken()}`,
