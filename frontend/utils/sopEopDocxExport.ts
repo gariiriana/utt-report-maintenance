@@ -22,6 +22,7 @@ import {
   PageNumber,
   UnderlineType,
   PageBreak,
+  Tab,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem, DocumentSigner, getEquipmentCellValue } from '@/types/sopEopTypes';
@@ -740,20 +741,32 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({})],
             });
           }
-          // Checklist kotak: dicentang = kotak + centang, tidak dicentang = kotak kosong
-          const checkMark = item.checked ? '☑ ' : '☐ ';
+          // Checklist kotak: dicentang = kotak berisi "√", tidak dicentang = kotak kosong.
+          // Kotak digambar sebagai border karakter + "√" dari font biasa (bukan glyph ☑/☐ dari
+          // Segoe UI Symbol), supaya centangnya tetap tampil di WPS, HP, dan Google Docs.
+          // Courier New: lebar "√" dan spasi sama, jadi ukuran kotak selalu seragam.
           return new TableCell({
             width: { size: affColsWidth[cIdx], type: WidthType.DXA },
             borders: CELL_BORDERS_BOX,
             margins: { top: 30, bottom: 30, left: 40, right: 40 },
             children: [
               new Paragraph({
+                // Hanging indent: label EN dan ID sejajar di kanan kotak
+                indent: { left: 300, hanging: 300 },
                 children: [
-                  // Satu font untuk ☐ dan ☑ agar ukuran kotak sama dan label sejajar
-                  new TextRun({ text: checkMark, size: 18, color: COLOR_BLACK, font: 'Segoe UI Symbol' }),
-                  new TextRun({ text: item.labelEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
+                  new TextRun({
+                    text: item.checked ? '√' : ' ',
+                    bold: true,
+                    size: 18,
+                    scale: 160,
+                    color: COLOR_BLACK,
+                    font: 'Courier New',
+                    border: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 0 },
+                  }),
+                  new TextRun({ children: [new Tab()], size: 18, font: FONT_BODY }),
+                  new TextRun({ text: item.labelEn, bold: item.checked, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
                   new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `    ${item.labelId}`, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                  new TextRun({ text: item.labelId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
                 ],
               }),
             ],

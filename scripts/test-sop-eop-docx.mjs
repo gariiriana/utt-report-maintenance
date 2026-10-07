@@ -118,10 +118,12 @@ try {
   const exportedXml = await exportedZip.file('word/document.xml').async('text');
   const checklistXml = exportedXml.match(/<w:tbl\b[^>]*>(?:(?!<\/w:tbl>)[\s\S])*Security System[\s\S]*?<\/w:tbl>/)?.[0];
   assert.ok(checklistXml, 'Export contains the Section 4 checklist table');
-  const checklistText = checklistXml.replace(/<w:br\/>/g, '\n').replace(/<[^>]+>/g, '');
-  assert.ok(checklistText.includes('☑ Security System'), 'Security System is a checked box');
-  assert.ok(checklistText.includes('☑ Lockout / Tag Required'), 'Lockout / Tag Required is a checked box');
-  assert.ok(checklistText.includes('☐ Electrical Distribution'), 'Unchecked items are empty boxes');
+  const checklistText = checklistXml.replace(/<w:br\/>/g, '\n').replace(/<w:tab\/>/g, '\t').replace(/<[^>]+>/g, '');
+  assert.ok(checklistText.includes('√\tSecurity System'), 'Security System is a checked box');
+  assert.ok(checklistText.includes('√\tLockout / Tag Required'), 'Lockout / Tag Required is a checked box');
+  assert.ok(checklistText.includes(' \tElectrical Distribution'), 'Unchecked items are empty boxes');
+  // The box is a character border, so it does not depend on a symbol font being installed
+  assert.equal((checklistXml.match(/<w:bdr\b/g) || []).length, 15, 'Every checklist item has a bordered box');
   const cellBorders = checklistXml.match(/<w:tcBorders>[\s\S]*?<\/w:tcBorders>/)?.[0];
   assert.ok(cellBorders && /w:val="single"/.test(cellBorders), 'Checklist table cells have grid borders');
   const reimported = await importSopEopFromDocx(file(await exported.blob.arrayBuffer(), exported.name));
