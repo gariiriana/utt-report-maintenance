@@ -18,9 +18,6 @@ func (c *HealthController) Liveness(w http.ResponseWriter, r *http.Request) {
 	helpers.SendJSON(w, http.StatusOK, models.HealthStatus{
 		Status:    "ok",
 		Timestamp: time.Now().UTC(),
-		// Penanda deploy: dicek setelah push untuk memastikan backend dengan gerbang scan
-		// wajah (/api/face/*) sudah live sebelum hosting & Firestore rules di-deploy.
-		Checks: map[string]string{"face2fa": "enabled"},
 	})
 }
 func (c *HealthController) Readiness(w http.ResponseWriter, r *http.Request) {

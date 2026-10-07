@@ -179,10 +179,6 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/wa/send" && r.Method == http.MethodPost:
 		heavy(deps.WACtrl.SendMessage)(w, r)
 
-	// --- Face 2FA (gerbang scan wajah; lihat scanning.md) ---
-	case strings.HasPrefix(path, "/api/face/") && r.Method == http.MethodPost:
-		standard(deps.FaceCtrl.Route)(w, r)
-
 	default:
 		helpers.SendError(w, "route not found", http.StatusNotFound)
 	}

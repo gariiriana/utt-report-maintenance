@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateWAReminderConfigCloud = exports.triggerWAReminderH60Cloud = exports.sendTestWhatsAppCloud = exports.scheduledWAReminderH60 = exports.analyzeATSReport = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
-const face_session_1 = require("./face-session");
 admin.initializeApp();
 // ─── Environment Configurations ─────────────────────────────────────────────
 const apiKeysStr = process.env.NVIDIA_NIM_API_KEYS || "";
@@ -126,8 +125,10 @@ Return ONLY this JSON array:
 }
 // ─── Cloud Function HTTPS Callable Handler ──────────────────────────────────
 exports.analyzeATSReport = (0, https_1.onCall)({ region: "asia-southeast1", cors: true, timeoutSeconds: 300 }, async (request) => {
-    // Check auth + sesi scan wajah (akun bersama)
-    await (0, face_session_1.requireFaceSession)(request);
+    // Check auth
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Request must be authenticated.");
+    }
     const photos = request.data.photos;
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
         throw new https_1.HttpsError("invalid-argument", "Photos parameter is required and must not be empty.");
@@ -263,6 +264,4 @@ var manual_wa_send_1 = require("./manual-wa-send");
 Object.defineProperty(exports, "sendTestWhatsAppCloud", { enumerable: true, get: function () { return manual_wa_send_1.sendTestWhatsAppCloud; } });
 Object.defineProperty(exports, "triggerWAReminderH60Cloud", { enumerable: true, get: function () { return manual_wa_send_1.triggerWAReminderH60Cloud; } });
 Object.defineProperty(exports, "updateWAReminderConfigCloud", { enumerable: true, get: function () { return manual_wa_send_1.updateWAReminderConfigCloud; } });
-// Face 2FA (scan wajah) berjalan di backend Go (POST /api/face/*), bukan di sini:
-// project Firebase memakai paket Spark yang tidak bisa menjalankan Cloud Functions.
 //# sourceMappingURL=index.js.map

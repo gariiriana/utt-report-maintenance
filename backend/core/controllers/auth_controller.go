@@ -101,14 +101,17 @@ func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 // Endpoint: POST /api/auth/logout
-// Mencatat aktivitas logout. Refresh token TIDAK dicabut: akun dipakai bersama per role,
-// jadi RevokeRefreshTokens(uid) akan mengeluarkan semua rekan yang memakai akun yang sama.
-// Sesi perangkat ini diakhiri oleh client (signOut).
+// Melakukan pembatalan refresh token Firebase & mencatat aktivitas logout
 func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := middlewares.UIDFromContext(ctx)
 	if uid == "" {
 		helpers.SendAppError(w, apperrors.Unauthorized("authentication required"))
+		return
+	}
+
+	if err := c.AuthService.RevokeRefreshTokens(ctx, uid); err != nil {
+		helpers.SendAppError(w, apperrors.Internal(err))
 		return
 	}
 
@@ -119,7 +122,7 @@ func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
 
 	helpers.SendJSON(w, http.StatusOK, map[string]interface{}{
 		"status":  "success",
-		"message": "Logout recorded successfully",
+		"message": "Logged out and tokens revoked successfully",
 	})
 }
 

@@ -12,10 +12,7 @@
     "backend": "cd backend && .\\server.exe",
     "backend:build": "cd backend && go build -o server.exe ./cmd/api",
     "wagateway": "node backend/wagateway.js",
-    "dev": "concurrently --kill-others --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan,green\" \"vite\" \"npm run backend\"",
-    "dev:emulator": "vite --mode emulator",
-    "emulators": "npm --prefix functions run build && firebase emulators:start --only auth,firestore,functions,database --project report-utt",
-    "emulators:seed": "node scripts/emulator-seed.cjs"
+    "dev": "concurrently --kill-others --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan,green\" \"vite\" \"npm run backend\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -51,7 +48,6 @@
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
     "@types/file-saver": "^2.0.7",
-    "@vladmandic/face-api": "^1.7.15",
     "@whiskeysockets/baileys": "^7.0.0-rc14",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

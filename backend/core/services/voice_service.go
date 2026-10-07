@@ -23,7 +23,6 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/gariiriana/DwimitraSystem/backend/core/config"
-	"github.com/gariiriana/DwimitraSystem/backend/core/middlewares"
 	"github.com/gorilla/websocket"
 )
 
@@ -47,8 +46,6 @@ type VoiceSession struct {
 	cancelTTS   context.CancelFunc     // For barge-in
 	mu          sync.Mutex
 	closed      bool
-	// Cek ulang sesi scan wajah selama koneksi hidup (lihat middlewares.WithFaceRecheck).
-	faceRecheck func(context.Context) bool
 }
 
 // ConversationMessage represents a single turn in conversation.
@@ -270,8 +267,6 @@ func (vs *voiceService) HandleSession(w http.ResponseWriter, r *http.Request, us
 		Conn:      conn,
 		History:   make([]ConversationMessage, 0),
 		AppState:  make(map[string]interface{}),
-
-		faceRecheck: middlewares.FaceRecheckFromContext(r.Context()),
 	}
 
 	slog.Info("Voice session started",
@@ -350,26 +345,12 @@ func (vs *voiceService) sessionLoop(session *VoiceSession) {
 	}
 }
 
-// pingLoop sends periodic pings to keep the WebSocket alive, and closes the
-// connection once the face session is no longer valid (face deleted or expired).
+// pingLoop sends periodic pings to keep the WebSocket alive.
 func (vs *voiceService) pingLoop(session *VoiceSession) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		if session.faceRecheck != nil {
-			checkCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			valid := session.faceRecheck(checkCtx)
-			cancel()
-			if !valid {
-				slog.Info("Voice session closed: face session no longer valid", "session_id", session.ID)
-				session.mu.Lock()
-				session.Conn.Close() // ReadMessage di sessionLoop gagal lalu sesi berakhir
-				session.mu.Unlock()
-				return
-			}
-		}
-
 		session.mu.Lock()
 		if session.closed {
 			session.mu.Unlock()

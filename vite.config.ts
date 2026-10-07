@@ -15,29 +15,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Paksa buka browser Chrome saat dev server dijalankan
 process.env.BROWSER = 'chrome'
 
-// Mode `npm run dev:emulator`: Firebase Emulator diakses lewat origin yang sama (lihat
-// frontend/api/firebase.ts), supaya juga bisa dites dari HP melalui tunnel HTTPS Cloudflare.
-const emulatorProxy = {
-  // Auth Emulator
-  '/identitytoolkit.googleapis.com': { target: 'http://127.0.0.1:9099', changeOrigin: true },
-  '/securetoken.googleapis.com': { target: 'http://127.0.0.1:9099', changeOrigin: true },
-  '/emulator': { target: 'http://127.0.0.1:9099', changeOrigin: true },
-  // Firestore Emulator (WebChannel + REST)
-  '/google.firestore.v1.Firestore': { target: 'http://127.0.0.1:8085', changeOrigin: true },
-  '/v1/projects': { target: 'http://127.0.0.1:8085', changeOrigin: true },
-  // Functions Emulator
-  '/__functions': { target: 'http://127.0.0.1:5001', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/__functions/, '') },
-  // Realtime Database Emulator
-  '/.ws': { target: 'ws://127.0.0.1:9000', ws: true, changeOrigin: true },
-  '/.lp': { target: 'http://127.0.0.1:9000', changeOrigin: true },
-}
-
-// Backend Go untuk mode emulator berjalan di port terpisah (8090) dengan env emulator,
-// supaya tidak tertukar dengan backend Go di 8080 yang memakai Firebase production.
-// Lihat bagian "Tes lokal" di scanning.md.
-const EMULATOR_API_TARGET = 'http://localhost:8090'
-
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [
     // 1. Plugin React Fast Refresh
     react(),
@@ -76,18 +54,6 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg}'],
         runtimeCaching: [
           {
-            // Model scan wajah (±7 MB): simpan di perangkat setelah unduhan pertama, agar
-            // login di lokasi bersinyal lemah tidak mengunduh ulang. Ganti nama cache bila
-            // file model di public/models/face diganti.
-            urlPattern: ({ url }) => url.pathname.startsWith('/models/face/'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'face-models-v1',
-              expiration: { maxEntries: 10 },
-              cacheableResponse: { statuses: [200] }
-            }
-          },
-          {
             urlPattern: /^https:\/\/fonts\.web-fonts\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
@@ -110,15 +76,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     open: true,
     host: true,
-    // Tunnel HTTPS untuk tes dari HP (cloudflared quick tunnel).
-    allowedHosts: mode === 'emulator' ? ['.trycloudflare.com'] : undefined,
-    // HMR websocket tidak bisa lewat quick tunnel; muat ulang manual saat tes emulator.
-    hmr: mode === 'emulator' ? false : undefined,
     proxy: {
-      ...(mode === 'emulator' ? emulatorProxy : {}),
-      // Direct semua request HTTP/WebSocket `/api` ke Backend Go (8080; mode emulator: 8090)
+      // Direct semua request HTTP/WebSocket `/api` ke Backend Go di port 8080
       '/api': {
-        target: mode === 'emulator' ? EMULATOR_API_TARGET : 'http://localhost:8080',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         ws: true,
         timeout: 300000,
@@ -166,4 +127,4 @@ export default defineConfig(({ mode }) => ({
     },
     chunkSizeWarningLimit: 1500,
   },
-}))
+})

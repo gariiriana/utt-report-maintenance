@@ -22,7 +22,6 @@ import { useEffect } from 'react';
 import { logFirebaseEvent } from '@/api/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { AIChatWidget } from '@/components/AIChatWidget';
-import { FaceGate } from '@/components/FaceGate';
 import { initGlobalModalObserver } from '@/utils/modalScrollLock';
 
 /**
@@ -91,24 +90,21 @@ function AppContent() {
             transition={{ duration: 0.3 }}
             className="flex-1 flex flex-col w-full min-w-0"
           >
-            {/* Scan wajah wajib lolos dulu sebelum aplikasi (akun bersama per role) */}
-            <FaceGate key={user.uid}>
-              {/* Routing Komponen Berdasarkan Role User */}
-              <div className="flex-1 flex flex-col w-full min-w-0">
-                {(() => {
-                  if (userRole === 'drafter') return <DrafterApp />;
-                  if (userRole === 'hse') return <HSEApp />;
-                  const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
-                  if (isoRoles.includes(userRole || '')) return <DivisionApp />;
-                  if (userRole === 'site_manager_dme') return <DMEDashboard />;
-                  if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
-                  return <MainApp />;
-                })()}
-              </div>
-
-              {/* Widget Asisten Chatbot AI (Tampil untuk semua user login) */}
-              {userRole !== 'drafter' && <AIChatWidget />}
-            </FaceGate>
+            {/* Routing Komponen Berdasarkan Role User */}
+            <div className="flex-1 flex flex-col w-full min-w-0">
+              {(() => {
+                if (userRole === 'drafter') return <DrafterApp />;
+                if (userRole === 'hse') return <HSEApp />;
+                const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+                if (isoRoles.includes(userRole || '')) return <DivisionApp />;
+                if (userRole === 'site_manager_dme') return <DMEDashboard />;
+                if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
+                return <MainApp />;
+              })()}
+            </div>
+            
+            {/* Widget Asisten Chatbot AI (Tampil untuk semua user login) */}
+            {userRole !== 'drafter' && <AIChatWidget />}
           </motion.div>
         ) : (
           <motion.div
