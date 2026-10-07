@@ -181,7 +181,8 @@ export function MainApp() {
       'BA (Berita Acara)',
       'D-DAY', 'Laporan Harian', 'Layout', 'MOP', 'Monthly', 'Predictive Report',
       'Risk Register', 'JSEA', 'Report CM', 'Form SLA/SLG', 'Report PIR',
-      'Laporan Temuan', 'SLD', 'Service Report', 'Service Report Approved'
+      'Laporan Temuan', 'SLD', 'Service Report', 'Service Report Approved',
+      'Weekly HSE Report', 'Monthly HSE Report'
     ];
 
     const isManagementFolder = Boolean(item.category && managementFoldersList.includes(item.category));

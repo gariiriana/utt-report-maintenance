@@ -86,7 +86,9 @@ const FILE_CATEGORIES = [
     'Service Report Approved',
     'Predictive Report',
     'Custom',
-    'Monthly'
+    'Monthly',
+    'Weekly HSE Report',
+    'Monthly HSE Report'
 ];
 
 const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY'];
@@ -141,6 +143,25 @@ const MAINTENANCE_TYPES = [
 ];
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
+// Laporan HSE disimpan per bulan (Monthly) atau per minggu dalam bulan (Weekly); quarter mengikuti bulan
+const HSE_REPORT_CATEGORIES = ['Weekly HSE Report', 'Monthly HSE Report'];
+const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const WEEKS_OF_MONTH = [1, 2, 3, 4, 5];
+const quarterOfMonth = (month: number) => `Q${Math.floor((month - 1) / 3) + 1}`;
+const MONTH_ALIASES: Record<string, number> = {
+    jan: 1, januari: 1, january: 1,
+    feb: 2, februari: 2, february: 2, pebruari: 2,
+    mar: 3, maret: 3, march: 3,
+    apr: 4, april: 4,
+    mei: 5, may: 5,
+    jun: 6, juni: 6, june: 6,
+    jul: 7, juli: 7, july: 7,
+    agu: 8, agt: 8, agus: 8, agustus: 8, aug: 8, august: 8,
+    sep: 9, sept: 9, september: 9,
+    okt: 10, oktober: 10, oct: 10, october: 10,
+    nov: 11, nopember: 11, november: 11,
+    des: 12, desember: 12, dec: 12, december: 12,
+};
 const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030'];
 const ALLOWED_EXTENSIONS = [
     '.pdf',
@@ -276,6 +297,8 @@ export interface ParsedFileMetadata {
     maintenanceType?: string;
     quarter?: string;
     year?: string;
+    month?: number;
+    week?: number;
 }
 
 /**
@@ -299,7 +322,13 @@ export function parseFilenameMetadata(filename: string): ParsedFileMetadata {
     }
 
     // 3. Deteksi Kategori Dokumen
-    if (/(?:^|[^a-z0-9])(?:BA|BERITA[\s_-]+ACARA)(?=$|[^a-z0-9])/i.test(cleanName)) {
+    // HSE dicek lebih dulu: "Monthly HSE Report" jangan sampai masuk Laporan Bulanan
+    const isHse = /(?:^|[^a-z0-9])HSE(?=$|[^a-z0-9])/i.test(cleanName);
+    if (isHse && /WEEKLY|MINGGUAN/i.test(cleanName)) {
+        result.category = 'Weekly HSE Report';
+    } else if (isHse && /MONTHLY|BULANAN/i.test(cleanName)) {
+        result.category = 'Monthly HSE Report';
+    } else if (/(?:^|[^a-z0-9])(?:BA|BERITA[\s_-]+ACARA)(?=$|[^a-z0-9])/i.test(cleanName)) {
         result.category = 'BA (Berita Acara)';
     } else if (/\b(?:LAYOUT|DENAH)\b/i.test(cleanName)) {
         result.category = 'Layout';
@@ -335,6 +364,19 @@ export function parseFilenameMetadata(filename: string): ParsedFileMetadata {
         result.category = 'Laporan Harian';
     } else if (/\bLAPORAN[\s_-]*BULANAN\b|\bMONTHLY\b/i.test(cleanName)) {
         result.category = 'Laporan Bulanan';
+    }
+
+    // 3b. Bulan dan minggu ke- untuk laporan HSE (misal: "Weekly HSE Report - Minggu 2 - Oktober 2026")
+    if (result.category && HSE_REPORT_CATEGORIES.includes(result.category)) {
+        const month = cleanName.toLowerCase().split(/[^a-z]+/).map(token => MONTH_ALIASES[token]).find(Boolean);
+        if (month) {
+            result.month = month;
+            result.quarter = quarterOfMonth(month);
+        }
+        const weekMatch = cleanName.match(/(?:^|[^a-z0-9])(?:W|WEEK|WK|MINGGU)[\s_-]*(?:KE[\s_-]*)?([1-5])(?![0-9])/i);
+        if (result.category === 'Weekly HSE Report' && weekMatch) {
+            result.week = Number(weekMatch[1]);
+        }
     }
 
     // 4. Deteksi Tipe Maintenance / Peralatan (AHU, Chiller, Trafo, dll)
@@ -399,6 +441,8 @@ interface FileData {
     category: string;
     quarter?: string;
     year?: string;
+    month?: number;
+    week?: number;
     customCategory?: string;
     uploadedBy: string;
     uploadedByEmail: string;
@@ -544,6 +588,8 @@ export function FileManagement({
     const [description, setDescription] = useState('');
     const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1');
     const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString());
+    const [selectedUploadMonth, setSelectedUploadMonth] = useState(new Date().getMonth() + 1);
+    const [selectedUploadWeek, setSelectedUploadWeek] = useState(Math.min(5, Math.ceil(new Date().getDate() / 7)));
     const [forceSelectedMetadata, setForceSelectedMetadata] = useState(true);
     const [failedUploads, setFailedUploads] = useState<{ file: File; error: string }[]>([]);
     const [isSLAModalOpen, setIsSLAModalOpen] = useState(false);
@@ -589,6 +635,10 @@ export function FileManagement({
         }
         if (selectedQuarter && QUARTERS.includes(selectedQuarter)) {
             setSelectedUploadQuarter(selectedQuarter);
+            // Upload dari dalam folder quarter HSE: bulan default ikut quarter yang dibuka
+            setSelectedUploadMonth((month) => quarterOfMonth(month) === selectedQuarter
+                ? month
+                : (QUARTERS.indexOf(selectedQuarter) * 3) + 1);
         }
         if (selectedMType && MAINTENANCE_TYPES.includes(selectedMType)) {
             setSelectedMaintenance(selectedMType);
@@ -940,6 +990,14 @@ export function FileManagement({
                     setSelectedUploadYear(firstParsed.year);
                     detectedParts.push(`Tahun: ${firstParsed.year}`);
                 }
+                if (firstParsed.month) {
+                    setSelectedUploadMonth(firstParsed.month);
+                    detectedParts.push(`Bulan: ${MONTHS[firstParsed.month - 1]}`);
+                }
+                if (firstParsed.week) {
+                    setSelectedUploadWeek(firstParsed.week);
+                    detectedParts.push(`Minggu ke-${firstParsed.week}`);
+                }
 
                 if (detectedParts.length > 0) {
                     toast.success(`✨ Otomatis terdeteksi dari nama berkas: ${detectedParts.join(' | ')}`);
@@ -997,9 +1055,14 @@ export function FileManagement({
                     const fileMaintenance = (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(fileCategory))
                         ? (forceSelectedMetadata ? selectedMaintenance : (parsed.maintenanceType || selectedMaintenance))
                         : null;
+                    const isHseReport = HSE_REPORT_CATEGORIES.includes(fileCategory);
+                    const fileMonth = forceSelectedMetadata ? selectedUploadMonth : (parsed.month || selectedUploadMonth);
+                    const fileWeek = forceSelectedMetadata ? selectedUploadWeek : (parsed.week || selectedUploadWeek);
                     const fileQuarter = (fileCategory === 'SLD' || fileCategory === 'Layout')
                         ? 'N/A'
-                        : (forceSelectedMetadata ? selectedUploadQuarter : (parsed.quarter || selectedUploadQuarter));
+                        : isHseReport
+                            ? quarterOfMonth(fileMonth)
+                            : (forceSelectedMetadata ? selectedUploadQuarter : (parsed.quarter || selectedUploadQuarter));
                     const fileYear = forceSelectedMetadata ? selectedUploadYear : (parsed.year || selectedUploadYear);
                     const resolvedMime = getFileMime(file);
 
@@ -1014,6 +1077,8 @@ export function FileManagement({
                             maintenanceType: fileMaintenance,
                             quarter: fileQuarter,
                             year: fileYear,
+                            ...(isHseReport ? { month: fileMonth } : {}),
+                            ...(fileCategory === 'Weekly HSE Report' ? { week: fileWeek } : {}),
                             customCategory: (selectedCategory === 'Custom' && !parsed.category) ? customCategory : null,
                             uploadedBy: user.uid,
                             uploadedByEmail: (user.email || '').toLowerCase(),
@@ -1642,7 +1707,13 @@ export function FileManagement({
         return true;
     });
 
-
+    // Folder HSE: urutkan dari periode terbaru (tahun → bulan → minggu ke-); urutan sort stabil untuk file lain
+    if (selectedFolder && HSE_REPORT_CATEGORIES.includes(selectedFolder)) {
+        displayFiles.sort((a, b) =>
+            (Number(b.year) || 0) - (Number(a.year) || 0)
+            || (b.month || 0) - (a.month || 0)
+            || (b.week || 0) - (a.week || 0));
+    }
 
     if (loading) {
         return (
@@ -1810,7 +1881,47 @@ export function FileManagement({
                                     </select>
                                 </div>
 
-                                {selectedCategory !== 'SLD' && selectedCategory !== 'Layout' && (
+                                {HSE_REPORT_CATEGORIES.includes(selectedCategory) && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                                            Bulan <span className="font-medium text-slate-400">(Quarter otomatis: {quarterOfMonth(selectedUploadMonth)})</span>
+                                        </label>
+                                        <select
+                                            value={selectedUploadMonth}
+                                            onChange={(e) => setSelectedUploadMonth(Number(e.target.value))}
+                                            disabled={uploading}
+                                            className="w-full px-4 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        >
+                                            {MONTHS.map((m, i) => (
+                                                <option key={m} value={i + 1}>
+                                                    {m}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {selectedCategory === 'Weekly HSE Report' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                                            Minggu ke-
+                                        </label>
+                                        <select
+                                            value={selectedUploadWeek}
+                                            onChange={(e) => setSelectedUploadWeek(Number(e.target.value))}
+                                            disabled={uploading}
+                                            className="w-full px-4 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        >
+                                            {WEEKS_OF_MONTH.map((w) => (
+                                                <option key={w} value={w}>
+                                                    Minggu ke-{w}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {selectedCategory !== 'SLD' && selectedCategory !== 'Layout' && !HSE_REPORT_CATEGORIES.includes(selectedCategory) && (
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">
                                             Quarter
@@ -2549,6 +2660,11 @@ export function FileManagement({
                                                             {file.quarter && (
                                                                 <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200/80 text-[11px] sm:text-xs font-bold">
                                                                     {file.quarter}
+                                                                </span>
+                                                            )}
+                                                            {file.month && MONTHS[file.month - 1] && (
+                                                                <span className="px-2.5 py-0.5 bg-violet-50 text-violet-700 rounded-md border border-violet-200/80 text-[11px] sm:text-xs font-bold">
+                                                                    {file.week ? `Minggu ke-${file.week} · ` : ''}{MONTHS[file.month - 1]}
                                                                 </span>
                                                             )}
                                                         </div>

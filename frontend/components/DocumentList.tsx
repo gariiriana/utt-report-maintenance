@@ -2447,6 +2447,8 @@ export function DocumentList({
       { name: 'Layout', desc: 'Layout & Denah Fasilitas Data Center' },
       { name: 'MOP', desc: 'Method of Procedure (MOP) Standar' },
       { name: 'Monthly', desc: 'Laporan Rekap Bulanan Project' },
+      { name: 'Weekly HSE Report', desc: 'Laporan HSE Mingguan' },
+      { name: 'Monthly HSE Report', desc: 'Laporan HSE Bulanan' },
       { name: 'Predictive Report', desc: 'Laporan Predictive Maintenance Data Center' },
       { name: 'Risk Register', desc: 'Matriks & Analisa Risiko Operasional' },
       { name: 'JSEA', desc: 'Job Safety Environment Analysis' },
