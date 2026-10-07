@@ -3375,6 +3375,26 @@ export function getEquipmentProfile(scopeName: string, _monthName: string = 'Feb
     };
   }
 
+  // 11a. WATER & FUEL LEAK DETECTION
+  // Harus dicek sebelum Generator & Fuel: nama kategori BOQ "Water & Fuel Leak" mengandung kata "fuel".
+  if (clean.includes('leak') || clean.includes('wld') || clean.includes('fld')) {
+    const hasWater = clean.includes('water') || clean.includes('wld');
+    const hasFuel = clean.includes('fuel') || clean.includes('fld');
+    return {
+      id: 'leak_detection',
+      name: hasWater && hasFuel ? 'Water & Fuel Leak Detection System' : hasFuel ? 'Fuel Leak Detection System' : 'Water Leak Detection System',
+      categoryDomain: 'FIRE, SAFETY & FACILITY SYSTEM',
+      systemOverview: 'Water and fuel leak detection systems use sensing cables and spot probes routed under raised floors, around CRAC/chiller pipework, and along generator fuel lines and day tanks to detect liquid ingress early and raise alarms to the leak detection panel and BMS.\nSistem deteksi kebocoran air dan bahan bakar menggunakan kabel sensor dan probe titik yang dipasang di bawah raised floor, di sekitar pipa CRAC/chiller, serta sepanjang jalur bahan bakar dan day tank genset untuk mendeteksi rembesan cairan sejak dini dan mengirim alarm ke panel leak detection dan BMS.',
+      calibration: `Calibration of sensing cable leak-location distance readout, spot probe sensitivity, cable impedance, and alarm relay / BMS point mapping.\nKalibrasi pembacaan jarak lokasi kebocoran pada kabel sensor, sensitivitas probe titik, impedansi kabel sensor, dan pemetaan relay alarm / titik BMS.`,
+      validationMethod: 'Liquid simulation test on sensing cables and spot probes, leak location accuracy check on the panel, and alarm notification response verification at the panel and BMS (< 5 seconds).\nUji simulasi cairan pada kabel sensor dan probe titik, pengecekan akurasi lokasi kebocoran pada panel, dan verifikasi respons notifikasi alarm di panel dan BMS (< 5 detik).',
+      challenge: 'Sensing cables run under live raised floors and along fuel lines in hazardous areas; simulation tests must not trigger false emergency responses or leave residual liquid near IT equipment.\nKabel sensor terpasang di bawah raised floor aktif dan sepanjang jalur bahan bakar di area berbahaya; uji simulasi tidak boleh memicu respons darurat palsu atau meninggalkan sisa cairan di dekat perangkat IT.',
+      mitigation: 'Notify BMS/NOC before testing, use a minimal amount of test liquid with absorbent pads, dry and reset sensors immediately, and follow fuel-area work permits.\nKoordinasi dengan BMS/NOC sebelum pengujian, gunakan cairan uji seminimal mungkin dengan kain penyerap, keringkan dan reset sensor segera, serta patuhi izin kerja area bahan bakar.',
+      lessonLearned: 'Conduit mechanical protection on alarm sensor cables is vital to prevent physical damage during adjacent work activities.\nProteksi mekanis (conduit) pada jalur kabel sensor alarm sangat krusial untuk mencegah kerusakan fisik akibat aktivitas kerja di area sekitar.',
+      shortTermRec: 'Clean dust and debris from sensing cables, re-secure loose cable clips, and verify end-of-line terminators on every zone.\nBersihkan debu dan kotoran pada kabel sensor, kencangkan kembali klip kabel yang longgar, dan verifikasi terminator end-of-line di setiap zona.',
+      longTermRec: 'Map sensing cable routes against the latest floor layout and replace aged or contaminated cable segments based on the annual continuity test trend.\nPetakan ulang jalur kabel sensor terhadap layout lantai terbaru dan ganti segmen kabel yang sudah tua atau terkontaminasi berdasarkan tren uji kontinuitas tahunan.'
+    };
+  }
+
   // 11. GENERATOR & FUEL SYSTEM
   if (clean.includes('generator') || clean.includes('genset') || clean.includes('fuel')) {
     return {
