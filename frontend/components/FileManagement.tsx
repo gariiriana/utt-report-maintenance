@@ -28,7 +28,8 @@ import {
     CheckCircle2,
     Send,
     Check,
-    Ban
+    Ban,
+    Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
@@ -1395,6 +1396,57 @@ export function FileManagement({
         }
     };
 
+    // Rename berkas: khusus QC DME (qcdme@dme.com). Ekstensi dipertahankan; hanya field fileName yang berubah
+    const [renameTarget, setRenameTarget] = useState<FileData | null>(null);
+    const [renameBaseName, setRenameBaseName] = useState('');
+    const [isRenaming, setIsRenaming] = useState(false);
+
+    const splitFileExtension = (name: string) => {
+        const dot = name.lastIndexOf('.');
+        return dot > 0 ? { base: name.slice(0, dot), ext: name.slice(dot) } : { base: name, ext: '' };
+    };
+
+    const openRenameDialog = (file: FileData) => {
+        setRenameTarget(file);
+        setRenameBaseName(splitFileExtension(file.fileName).base);
+    };
+
+    const handleRename = async () => {
+        if (!renameTarget || !isQcDme) return;
+        const base = renameBaseName.trim();
+        if (!base) {
+            toast.error('Nama berkas tidak boleh kosong.');
+            return;
+        }
+        if (/[\\/:*?"<>|]/.test(base)) {
+            toast.error('Nama berkas tidak boleh berisi karakter \\ / : * ? " < > |');
+            return;
+        }
+        const newName = base + splitFileExtension(renameTarget.fileName).ext;
+        if (newName.length > 500) {
+            toast.error('Nama berkas terlalu panjang (maksimal 500 karakter).');
+            return;
+        }
+        if (newName === renameTarget.fileName) {
+            setRenameTarget(null);
+            return;
+        }
+
+        setIsRenaming(true);
+        try {
+            await updateDoc(doc(db, collectionName, renameTarget.id), { fileName: newName });
+            setFiles(prev => prev.map(f => (f.id === renameTarget.id ? { ...f, fileName: newName } : f)));
+            delete sharedCollectionsCache[collectionName];
+            toast.success(`Nama berkas diubah menjadi "${newName}"`);
+            setRenameTarget(null);
+        } catch (error: any) {
+            console.error('Error renaming file:', error);
+            toast.error('Gagal mengubah nama berkas: ' + (error?.message || 'Terjadi kesalahan'));
+        } finally {
+            setIsRenaming(false);
+        }
+    };
+
     const handleDownload = async (file: FileData) => {
         if (file.isCorrectiveReport) {
             const toastId = toast.loading('Menyiapkan unduhan...');
@@ -2731,6 +2783,18 @@ export function FileManagement({
                                                     <Download className="w-4 h-4" />
                                                 </motion.button>
 
+                                                {isQcDme && !isReadOnly && !file.isCorrectiveReport && (
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => openRenameDialog(file)}
+                                                        className="p-2 sm:p-2.5 bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-200/80 shadow-xs cursor-pointer"
+                                                        title="Ganti Nama Berkas"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </motion.button>
+                                                )}
+
                                                 {canDeleteOrRequest && (
                                                     file.deleteRequested ? (
                                                         isQcDme ? (
@@ -3112,6 +3176,100 @@ export function FileManagement({
                                     </div>
                                 </div>
                             )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal Ganti Nama Berkas (khusus QC DME) */}
+            <AnimatePresence>
+                {renameTarget && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4"
+                        onClick={() => { if (!isRenaming) setRenameTarget(null); }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                            className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full border border-slate-200 shadow-2xl relative text-slate-800"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => setRenameTarget(null)}
+                                disabled={isRenaming}
+                                className="absolute top-4 right-4 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer disabled:opacity-50"
+                                title="Tutup"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+
+                            <div className="w-14 h-14 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-600 shadow-xs">
+                                <Pencil className="w-7 h-7" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 text-center mb-1">Ganti Nama Berkas</h3>
+                            <p className="text-xs text-slate-500 text-center mb-4 break-all">
+                                Nama lama: <strong className="text-slate-800">{renameTarget.fileName}</strong>
+                            </p>
+
+                            <form
+                                onSubmit={(e) => { e.preventDefault(); handleRename(); }}
+                                className="text-left"
+                            >
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Nama Baru
+                                </label>
+                                <div className="flex items-stretch rounded-xl border border-slate-200 bg-slate-50/90 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all overflow-hidden">
+                                    <input
+                                        type="text"
+                                        autoFocus
+                                        value={renameBaseName}
+                                        onChange={(e) => setRenameBaseName(e.target.value)}
+                                        onFocus={(e) => e.target.select()}
+                                        disabled={isRenaming}
+                                        className="flex-1 min-w-0 px-4 py-2.5 bg-transparent text-slate-900 font-medium outline-none"
+                                    />
+                                    {splitFileExtension(renameTarget.fileName).ext && (
+                                        <span className="px-3 flex items-center bg-slate-100 border-l border-slate-200 text-slate-500 text-sm font-semibold">
+                                            {splitFileExtension(renameTarget.fileName).ext}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-slate-400 mt-1.5">
+                                    Ekstensi berkas tetap. Folder, quarter, dan tipe maintenance tidak berubah.
+                                </p>
+
+                                <div className="flex gap-3 mt-5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRenameTarget(null)}
+                                        disabled={isRenaming}
+                                        className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition cursor-pointer disabled:opacity-50"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isRenaming || !renameBaseName.trim()}
+                                        className="flex-1 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {isRenaming ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <span>Menyimpan...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Check className="w-4 h-4" />
+                                                <span>Simpan Nama</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </motion.div>
                 )}
