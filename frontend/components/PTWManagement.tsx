@@ -16,6 +16,8 @@ import {
   AlertCircle, Download, FileUp, File, ChevronDown, Eye, FolderArchive
 } from 'lucide-react';
 import { parsePTWPdf, parsePTWFromFilename } from '@/utils/ptwPdfParser';
+import { normalizeEquipmentCode } from '@/utils/ptwTextImport';
+import { PTWNumberRegister } from './PTWNumberRegister';
 import {
   collection, onSnapshot, addDoc, updateDoc,
   doc, query, orderBy, serverTimestamp, Timestamp, getDocs, writeBatch, deleteField
@@ -53,24 +55,6 @@ interface PTWRecord {
   createdBy: string;
   createdAt: Timestamp;
 }
-const EQUIPMENT_CODE_MAP: Record<string, string> = {
-  'WT': 'WATER TREATMENT',
-  'WL': 'WATER LEAK DETECTOR',
-  'FLD': 'FUEL LEAK DETECTOR',
-  'LP': 'LIGHTING POINT',
-  'CT': 'COOLING TOWER',
-  'DL': 'DOCK LEVELLER'
-};
-
-export const normalizeEquipmentCode = (rawCode: string): string => {
-  if (!rawCode) return 'LAINNYA';
-  let code = rawCode.toUpperCase().trim();
-  while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(code)) {
-    code = code.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
-  }
-  code = code.toUpperCase() || 'LAINNYA';
-  return EQUIPMENT_CODE_MAP[code] || code;
-};
 
 
 interface QueuedPTWItem {
@@ -111,7 +95,7 @@ interface PTWManagementProps {
 export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin' || userRole === 'qc_dme';
-  const [activeSubTab, setActiveSubTab] = useState<'list' | 'weekly'>('list');
+  const [activeSubTab, setActiveSubTab] = useState<'list' | 'weekly' | 'numbers'>('list');
   const [ptwTypeFilter, setPtwTypeFilter] = useState<'ALL' | 'PM' | 'CM'>('ALL');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -1488,7 +1472,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               <p className="text-slate-500 text-sm font-medium">Kelola data Permit to Work secara terorganisir</p>
             </div>
           </div>
-          {isAdmin && (
+          {isAdmin && activeSubTab !== 'numbers' && (
             <div className="flex flex-wrap items-center gap-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -1526,8 +1510,20 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
           >
             Laporan Harian (Admin)
           </button>
+          <button
+            onClick={() => setActiveSubTab('numbers')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              activeSubTab === 'numbers'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Nomor PTW
+          </button>
         </div>
       )}
+
+      {isAdmin && activeSubTab === 'numbers' && <PTWNumberRegister />}
 
       {activeSubTab === 'list' && (
         <div className="space-y-6">

@@ -596,6 +596,18 @@ service cloud.firestore {
       }
     }
 
+    // Register nomor PTW berbentuk teks (tanpa dokumen), dikelola admin. ID: "{tahun}-{nomor urut}".
+    match /ptw_numbers/{docId} {
+      allow read, delete: if !isDrafter() && isAdminOrQcDme();
+      allow create, update: if !isDrafter() && isAdminOrQcDme()
+                    && docId.matches('[0-9]{4}-[0-9]{4,5}')
+                    && request.resource.data.keys().hasOnly(['ptwNumber', 'sequenceNumber', 'year', 'equipmentCode', 'quarter', 'date', 'ptwType', 'notes', 'createdBy', 'createdAt'])
+                    && isValidString(request.resource.data.ptwNumber, 200)
+                    && request.resource.data.sequenceNumber is int
+                    && request.resource.data.year is int
+                    && request.resource.data.ptwType in ['PM', 'CM'];
+    }
+
     match /absen_tbm/{docId} {
       allow read: if !isDrafter() && (request.auth != null);
       allow write: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isPrivilegedRole()));
