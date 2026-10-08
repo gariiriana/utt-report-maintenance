@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, ScanFace, Trash2, BookOpen, HardHat } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, Trash2, BookOpen, HardHat } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -37,7 +37,6 @@ import { MonthlyReportGenerator } from '@/components/MonthlyReportGenerator';
 import { BeritaAcaraReport } from '@/components/BeritaAcaraReport';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
 import { NotificationPage } from '@/components/NotificationPage';
-import { FaceRegistrationManagement } from '@/components/FaceRegistrationManagement';
 import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
 import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
 import { SOPEOPManagement } from '@/components/SOPEOPManagement';
@@ -49,7 +48,7 @@ import { collection, query, where, getCountFromServer } from 'firebase/firestore
 import { db } from '@/api/firebase';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings' | 'manual_abnormal' | 'sop_eop' | 'hse_archive';
+type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' |'delete_requests' | 'abnormal_findings' | 'manual_abnormal' | 'sop_eop' | 'hse_archive';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -137,7 +136,6 @@ export function MainApp() {
     { id: 'delete_requests', label: 'Pengajuan Hapus', icon: Trash2, color: 'from-rose-600 to-red-600', show: isQcDme },
     { id: 'abnormal_findings', label: 'Temuan Abnormal', icon: AlertTriangle, color: 'from-sky-600 to-blue-700', show: canViewAbnormal },
     { id: 'manual_abnormal', label: 'Input Abnormal Manual', icon: AlertTriangle, color: 'from-rose-600 to-red-700', show: canAccessManualAbnormal },
-    { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: false },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
@@ -327,8 +325,6 @@ export function MainApp() {
           <PMSchedule />
         ) : activeTab === 'berita_acara' ? (
           <BeritaAcaraReport />
-        ) : activeTab === 'face_registration' ? (
-          <FaceRegistrationManagement />
         ) : (
           <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} highlightedDocId={highlightedDocId} onClearHighlight={() => setHighlightedDocId(null)} />
         )}

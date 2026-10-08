@@ -18,7 +18,6 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '@/api/firebase';
 import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
-import { RegisteredFace } from '@/types/faceAuthTypes';
 
 // Interface struktur data profil user yang tersimpan di Firestore ('users' collection)
 interface UserData {
@@ -63,7 +62,6 @@ interface AuthContextType {
   isQcDme: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithFaceVerified: (face: RegisteredFace) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -165,39 +163,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
       } else {
-        // Pengecekan fallback session jika koneksi Firebase Auth terputus
+        // Sesi tanpa token Firebase tidak dipulihkan dari localStorage: isinya bisa dipalsukan.
+        // Hapus sisa sesi lama dari versi sebelumnya.
         try {
-          const rawSession = localStorage.getItem('dwimitra_fallback_session');
-          if (rawSession) {
-            const parsed = JSON.parse(rawSession);
-            if (parsed && parsed.uid && (Date.now() - parsed.timestamp < 7 * 24 * 60 * 60 * 1000)) {
-              const fallbackUser = {
-                uid: parsed.uid,
-                email: parsed.email,
-                emailVerified: true,
-                isAnonymous: false,
-                metadata: {},
-                providerData: [],
-                refreshToken: '',
-                tenantId: null,
-                delete: async () => {},
-                getIdToken: async () => '',
-                getIdTokenResult: async () => ({ token: '' }),
-                reload: async () => {},
-                toJSON: () => ({ uid: parsed.uid, email: parsed.email }),
-                displayName: null,
-                phoneNumber: null,
-                photoURL: null,
-                providerId: 'firebase'
-              } as unknown as User;
-
-              setUser(fallbackUser);
-              setUserRole(getRoleFromEmail(parsed.email));
-              setCompanyType('neutra');
-              setLoading(false);
-              return;
-            }
-          }
+          localStorage.removeItem('dwimitra_fallback_session');
         } catch (e) {}
 
         setUserRole(null);
@@ -317,15 +286,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserRole(initialRole);
             setCompanyType(initialCompanyType);
             setLoading(false);
-
-            try {
-              localStorage.setItem('dwimitra_fallback_session', JSON.stringify({
-                uid: data.uid,
-                email: data.email || email,
-                timestamp: Date.now()
-              }));
-            } catch (e) {}
-
             return;
           }
         } catch (fallbackErr: any) {
@@ -336,70 +296,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       throw primaryError;
     }
-  };
-
-  /**
-   * Fungsi Login Otomatis Berbasis Verifikasi Biometrik Wajah (Face ID)
-   * Berjalan seketika saat wajah berhasil diverifikasi cocok dengan data yang didaftarkan QC
-   */
-  const loginWithFaceVerified = async (face: RegisteredFace) => {
-    if (!face || !face.name) {
-      throw new Error('Data identitas wajah tidak valid.');
-    }
-
-    const targetEmail = face.accountEmail?.trim().toLowerCase() || `${face.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@utt.com`;
-
-    // 1. Coba login kredensial Firebase Auth jika ada password yang disimpan saat pendaftaran QC
-    if (face.accountPassword && face.accountEmail) {
-      try {
-        await login(targetEmail, face.accountPassword);
-        return;
-      } catch (credErr) {
-        console.warn('Direct Firebase password login failed, falling back to authenticated face session:', credErr);
-      }
-    }
-
-    // 2. Aktifkan sesi autentikasi resmi sistem untuk akun tersebut
-    const initialRole = face.role || getRoleFromEmail(targetEmail) || 'engineer';
-    const initialCompanyType = (initialRole === 'Engineer_K2' || initialRole === 'engineer_k2') ? 'k2' : 'neutra';
-    const faceUid = face.id ? `face_${face.id}` : `face_${Date.now()}`;
-
-    const faceUser = {
-      uid: faceUid,
-      email: targetEmail,
-      displayName: face.name,
-      emailVerified: true,
-      isAnonymous: false,
-      metadata: {},
-      providerData: [],
-      refreshToken: '',
-      tenantId: null,
-      delete: async () => {},
-      getIdToken: async () => `face_token_${Date.now()}`,
-      getIdTokenResult: async () => ({ token: `face_token_${Date.now()}` }),
-      reload: async () => {},
-      toJSON: () => ({ uid: faceUid, email: targetEmail, displayName: face.name }),
-      phoneNumber: null,
-      photoURL: face.photoBase64 || null,
-      providerId: 'face_biometric'
-    } as unknown as User;
-
-    setUser(faceUser);
-    setUserRole(initialRole as any);
-    setCompanyType(initialCompanyType);
-    setLoading(false);
-
-    try {
-      localStorage.setItem('dwimitra_fallback_session', JSON.stringify({
-        uid: faceUid,
-        email: targetEmail,
-        displayName: face.name,
-        role: initialRole,
-        companyType: initialCompanyType,
-        authProvider: 'face_biometric',
-        timestamp: Date.now()
-      }));
-    } catch (e) {}
   };
 
   /**
@@ -424,7 +320,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isQcDme: isQcDmeEmail(user?.email),
     loading,
     login,
-    loginWithFaceVerified,
     logout
   };
 
