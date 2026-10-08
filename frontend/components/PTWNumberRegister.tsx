@@ -128,9 +128,18 @@ export function PTWNumberRegister() {
     try {
       for (let i = 0; i < toSave.length; i += BATCH_LIMIT) {
         const batch = writeBatch(db);
-        toSave.slice(i, i + BATCH_LIMIT).forEach(({ key, ...data }) => {
-          batch.set(doc(db, 'ptw_numbers', key), {
-            ...data,
+        // Field dipilih eksplisit: entri dari import teks membawa metadata parse
+        // (lineNo, raw, status, message) yang tidak boleh ikut tersimpan.
+        toSave.slice(i, i + BATCH_LIMIT).forEach(e => {
+          batch.set(doc(db, 'ptw_numbers', e.key), {
+            ptwNumber: e.ptwNumber,
+            sequenceNumber: e.sequenceNumber,
+            year: e.year,
+            equipmentCode: e.equipmentCode,
+            quarter: e.quarter,
+            date: e.date,
+            ptwType: e.ptwType,
+            notes: e.notes,
             createdBy: user.email,
             createdAt: serverTimestamp()
           });
