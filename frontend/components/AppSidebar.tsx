@@ -56,7 +56,7 @@ const MENU_SECTIONS = [
   },
   {
     title: 'Standar & Aset',
-    itemIds: ['sop_eop', 'boq', 'pm_schedule'],
+    itemIds: ['sop_eop', 'mop_bilingual', 'boq', 'pm_schedule'],
   },
 ];
 

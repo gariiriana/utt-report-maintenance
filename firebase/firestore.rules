@@ -608,6 +608,30 @@ service cloud.firestore {
                     && request.resource.data.ptwType in ['PM', 'CM'];
     }
 
+    // Arsip Bilingual MOP (EN + ID) — khusus akun Dwimitra & QC DME. File DOCX disimpan sebagai potongan bytes.
+    function canManageMOPBilingual() {
+      return request.auth != null && (getEmail().lower() == 'dwimitra@co.id' || isQcDmeSafe());
+    }
+
+    match /mop_bilingual/{docId} {
+      allow read, delete: if !isDrafter() && canManageMOPBilingual();
+      allow create: if !isDrafter() && canManageMOPBilingual()
+                    && request.resource.data.keys().hasOnly(['title', 'documentNumber', 'originalFileName', 'fileName', 'fileSize', 'totalChunks', 'translatedParagraphs', 'createdBy', 'createdAt'])
+                    && isValidString(request.resource.data.title, 500)
+                    && isValidString(request.resource.data.fileName, 300)
+                    && request.resource.data.fileSize is int && request.resource.data.fileSize > 0 && request.resource.data.fileSize <= 30 * 1024 * 1024
+                    && request.resource.data.totalChunks is int && request.resource.data.totalChunks >= 1 && request.resource.data.totalChunks <= 40;
+
+      match /chunks/{chunkId} {
+        allow read, delete: if !isDrafter() && canManageMOPBilingual();
+        allow create: if !isDrafter() && canManageMOPBilingual()
+                      && chunkId.matches('[0-9]{5}')
+                      && request.resource.data.keys().hasOnly(['index', 'data'])
+                      && request.resource.data.index is int && request.resource.data.index >= 0 && request.resource.data.index < 40
+                      && request.resource.data.data is bytes && request.resource.data.data.size() <= 900 * 1024;
+      }
+    }
+
     match /absen_tbm/{docId} {
       allow read: if !isDrafter() && (request.auth != null);
       allow write: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isPrivilegedRole()));

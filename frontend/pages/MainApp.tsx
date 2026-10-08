@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, Trash2, BookOpen, HardHat } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, Trash2, BookOpen, HardHat, Languages } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -41,6 +41,7 @@ import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
 import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
 import { SOPEOPManagement } from '@/components/SOPEOPManagement';
 import { HSEArchiveHub } from '@/components/HSEArchiveHub';
+import { MOPBilingual } from '@/components/MOPBilingual';
 // ManualAbnormalFinding sekarang terintegrasi di FindingManagement tab
 import { AppSidebar } from '@/components/AppSidebar';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
@@ -48,7 +49,7 @@ import { collection, query, where, getCountFromServer } from 'firebase/firestore
 import { db } from '@/api/firebase';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' |'delete_requests' | 'abnormal_findings' | 'manual_abnormal' | 'sop_eop' | 'hse_archive';
+type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' |'delete_requests' | 'abnormal_findings' | 'manual_abnormal' | 'sop_eop' | 'mop_bilingual' | 'hse_archive';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -152,6 +153,7 @@ export function MainApp() {
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: !isAdmin && userRole === 'DME' && !isK2Engineer },
     { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: FileText, color: 'from-blue-600 to-indigo-700', show: !isAdmin && (userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id') && !isStandby && !isK2Engineer },
     { id: 'sop_eop', label: 'SOP & EOP', icon: BookOpen, color: 'from-amber-600 to-orange-700', show: isDwimitra },
+    { id: 'mop_bilingual', label: 'Bilingual MOP', icon: Languages, color: 'from-teal-600 to-cyan-700', show: isDwimitra },
     { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || isDwimitra || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
     { id: 'berita_acara', label: 'BA Report', icon: FileSignature, color: 'from-violet-600 to-purple-700', show: isAdmin || userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id' },
   ] as const;
@@ -321,6 +323,8 @@ export function MainApp() {
           ) : (
             <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} highlightedDocId={highlightedDocId} onClearHighlight={() => setHighlightedDocId(null)} />
           )
+        ) : activeTab === 'mop_bilingual' ? (
+          isDwimitra ? <MOPBilingual /> : null
         ) : activeTab === 'pm_schedule' ? (
           <PMSchedule />
         ) : activeTab === 'berita_acara' ? (
