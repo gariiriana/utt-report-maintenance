@@ -352,7 +352,14 @@ service cloud.firestore {
                           'deleteRequested', 'deleteRequestedBy', 'deleteRequestedRole',
                           'deleteRequestedTo', 'deleteReason', 'deleteRequestedAt'
                         ]))
-        && (isDrafter() || !isStandbyEngineer())
+        // dwimitra@co.id dihitung standby oleh isStandbyEngineer(), tapi UI tetap memberinya tombol
+        // Pengajuan Hapus. Izinkan khusus field pengajuan hapus saja.
+        && (isDrafter() || !isStandbyEngineer()
+            || (getEmail().lower() == 'dwimitra@co.id'
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                  'deleteRequested', 'deleteRequestedBy', 'deleteRequestedRole',
+                  'deleteRequestedTo', 'deleteReason', 'deleteRequestedAt'
+                ])))
         && (
           (resource.data.uploadedBy == request.auth.uid
             && resource.data.status == 'uploading'
