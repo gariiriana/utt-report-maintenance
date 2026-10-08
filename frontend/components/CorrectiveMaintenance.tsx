@@ -452,10 +452,11 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 if (selectedCMType !== 'all') {
                     setSelectedCMType('all');
                 }
-                if (selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all') {
+                if (selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || selectedQuarter !== 'all') {
                     setSelectedDay('all');
                     setSelectedMonth('all');
                     setSelectedYear('all');
+                    setSelectedQuarter('all');
                 }
             }
 
@@ -481,6 +482,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir' | 'predictive'>('cm_pdf');
     const [selectedCMType, setSelectedCMType] = useState<'all' | 'sparepart_all' | 'non_sparepart' | 'sparepart_dme' | 'consumable' | 'pending_sparepart_type'>('all');
     const [selectedSLASource, setSelectedSLASource] = useState<'all' | 'cm' | 'pir'>('all');
+    const [selectedQuarter, setSelectedQuarter] = useState<'all' | '1' | '2' | '3' | '4'>('all');
     const [selectedTroubleStatus, setSelectedTroubleStatus] = useState<'all' | 'closed' | 'open' | 'unmarked'>('all');
     const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
     const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
@@ -1293,6 +1295,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return !isSLAFromPIR(sla);
     };
 
+    // Quarter (1-4) dari tanggal insiden, sama dengan sumber tanggal filter Bulan/Tahun
+    const getReportQuarter = (report: CorrectiveReport): number | null => {
+        const ts = getReportIncidentTime(report);
+        const date = ts > 0 ? new Date(ts) : report.reportedAt?.toDate?.();
+        return date ? Math.floor(date.getMonth() / 3) + 1 : null;
+    };
+
     // Filter Logic and Sorting by Incident Date (Newest First)
     const filteredReports = reports.filter((report) => {
         // Admin pending delete filter
@@ -1309,7 +1318,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 if (report.reportType !== 'SLA') return false;
                 if (selectedSLASource === 'cm' && !isSLAFromCM(report)) return false;
                 if (selectedSLASource === 'pir' && !isSLAFromPIR(report)) return false;
-
+                if (selectedQuarter !== 'all' && getReportQuarter(report) !== Number(selectedQuarter)) return false;
             }
 
 
@@ -2964,6 +2973,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         setSelectedDay(parseInt(d, 10).toString());
                                                         setSelectedMonth((parseInt(m, 10) - 1).toString());
                                                         setSelectedYear(y);
+                                                        setSelectedQuarter('all');
                                                     }
                                                 }}
                                             />
@@ -2972,7 +2982,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                         <select
                                             value={selectedMonth}
-                                            onChange={(e) => setSelectedMonth(e.target.value)}
+                                            onChange={(e) => {
+                                                setSelectedMonth(e.target.value);
+                                                setSelectedQuarter('all');
+                                            }}
                                             title="Filter Bulan"
                                             aria-label="Filter Bulan"
                                             className="px-2 py-1.5 bg-transparent text-slate-800 text-xs font-semibold outline-none cursor-pointer"
@@ -3072,6 +3085,44 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         </div>
                                     )}
 
+                                    {/* Filter Quarter SLA/SLG (Khusus tab SLA), mengikuti filter Tahun & Sumber */}
+                                    {archiveFolder === 'sla' && (() => {
+                                        const sourceList = selectedSLASource === 'cm' ? slaFromCMReports
+                                            : selectedSLASource === 'pir' ? slaFromPIRReports
+                                            : allSLAReports;
+                                        const yearList = selectedYear === 'all' ? sourceList : sourceList.filter(r => {
+                                            const ts = getReportIncidentTime(r);
+                                            const date = ts > 0 ? new Date(ts) : r.reportedAt?.toDate?.();
+                                            return date?.getFullYear().toString() === selectedYear;
+                                        });
+                                        const countQ = (q: number) => yearList.filter(r => getReportQuarter(r) === q).length;
+
+                                        return (
+                                            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
+                                                <select
+                                                    value={selectedQuarter}
+                                                    onChange={(e) => {
+                                                        setSelectedQuarter(e.target.value as 'all' | '1' | '2' | '3' | '4');
+                                                        // Bulan di luar quarter terpilih akan mengosongkan hasil
+                                                        setSelectedMonth('all');
+                                                        setSelectedDay('all');
+                                                    }}
+                                                    title="Filter Quarter SLA/SLG"
+                                                    aria-label="Filter Quarter SLA/SLG"
+                                                    className={`px-2.5 py-1.5 bg-transparent text-xs font-semibold outline-none cursor-pointer ${
+                                                        selectedQuarter !== 'all' ? 'text-blue-700 font-bold' : 'text-slate-800'
+                                                    }`}
+                                                >
+                                                    <option value="all">Semua Quarter ({yearList.length})</option>
+                                                    <option value="1">Q1 · Jan–Mar ({countQ(1)})</option>
+                                                    <option value="2">Q2 · Apr–Jun ({countQ(2)})</option>
+                                                    <option value="3">Q3 · Jul–Sep ({countQ(3)})</option>
+                                                    <option value="4">Q4 · Okt–Des ({countQ(4)})</option>
+                                                </select>
+                                            </div>
+                                        );
+                                    })()}
+
                                     {/* Filter Status Approval */}
                                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
                                         <select
@@ -3117,7 +3168,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     })()}
 
                                     {/* Reset Filter Button */}
-                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all' || selectedTroubleStatus !== 'all' || selectedRevisionFilter !== 'all' || (archiveFolder === 'sla' && selectedSLASource !== 'all')) && (
+                                    {(selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' || searchQuery.trim() !== '' || adminDeleteFilter !== 'all' || selectedCMType !== 'all' || selectedTroubleStatus !== 'all' || selectedRevisionFilter !== 'all' || (archiveFolder === 'sla' && (selectedSLASource !== 'all' || selectedQuarter !== 'all'))) && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -3128,6 +3179,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 setSelectedTroubleStatus('all');
                                                 setSelectedRevisionFilter('all');
                                                 setSelectedSLASource('all');
+                                                setSelectedQuarter('all');
                                                 setSearchQuery('');
                                                 setAdminDeleteFilter('all');
                                             }}
