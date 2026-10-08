@@ -14,6 +14,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -174,7 +175,7 @@ func buildMOPDocumentContext(title string, segments []string, indices []int) str
 		b.WriteString("...\n")
 	}
 	for i := lo; i <= hi; i++ {
-		b.WriteString("[" + strconv.Itoa(i) + "] " + segments[i] + "\n")
+		fmt.Fprintf(&b, "[%d] %s\n", i, segments[i])
 	}
 	if hi < len(segments)-1 {
 		b.WriteString("...\n")
@@ -188,7 +189,7 @@ func buildMOPTranslateRequest(segments []string, indices []int) string {
 	b.WriteString(strconv.Itoa(len(indices)))
 	b.WriteString(" segmen berikut ke bahasa Indonesia:\n")
 	for _, i := range indices {
-		b.WriteString("[" + strconv.Itoa(i) + "] " + segments[i] + "\n")
+		fmt.Fprintf(&b, "[%d] %s\n", i, segments[i])
 	}
 	b.WriteString("\nJawab tepat satu baris per segmen dengan format \"[index] terjemahan\", urut seperti daftar di atas, tanpa teks lain.")
 	return b.String()
@@ -204,11 +205,11 @@ func buildMOPRepairRequest(segments []string, items []mopRepairItem) string {
 	var b strings.Builder
 	b.WriteString("\nTerjemahan sebelumnya untuk segmen berikut bermasalah. Terjemahkan ulang dengan benar sesuai ATURAN dan DAFTAR ISTILAH, perhatikan catatan masalahnya:\n")
 	for _, it := range items {
-		b.WriteString("[" + strconv.Itoa(it.index) + "] " + segments[it.index] + "\n")
+		fmt.Fprintf(&b, "[%d] %s\n", it.index, segments[it.index])
 		if it.previous != "" {
-			b.WriteString("    Terjemahan sebelumnya: " + it.previous + "\n")
+			fmt.Fprintf(&b, "    Terjemahan sebelumnya: %s\n", it.previous)
 		}
-		b.WriteString("    Masalah: " + it.issue + "\n")
+		fmt.Fprintf(&b, "    Masalah: %s\n", it.issue)
 	}
 	b.WriteString("\nJawab tepat satu baris per segmen dengan format \"[index] terjemahan\", urut seperti daftar di atas, tanpa teks lain.")
 	return b.String()
