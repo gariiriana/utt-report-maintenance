@@ -34,7 +34,9 @@ async function requestBatch(title: string, segments: string[], indices: number[]
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload || !Array.isArray(payload.translations)) {
-    const error = new Error(payload?.message || `Penerjemahan gagal (HTTP ${response.status}).`);
+    const error = new Error(response.status === 404
+      ? 'Server backend belum memiliki fitur Bilingual MOP (masih versi lama). Build/deploy ulang backend lalu coba lagi.'
+      : payload?.message || `Penerjemahan gagal (HTTP ${response.status}).`);
     (error as Error & { status?: number }).status = response.status;
     throw error;
   }
@@ -46,7 +48,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 /**
  * Terjemahkan `targets` (subset dari `segments`). Kelompok pertama dijalankan sendiri
  * supaya konteks dokumen ter-cache di server, sisanya paralel terbatas.
- * Error konfigurasi/izin (401/403/503) langsung dilempar; kelompok lain yang gagal dicoba sekali lagi,
+ * Error konfigurasi/izin/endpoint (401/403/404/503) langsung dilempar; kelompok lain yang gagal dicoba sekali lagi,
  * dengan jeda bila kuota per menit AI gratis sedang penuh (429).
  */
 export async function translateMOPSegments(
@@ -79,7 +81,7 @@ export async function translateMOPSegments(
         return;
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
-        if (status === 401 || status === 403 || status === 503) throw err;
+        if (status === 401 || status === 403 || status === 404 || status === 503) throw err;
         lastError = err instanceof Error ? err.message : String(err);
         if (status === 429 && attempt < 2) await sleep(RATE_LIMIT_WAIT_MS);
       }
