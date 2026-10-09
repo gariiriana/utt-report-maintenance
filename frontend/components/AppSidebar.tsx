@@ -1,7 +1,7 @@
 // ============================================================================
 // FILE: frontend/components/AppSidebar.tsx
 // Deskripsi: Sidebar Navigasi Utama DwimitraSystem untuk Semua Peranan & Akun
-//            (Admin, QC DME, Engineer, Standby Engineer, User DME, Auditor).
+//            (Admin, QC DME, Engineer, Standby Engineer, User DME, Site Manager DME, Auditor).
 //            Menyediakan navigasi terklasifikasi logis, mode Collapsible desktop,
 //            dan Drawer samping kiri responsif untuk layar seluler.
 // ============================================================================
@@ -44,7 +44,7 @@ interface AppSidebarProps {
 const MENU_SECTIONS = [
   {
     title: 'Monitoring & Kontrol',
-    itemIds: ['admin', 'delete_requests', 'abnormal_findings', 'manual_abnormal', 'findings', 'finding_archive'],
+    itemIds: ['admin', 'delete_requests', 'abnormal_findings', 'manual_abnormal', 'findings', 'finding_archive', 'monitoring'],
   },
   {
     title: 'Operasional & K3',
@@ -56,7 +56,7 @@ const MENU_SECTIONS = [
   },
   {
     title: 'Standar & Aset',
-    itemIds: ['sop_eop', 'mop_bilingual', 'boq', 'pm_schedule'],
+    itemIds: ['workflow', 'sop_eop', 'mop_bilingual', 'boq', 'pm_schedule'],
   },
 ];
 
