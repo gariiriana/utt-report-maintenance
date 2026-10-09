@@ -184,6 +184,13 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     }
   }, [formData, currentStep, editId]);
 
+  // Hapus draft setelah PIR baru tersimpan, supaya form PIR berikutnya mulai kosong
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem('pir_report_draft');
+    } catch { /* ignore */ }
+  };
+
   // Handlers for Attendee List
   const addTDEAttendee = () => {
     if (!newTde.trim()) return;
@@ -456,6 +463,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       } else {
         const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
         savedDocId = newDocRef.id;
+        clearDraft();
         toast.success('Laporan PIR berhasil disimpan!');
 
         await sendFileNotification({
@@ -500,6 +508,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       } else {
         const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
         exportedDocId = newDocRef.id;
+        clearDraft();
         toast.success('Laporan PIR diekspor PDF & disimpan!');
         await sendFileNotification({
           title: `Laporan PIR Baru: ${formData.incidentName || 'Post Incident Report'}`,
@@ -510,9 +519,6 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
           targetTab: 'pir',
           searchQuery: formData.incidentName || ''
         });
-        try {
-          localStorage.removeItem('pir_report_draft');
-        } catch { /* ignore */ }
       }
 
       onSuccess(exportedDocId, { ...formData, ...(docPayload as PIRReportData), id: exportedDocId });
@@ -547,9 +553,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         }
       }
 
-      try {
-        localStorage.removeItem('pir_report_draft');
-      } catch { /* ignore */ }
+      clearDraft();
       toast.success('Laporan PIR Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
     } catch (err: any) {
       console.error('Error exporting PIR DOCX:', err);
