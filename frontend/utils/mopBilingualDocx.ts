@@ -76,16 +76,20 @@ const FORM_FIELD_LINE = /^(author|date of creation|date revision|revision date|r
 // Judul kolom tabel isian: "Job Title [tab] Name [tab] Signature [tab] Date" (Section 12)
 // dan "Executed by (Name) [tab] Job title" (Section 3), sebaris atau per sel.
 const FORM_HEADER_LINE = /^(?:(?:job title|name|signature|date|executed by \(name\))\s*)+$/i;
+// Pilihan frekuensi bercentang di MOP PM: "☐ Monthly [tab] ☑ Quarterly [tab] ☐ Annually"
+// (kadang plus "Half of Year"). Minimal dua pilihan, supaya sel tunggal "Monthly" tetap diterjemahkan.
+const FREQUENCY_OPTIONS_LINE =
+  /^(?:[☐☑☒□■✓✔✗✘]?\s*(?:daily|weekly|bi-?weekly|monthly|bi-?monthly|quarterly|half of year|half[- ]yearly|semi[- ]?annual(?:ly)?|annually|annual|yearly)\s*){2,}$/i;
 
 /**
  * Paragraf yang perlu diterjemahkan: memuat minimal satu kata biasa. Teks yang seluruhnya
  * kode/angka/singkatan pendek ("NOZ-PP-2NPT-360", "24", "HSE") dan baris isian formulir
- * (Author, Date of Creation, Job Title/Name/Signature/Date, dst.) dilewati. Judul seperti
+ * (Author, Date of Creation, Job Title/Name/Signature/Date, pilihan frekuensi, dst.) dilewati. Judul seperti
  * "Section 1 – Document Overview" atau "METHOD OF PROCEDURE" tetap diterjemahkan; nama
  * orang/merek dan singkatan panjang (LOTO) diputuskan AI (dikembalikan kosong).
  */
 export function needsTranslation(text: string): boolean {
-  if (FORM_FIELD_LINE.test(text) || FORM_HEADER_LINE.test(text)) return false;
+  if (FORM_FIELD_LINE.test(text) || FORM_HEADER_LINE.test(text) || FREQUENCY_OPTIONS_LINE.test(text)) return false;
   const isCode = (token: string) => /\d/.test(token) || /^[A-Z]{2,3}$/.test(token);
   return text
     .split(/[\s/,()\-–:;.&"'°]+/)
