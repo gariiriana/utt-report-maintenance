@@ -13,7 +13,10 @@ import { getApiEndpoint } from '@/utils/apiConfig';
 // Paralel 2 menjaga jumlah permintaan per menit di bawah kuota tier gratis.
 const BATCH_SIZE = 25;
 const PARALLEL = 2;
-const RATE_LIMIT_WAIT_MS = 20_000;
+// Backend sudah berpindah key/model sendiri; 429 berarti semuanya sedang kena batas per menit,
+// jadi tunggu jendela kuota berikutnya sebelum mencoba lagi.
+const MAX_ATTEMPTS = 3;
+const RATE_LIMIT_WAIT_MS = 30_000;
 
 export interface MOPTranslateResult {
   translations: Record<string, string>; // kunci: teks Inggris; '' = sengaja tidak diterjemahkan (nama/kode)
@@ -48,8 +51,8 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 /**
  * Terjemahkan `targets` (subset dari `segments`). Kelompok pertama dijalankan sendiri
  * supaya konteks dokumen ter-cache di server, sisanya paralel terbatas.
- * Error konfigurasi/izin/endpoint (401/403/404/503) langsung dilempar; kelompok lain yang gagal dicoba sekali lagi,
- * dengan jeda bila kuota per menit AI gratis sedang penuh (429).
+ * Error konfigurasi/izin/endpoint (401/403/404/503) langsung dilempar; kelompok lain yang gagal dicoba
+ * sampai MAX_ATTEMPTS kali, dengan jeda bila kuota AI gratis sedang penuh (429).
  */
 export async function translateMOPSegments(
   title: string,
@@ -68,7 +71,8 @@ export async function translateMOPSegments(
   let lastError: string | undefined;
 
   const runBatch = async (indices: number[]) => {
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    let batchError: string | undefined;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         const result = await requestBatch(title, segments, indices);
         for (const t of result) {
@@ -82,10 +86,12 @@ export async function translateMOPSegments(
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
         if (status === 401 || status === 403 || status === 404 || status === 503) throw err;
-        lastError = err instanceof Error ? err.message : String(err);
-        if (status === 429 && attempt < 2) await sleep(RATE_LIMIT_WAIT_MS);
+        batchError = err instanceof Error ? err.message : String(err);
+        if (status === 429 && attempt < MAX_ATTEMPTS) await sleep(RATE_LIMIT_WAIT_MS);
       }
     }
+    // Hanya error dari kelompok yang akhirnya gagal yang dilaporkan.
+    lastError = batchError;
   };
 
   const advance = (count: number) => {

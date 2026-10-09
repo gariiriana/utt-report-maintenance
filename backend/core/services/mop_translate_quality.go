@@ -75,6 +75,9 @@ var mopCommonCapsWords = setOf(
 	"OF", "TO", "IN", "AT", "BY", "ALL", "NEW", "OLD",
 )
 
+// Satuan berhuruf kecil di depan ("2500 kVA") bukan kata Inggris yang perlu diterjemahkan.
+var mopUnitWords = setOf("kva", "kvar", "kvah", "kwh", "mwh", "rpm", "psi", "mbar", "kpa", "mpa", "kgf", "mva", "mvar")
+
 // Singkatan yang memang punya padanan Indonesia baku.
 var mopAbbrevEquivalents = map[string]string{"PPE": "APD"}
 
@@ -91,6 +94,9 @@ func setOf(words ...string) map[string]bool {
 func mopNeedsIDLine(source string) bool {
 	for _, w := range mopWordRe.FindAllString(source, -1) {
 		lw := strings.ToLower(w)
+		if mopUnitWords[lw] {
+			continue
+		}
 		if mopEnglishStopwords[lw] || mopTranslatableWords[lw] {
 			return true
 		}

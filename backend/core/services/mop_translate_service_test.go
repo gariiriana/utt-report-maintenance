@@ -64,6 +64,7 @@ func TestCheckMOPTranslation(t *testing.T) {
 		{"blank line kept", "Record the date and time of the vendor’s arrival: ______________ / __________________",
 			"Catat tanggal dan waktu kedatangan vendor:", "", true},
 		{"all caps title", "METHOD OF PROCEDURE", "METODE PROSEDUR KERJA", "", false},
+		{"rating with unit may stay empty", "2500 kVA", "", "", false},
 	}
 	for _, c := range cases {
 		text, issue := checkMOPTranslation(c.source, c.translation)
@@ -150,6 +151,26 @@ func TestMOPTranslate_KeepsWarningWhenRepairFails(t *testing.T) {
 	}
 }
 
+func TestMOPTranslate_ConsistentEmptyAnswerIsNotFailed(t *testing.T) {
+	segments := []string{"Dry Type Cast Resin", "Expected Outcome"}
+	llm := &fakeCompleter{replies: []string{
+		"[0] Dry Type Cast Resin\n[1] Hasil yang Diharapkan",
+		"[0]",
+	}}
+	svc := &mopTranslateService{llm: llm}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	got, err := svc.Translate(ctx, "MOP", segments, []int{0, 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// AI dua kali menilai index 0 tidak perlu diterjemahkan: dikirim kosong dengan peringatan, bukan hilang (gagal).
+	if len(got) != 2 || got[0].Index != 0 || got[0].Text != "" || got[0].Warning != mopNoTranslationWarning {
+		t.Fatalf("expected index 0 as an empty answer with a warning, got %+v", got)
+	}
+}
+
 func TestMOPTranslate_NotConfigured(t *testing.T) {
 	svc := &mopTranslateService{}
 	if _, err := svc.Translate(context.Background(), "t", []string{"a"}, []int{0}); !errors.Is(err, ErrMOPTranslateNotConfigured) {
@@ -227,7 +248,7 @@ func TestMOPTranslateLive(t *testing.T) {
 		all = append(all, got...)
 	}
 	if client, ok := svc.(*mopTranslateService).llm.(*mopChatClient); ok {
-		t.Logf("model: %s", client.models[client.modelIndex.Load()])
+		t.Logf("models: %v, keys: %d", client.models, len(client.apiKeys))
 	}
 
 	out, _ := json.MarshalIndent(all, "", " ")

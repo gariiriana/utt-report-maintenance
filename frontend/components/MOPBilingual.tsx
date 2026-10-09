@@ -114,7 +114,7 @@ export function MOPBilingual() {
 
   const rowStatus = (text: string): RowStatus => {
     const id = (translations[text] || '').trim();
-    if (!id) return failed.has(text) ? 'failed' : 'skip';
+    if (!id) return failed.has(text) ? 'failed' : warnings[text] ? 'check' : 'skip';
     return warnings[text] || isHybridOrEnglish(id, text) ? 'check' : 'ok';
   };
 

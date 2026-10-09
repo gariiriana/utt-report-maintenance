@@ -24,6 +24,8 @@ import (
 // ErrMOPTranslateNotConfigured: belum ada API key AI di server.
 var ErrMOPTranslateNotConfigured = errors.New("API key AI (NVIDIA_NIM_API_KEYS) belum dipasang di server")
 
+const mopNoTranslationWarning = "AI menilai baris ini tidak perlu diterjemahkan (nama/kode/tipe). Isi manual bila tetap perlu baris Indonesia."
+
 const (
 	// Dokumen yang lebih panjang hanya dikirim sebagian (sekitar segmen yang diterjemahkan)
 	// agar tidak menghabiskan kuota token tier gratis.
@@ -287,10 +289,16 @@ func (s *mopTranslateService) Translate(ctx context.Context, title string, segme
 					continue
 				}
 				text, issue := checkMOPTranslation(segments[it.index], answer)
-				if issue == "" {
+				switch {
+				case issue == "":
 					results[it.index] = MOPTranslation{Index: it.index, Text: text}
-				} else if text != "" {
+				case text != "":
 					repairs[k] = mopRepairItem{index: it.index, previous: text, issue: issue}
+				case it.previous == "":
+					// AI tetap menilai baris ini tidak perlu diterjemahkan (kosong/sama dengan teks
+					// Inggris). Diterjemahkan ulang pun hasilnya sama, jadi dikirim tanpa baris ID
+					// dengan peringatan agar dicek, bukan dianggap gagal.
+					results[it.index] = MOPTranslation{Index: it.index, Warning: mopNoTranslationWarning}
 				}
 			}
 		}
