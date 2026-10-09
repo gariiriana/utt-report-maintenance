@@ -92,6 +92,7 @@ export interface ExcelDocument {
   hasAbnormal?: boolean;
   abnormalFinding?: AbnormalFinding | null;
   hseType?: 'inspection' | 'sio' | 'silo' | 'tbm' | 'induction';
+  hasMsds?: boolean;
   totalSDM?: number;
   inductionPerson?: string;
   companyName?: string;
@@ -444,6 +445,7 @@ export function DocumentList({
   const [srStatusFilter, setSrStatusFilter] = useState<'all' | 'photos_only' | 'with_sr' | 'abnormal_only'>('all');
   const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
   const [dmeAbnormalOnlyFilter, setDmeAbnormalOnlyFilter] = useState(false);
+  const [hseMsdsOnly, setHseMsdsOnly] = useState(false);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
@@ -800,6 +802,9 @@ export function DocumentList({
           hasAbnormal: data.hasAbnormal || false,
           abnormalFinding: data.abnormalFinding ? { ...data.abnormalFinding, findingId: data.findingId || data.abnormalFinding.findingId || undefined } : null,
           hseType,
+          // File MSDS tidak disimpan ke Firestore (hanya digabung ke PDF saat export),
+          // jadi penandanya adalah item checklist MSDS yang dicentang HSE.
+          hasMsds: hseType === 'inspection' && Boolean(data.checklist?.msds),
           maintenanceType: data.maintenanceType || (hseType === 'tbm' ? 'TBM' : hseType === 'induction' ? 'INDUCTION' : 'OTHER'),
           totalSDM: data.totalSDM,
           inductionPerson: data.nama,
@@ -2055,6 +2060,10 @@ export function DocumentList({
       return false;
     }
     if (srStatusFilter === 'abnormal_only' && !doc.hasAbnormal) {
+      return false;
+    }
+
+    if (hseMsdsOnly && doc.hseType === 'inspection' && !doc.hasMsds) {
       return false;
     }
 
@@ -3543,8 +3552,12 @@ export function DocumentList({
             hoverBorder: 'hover:border-blue-400',
             unitLabel: 'Laporan',
             emptyIcon: ClipboardList,
-            emptyTitle: 'Belum ada laporan HSE Inspection yang tersimpan',
-            emptyHint: 'Laporan inspeksi K3 yang dibuat akan otomatis tersimpan di dalam folder ini.',
+            emptyTitle: hseMsdsOnly
+              ? 'Belum ada laporan HSE Inspection yang memuat MSDS'
+              : 'Belum ada laporan HSE Inspection yang tersimpan',
+            emptyHint: hseMsdsOnly
+              ? 'Tidak ada laporan inspeksi dengan checklist MSDS pada filter saat ini. Matikan filter MSDS untuk melihat semua laporan.'
+              : 'Laporan inspeksi K3 yang dibuat akan otomatis tersimpan di dalam folder ini.',
           };
         }
         if (selectedCategory === 'tbm') {
@@ -3588,13 +3601,20 @@ export function DocumentList({
       });
 
       const EmptyIcon = catInfo.emptyIcon;
+      // Filter "Hanya MSDS" langsung menampilkan file laporannya, tanpa folder bulan/minggu
+      const msdsDocs = hseMsdsOnly && selectedCategory === 'inspection'
+        ? filteredDocuments.filter(d => d.hseType === 'inspection')
+        : null;
 
       return (
         <div className="space-y-5 w-full max-w-6xl">
           {/* Breadcrumb & Folder Header */}
           <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm flex items-center justify-between flex-wrap gap-3">
             <button
-              onClick={() => setCurrentLevel('root')}
+              onClick={() => {
+                setHseMsdsOnly(false);
+                setCurrentLevel('root');
+              }}
               className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl transition-colors text-xs font-bold cursor-pointer border border-slate-200 shadow-2xs"
             >
               <ChevronLeft className="w-4 h-4" /> Kembali ke Kategori Utama
@@ -3607,6 +3627,25 @@ export function DocumentList({
               <span className="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 rounded-xl border border-slate-200">
                 {filteredDocuments.filter(d => d.hseType === selectedCategory).length} Dokumen
               </span>
+              {isAdmin && selectedCategory === 'inspection' && (
+                <button
+                  type="button"
+                  onClick={() => setHseMsdsOnly(prev => !prev)}
+                  aria-pressed={hseMsdsOnly}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs cursor-pointer shrink-0 ${
+                    hseMsdsOnly
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
+                      : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}
+                  title={hseMsdsOnly ? 'Tampilkan kembali semua laporan inspeksi' : 'Tampilkan hanya laporan inspeksi yang memuat MSDS'}
+                >
+                  <FileCheck className="w-3.5 h-3.5" />
+                  <span>
+                    {hseMsdsOnly ? 'Hanya MSDS' : 'Tampilkan yang ada MSDS'} ({filteredDocuments.filter(d => d.hseType === 'inspection' && d.hasMsds).length})
+                  </span>
+                  {hseMsdsOnly && <X className="w-3.5 h-3.5" />}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -3641,6 +3680,10 @@ export function DocumentList({
               </div>
               <p className="text-base font-bold text-slate-800">{catInfo.emptyTitle}</p>
               <p className="text-xs text-slate-500 font-medium mt-1 max-w-md mx-auto">{catInfo.emptyHint}</p>
+            </div>
+          ) : msdsDocs ? (
+            <div className="grid grid-cols-1 gap-3">
+              {msdsDocs.map((document, index) => renderDocumentCard(document, index))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -3983,6 +4026,11 @@ export function DocumentList({
                       : 'bg-blue-50 text-blue-700 border-blue-200'
                   }`}>
                     {document.hseType === 'tbm' ? 'ABSEN TBM' : document.hseType === 'induction' ? 'SAFETY INDUCTION' : document.hseType}
+                  </span>
+                )}
+                {document.hasMsds && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 shadow-2xs">
+                    <FileCheck className="w-3 h-3 shrink-0" /> MSDS
                   </span>
                 )}
                 {document.deleteRequested && (
@@ -4762,7 +4810,7 @@ export function DocumentList({
             Coba Lagi
           </button>
         </div>
-      ) : (filterOverride === 'hse_utt' && filteredDocuments.length === 0) ? (
+      ) : (filterOverride === 'hse_utt' && filteredDocuments.length === 0 && !hseMsdsOnly) ? (
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 sm:p-12 border border-sky-100/90 shadow-md text-center">
           <FileSpreadsheet className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">
