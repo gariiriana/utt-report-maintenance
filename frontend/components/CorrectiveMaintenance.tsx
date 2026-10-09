@@ -62,6 +62,8 @@ import {
     getDocs,
     where
 } from 'firebase/firestore';
+import type { DocumentData, DocumentReference, UpdateData } from 'firebase/firestore';
+import { runProjectedQuery } from '@/utils/firestoreRestQuery';
 import { useAuth } from './AuthContext';
 import { SLAForm, SLAPrefillData } from './SLAForm';
 import { CMReportFormModal } from './CMReportFormModal';
@@ -224,6 +226,167 @@ interface CorrectiveMaintenanceProps {
     initialSearchQuery?: string;
 }
 
+// Field yang dimuat untuk daftar Arsip Standby. Foto & tanda tangan base64 sengaja tidak
+// ikut (satu laporan bisa ~750KB); export/predictive mengambil dokumen lengkap lewat
+// loadFullReport(). Field baru yang ditampilkan/difilter di daftar harus ditambahkan di sini.
+const CORRECTIVE_LIST_FIELDS = [
+    'acknowledgedBy1Name', 'acknowledgedBy1Title', 'acknowledgedBy2Name', 'acknowledgedBy2Title',
+    'actionTaken', 'actualOnsiteTimeMin', 'actualResolutionTimeMin', 'actualResponseTimeMin', 'actualRestoreTimeMin',
+    'actualTimeOnsite', 'actualTimeResolution', 'actualTimeResponse',
+    'approvedBy1Name', 'approvedBy1Title', 'approvedBy2Name', 'approvedBy2Title', 'approvedBy3Name', 'approvedBy3Title',
+    'approvedByName', 'approvedByTitle', 'area', 'attendeesDME', 'attendeesTDE', 'authorName', 'brand', 'category',
+    'cleaningPreventiveMethod', 'cmId', 'cmReportId', 'companyType', 'contributingFactors', 'correctiveAction',
+    'correctiveActions', 'createdAt', 'createdBy', 'dateCompleted', 'deleteReason', 'deleteRequested',
+    'deleteRequestedAt', 'deleteRequestedBy', 'deleteRequestedRole', 'deleteRequestedTo', 'description', 'detection',
+    'device', 'equipment', 'equipmentName', 'finishOrder', 'hasPredictiveReport', 'hasSLA', 'impact', 'incidentDate',
+    'incidentId', 'incidentName', 'installationDate', 'isClosed', 'isRevision', 'isSparepartReplacement',
+    'isTroubleshootSelected', 'issue', 'linkToIncidentRecording', 'location', 'name', 'onsiteComply',
+    'photoDescription', 'picDME', 'picName', 'picTDE', 'pirReportId', 'postmortemMeetingDate', 'postmortemOwner',
+    'predictiveEligible', 'predictiveEligibleUpdatedAt', 'predictiveEligibleUpdatedBy', 'predictiveHealthStatus',
+    'predictiveReportId', 'predictiveReportNumber', 'preparedByName', 'preparedByTitle', 'priority', 'problem',
+    'problemAnalysis', 'quarter', 'recommendation', 'remark', 'repairTimeEnd', 'repairTimeStart',
+    'replacedSpareparts', 'replaced_spareparts', 'reportAuthors', 'reportId', 'reportType', 'reportedAt',
+    'reportedBy', 'reportedByEmail', 'requestSpareparts', 'request_spareparts', 'requestedSpareparts', 'resolution',
+    'resolutionComply', 'resolutionRemark', 'response', 'responseComply', 'restoreComply', 'result',
+    'reviewedBy1Name', 'reviewedBy1Title', 'reviewedBy2Name', 'reviewedBy2Title', 'reviewedByName', 'reviewedByTitle',
+    'revisionNote', 'revisionStatus', 'revisionUpdatedAt', 'revisionUpdatedBy', 'rootCause', 'score', 'serialNumber',
+    'severityComments', 'severityLevel', 'sla', 'slaId', 'slaReminderExcluded', 'slaReminderExcludedReason',
+    'slaReportId', 'slaSource', 'slaTicketNumber', 'slaTicketStatus', 'slgScoreOTP', 'slgScoreRSP', 'slgScoreRST',
+    'slgScoreRT', 'spareParts', 'spare_parts', 'sparepartRequest', 'sparepartType', 'spareparts', 'sparepartsRequest',
+    'startOrder', 'status', 'summary', 'summaryProblemAnalysis', 'targetOnsiteMin', 'targetResolutionMin',
+    'targetResponseMin', 'targetRestoreMin', 'technician', 'ticketId', 'ticketName', 'ticketNumber', 'ticketStatus',
+    'timeOrder', 'totalIncidentSlgScore', 'trigger', 'troubleCompletionNotes', 'troublePendingReason',
+    'troubleStatus', 'troubleStatusUpdatedAt', 'troubleStatusUpdatedBy', 'troubleshootType', 'visualInspectionChecking',
+    'whatWentPoorly', 'whatWentWell', 'whereWereWeLucky', 'year',
+] as const;
+
+// Daftar laporan tidak lagi realtime, jadi setiap penulisan di modul ini memberi sinyal
+// agar daftar dimuat ulang.
+const REPORTS_CHANGED_EVENT = 'corrective-reports-changed';
+const notifyReportsChanged = () => window.dispatchEvent(new Event(REPORTS_CHANGED_EVENT));
+
+// Dokumen lengkap (dengan foto & tanda tangan) per laporan, dimuat saat dibutuhkan saja.
+const reportMediaCache = new Map<string, Promise<DocumentData | null>>();
+const MEDIA_INVALIDATED_EVENT = 'corrective-report-media-invalidated';
+
+const fetchReportMedia = (reportId: string): Promise<DocumentData | null> => {
+    let pending = reportMediaCache.get(reportId);
+    if (!pending) {
+        pending = getDoc(doc(db, 'corrective_reports', reportId))
+            .then((snap) => (snap.exists() ? snap.data() : null))
+            .catch((err) => {
+                console.warn('Gagal memuat dokumen lengkap laporan:', err);
+                reportMediaCache.delete(reportId);
+                return null;
+            });
+        reportMediaCache.set(reportId, pending);
+    }
+    return pending;
+};
+
+const invalidateReportMedia = (reportId: string) => {
+    reportMediaCache.delete(reportId);
+    window.dispatchEvent(new CustomEvent<string>(MEDIA_INVALIDATED_EVENT, { detail: reportId }));
+};
+
+const updateReportDoc = async (ref: DocumentReference, data: UpdateData<DocumentData>) => {
+    await updateDoc(ref, data);
+    invalidateReportMedia(ref.id);
+    notifyReportsChanged();
+};
+
+const deleteReportDoc = async (ref: DocumentReference) => {
+    await deleteDoc(ref);
+    invalidateReportMedia(ref.id);
+    notifyReportsChanged();
+};
+
+// Lengkapi laporan dari daftar ringan dengan foto & tanda tangan sebelum export.
+const loadFullReport = async <T extends { id: string }>(report: T): Promise<T> => {
+    const data = await fetchReportMedia(report.id);
+    return data ? ({ ...report, ...data, id: report.id } as T) : report;
+};
+
+// Muat dokumen lengkap sebuah kartu hanya ketika kartu itu mendekati layar.
+function useReportMediaWhenVisible(reportId: string) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [visible, setVisible] = useState(false);
+    const [version, setVersion] = useState(0);
+    const [media, setMedia] = useState<DocumentData | null>(null);
+    const [loaded, setLoaded] = useState(false);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el || visible) return;
+        if (typeof IntersectionObserver === 'undefined') {
+            setVisible(true);
+            return;
+        }
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                setVisible(true);
+                observer.disconnect();
+            }
+        }, { rootMargin: '300px' });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [visible]);
+
+    useEffect(() => {
+        const handleInvalidate = (e: Event) => {
+            if ((e as CustomEvent<string>).detail === reportId) setVersion((v) => v + 1);
+        };
+        window.addEventListener(MEDIA_INVALIDATED_EVENT, handleInvalidate);
+        return () => window.removeEventListener(MEDIA_INVALIDATED_EVENT, handleInvalidate);
+    }, [reportId]);
+
+    useEffect(() => {
+        if (!visible) return;
+        let active = true;
+        void fetchReportMedia(reportId).then((data) => {
+            if (!active) return;
+            setMedia(data);
+            setLoaded(true);
+        });
+        return () => { active = false; };
+    }, [visible, reportId, version]);
+
+    return { ref, media, loaded };
+}
+
+const SLA_EVIDENCE_STEPS = [
+    { single: 'photoResponse', list: 'photosResponse', alt: 'Response Time Evidence', label: '1. Response' },
+    { single: 'photoOnsite', list: 'photosOnsite', alt: 'Principle Onsite Evidence', label: '2. Princ Onsite' },
+    { single: 'photoRestore', list: 'photosRestore', alt: 'Restore Time Evidence', label: '3. Restore' },
+    { single: 'photoResolution', list: 'photosResolution', alt: 'Resolution Time Evidence', label: '4. Resolusi' },
+] as const;
+
+function SLAEvidencePhotos({ reportId }: { reportId: string }) {
+    const { ref, media, loaded } = useReportMediaWhenVisible(reportId);
+
+    return (
+        <div ref={ref} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {SLA_EVIDENCE_STEPS.map((step) => {
+                const src: string | undefined = media?.[step.single] || media?.[step.list]?.[0]?.photo;
+                return (
+                    <div key={step.single} className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                        {src ? (
+                            <img src={src} alt={step.alt} className="w-full h-24 object-cover" />
+                        ) : (
+                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">
+                                {loaded ? 'Tidak ada foto' : 'Memuat foto...'}
+                            </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">{step.label}</span>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 const INDO_MONTHS = [
     { value: '0', label: 'Januari' },
     { value: '1', label: 'Februari' },
@@ -279,7 +442,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 predictiveEligibleUpdatedAt: serverTimestamp(),
                 predictiveEligibleUpdatedBy: user?.email || userRole || 'standby_engineer'
             };
-            await updateDoc(doc(db, 'corrective_reports', report.id), updatePayload);
+            await updateReportDoc(doc(db, 'corrective_reports', report.id), updatePayload);
             setReports(prev => prev.map(r => r.id === report.id ? {
                 ...r,
                 predictiveEligible: eligible === null ? undefined : eligible,
@@ -405,6 +568,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     const handleCloseForm = (specificId?: string) => {
         const targetId = specificId || editingReportId || lastInteractedReportIdRef.current || highlightedReportId || (typeof window !== 'undefined' ? sessionStorage.getItem('cm_last_interacted_id') : null);
+        if (targetId) invalidateReportMedia(targetId);
 
         // Pastikan tab folder arsip yang aktif sesuai dengan form yang baru ditutup
         if (reportFormType === 'cm_pdf' && archiveFolder !== 'cm_pdf') {
@@ -462,6 +626,11 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
             scrollToReport(targetId);
         }
+
+        // Daftar tidak realtime: muat ulang supaya laporan yang baru disimpan langsung tampil.
+        void loadReports().then(() => {
+            if (targetId) scrollToReport(targetId);
+        });
     };
 
     // Effect: Saat user kembali dari form edit/inspection (showForm false), suguhkan kembali laporan target
@@ -528,6 +697,30 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
     const [selectedYear, setSelectedYear] = useState<string>('all');
 
+    // Nomor permintaan terakhir, supaya hasil muat yang lebih lama tidak menimpa yang baru.
+    const reportsRequestRef = useRef(0);
+    const lastReportsLoadRef = useRef(0);
+
+    const loadReports = useCallback(async (): Promise<boolean> => {
+        const requestId = ++reportsRequestRef.current;
+        try {
+            const rows = await runProjectedQuery<CorrectiveReport>('corrective_reports', CORRECTIVE_LIST_FIELDS, {
+                field: 'reportedAt',
+                direction: 'DESCENDING',
+            });
+            if (requestId === reportsRequestRef.current) {
+                setReports(rows);
+                lastReportsLoadRef.current = Date.now();
+            }
+            return true;
+        } catch (err) {
+            console.error('Error loading CM reports:', err);
+            return false;
+        } finally {
+            if (requestId === reportsRequestRef.current) setLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (!user) {
             setReports([]);
@@ -539,24 +732,31 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
 
         setLoading(true);
-        const q = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'));
+        let cancelled = false;
+        let unsubscribe: (() => void) | null = null;
 
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                const data = snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as CorrectiveReport[];
-                setReports(data);
-                setLoading(false);
-            },
-            (error) => {
-                console.error('Error loading CM reports:', error);
-                toast.error('Failed to load reports');
-                setLoading(false);
-            }
-        );
+        void loadReports().then((ok) => {
+            if (ok || cancelled) return;
+            // REST gagal: kembali ke listener SDK yang memuat dokumen lengkap.
+            setLoading(true);
+            const q = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'));
+            unsubscribe = onSnapshot(
+                q,
+                (snapshot) => {
+                    const data = snapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    })) as CorrectiveReport[];
+                    setReports(data);
+                    setLoading(false);
+                },
+                (error) => {
+                    console.error('Error loading CM reports:', error);
+                    toast.error('Failed to load reports');
+                    setLoading(false);
+                }
+            );
+        });
 
         // Listener Real-time untuk Koleksi Dokumen Predictive Maintenance Reports
         const qPred = query(collection(db, 'predictive_reports'));
@@ -616,12 +816,35 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         );
 
         return () => {
-            unsubscribe();
+            cancelled = true;
+            unsubscribe?.();
             unsubscribePred();
             unsubscribePeriodic();
             unsubscribeManualAbnormal();
         };
-    }, [user]);
+    }, [user, loadReports]);
+
+    // Muat ulang daftar setelah ada penulisan, dan saat tab kembali aktif (laporan dari user lain).
+    useEffect(() => {
+        if (!user) return;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        const scheduleReload = () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => { void loadReports(); }, 400);
+        };
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible' && Date.now() - lastReportsLoadRef.current > 60_000) {
+                scheduleReload();
+            }
+        };
+        window.addEventListener(REPORTS_CHANGED_EVENT, scheduleReload);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            if (timer) clearTimeout(timer);
+            window.removeEventListener(REPORTS_CHANGED_EVENT, scheduleReload);
+            document.removeEventListener('visibilitychange', handleVisibility);
+        };
+    }, [user, loadReports]);
 
     // Handler Hapus Dokumen Predictive Report (Khusus QC DME qcdme@dme.com)
     const handleDeletePredictiveReport = async (predId: string, sourceDocId?: string) => {
@@ -632,10 +855,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         if (!window.confirm('Yakin ingin menghapus dokumen Laporan Predictive Maintenance ini secara permanen?')) return;
         const toastId = toast.loading('Menghapus Laporan Predictive...');
         try {
-            await deleteDoc(doc(db, 'predictive_reports', predId));
+            await deleteReportDoc(doc(db, 'predictive_reports', predId));
             if (sourceDocId) {
                 try {
-                    await updateDoc(doc(db, 'corrective_reports', sourceDocId), {
+                    await updateReportDoc(doc(db, 'corrective_reports', sourceDocId), {
                         hasPredictiveReport: false,
                         predictiveReportId: deleteField(),
                         predictiveReportNumber: deleteField()
@@ -694,7 +917,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         try {
             const reportRef = doc(db, 'corrective_reports', reportId);
             if (type === 'non_sparepart') {
-                await updateDoc(reportRef, {
+                await updateReportDoc(reportRef, {
                     troubleshootType: 'non_sparepart',
                     isSparepartReplacement: false,
                     sparepartType: deleteField(),
@@ -703,7 +926,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 });
                 toast.success('Kategori berhasil diupdate: Troubleshoot Gangguan (Wajib SLA)');
             } else {
-                await updateDoc(reportRef, {
+                await updateReportDoc(reportRef, {
                     troubleshootType: 'sparepart_replacement',
                     isSparepartReplacement: true,
                     sparepartType: type,
@@ -756,7 +979,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 }
 
                 for (const slaId of slaIdsToDelete) {
-                    await deleteDoc(doc(db, 'corrective_reports', slaId));
+                    await deleteReportDoc(doc(db, 'corrective_reports', slaId));
                 }
 
 
@@ -764,14 +987,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 if (selectedReportForDelete.reportType === 'SLA') {
                     const pirId = (selectedReportForDelete as any).pirReportId;
                     if (pirId) {
-                        await updateDoc(doc(db, 'corrective_reports', pirId), {
+                        await updateReportDoc(doc(db, 'corrective_reports', pirId), {
                             slaReportId: deleteField(),
                             hasSLA: false,
                         }).catch(e => console.warn('Could not unlink PIR on SLA delete:', e));
                     }
                     const linkedCmId = (selectedReportForDelete as any).cmReportId;
                     if (linkedCmId) {
-                        await updateDoc(doc(db, 'corrective_reports', linkedCmId), {
+                        await updateReportDoc(doc(db, 'corrective_reports', linkedCmId), {
                             slaReportId: deleteField(),
                             hasSLA: false,
                         }).catch(e => console.warn('Could not unlink CM on SLA delete:', e));
@@ -779,14 +1002,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 } else if (selectedReportForDelete.reportType === 'PIR') {
                     const linkedSlaId = (selectedReportForDelete as any).slaReportId;
                     if (linkedSlaId) {
-                        await updateDoc(doc(db, 'corrective_reports', linkedSlaId), {
+                        await updateReportDoc(doc(db, 'corrective_reports', linkedSlaId), {
                             pirReportId: deleteField(),
                         }).catch(e => console.warn('Could not unlink SLA on PIR delete:', e));
                     }
                 }
 
                 // Delete the CM document itself
-                await deleteDoc(doc(db, 'corrective_reports', selectedReportForDelete.id));
+                await deleteReportDoc(doc(db, 'corrective_reports', selectedReportForDelete.id));
 
                 const cascadeMsg = slaIdsToDelete.size > 0
                     ? ` (termasuk ${slaIdsToDelete.size} SLA/SLG terkait)`
@@ -801,7 +1024,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 }
                 const toastId = toast.loading('Mengajukan permohonan hapus ke QC DME...');
                 const docRef = doc(db, 'corrective_reports', selectedReportForDelete.id);
-                await updateDoc(docRef, {
+                await updateReportDoc(docRef, {
                     deleteRequested: true,
                     deleteRequestedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
                     deleteReason: reason.trim(),
@@ -838,7 +1061,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             setDeleteLoading(true);
             const toastId = toast.loading('Menolak pengajuan hapus...');
             const docRef = doc(db, 'corrective_reports', selectedReportForDelete.id);
-            await updateDoc(docRef, {
+            await updateReportDoc(docRef, {
                 deleteRequested: deleteField(),
                 deleteRequestedBy: deleteField(),
                 deleteReason: deleteField(),
@@ -862,7 +1085,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             setDeleteLoading(true);
             const toastId = toast.loading('Membatalkan pengajuan hapus...');
             const docRef = doc(db, 'corrective_reports', targetId);
-            await updateDoc(docRef, {
+            await updateReportDoc(docRef, {
                 deleteRequested: deleteField(),
                 deleteRequestedBy: deleteField(),
                 deleteReason: deleteField(),
@@ -913,7 +1136,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             const docRef = doc(db, 'corrective_reports', targetReportId);
             const isClosed = troubleForm.status === 'closed';
 
-            await updateDoc(docRef, {
+            await updateReportDoc(docRef, {
                 troubleStatus: troubleForm.status,
                 troublePendingReason: !isClosed ? troubleForm.pendingReason.trim() : (targetReport.troublePendingReason || ''),
                 troubleCompletionNotes: isClosed ? troubleForm.completionNotes.trim() : (targetReport.troubleCompletionNotes || ''),
@@ -965,7 +1188,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         try {
             const toastId = toast.loading('Menandai trouble sebagai Solved (Closed)...');
             const docRef = doc(db, 'corrective_reports', report.id);
-            await updateDoc(docRef, {
+            await updateReportDoc(docRef, {
                 troubleStatus: 'closed',
                 troubleCompletionNotes: report.troubleCompletionNotes || 'Telah diselesaikan oleh engineer onsite.',
                 troubleStatusUpdatedAt: serverTimestamp(),
@@ -1014,7 +1237,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             const docRef = doc(db, 'corrective_reports', targetReportId);
             const isRevisi = revisionForm.status === 'revisi';
 
-            await updateDoc(docRef, {
+            await updateReportDoc(docRef, {
                 revisionStatus: revisionForm.status,
                 isRevision: isRevisi,
                 revisionNote: isRevisi ? revisionForm.note.trim() : '',
@@ -1697,8 +1920,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             if (persistedInferredPairsRef.current.has(key)) continue;
             persistedInferredPairsRef.current.add(key);
             void Promise.all([
-                updateDoc(doc(db, 'corrective_reports', cmId), { slaReportId: slaId, hasSLA: true }),
-                updateDoc(doc(db, 'corrective_reports', slaId), { cmReportId: cmId }),
+                updateReportDoc(doc(db, 'corrective_reports', cmId), { slaReportId: slaId, hasSLA: true }),
+                updateReportDoc(doc(db, 'corrective_reports', slaId), { cmReportId: cmId }),
             ]).catch(err => console.warn('Gagal menyimpan tautan CM-SLA otomatis:', cmId, slaId, err));
         }
     }, [inferredPairsKey, loading, isAuthorizedRole]);
@@ -1861,7 +2084,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         // Jika dokumen PIR memiliki referensi slaReportId yang sudah tidak ada / invalid / dihapus:
         if (pir?.slaReportId && pir.id) {
             try {
-                await updateDoc(doc(db, 'corrective_reports', pir.id), {
+                await updateReportDoc(doc(db, 'corrective_reports', pir.id), {
                     slaReportId: deleteField(),
                     hasSLA: false,
                 });
@@ -1985,7 +2208,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         if (!confirmUnlink) return;
 
         try {
-            await updateDoc(doc(db, 'corrective_reports', cmReport.id), {
+            await updateReportDoc(doc(db, 'corrective_reports', cmReport.id), {
                 slaReportId: deleteField(),
                 hasSLA: false,
                 updatedAt: serverTimestamp()
@@ -1993,7 +2216,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
             const slaId = targetSlaId || cmReport.slaReportId;
             if (slaId) {
-                await updateDoc(doc(db, 'corrective_reports', slaId), {
+                await updateReportDoc(doc(db, 'corrective_reports', slaId), {
                     cmReportId: deleteField(),
                     updatedAt: serverTimestamp()
                 });
@@ -2110,7 +2333,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     };
 
     const handleExportSingleCMDocx = async (report: any) => {
-        const cmData = buildCMDataFromReport(report);
+        const cmData = buildCMDataFromReport(await loadFullReport(report));
         await exportCMReportToDocx(cmData);
     };
 
@@ -2157,8 +2380,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
             // 3. Jika belum ada laporan prediktif, buat otomatis via AI Reliability Agent
             toast.loading('AI Agent sedang menganalisis data CM untuk Laporan Prediktif...', { id: toastId });
-            const cmData = buildCMDataFromReport(report);
-            const firstPhoto = cmData.photos?.[0]?.photoBase64 || report.photoBase64 || undefined;
+            const fullReport = await loadFullReport(report);
+            const cmData = buildCMDataFromReport(fullReport);
+            const firstPhoto = cmData.photos?.[0]?.photoBase64 || fullReport.photoBase64 || undefined;
             const equipName = cmData.equipmentName || report.equipmentName || report.incidentName || 'Critical Facility Equipment';
             const symptoms = cmData.summaryProblemAnalysis || cmData.visualInspectionChecking || report.issue || 'Indikasi degradasi operasional pada peralatan.';
 
@@ -2300,6 +2524,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             key={`cm_${formKey}`}
                             onSuccess={() => {
                                 setFormKey(prev => prev + 1);
+                                notifyReportsChanged();
                             }}
                             onCancel={() => {
                                 setFormKey(prev => prev + 1);
@@ -2313,6 +2538,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 availablePIRReports={unlinkedPIRReports}
                                 onSuccess={() => {
                                     setFormKey(prev => prev + 1);
+                                    notifyReportsChanged();
                                 }}
                                 onCancel={() => {
                                     setFormKey(prev => prev + 1);
@@ -2324,6 +2550,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             key={`pir_${formKey}`}
                             onSuccess={(_, savedPIR) => {
                                 setFormKey(prev => prev + 1);
+                                notifyReportsChanged();
                                 if (savedPIR) handleCreateSLAFromPIR(savedPIR);
                             }}
                             onCancel={() => {
@@ -3301,7 +3528,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                 type="button"
                                                                 onClick={async () => {
                                                                     if (!window.confirm('Hapus laporan periodik ini secara permanen?')) return;
-                                                                    await deleteDoc(doc(db, 'periodic_predictive_reports', prep.id));
+                                                                    await deleteReportDoc(doc(db, 'periodic_predictive_reports', prep.id));
                                                                     toast.success('Laporan periodik berhasil dihapus permanen');
                                                                 }}
                                                                 className="p-1 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 rounded transition cursor-pointer"
@@ -3699,7 +3926,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             try {
                                                                 const rawIncidentDate = report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
                                                                 await exportPIRReportToDocx({
-                                                                    ...(report as any),
+                                                                    ...(await loadFullReport(report) as any),
                                                                     incidentDate: rawIncidentDate || report.incidentDate,
                                                                     incidentName: report.incidentName || report.issue || 'Post Incident Report'
                                                                 });
@@ -3724,7 +3951,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                 const effectiveCompanyType = (report as any).companyType || 'neutra';
                                                                 const rawIncidentDate = report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
                                                                 await generatePIRReportPDF({
-                                                                    ...(report as any),
+                                                                    ...(await loadFullReport(report) as any),
                                                                     companyType: effectiveCompanyType,
                                                                     incidentDate: rawIncidentDate || report.incidentDate,
                                                                     incidentName: report.incidentName || report.issue || 'Post Incident Report'
@@ -3956,7 +4183,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         onClick={async () => {
                                                             const toastId = toast.loading('Mengunduh Laporan Excel...');
                                                             try {
-                                                                await exportSLAReportToExcel(report);
+                                                                await exportSLAReportToExcel(await loadFullReport(report));
                                                                 toast.success('Berhasil mengunduh Laporan Excel!', { id: toastId });
                                                             } catch (err: any) {
                                                                 console.error('Failed to export Excel:', err);
@@ -3973,7 +4200,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         onClick={async () => {
                                                             const toastId = toast.loading('Mengunduh Laporan SLA Word...');
                                                             try {
-                                                                await exportSLAReportToDocx(report);
+                                                                await exportSLAReportToDocx(await loadFullReport(report));
                                                                 toast.success('Berhasil mengunduh Laporan SLA Word!', { id: toastId });
                                                             } catch (err: any) {
                                                                 console.error('Failed to export Word:', err);
@@ -4099,55 +4326,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                             <div>
                                                 <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">Bukti Dokumentasi SLA (4-Step)</span>
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    {/* Step 1: Response */}
-                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                        {report.photoResponse || report.photosResponse?.[0]?.photo ? (
-                                                            <img src={report.photoResponse || report.photosResponse?.[0]?.photo} alt="Response Time Evidence" className="w-full h-24 object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
-                                                        )}
-                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">1. Response</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Step 2: Principle Onsite */}
-                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                        {report.photoOnsite || report.photosOnsite?.[0]?.photo ? (
-                                                            <img src={report.photoOnsite || report.photosOnsite?.[0]?.photo} alt="Principle Onsite Evidence" className="w-full h-24 object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
-                                                        )}
-                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">2. Princ Onsite</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Step 3: Restore Service */}
-                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                        {report.photoRestore || report.photosRestore?.[0]?.photo ? (
-                                                            <img src={report.photoRestore || report.photosRestore?.[0]?.photo} alt="Restore Time Evidence" className="w-full h-24 object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
-                                                        )}
-                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">3. Restore</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Step 4: Resolution */}
-                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                        {report.photoResolution || report.photosResolution?.[0]?.photo ? (
-                                                            <img src={report.photoResolution || report.photosResolution?.[0]?.photo} alt="Resolution Time Evidence" className="w-full h-24 object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
-                                                        )}
-                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">4. Resolusi</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <SLAEvidencePhotos reportId={report.id} />
                                             </div>
                                         </div>
                                     ) : (
@@ -5448,7 +5627,7 @@ function CMDiagnosticModal({
                 let deleted = false;
                 if (isQcDme) {
                     try {
-                        await deleteDoc(docRef);
+                        await deleteReportDoc(docRef);
                         deleted = true;
                     } catch {
                         deleted = false;
@@ -5456,7 +5635,7 @@ function CMDiagnosticModal({
                 }
                 if (!deleted) {
                     // Fallback jika bukan QC DME atau deleteDoc ditolak: tandai deleteRequested agar langsung keluar dari arsip
-                    await updateDoc(docRef, {
+                    await updateReportDoc(docRef, {
                         deleteRequested: true,
                         deleteRequestedBy: userEmail || 'Standby Engineer',
                         deleteReason: 'Pembersihan otomatis Opsi A: CM bertipe pergantian sparepart tidak memerlukan Form SLA',
