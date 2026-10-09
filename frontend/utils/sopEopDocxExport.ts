@@ -23,9 +23,18 @@ import {
   UnderlineType,
   PageBreak,
   Tab,
+  type IRunOptions,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { SOPDocumentData, EOPDocumentData, SOPCIEquipmentItem, DocumentSigner, getEquipmentCellValue } from '@/types/sopEopTypes';
+import {
+  SOPDocumentData,
+  EOPDocumentData,
+  SOPCIEquipmentItem,
+  DocumentSigner,
+  SopEopExportLanguage,
+  DEFAULT_SOP_EQUIPMENT_COLUMNS,
+  getEquipmentCellValue,
+} from '@/types/sopEopTypes';
 import { ensureBilingualTranslation } from '@/utils/sopEopBilingualAI';
 import logoDMEOriginal from '@/assets/sop_eop_logo2.jpeg';
 import logoNDCOriginal from '@/assets/sop_eop_logo1.jpeg';
@@ -129,6 +138,45 @@ async function loadImageAsUint8Array(src: string): Promise<Uint8Array> {
 }
 
 // ----------------------------------------------------------------------------
+// EXPORT LANGUAGE
+// ----------------------------------------------------------------------------
+
+// True while an Indonesian-only document is being built: every builder then prints
+// only the Indonesian text, in the main (black, upright) style of the English line.
+let indonesianOnly = false;
+
+/** Builds a document with the given language; building is synchronous, so the flag cannot leak. */
+function withExportLanguage<T>(language: SopEopExportLanguage | undefined, build: () => T): T {
+  indonesianOnly = language === 'id';
+  try {
+    return build();
+  } finally {
+    indonesianOnly = false;
+  }
+}
+
+/**
+ * An English line, a line break, then the Indonesian line (grey italics).
+ * Indonesian-only: just the Indonesian runs, each styled like the English run at the
+ * same position; an empty Indonesian text falls back to the English one.
+ */
+function bilingualPair(en: IRunOptions | IRunOptions[], id: IRunOptions | IRunOptions[]): TextRun[] {
+  const enRuns = Array.isArray(en) ? en : [en];
+  const idRuns = Array.isArray(id) ? id : [id];
+  if (indonesianOnly) {
+    return idRuns.map((run, i) => {
+      const style = enRuns[Math.min(i, enRuns.length - 1)];
+      return new TextRun({ ...style, text: (run.text || '').trim() ? run.text : style.text });
+    });
+  }
+  return [
+    ...enRuns.map((run) => new TextRun(run)),
+    new TextRun({ text: '', break: 1 }),
+    ...idRuns.map((run) => new TextRun(run)),
+  ];
+}
+
+// ----------------------------------------------------------------------------
 // BILINGUAL RUN & PARAGRAPH BUILDERS
 // ----------------------------------------------------------------------------
 
@@ -156,14 +204,17 @@ function createBilingualRuns(
   const lineRuns = (text: string, style: Omit<ConstructorParameters<typeof TextRun>[0] & object, 'text' | 'break'>) =>
     (text || '').split('\n').map((line, index) => new TextRun({ ...style, text: line, break: index > 0 ? 1 : undefined }));
 
+  const enStyle = {
+    bold: opts?.boldEn ?? false,
+    underline: opts?.underlineEn ? { type: UnderlineType.SINGLE } : undefined,
+    color: COLOR_BLACK,
+    size: opts?.sizeEn ?? 20, // 10pt
+    font: fontToUse,
+  };
+  if (indonesianOnly) return lineRuns(effectiveId.trim() ? effectiveId : textEn, enStyle);
+
   const runs: TextRun[] = [
-    ...lineRuns(textEn, {
-      bold: opts?.boldEn ?? false,
-      underline: opts?.underlineEn ? { type: UnderlineType.SINGLE } : undefined,
-      color: COLOR_BLACK,
-      size: opts?.sizeEn ?? 20, // 10pt
-      font: fontToUse,
-    }),
+    ...lineRuns(textEn, enStyle),
     new TextRun({
       text: '',
       break: 1, // Move to next line in the exact same paragraph
@@ -200,6 +251,16 @@ function createBilingualFieldParagraph(
 
   const resolvedValId =
     valEn && valEn !== '-' ? ensureBilingualTranslation(valEn, valId) : valId;
+
+  if (indonesianOnly) {
+    return new Paragraph({
+      spacing: { after: spacingAfter, line: 240 },
+      children: [
+        new TextRun({ text: labelId, color: COLOR_BLACK, size: 20, font: FONT_BODY }),
+        new TextRun({ text: `${tabSeparatorsId}: ${resolvedValId || valEn || '-'}`, color: COLOR_BLACK, size: 20, font: FONT_BODY }),
+      ],
+    });
+  }
 
   return new Paragraph({
     spacing: { after: spacingAfter, line: 240 },
@@ -261,7 +322,7 @@ function createSectionBanner(titleEn: string, titleId?: string, isEOP = false): 
   const bgColor = isEOP ? COLOR_BANNER_EOP : COLOR_BANNER_SOP;
   const textChildren: TextRun[] = [
     new TextRun({
-      text: titleEn,
+      text: indonesianOnly && titleId ? titleId : titleEn,
       bold: true,
       color: COLOR_WHITE,
       size: 22, // 11pt
@@ -269,7 +330,7 @@ function createSectionBanner(titleEn: string, titleId?: string, isEOP = false): 
     }),
   ];
 
-  if (titleId) {
+  if (titleId && !indonesianOnly) {
     textChildren.push(
       new TextRun({
         text: '',
@@ -414,9 +475,9 @@ function createDocumentFooter(): Footer {
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new TextRun({ text: 'Page ', size: 18, font: FONT_BODY }),
+          new TextRun({ text: indonesianOnly ? 'Halaman ' : 'Page ', size: 18, font: FONT_BODY }),
           new TextRun({ children: [PageNumber.CURRENT], size: 18, bold: true, font: FONT_BODY }),
-          new TextRun({ text: ' of ', size: 18, font: FONT_BODY }),
+          new TextRun({ text: indonesianOnly ? ' dari ' : ' of ', size: 18, font: FONT_BODY }),
           new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, bold: true, font: FONT_BODY }),
         ],
       }),
@@ -481,6 +542,13 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     loadImageAsUint8Array(logoNDCOriginal),
   ]);
 
+  const doc = withExportLanguage(data.exportLanguage, () => buildSOPDocument(data, dmeBytes, ndcBytes));
+  const blob = await Packer.toBlob(doc);
+  const cleanTitle = (data.documentTitle || 'DME_SOP').replace(/[^a-zA-Z0-9_-]/g, '_');
+  saveAs(blob, `${cleanTitle}.docx`);
+}
+
+function buildSOPDocument(data: SOPDocumentData, dmeBytes: Uint8Array, ndcBytes: Uint8Array): Document {
   const children: (Paragraph | Table)[] = [];
 
   // --------------------------------------------------------------------------
@@ -542,8 +610,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   const importedColumns = data.equipmentColumns && data.equipmentColumns.length > 0 ? data.equipmentColumns : null;
   const widthFor = (field: string) =>
     allEquipCols.find((c) => c.key === field)?.width ?? ({ principle: 1143, floor: 500 } as Record<string, number>)[field] ?? 1000;
+  // An English-only source leaves labelId empty; an Indonesian-only export then uses the standard label.
+  const indonesianLabelFor = (c: { field: string; labelId: string }) =>
+    c.labelId || (indonesianOnly ? DEFAULT_SOP_EQUIPMENT_COLUMNS.find((d) => d.field === c.field)?.labelId || '' : '');
   const activeEquipCols: { width: number; en: string; id: string; key: string }[] = importedColumns
-    ? importedColumns.map((c) => ({ width: widthFor(c.field), en: c.labelEn, id: c.labelId, key: c.field }))
+    ? importedColumns.map((c) => ({ width: widthFor(c.field), en: c.labelEn, id: indonesianLabelFor(c), key: c.field }))
     : allEquipCols;
 
   // Redistribusi lebar kolom agar total tetap pas = CONTENT_WIDTH_DXA (15.9 cm)
@@ -632,17 +703,20 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Paragraph({
       spacing: { after: 40 },
-      children: [
-        new TextRun({ text: 'SOP Execution Date: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.executionDate || '-', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '    Reference Ticket Number: ', size: 20, font: FONT_BODY }),
-        new TextRun({ text: data.referenceTicketNumber || '-', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Tanggal Pelaksanaan SOP: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.executionDate || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: '    Nomor Tiket Referensi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-        new TextRun({ text: data.referenceTicketNumber || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
-      ],
+      children: bilingualPair(
+        [
+          { text: 'SOP Execution Date: ', size: 20, font: FONT_BODY },
+          { text: data.executionDate || '-', size: 20, font: FONT_BODY },
+          { text: '    Reference Ticket Number: ', size: 20, font: FONT_BODY },
+          { text: data.referenceTicketNumber || '-', size: 20, font: FONT_BODY },
+        ],
+        [
+          { text: 'Tanggal Pelaksanaan SOP: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY },
+          { text: data.executionDate || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY },
+          { text: '    Nomor Tiket Referensi: ', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY },
+          { text: data.referenceTicketNumber || '-', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY },
+        ]
+      ),
     })
   );
   const executedByHeaderRow = new TableRow({
@@ -657,9 +731,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Executed by (Name)', size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Dilaksanakan oleh (Nama)', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Executed by (Name)', size: 20, font: FONT_BODY },
+                { text: 'Dilaksanakan oleh (Nama)', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -672,9 +747,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Job title', size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Jabatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Job title', size: 20, font: FONT_BODY },
+                { text: 'Jabatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -764,9 +840,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
                     border: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 0 },
                   }),
                   new TextRun({ children: [new Tab()], size: 18, font: FONT_BODY }),
-                  new TextRun({ text: item.labelEn, bold: item.checked, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: item.labelId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: item.labelEn, bold: item.checked, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                    { text: item.labelId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                  ),
                 ],
               }),
             ],
@@ -787,22 +864,21 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Paragraph({
       spacing: { before: 40, after: 20 },
-      children: [
-        new TextRun({
+      children: bilingualPair(
+        {
           text: 'if any of the item above is checked, do provide details for each item respectively:',
           size: 16,
           color: COLOR_BLACK,
           font: FONT_BODY,
-        }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({
+        },
+        {
           text: 'jika ada item di atas yang dicentang, berikan rincian untuk masing-masing item tersebut:',
           italics: true,
           size: 18,
           color: COLOR_GREY_ID,
           font: FONT_BODY,
-        }),
-      ],
+        }
+      ),
     })
   );
 
@@ -851,9 +927,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Document Name', size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Nama Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Document Name', size: 20, font: FONT_BODY },
+                { text: 'Nama Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -866,9 +943,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Document Number', size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Document Number', size: 20, font: FONT_BODY },
+                { text: 'Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -919,9 +997,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     new Paragraph({
       spacing: { after: 20 },
       children: [
-        new TextRun({ text: 'Requirements', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        ...bilingualPair(
+          { text: 'Requirements', size: 20, font: FONT_BODY },
+          { text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+        ),
       ],
     })
   );
@@ -959,9 +1038,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
                 children: [
                   new Paragraph({
                     children: [
-                      new TextRun({ text: en, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                      new TextRun({ text: '', break: 1 }),
-                      new TextRun({ text: id, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                      ...bilingualPair(
+                        { text: en, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                        { text: id, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                      ),
                     ],
                   }),
                 ],
@@ -991,9 +1071,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Requirements', bold: true, underline: {}, size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Requirements', bold: true, underline: {}, size: 20, font: FONT_BODY },
+                { text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -1006,9 +1087,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Time', bold: true, underline: {}, size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Waktu', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Time', bold: true, underline: {}, size: 20, font: FONT_BODY },
+                { text: 'Waktu', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -1021,9 +1103,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Intial', bold: true, underline: {}, size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Inisial', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Intial', bold: true, underline: {}, size: 20, font: FONT_BODY },
+                { text: 'Inisial', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -1049,9 +1132,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: requirementEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: requirementId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                ...bilingualPair(
+                  { text: requirementEn, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                  { text: requirementId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                ),
               ],
             }),
           ],
@@ -1091,9 +1175,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     new Paragraph({
       spacing: { after: 30 },
       children: [
-        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY, bold: true, underline: {} }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        ...bilingualPair(
+          { text: 'Completed by:', size: 20, font: FONT_BODY, bold: true, underline: {} },
+          { text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+        ),
       ],
     })
   );
@@ -1120,9 +1205,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: en, size: 20, font: FONT_BODY, bold: true }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: en, size: 20, font: FONT_BODY, bold: true },
+                { text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -1192,11 +1278,11 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [
                 new Paragraph({
                   spacing: { after: 0, line: 240 },
-                  children: [
-                    new TextRun({ text: `${isAnnual ? '☐ ' : '■ '} 6 Months`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
-                    new TextRun({ text: '', break: 1 }),
-                    new TextRun({ text: '    6 Bulan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                  ],
+                  children: bilingualPair(
+                    { text: `${isAnnual ? '☐ ' : '■ '} 6 Months`, size: 20, color: COLOR_BLACK, font: FONT_BODY },
+                    // The Indonesian line is indented under the label; on its own it keeps the box.
+                    { text: indonesianOnly ? `${isAnnual ? '☐ ' : '■ '} 6 Bulan` : '    6 Bulan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                  ),
                 }),
               ],
             }),
@@ -1207,11 +1293,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [
                 new Paragraph({
                   spacing: { after: 0, line: 240 },
-                  children: [
-                    new TextRun({ text: `${is6Months ? '☐ ' : '■ '} Annual`, size: 20, color: COLOR_BLACK, font: FONT_BODY }),
-                    new TextRun({ text: '', break: 1 }),
-                    new TextRun({ text: '    Tahunan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                  ],
+                  children: bilingualPair(
+                    { text: `${is6Months ? '☐ ' : '■ '} Annual`, size: 20, color: COLOR_BLACK, font: FONT_BODY },
+                    { text: indonesianOnly ? `${is6Months ? '☐ ' : '■ '} Tahunan` : '    Tahunan', italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                  ),
                 }),
               ],
             }),
@@ -1232,22 +1317,21 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   children.push(
     new Paragraph({
       spacing: { after: 40 },
-      children: [
-        new TextRun({
+      children: bilingualPair(
+        {
           text: 'Conditions / Equipment status prior to SOP Execution:',
           size: 18,
           color: COLOR_BLACK,
           font: FONT_BODY,
-        }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({
+        },
+        {
           text: 'Kondisi / Status peralatan sebelum Pelaksanaan SOP:',
           italics: true,
           size: 18,
           color: COLOR_GREY_ID,
           font: FONT_BODY,
-        }),
-      ],
+        }
+      ),
     })
   );
 
@@ -1308,13 +1392,16 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           margins: { top: 40, bottom: 40, left: 60, right: 60 },
           children: [
             new Paragraph({
-              children: [
-                new TextRun({ text: `${stepNo}. `, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: cleanActionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: `${stepNo}. `, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-                new TextRun({ text: cleanActionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
-              ],
+              children: bilingualPair(
+                [
+                  { text: `${stepNo}. `, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                  { text: cleanActionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                ],
+                [
+                  { text: `${stepNo}. `, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY },
+                  { text: cleanActionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY },
+                ]
+              ),
             }),
           ],
         }),
@@ -1325,9 +1412,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: cleanOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: cleanOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                ...bilingualPair(
+                  { text: cleanOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                  { text: cleanOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                ),
               ],
             }),
           ],
@@ -1366,9 +1454,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
     new Paragraph({
       spacing: { after: 20 },
       children: [
-        new TextRun({ text: 'Action', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Tindakan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        ...bilingualPair(
+          { text: 'Action', size: 20, font: FONT_BODY },
+          { text: 'Tindakan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+        ),
       ],
     })
   );
@@ -1424,9 +1513,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Author', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Penulis', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Author', size: 20, font: FONT_BODY },
+                    { text: 'Penulis', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1437,9 +1527,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.author || ''}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.author || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.author || ''}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.author || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1450,9 +1541,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Date of Creation', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Tanggal Pembuatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Date of Creation', size: 20, font: FONT_BODY },
+                    { text: 'Tanggal Pembuatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1463,9 +1555,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.dateOfCreation || ''}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.dateOfCreation || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1481,9 +1574,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Date Revision', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Tanggal Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Date Revision', size: 20, font: FONT_BODY },
+                    { text: 'Tanggal Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1494,9 +1588,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.dateRevision || 'N/A'}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.dateRevision || 'T/A'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.dateRevision || 'N/A'}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.dateRevision || 'T/A'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1507,9 +1602,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Revision Number', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Nomor Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Revision Number', size: 20, font: FONT_BODY },
+                    { text: 'Nomor Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1520,9 +1616,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.revisionNumber || '-'}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.revisionNumber || '-'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.revisionNumber || '-'}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.revisionNumber || '-'}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -1561,9 +1658,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
         children: [
           new Paragraph({
             children: [
-              new TextRun({ text: col.en, bold: true, underline: {}, size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: col.id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: col.en, bold: true, underline: {}, size: 20, font: FONT_BODY },
+                { text: col.id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -1583,9 +1681,10 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: app.roleEn || '', size: 19, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: app.roleId || '', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ...bilingualPair(
+                  { text: app.roleEn || '', size: 19, font: FONT_BODY },
+                  { text: app.roleId || '', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                ),
               ],
             }),
           ],
@@ -1665,7 +1764,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // BUILD DOCUMENT (A4 Portrait, exact margins)
   // --------------------------------------------------------------------------
-  const doc = new Document({
+  return new Document({
     styles: {
       default: {
         document: {
@@ -1702,7 +1801,7 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
         },
         headers: {
           default: createDocumentHeader(
-            'STANDARD OPERATING PROCEDURE  ',
+            indonesianOnly ? 'PROSEDUR OPERASI STANDAR' : 'STANDARD OPERATING PROCEDURE  ',
             'NeutraDC – Cikarang',
             dmeBytes,
             ndcBytes,
@@ -1716,10 +1815,6 @@ export async function exportSOPToDocx(data: SOPDocumentData): Promise<void> {
       },
     ],
   });
-
-  const blob = await Packer.toBlob(doc);
-  const cleanTitle = (data.documentTitle || 'DME_SOP').replace(/[^a-zA-Z0-9_-]/g, '_');
-  saveAs(blob, `${cleanTitle}.docx`);
 }
 
 // ============================================================================
@@ -1731,6 +1826,13 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     loadImageAsUint8Array(logoNDCOriginal),
   ]);
 
+  const doc = withExportLanguage(data.exportLanguage, () => buildEOPDocument(data, dmeBytes, ndcBytes));
+  const blob = await Packer.toBlob(doc);
+  const cleanTitle = (data.documentTitle || 'DME_EOP').replace(/[^a-zA-Z0-9_-]/g, '_');
+  saveAs(blob, `${cleanTitle}.docx`);
+}
+
+function buildEOPDocument(data: EOPDocumentData, dmeBytes: Uint8Array, ndcBytes: Uint8Array): Document {
   const children: (Paragraph | Table)[] = [];
 
   // --------------------------------------------------------------------------
@@ -1786,9 +1888,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Document Name', size: 20, font: FONT_BODY, bold: true }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Nama Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Document Name', size: 20, font: FONT_BODY, bold: true },
+                { text: 'Nama Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -1801,9 +1904,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: 'Document Number', size: 20, font: FONT_BODY, bold: true }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: 'Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: 'Document Number', size: 20, font: FONT_BODY, bold: true },
+                { text: 'Nomor Dokumen', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -1853,9 +1957,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     new Paragraph({
       spacing: { after: 20 },
       children: [
-        new TextRun({ text: 'Requirements', size: 20, font: FONT_BODY }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        ...bilingualPair(
+          { text: 'Requirements', size: 20, font: FONT_BODY },
+          { text: 'Persyaratan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+        ),
       ],
     })
   );
@@ -1893,9 +1998,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
                 children: [
                   new Paragraph({
                     children: [
-                      new TextRun({ text: en, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                      new TextRun({ text: '', break: 1 }),
-                      new TextRun({ text: id, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                      ...bilingualPair(
+                        { text: en, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                        { text: id, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                      ),
                     ],
                   }),
                 ],
@@ -1916,22 +2022,21 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   children.push(
     new Paragraph({
       spacing: { after: 40 },
-      children: [
-        new TextRun({
+      children: bilingualPair(
+        {
           text: 'Expected Conditions / Equipment Status:',
           size: 18,
           color: COLOR_BLACK,
           font: FONT_BODY,
-        }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({
+        },
+        {
           text: 'Kondisi yang Diharapkan / Status Peralatan:',
           italics: true,
           size: 18,
           color: COLOR_GREY_ID,
           font: FONT_BODY,
-        }),
-      ],
+        }
+      ),
     })
   );
 
@@ -2005,9 +2110,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: cleanActionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: cleanActionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                ...bilingualPair(
+                  { text: cleanActionEn, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                  { text: cleanActionId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                ),
               ],
             }),
           ],
@@ -2019,9 +2125,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: cleanOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: cleanOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }),
+                ...bilingualPair(
+                  { text: cleanOutcomeEn, size: 18, color: COLOR_BLACK, font: FONT_BODY },
+                  { text: cleanOutcomeId, italics: true, size: 18, color: COLOR_GREY_ID, font: FONT_BODY }
+                ),
               ],
             }),
           ],
@@ -2079,9 +2186,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Author', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Penulis', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Author', size: 20, font: FONT_BODY },
+                    { text: 'Penulis', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2092,9 +2200,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.author || ''}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.author || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.author || ''}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.author || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2105,9 +2214,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Date of Creation', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Tanggal Pembuatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Date of Creation', size: 20, font: FONT_BODY },
+                    { text: 'Tanggal Pembuatan', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2118,9 +2228,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.dateOfCreation || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.dateOfCreation || ''}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.dateOfCreation || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2136,9 +2247,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Next Date Revision', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Tanggal Revisi Berikutnya', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Next Date Revision', size: 20, font: FONT_BODY },
+                    { text: 'Tanggal Revisi Berikutnya', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2149,9 +2261,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.nextDateRevision || 'N/A'}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.nextDateRevision === 'N/A' || !data.nextDateRevision ? 'T/A' : data.nextDateRevision}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.nextDateRevision || 'N/A'}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.nextDateRevision === 'N/A' || !data.nextDateRevision ? 'T/A' : data.nextDateRevision}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2162,9 +2275,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: 'Revision Number', size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: 'Nomor Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: 'Revision Number', size: 20, font: FONT_BODY },
+                    { text: 'Nomor Revisi', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2175,9 +2289,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
               children: [new Paragraph({
                 spacing: { after: 0, line: 240 },
                 children: [
-                  new TextRun({ text: `: ${data.revisionNumber || ''}`, size: 20, font: FONT_BODY }),
-                  new TextRun({ text: '', break: 1 }),
-                  new TextRun({ text: `: ${data.revisionNumber || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                  ...bilingualPair(
+                    { text: `: ${data.revisionNumber || ''}`, size: 20, font: FONT_BODY },
+                    { text: `: ${data.revisionNumber || ''}`, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                  ),
                 ],
               })],
             }),
@@ -2198,9 +2313,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
     new Paragraph({
       spacing: { after: 40 },
       children: [
-        new TextRun({ text: 'Completed by:', size: 20, font: FONT_BODY, bold: true, underline: {} }),
-        new TextRun({ text: '', break: 1 }),
-        new TextRun({ text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+        ...bilingualPair(
+          { text: 'Completed by:', size: 20, font: FONT_BODY, bold: true, underline: {} },
+          { text: 'Diselesaikan oleh:', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+        ),
       ],
     })
   );
@@ -2227,9 +2343,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           new Paragraph({
             spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: en, size: 20, font: FONT_BODY, bold: true }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: en, size: 20, font: FONT_BODY, bold: true },
+                { text: id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -2303,9 +2420,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
         children: [
           new Paragraph({
             children: [
-              new TextRun({ text: col.en, bold: true, underline: {}, size: 20, font: FONT_BODY }),
-              new TextRun({ text: '', break: 1 }),
-              new TextRun({ text: col.id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+              ...bilingualPair(
+                { text: col.en, bold: true, underline: {}, size: 20, font: FONT_BODY },
+                { text: col.id, italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+              ),
             ],
           }),
         ],
@@ -2326,9 +2444,10 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: app.roleEn || '', size: 19, font: FONT_BODY }),
-                new TextRun({ text: '', break: 1 }),
-                new TextRun({ text: app.roleId || '', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }),
+                ...bilingualPair(
+                  { text: app.roleEn || '', size: 19, font: FONT_BODY },
+                  { text: app.roleId || '', italics: true, color: COLOR_GREY_ID, size: 18, font: FONT_BODY }
+                ),
               ],
             }),
           ],
@@ -2411,7 +2530,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
   // --------------------------------------------------------------------------
   // BUILD DOCUMENT (A4 Portrait, EOP exact margins)
   // --------------------------------------------------------------------------
-  const doc = new Document({
+  return new Document({
     styles: {
       default: {
         document: {
@@ -2448,7 +2567,7 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
         },
         headers: {
           default: createDocumentHeader(
-            'EMERGENCY OPERATING PROCEDURE',
+            indonesianOnly ? 'PROSEDUR OPERASI DARURAT' : 'EMERGENCY OPERATING PROCEDURE',
             'NeutraDC – Cikarang',
             dmeBytes,
             ndcBytes,
@@ -2462,8 +2581,4 @@ export async function exportEOPToDocx(data: EOPDocumentData): Promise<void> {
       },
     ],
   });
-
-  const blob = await Packer.toBlob(doc);
-  const cleanTitle = (data.documentTitle || 'DME_EOP').replace(/[^a-zA-Z0-9_-]/g, '_');
-  saveAs(blob, `${cleanTitle}.docx`);
 }

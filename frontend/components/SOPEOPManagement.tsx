@@ -54,6 +54,7 @@ import {
   SOPWorkStepItem,
   EOPWorkStepItem,
   DocumentSigner,
+  SopEopExportLanguage,
   DEFAULT_SOP_DATA,
   DEFAULT_EOP_DATA,
   DEFAULT_SOP_EQUIPMENT_COLUMNS,
@@ -65,6 +66,54 @@ import { convertSOPToBilingualWithAI, convertEOPToBilingualWithAI, BilingualInco
 import { importSopEopFromDocx } from '@/utils/sopEopDocxImport';
 
 type SubTab = 'sop' | 'eop' | 'archive';
+
+// Fields the AI translation may fill; timestamps and signatures are never rewritten with them.
+const TRANSLATED_FIELDS = [
+  'documentPurposeEn',
+  'documentPurposeId',
+  'conditionsPriorToExecutionEn',
+  'conditionsPriorToExecutionId',
+  'expectedConditionsEn',
+  'expectedConditionsId',
+  'affectedSystemsDetailsId',
+  'backOutProcedureId',
+  'additionalInformationId',
+  'ehsRequirements',
+  'prerequisites',
+  'workSteps',
+] as const;
+
+function pickTranslatedFields<T extends SOPDocumentData | EOPDocumentData>(data: T): Partial<T> {
+  const source = data as unknown as Record<string, unknown>;
+  return Object.fromEntries(
+    TRANSLATED_FIELDS.filter((key) => source[key] !== undefined).map((key) => [key, source[key]])
+  ) as Partial<T>;
+}
+
+function ExportLanguageToggle({ value, onChange }: { value?: SopEopExportLanguage; onChange: (language: SopEopExportLanguage) => void }) {
+  const current: SopEopExportLanguage = value === 'id' ? 'id' : 'bilingual';
+  const options: Array<[SopEopExportLanguage, string]> = [['bilingual', 'EN + ID'], ['id', 'Indonesia']];
+  return (
+    <div className="inline-flex items-center gap-2">
+      <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Bahasa Word</span>
+      <div className="inline-flex items-center rounded-xl bg-slate-100 p-0.5" role="group" aria-label="Bahasa dokumen Word">
+        {options.map(([language, label]) => (
+          <button
+            key={language}
+            type="button"
+            aria-pressed={current === language}
+            onClick={() => onChange(language)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+              current === language ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function SOPEOPManagement() {
   const { user, isQcDme } = useAuth();
@@ -252,12 +301,57 @@ export function SOPEOPManagement() {
     setResetModal({ isOpen: true, target: 'sop' });
   };
 
+  // An Indonesian-only Word file prints the Indonesian fields, so any still missing are
+  // translated first by the same AI as the "Bilingual (EN + ID)" button.
+  const translateMissingIndonesian = async <T extends SOPDocumentData | EOPDocumentData>(data: T): Promise<Partial<T>> => {
+    try {
+      const filled = data.type === 'SOP'
+        ? await convertSOPToBilingualWithAI(data as SOPDocumentData)
+        : await convertEOPToBilingualWithAI(data as EOPDocumentData);
+      return pickTranslatedFields(filled as T);
+    } catch (err: any) {
+      if (err instanceof BilingualIncompleteError && err.partialData) {
+        toast.warning(`${err.failedCount} teks belum bisa diterjemahkan AI dan masih berbahasa Inggris di Word. Coba unduh ulang beberapa saat lagi.`, { duration: 9000 });
+        return pickTranslatedFields(err.partialData as T);
+      }
+      toast.warning(`Terjemahan AI gagal (${err?.message || err}). Word tetap dibuat, teks yang belum punya versi Indonesia masih berbahasa Inggris.`, { duration: 9000 });
+      return {};
+    }
+  };
+
+  // Browsers block a download that starts long after the click (here: after the AI translation),
+  // so a slow one is handed to a toast button, whose click counts as a fresh user action.
+  const saveAfterTranslation = async (startedAt: number, save: () => Promise<void>, label: string): Promise<boolean> => {
+    if (Date.now() - startedAt < 4000) {
+      await save();
+      return true;
+    }
+    toast.success(`Terjemahan ${label} selesai. Klik Unduh untuk menyimpan file Word.`, {
+      duration: 60000,
+      action: {
+        label: 'Unduh',
+        onClick: () => {
+          save().catch((err: any) => toast.error(`Gagal mengunduh: ${err?.message || err}`));
+        },
+      },
+    });
+    return false;
+  };
+
   const handleExportSop = async () => {
     try {
       setIsExportingSop(true);
       toast.info('Menyiapkan berkas Word (.docx) SOP...');
-      await exportSOPToDocx(sopData);
-      toast.success('Dokumen SOP (.docx) berhasil diekspor!');
+      const startedAt = Date.now();
+      let exportData = sopData;
+      if (sopData.exportLanguage === 'id') {
+        const translated = await translateMissingIndonesian(sopData);
+        exportData = { ...sopData, ...translated };
+        setSopData((prev) => ({ ...prev, ...translated }));
+      }
+      if (await saveAfterTranslation(startedAt, () => exportSOPToDocx(exportData), 'SOP')) {
+        toast.success('Dokumen SOP (.docx) berhasil diekspor!');
+      }
     } catch (err: any) {
       console.error('Gagal mengekspor SOP:', err);
       toast.error(`Gagal mengekspor Word SOP: ${err?.message || err}`);
@@ -514,8 +608,16 @@ export function SOPEOPManagement() {
     try {
       setIsExportingEop(true);
       toast.info('Menyiapkan berkas Word (.docx) EOP...');
-      await exportEOPToDocx(eopData);
-      toast.success('Dokumen EOP (.docx) berhasil diekspor!');
+      const startedAt = Date.now();
+      let exportData = eopData;
+      if (eopData.exportLanguage === 'id') {
+        const translated = await translateMissingIndonesian(eopData);
+        exportData = { ...eopData, ...translated };
+        setEopData((prev) => ({ ...prev, ...translated }));
+      }
+      if (await saveAfterTranslation(startedAt, () => exportEOPToDocx(exportData), 'EOP')) {
+        toast.success('Dokumen EOP (.docx) berhasil diekspor!');
+      }
     } catch (err: any) {
       console.error('Gagal mengekspor EOP:', err);
       toast.error(`Gagal mengekspor Word EOP: ${err?.message || err}`);
@@ -674,14 +776,52 @@ export function SOPEOPManagement() {
   const handleDownloadArchiveDoc = async (item: any) => {
     try {
       toast.info(`Menyiapkan download ${item.type}: ${item.documentTitle}...`);
-      if (item.type === 'SOP') {
-        await exportSOPToDocx(item);
-      } else {
-        await exportEOPToDocx(item);
+      const startedAt = Date.now();
+      let exportData = item;
+      if (item.exportLanguage === 'id') {
+        const translated = await translateMissingIndonesian(item);
+        if (Object.keys(translated).length > 0 && JSON.stringify(translated) !== JSON.stringify(pickTranslatedFields(item))) {
+          exportData = { ...item, ...translated };
+          setArchiveList((prev) => prev.map((d) => (d.id === item.id ? { ...d, ...translated } : d)));
+          // Keep the translation so the next download needs no AI call. Not awaited: while
+          // Firestore is over quota the write only resolves later, and the download must not wait.
+          void updateDoc(doc(db, 'sop_eop_documents', item.id), translated).catch((err) =>
+            console.warn('Terjemahan Indonesia tidak tersimpan ke arsip:', err)
+          );
+        }
       }
-      toast.success(`Berhasil mengunduh dokumen ${item.type} (.docx)`);
+      const save = () => (exportData.type === 'SOP' ? exportSOPToDocx(exportData) : exportEOPToDocx(exportData));
+      if (await saveAfterTranslation(startedAt, save, item.type)) {
+        toast.success(`Berhasil mengunduh dokumen ${item.type} (.docx)`);
+      }
     } catch (err: any) {
       toast.error(`Gagal mengunduh: ${err?.message || err}`);
+    }
+  };
+
+  const handleArchiveExportLanguage = async (
+    item: (SOPDocumentData | EOPDocumentData) & { id: string },
+    language: SopEopExportLanguage
+  ) => {
+    const previous = item.exportLanguage;
+    if ((previous || 'bilingual') === language) return;
+    const setLanguage = (value: SopEopExportLanguage | undefined) => {
+      setArchiveList((prev) => prev.map((d) => (d.id === item.id ? { ...d, exportLanguage: value } : d)));
+      // A form holding this document must not save the old choice back over it.
+      if (currentSopDocId === item.id) setSopData((prev) => ({ ...prev, exportLanguage: value }));
+      if (currentEopDocId === item.id) setEopData((prev) => ({ ...prev, exportLanguage: value }));
+    };
+    // Applied right away: the next download uses it even while the write is still pending.
+    setLanguage(language);
+    try {
+      await updateDoc(doc(db, 'sop_eop_documents', item.id), { exportLanguage: language });
+      const title = item.documentTitle || item.type;
+      toast.success(language === 'id'
+        ? `Word "${title}" akan diunduh full Bahasa Indonesia`
+        : `Word "${title}" kembali diunduh bilingual (EN + ID)`);
+    } catch (err: any) {
+      setLanguage(previous);
+      toast.error(`Gagal mengubah bahasa Word: ${err?.message || err}`);
     }
   };
 
@@ -2010,7 +2150,11 @@ export function SOPEOPManagement() {
               <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
               <span>Pastikan seluruh data SOP telah terisi lengkap sebelum menyimpan ke Cloud atau mengekspor.</span>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end shrink-0">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end shrink-0">
+              <ExportLanguageToggle
+                value={sopData.exportLanguage}
+                onChange={(language) => setSopData((prev) => ({ ...prev, exportLanguage: language }))}
+              />
               <button
                 type="button"
                 onClick={handleSaveSop}
@@ -2730,7 +2874,11 @@ export function SOPEOPManagement() {
               <CheckCircle2 className="w-4 h-4 text-fuchsia-500 shrink-0" />
               <span>Pastikan seluruh data EOP telah terisi lengkap sebelum menyimpan ke Cloud atau mengekspor.</span>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end shrink-0">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end shrink-0">
+              <ExportLanguageToggle
+                value={eopData.exportLanguage}
+                onChange={(language) => setEopData((prev) => ({ ...prev, exportLanguage: language }))}
+              />
               <button
                 type="button"
                 onClick={handleSaveEop}
@@ -2970,6 +3118,11 @@ export function SOPEOPManagement() {
                       <span>Diunggah: <strong className="text-slate-700">{formatArchiveDate(item.createdAt || item.updatedAt)}</strong></span>
                       <span>Diperbarui: <strong className="text-slate-700">{formatArchiveDate(item.updatedAt || item.createdAt)}</strong></span>
                     </div>
+
+                    <ExportLanguageToggle
+                      value={item.exportLanguage}
+                      onChange={(language) => handleArchiveExportLanguage(item, language)}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">

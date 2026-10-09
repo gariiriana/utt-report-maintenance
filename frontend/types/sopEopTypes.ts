@@ -105,6 +105,9 @@ export interface EOPWorkStepItem {
   name: string;
 }
 
+/** Language of the exported Word file: English + Indonesian lines, or Indonesian only. */
+export type SopEopExportLanguage = 'bilingual' | 'id';
+
 export interface DocumentSigner {
   roleEn: string;
   roleId: string;
@@ -199,6 +202,9 @@ export interface SOPDocumentData {
   additionalInformationEn?: string;
   additionalInformationId?: string;
 
+  /** Absent means 'bilingual'. */
+  exportLanguage?: SopEopExportLanguage;
+
   createdAt?: Date | any;
   updatedAt?: Date | any;
 }
@@ -260,6 +266,9 @@ export interface EOPDocumentData {
   additionalInformation: string;
   additionalInformationEn?: string;
   additionalInformationId?: string;
+
+  /** Absent means 'bilingual'. */
+  exportLanguage?: SopEopExportLanguage;
 
   createdAt?: Date | any;
   updatedAt?: Date | any;
