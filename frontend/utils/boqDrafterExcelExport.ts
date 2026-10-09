@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import type { Bytes } from 'firebase/firestore';
 import { customBOQItemOf, getBOQPhotoBlob, readAllBOQOverrides, readAllBOQPhotoRefs, readBOQItemPhotoRefs, type BOQPhotoRef } from '@/api/boq';
 import type { BOQEditableField, BOQItem, BOQOverride } from '@/types/boq';
 import { BOQ_EDITABLE_FIELDS, NO_ROOM, cellValue, roomKeyOf, roomLabelsOf, tableOf, tableOrder } from './boqCatalog';
@@ -71,6 +72,16 @@ async function toThumbnail(blob: Blob): Promise<Thumb> {
   return { base64: canvas.toDataURL('image/jpeg', THUMB_QUALITY).split(',')[1], width, height };
 }
 
+// The JPEG preview stored with the photo is what the page shows. It is already loaded with the
+// photo list, so it needs no chunk reads: those cost quota and come from the local cache only
+// (often incomplete) when the Firestore connection drops.
+async function storedThumbnail(thumb: Bytes): Promise<Thumb> {
+  const bitmap = await createImageBitmap(new Blob([thumb.toUint8Array() as BlobPart], { type: 'image/jpeg' }));
+  const { width, height } = bitmap;
+  bitmap.close();
+  return { base64: thumb.toBase64(), width, height };
+}
+
 export async function exportDrafterBOQExcel(items: BOQItem[], onProgress: (message: string) => void): Promise<BOQExportResult> {
   const warnings: string[] = [];
   onProgress('Membaca perubahan BOQ…');
@@ -107,11 +118,16 @@ export async function exportDrafterBOQExcel(items: BOQItem[], onProgress: (messa
 
   const allPhotos = [...rooms.values()].flat().flatMap(entry => entry.photos);
   const thumbs = new Map<string, Thumb | null>();
+  const failures = new Map<string, string>();
   let done = 0;
   await runPool(allPhotos, 4, async ref => {
     const key = ref.itemId + '/' + ref.photo.id;
-    try { thumbs.set(key, await toThumbnail(await getBOQPhotoBlob(ref.photo))); }
-    catch { thumbs.set(key, null); }
+    try {
+      thumbs.set(key, ref.photo.thumb ? await storedThumbnail(ref.photo.thumb) : await toThumbnail(await getBOQPhotoBlob(ref.photo)));
+    } catch (error) {
+      thumbs.set(key, null);
+      failures.set(key, error instanceof Error ? error.message : String(error));
+    }
     onProgress(`Menyiapkan foto ${++done}/${allPhotos.length}…`);
   });
 
@@ -167,8 +183,9 @@ export async function exportDrafterBOQExcel(items: BOQItem[], onProgress: (messa
       if (photos.length) row.height = PHOTO_ROW_PT;
       photos.forEach((ref, photoIndex) => {
         const cell = row.getCell(TEXT_COLUMNS + photoIndex + 1);
-        const thumb = thumbs.get(ref.itemId + '/' + ref.photo.id);
-        if (!thumb) { cell.value = 'Foto gagal dimuat'; return; }
+        const key = ref.itemId + '/' + ref.photo.id;
+        const thumb = thumbs.get(key);
+        if (!thumb) { cell.value = 'Foto gagal dimuat' + (failures.has(key) ? ': ' + failures.get(key) : ''); return; }
         const fit = Math.min(PHOTO_BOX.width / thumb.width, PHOTO_BOX.height / thumb.height);
         const width = Math.round(thumb.width * fit);
         const height = Math.round(thumb.height * fit);
