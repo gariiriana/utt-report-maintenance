@@ -70,13 +70,22 @@ function readParagraph(p: Element): { text: string; textRuns: Element[]; leading
   return { text: normalize(text), textRuns, leadingTabs, trailingTabs };
 }
 
+// Baris isian formulir yang dibiarkan tanpa baris ID: label "Label : isi" (Section 3 & 11),
+// baik satu baris bertab ("Author : X [tab] Date of Creation : Y") maupun per sel tabel.
+const FORM_FIELD_LINE = /^(author|date of creation|date revision|revision date|revision number|mop execution date|reference ticket number)\s*:/i;
+// Judul kolom tabel isian: "Job Title [tab] Name [tab] Signature [tab] Date" (Section 12)
+// dan "Executed by (Name) [tab] Job title" (Section 3), sebaris atau per sel.
+const FORM_HEADER_LINE = /^(?:(?:job title|name|signature|date|executed by \(name\))\s*)+$/i;
+
 /**
  * Paragraf yang perlu diterjemahkan: memuat minimal satu kata biasa. Teks yang seluruhnya
- * kode/angka/singkatan pendek ("NOZ-PP-2NPT-360", "24", "HSE") dilewati. Judul seperti
+ * kode/angka/singkatan pendek ("NOZ-PP-2NPT-360", "24", "HSE") dan baris isian formulir
+ * (Author, Date of Creation, Job Title/Name/Signature/Date, dst.) dilewati. Judul seperti
  * "Section 1 – Document Overview" atau "METHOD OF PROCEDURE" tetap diterjemahkan; nama
  * orang/merek dan singkatan panjang (LOTO) diputuskan AI (dikembalikan kosong).
  */
 export function needsTranslation(text: string): boolean {
+  if (FORM_FIELD_LINE.test(text) || FORM_HEADER_LINE.test(text)) return false;
   const isCode = (token: string) => /\d/.test(token) || /^[A-Z]{2,3}$/.test(token);
   return text
     .split(/[\s/,()\-–:;.&"'°]+/)
