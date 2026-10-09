@@ -52,6 +52,19 @@ func TestMOPTranslate_ForbiddenForOtherAccounts(t *testing.T) {
 	}
 }
 
+func TestMOPTranslate_AllowsJohanSMDME(t *testing.T) {
+	svc := &mockMOPTranslateService{result: []services.MOPTranslation{{Index: 0, Text: "Bagian 1"}}}
+	rec := httptest.NewRecorder()
+	NewMOPController(svc).Translate(rec, mopRequest(t, "JohanSMDME@Dwimitra.id", validMOPBody()))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if svc.calls != 1 {
+		t.Fatalf("expected service to be called once, got %d", svc.calls)
+	}
+}
+
 func TestMOPTranslate_RejectsOutOfRangeIndex(t *testing.T) {
 	body := validMOPBody()
 	body.Indices = []int{0, 5}

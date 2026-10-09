@@ -42,6 +42,7 @@ import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
 import { SOPEOPManagement } from '@/components/SOPEOPManagement';
 import { HSEArchiveHub } from '@/components/HSEArchiveHub';
 import { MOPBilingual } from '@/components/MOPBilingual';
+import { canUseMOPBilingual } from '@/utils/mopBilingualAccess';
 // ManualAbnormalFinding sekarang terintegrasi di FindingManagement tab
 import { AppSidebar } from '@/components/AppSidebar';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
@@ -59,6 +60,7 @@ export function MainApp() {
   const userEmailLower = (user?.email || '').toLowerCase();
   const isTargetQcDme = userEmailLower === 'qcdme@dme.com';
   const isDwimitra = userEmailLower === 'dwimitra@co.id' || isTargetQcDme || isQcDme;
+  const canViewMOPBilingual = canUseMOPBilingual(userEmailLower, isQcDme);
   const canViewAbnormal = isQcDme || isDwimitra;
   const isAdmin = userRole === 'admin' || isQcDme;
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
@@ -153,7 +155,7 @@ export function MainApp() {
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: !isAdmin && userRole === 'DME' && !isK2Engineer },
     { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: FileText, color: 'from-blue-600 to-indigo-700', show: !isAdmin && (userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id') && !isStandby && !isK2Engineer },
     { id: 'sop_eop', label: 'SOP & EOP', icon: BookOpen, color: 'from-amber-600 to-orange-700', show: isDwimitra },
-    { id: 'mop_bilingual', label: 'Bilingual MOP', icon: Languages, color: 'from-teal-600 to-cyan-700', show: isDwimitra },
+    { id: 'mop_bilingual', label: 'Bilingual MOP', icon: Languages, color: 'from-teal-600 to-cyan-700', show: canViewMOPBilingual },
     { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || isDwimitra || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
     { id: 'berita_acara', label: 'BA Report', icon: FileSignature, color: 'from-violet-600 to-purple-700', show: isAdmin || userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id' },
   ] as const;
@@ -324,7 +326,7 @@ export function MainApp() {
             <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} initialFolder={navTargetFolder} highlightedDocId={highlightedDocId} onClearHighlight={() => setHighlightedDocId(null)} />
           )
         ) : activeTab === 'mop_bilingual' ? (
-          isDwimitra ? <MOPBilingual /> : null
+          canViewMOPBilingual ? <MOPBilingual /> : null
         ) : activeTab === 'pm_schedule' ? (
           <PMSchedule />
         ) : activeTab === 'berita_acara' ? (

@@ -608,9 +608,11 @@ service cloud.firestore {
                     && request.resource.data.ptwType in ['PM', 'CM'];
     }
 
-    // Arsip Bilingual MOP (EN + ID) — khusus akun Dwimitra & QC DME. File DOCX disimpan sebagai potongan bytes.
+    // Arsip Bilingual MOP (EN + ID) — khusus akun Dwimitra, Johan (SM DME) & QC DME. File DOCX disimpan sebagai potongan bytes.
+    // Daftar akun harus sama dengan frontend/utils/mopBilingualAccess.ts & mop_controller.go.
     function canManageMOPBilingual() {
-      return request.auth != null && (getEmail().lower() == 'dwimitra@co.id' || isQcDmeSafe());
+      return request.auth != null
+             && (getEmail().lower() in ['dwimitra@co.id', 'johansmdme@dwimitra.id'] || isQcDmeSafe());
     }
 
     match /mop_bilingual/{docId} {

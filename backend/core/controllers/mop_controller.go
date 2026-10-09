@@ -2,8 +2,8 @@
 // FILE: backend/core/controllers/mop_controller.go
 // Deskripsi: Controller Bilingual MOP.
 //            - POST /api/mop/translate : terjemahkan sebagian segmen dokumen MOP
-//              (EN -> ID) dengan layanan AI gratis. Khusus akun dwimitra@co.id
-//              & QC DME.
+//              (EN -> ID) dengan layanan AI gratis. Khusus akun dwimitra@co.id,
+//              johansmdme@dwimitra.id & QC DME.
 // ============================================================================
 
 package controllers
@@ -46,9 +46,10 @@ func NewMOPController(service services.IMOPTranslateService) *MOPController {
 	return &MOPController{service: service}
 }
 
+// Harus sama dengan frontend/utils/mopBilingualAccess.ts dan canManageMOPBilingual di firestore.rules.
 func canUseMOPBilingual(email, role string) bool {
 	email = strings.ToLower(strings.TrimSpace(email))
-	return email == "dwimitra@co.id" || email == "qcdme@dme.com" || role == "qc_dme"
+	return email == "dwimitra@co.id" || email == "qcdme@dme.com" || email == "johansmdme@dwimitra.id" || role == "qc_dme"
 }
 
 func validateMOPTranslateRequest(req MOPTranslateRequest) string {

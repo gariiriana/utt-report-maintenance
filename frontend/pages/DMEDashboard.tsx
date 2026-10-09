@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LogOut, ShieldCheck, UserCircle, FileText, BarChart3,
-  FolderOpen, Sparkles, BookOpen
+  FolderOpen, Sparkles, BookOpen, Languages
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { MOPWorkflow } from '@/components/MOPWorkflow';
@@ -19,6 +19,8 @@ import { ReportForm } from '@/components/ReportForm';
 import { MonthlyReportGenerator } from '@/components/MonthlyReportGenerator';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
 import { SOPEOPManagement } from '@/components/SOPEOPManagement';
+import { MOPBilingual } from '@/components/MOPBilingual';
+import { canUseMOPBilingual } from '@/utils/mopBilingualAccess';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { Footer } from '@/components/Footer';
@@ -32,11 +34,12 @@ import type { MOPWorkflowDoc } from '@/types/mopTypes';
 
 // ─── TAB DEFINITIONS ──────────────────────────────────────────────────────────
 
-type DMETab = 'workflow' | 'monitoring' | 'monthly_report' | 'corrective_archive' | 'documents' | 'sop_eop';
+type DMETab = 'workflow' | 'monitoring' | 'monthly_report' | 'corrective_archive' | 'documents' | 'sop_eop' | 'mop_bilingual';
 
 const TAB_ITEMS: { id: DMETab; label: string; icon: typeof FileText; color: string }[] = [
   { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: Sparkles, color: 'from-blue-600 to-indigo-600' },
   { id: 'sop_eop', label: 'SOP & EOP', icon: BookOpen, color: 'from-amber-600 to-orange-700' },
+  { id: 'mop_bilingual', label: 'Bilingual MOP', icon: Languages, color: 'from-teal-600 to-cyan-700' },
   { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700' },
   { id: 'workflow', label: 'MOP Workflow', icon: FileText, color: 'from-blue-500 to-sky-500' },
   { id: 'monitoring', label: 'Monitoring', icon: BarChart3, color: 'from-emerald-500 to-teal-500' },
@@ -49,7 +52,10 @@ export function DMEDashboard() {
   const { user, isQcDme, logout } = useAuth();
   const userEmailLower = (user?.email || '').toLowerCase();
   const isDwimitra = userEmailLower === 'dwimitra@co.id' || userEmailLower === 'qcdme@dme.com' || isQcDme;
-  const visibleTabs = TAB_ITEMS.filter(tab => tab.id !== 'sop_eop' || isDwimitra);
+  const canViewMOPBilingual = canUseMOPBilingual(userEmailLower, isQcDme);
+  const visibleTabs = TAB_ITEMS.filter(tab =>
+    (tab.id !== 'sop_eop' || isDwimitra) && (tab.id !== 'mop_bilingual' || canViewMOPBilingual)
+  );
   const [activeTab, setActiveTab] = useState<DMETab>('workflow');
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
   const [highlightedDocId, setHighlightedDocId] = useState<string | null>(null);
@@ -180,6 +186,18 @@ export function DMEDashboard() {
                 transition={{ duration: 0.2 }}
               >
                 <SOPEOPManagement />
+              </motion.div>
+            )}
+
+            {activeTab === 'mop_bilingual' && canViewMOPBilingual && (
+              <motion.div
+                key="mop_bilingual"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <MOPBilingual />
               </motion.div>
             )}
 
