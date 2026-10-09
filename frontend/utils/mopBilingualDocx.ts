@@ -96,6 +96,34 @@ export function needsTranslation(text: string): boolean {
     .some(token => /[A-Za-z]{2,}/.test(token) && !isCode(token));
 }
 
+// Tabel daftar aset MOP PM (Section 2 – Equipment Information, ada kolom "CI Name*"): isinya
+// nama/deskripsi/tipe/serial aset yang tidak diterjemahkan. Baris judul kolom tetap diterjemahkan.
+const ASSET_TABLE_HEADER = /^CI Name\*?$/i;
+
+const nearestAncestor = (node: Node, name: string): Element | null => {
+  for (let el = node.parentNode; el; el = el.parentNode) {
+    if (isW(el, name)) return el as Element;
+  }
+  return null;
+};
+
+/** Paragraf di baris isi tabel aset; tidak dikirim ke AI dan tidak diberi baris ID. */
+function assetTableParagraphs(doc: Document): Set<Element> {
+  const skip = new Set<Element>();
+  for (const tbl of Array.from(doc.getElementsByTagNameNS(W_NS, 'tbl'))) {
+    const rows = Array.from(tbl.getElementsByTagNameNS(W_NS, 'tr')).filter(tr => nearestAncestor(tr, 'tbl') === tbl);
+    if (rows.length < 2) continue;
+    const headerCells = Array.from(rows[0].getElementsByTagNameNS(W_NS, 'tc')).filter(tc => nearestAncestor(tc, 'tr') === rows[0]);
+    const cellText = (tc: Element) =>
+      normalize(Array.from(tc.getElementsByTagNameNS(W_NS, 'p')).map(p => readParagraph(p).text).join(' '));
+    if (!headerCells.some(tc => ASSET_TABLE_HEADER.test(cellText(tc)))) continue;
+    for (const row of rows.slice(1)) {
+      for (const p of Array.from(row.getElementsByTagNameNS(W_NS, 'p'))) skip.add(p);
+    }
+  }
+  return skip;
+}
+
 async function loadDocument(buffer: ArrayBuffer) {
   let zip: JSZip;
   try {
@@ -112,7 +140,8 @@ async function loadDocument(buffer: ArrayBuffer) {
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new Error('Isi dokumen Word tidak dapat dibaca.');
   }
-  const paragraphs = Array.from(doc.getElementsByTagNameNS(W_NS, 'p'));
+  const skipped = assetTableParagraphs(doc);
+  const paragraphs = Array.from(doc.getElementsByTagNameNS(W_NS, 'p')).filter(p => !skipped.has(p));
   return { zip, entryName, doc, xml, paragraphs };
 }
 
