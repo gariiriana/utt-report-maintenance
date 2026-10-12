@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
-import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { updateDocQueued, toastWriteSuccess, addDocQueued } from '@/utils/offlineWrite';
+import { collection, serverTimestamp, getDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { PIRReportData, INITIAL_PIR_REPORT_DATA, PIRCorrectiveAction, PIRPhoto } from '@/types/pirReportTypes';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
@@ -458,13 +459,13 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       let savedDocId = editId;
 
       if (editId) {
-        await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
-        toast.success('Laporan PIR berhasil diperbarui!', { id: 'save-pir' });
+        await updateDocQueued(doc(db, 'corrective_reports', editId), docPayload);
+        toastWriteSuccess('Laporan PIR berhasil diperbarui!', { id: 'save-pir' });
       } else {
-        const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
+        const newDocRef = await addDocQueued(collection(db, 'corrective_reports'), docPayload);
         savedDocId = newDocRef.id;
         clearDraft();
-        toast.success('Laporan PIR berhasil disimpan!');
+        toastWriteSuccess('Laporan PIR berhasil disimpan!', { id: 'save-pir' });
 
         await sendFileNotification({
           title: `Laporan PIR Baru: ${formData.incidentName || 'Post Incident Report'}`,
@@ -503,13 +504,13 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       let exportedDocId = editId;
 
       if (editId) {
-        await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
-        toast.success('Laporan PIR diekspor PDF & diperbarui!');
+        await updateDocQueued(doc(db, 'corrective_reports', editId), docPayload);
+        toastWriteSuccess('Laporan PIR diekspor PDF & diperbarui!');
       } else {
-        const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
+        const newDocRef = await addDocQueued(collection(db, 'corrective_reports'), docPayload);
         exportedDocId = newDocRef.id;
         clearDraft();
-        toast.success('Laporan PIR diekspor PDF & disimpan!');
+        toastWriteSuccess('Laporan PIR diekspor PDF & disimpan!');
         await sendFileNotification({
           title: `Laporan PIR Baru: ${formData.incidentName || 'Post Incident Report'}`,
           fileName: formData.incidentName || 'Laporan PIR',
@@ -538,9 +539,9 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         const docPayload = await prepareDocPayload();
 
         if (editId) {
-          await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
+          await updateDocQueued(doc(db, 'corrective_reports', editId), docPayload);
         } else {
-          const newDocRef = await addDoc(collection(db, 'corrective_reports'), docPayload);
+          const newDocRef = await addDocQueued(collection(db, 'corrective_reports'), docPayload);
           await sendFileNotification({
             title: `Laporan PIR Baru: ${formData.incidentName || 'Post Incident Report'}`,
             fileName: formData.incidentName || 'Laporan PIR',
@@ -554,7 +555,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       }
 
       clearDraft();
-      toast.success('Laporan PIR Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
+      toastWriteSuccess('Laporan PIR Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
     } catch (err: any) {
       console.error('Error exporting PIR DOCX:', err);
       toast.error('Gagal mengekspor Laporan PIR Word');

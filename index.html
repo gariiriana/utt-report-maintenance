@@ -3,7 +3,20 @@
   <head>
     <meta charset="UTF-8" />
       <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+      <!-- iOS memperbesar layar saat input bertulisan < 16px disentuh, dan di aplikasi terpasang zoom itu
+           tidak kembali sendiri. maximum-scale hanya mencegah zoom otomatis itu; cubit-zoom tetap bisa di iOS. -->
+      <script>
+        (function () {
+          try {
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (isIOS) {
+              var vp = document.querySelector('meta[name="viewport"]');
+              if (vp) vp.setAttribute('content', vp.getAttribute('content') + ', maximum-scale=1');
+            }
+          } catch (e) {}
+        })();
+      </script>
       <meta name="referrer" content="strict-origin-when-cross-origin" />
       <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
       <!-- Auto-redirect from default Firebase domains to official custom domain -->
@@ -61,7 +74,9 @@
       <meta name="application-name" content="Dwimitra System" />
       <meta name="mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
-      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      <!-- 'default': konten mulai di bawah status bar iPhone. 'black-translucent' membuat header & tombol tutup
+           popup tertimpa jam/notch karena konten digambar di bawah status bar. -->
+      <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       <meta name="apple-mobile-web-app-title" content="Dwimitra System" />
 
       <!-- Structured Data (JSON-LD) for Google Rich Search Results -->

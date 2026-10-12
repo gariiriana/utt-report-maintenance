@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db, auth } from '@/api/firebase';
-import { doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { updateDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
+import { doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
 import {
   ATSReportData, ATSCustomerInfo, ATSTimeSpent,
@@ -539,13 +540,13 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         const collectionName = effectiveDocType === 'excel' ? 'excel_documents' : (effectiveDocType === 'hse' ? 'hse' : 'pdf_documents');
 
         const docRef = doc(db, collectionName, archiveId);
-        await updateDoc(docRef, {
+        await updateDocQueued(docRef, {
           atsCustomerInfo: customerInfo,
           atsReportData: dataToExport,
           atsTimeSpent: timeSpent,
           updatedAt: serverTimestamp()
         });
-        toast.success('PDF berhasil diekspor & divalidasi ke arsip!', { id: toastId });
+        toastWriteSuccess('PDF berhasil diekspor & divalidasi ke arsip!', { id: toastId });
       } else {
         toast.success('PDF berhasil diekspor!', { id: toastId });
       }
@@ -597,14 +598,14 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       const collectionName = effectiveDocType === 'excel' ? 'excel_documents' : (effectiveDocType === 'hse' ? 'hse' : 'pdf_documents');
 
       const docRef = doc(db, collectionName, archiveId);
-      await updateDoc(docRef, {
+      await updateDocQueued(docRef, {
         atsCustomerInfo: customerInfo,
         atsReportData: reportData,
         atsTimeSpent: timeSpent,
         updatedAt: serverTimestamp()
       });
 
-      toast.success('Service Report berhasil disimpan ke arsip!', { id: toastId });
+      toastWriteSuccess('Service Report berhasil disimpan ke arsip!', { id: toastId });
     } catch (error: any) {
       console.error('Save to archive error:', error);
       toast.error(`Gagal menyimpan: ${error.message}`, { id: toastId });

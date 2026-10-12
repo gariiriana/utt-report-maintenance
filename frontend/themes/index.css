@@ -303,6 +303,34 @@ body.modal-scroll-locked {
   touch-action: none;
 }
 
+/* ============================================================================
+   LAYAR HP & APLIKASI TERPASANG (PWA)
+   ============================================================================ */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* viewport-fit=cover: di HP berponi posisi landscape, konten tidak masuk ke bawah poni. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Aplikasi terpasang: halaman tidak ikut memantul/tertarik saat scroll sudah mentok. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Tombol bulat Asisten AI disembunyikan selama popup/drawer lain terbuka,
+   supaya tidak menutupi tombol Simpan/Batal/Keluar di popup tersebut. */
+html.modal-scroll-locked [data-chat-widget="true"]:not(:has([role="dialog"])) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* Cegah overscroll chaining dari modal ke background window */
 [role="dialog"],
 [role="alertdialog"],

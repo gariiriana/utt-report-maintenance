@@ -39,7 +39,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
-import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { updateDocQueued, addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
+import { collection, serverTimestamp, getDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
@@ -928,9 +929,9 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
 
       let slaDocId = editId;
       if (editId) {
-        await updateDoc(doc(db, 'corrective_reports', editId), finalReport);
+        await updateDocQueued(doc(db, 'corrective_reports', editId), finalReport);
       } else {
-        const newDocRef = await addDoc(collection(db, 'corrective_reports'), finalReport);
+        const newDocRef = await addDocQueued(collection(db, 'corrective_reports'), finalReport);
         slaDocId = newDocRef.id;
 
         await sendFileNotification({
@@ -946,7 +947,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       // Two-way link update: catat slaReportId ke dokumen CM terkait di Firestore
       if (finalReport.cmReportId && slaDocId) {
         try {
-          await updateDoc(doc(db, 'corrective_reports', finalReport.cmReportId), {
+          await updateDocQueued(doc(db, 'corrective_reports', finalReport.cmReportId), {
             slaReportId: slaDocId,
             hasSLA: true,
           });
@@ -958,7 +959,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
       // Two-way link untuk SLA/SLG yang diwajibkan dari Post Incident Report.
       if (finalReport.pirReportId && slaDocId) {
         try {
-          await updateDoc(doc(db, 'corrective_reports', finalReport.pirReportId), {
+          await updateDocQueued(doc(db, 'corrective_reports', finalReport.pirReportId), {
             slaReportId: slaDocId,
             hasSLA: true,
           });
@@ -978,13 +979,13 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
             photosRestore: photosRest,
             photosResolution: photosReso
           });
-          toast.success('Laporan SLA Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!', { id: 'save-sla-report' });
+          toastWriteSuccess('Laporan SLA Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!', { id: 'save-sla-report' });
         } catch (docxErr: any) {
           console.error('Error during docx export after save:', docxErr);
-          toast.success('Laporan SLA berhasil disimpan ke database (unduhan Word gagal: ' + (docxErr.message || docxErr) + ')', { id: 'save-sla-report' });
+          toastWriteSuccess('Laporan SLA berhasil disimpan ke database (unduhan Word gagal: ' + (docxErr.message || docxErr) + ')', { id: 'save-sla-report' });
         }
       } else {
-        toast.success(editId ? 'Perubahan Laporan SLA/SLG berhasil disimpan!' : 'Laporan SLA/SLG Corrective Maintenance berhasil disimpan!', { id: 'save-sla-report' });
+        toastWriteSuccess(editId ? 'Perubahan Laporan SLA/SLG berhasil disimpan!' : 'Laporan SLA/SLG Corrective Maintenance berhasil disimpan!', { id: 'save-sla-report' });
       }
 
       onSuccess(slaDocId || editId);

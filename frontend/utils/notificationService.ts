@@ -6,8 +6,9 @@
 // Koleksi Firestore: 'notifications'
 // ============================================================================
 
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
+import { addDocQueued } from '@/utils/offlineWrite';
 
 // Interface yang mendefinisikan data notifikasi yang dikirim
 export interface NotificationPayload {
@@ -22,10 +23,11 @@ export interface NotificationPayload {
 
 // Fungsi utama untuk mengirim notifikasi ke Firestore
 // Dipanggil setelah file berhasil diupload
-// Data disimpan ke koleksi 'notifications' dengan timestamp server
+// Data disimpan ke koleksi 'notifications' dengan timestamp server.
+// Tanpa sinyal, notifikasi ikut antre di HP (tidak menahan tombol Simpan pemanggil).
 export async function sendFileNotification(payload: NotificationPayload) {
   try {
-    await addDoc(collection(db, 'notifications'), {
+    await addDocQueued(collection(db, 'notifications'), {
       title: payload.title,
       fileName: payload.fileName,
       category: payload.category,

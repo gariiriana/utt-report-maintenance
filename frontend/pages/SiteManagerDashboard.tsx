@@ -4,6 +4,7 @@
 //            Menyajikan visualisasi statistik grafik (Donut Chart capai pemeliharaan),
 //            pemantauan real-time progress PM (Preventive Maintenance),
 //            input data aktivitas harian, serta kontrol ekspor ringkasan laporan.
+//            Navigasi lewat sidebar kiri (AppSidebar) yang sama dengan role lain.
 // ============================================================================
 
 import { useState, useEffect } from 'react';
@@ -19,34 +20,50 @@ import {
   Trash2,
   Download,
   LogOut,
-  LogIn,
+  Menu,
   ShieldCheck,
-  UserCircle,
-  FolderOpen
+  FolderOpen,
+  CalendarDays
 } from 'lucide-react';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import { useAuth } from '@/components/AuthContext';
+import { AppSidebar, MenuSection, NavItemDef } from '@/components/AppSidebar';
 import { DocumentList } from '@/components/DocumentList';
+import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
+import { Footer } from '@/components/Footer';
 import {
   collection,
   query,
   where,
   onSnapshot,
-  addDoc,
-  updateDoc,
-  deleteDoc,
   doc,
   writeBatch,
-  serverTimestamp,
-  getDocs
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
+import { addDocQueued, toastWriteSuccess, deleteDocQueued, commitBatchQueued, updateDocQueued } from '@/utils/offlineWrite';
 import { toast } from 'sonner';
 import {
   calculateMaintenanceSummary,
   type MaintenanceProgress,
   type MaintenanceSummary
 } from '@/utils/MaintenanceLogic';
+
+type SiteManagerTab = 'summary' | 'input' | 'documents';
+
+const SITE_MANAGER_NAV_ITEMS: readonly NavItemDef[] = [
+  { id: 'summary', label: 'Ringkasan Progres', icon: LayoutDashboard, color: 'from-blue-600 to-indigo-600', show: true },
+  { id: 'input', label: 'Input Data Progres', icon: Database, color: 'from-indigo-600 to-violet-600', show: true },
+  { id: 'documents', label: 'Management File', icon: FolderOpen, color: 'from-amber-500 to-orange-600', show: true },
+];
+
+const SITE_MANAGER_MENU_SECTIONS: readonly MenuSection[] = [
+  { title: 'Progres Pemeliharaan', itemIds: ['summary', 'input'] },
+  { title: 'Dokumentasi & Laporan', itemIds: ['documents'] },
+];
+
+// Input terang yang dipakai di modal tambah perangkat
+const MODAL_INPUT_CLASS = 'w-full bg-white border border-slate-200 rounded-xl p-3 md:p-3.5 text-slate-900 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all';
 
 /**
  * Komponen grafik lingkaran (Donut Chart) statistik capaian pemeliharaan.
@@ -70,7 +87,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="flex flex-col items-center justify-center p-3 md:p-6 rounded-[2.5rem] bg-white/90 border border-sky-100/90 shadow-md backdrop-blur-xl hover:border-blue-300 transition-all duration-500 group relative overflow-hidden text-slate-800"
+      className="flex flex-col items-center justify-center p-3 md:p-6 rounded-3xl md:rounded-[2.5rem] bg-white/90 border border-sky-100/90 shadow-md backdrop-blur-xl hover:border-blue-300 transition-all duration-500 group relative overflow-hidden text-slate-800"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
 
@@ -123,7 +140,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
       </div>
 
       <div className="flex flex-col items-center gap-1">
-        <p className="text-[8px] md:text-[11px] font-black text-slate-600 uppercase tracking-[0.3em] group-hover:text-slate-900 transition-colors duration-300">
+        <p className="text-[9px] md:text-[11px] font-black text-slate-600 uppercase tracking-[0.2em] md:tracking-[0.3em] group-hover:text-slate-900 transition-colors duration-300">
           {label}
         </p>
         <div className="h-0.5 w-4 rounded-full bg-slate-300 group-hover:w-8 group-hover:bg-blue-600 transition-all duration-500" />
@@ -132,9 +149,9 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
   );
 }
 
-export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
+export function SiteManagerDashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'summary' | 'input' | 'documents'>('summary');
+  const [activeTab, setActiveTab] = useState<SiteManagerTab>('summary');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [summary, setSummary] = useState<MaintenanceSummary | null>(null);
@@ -142,7 +159,9 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedQuarter, setSelectedQuarter] = useState('Q1');
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newProgress, setNewProgress] = useState({
     category: '',
@@ -153,6 +172,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
     actual_qty: 0,
     remark: ''
   });
+  const currentNavItem = SITE_MANAGER_NAV_ITEMS.find(item => item.id === activeTab);
 
   useEffect(() => {
     setLoading(true);
@@ -187,13 +207,9 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
     return () => unsubscribe();
   }, [selectedYear, selectedQuarter]);
 
-  useEffect(() => {
-    if (user && activities.length > 0 && !localStorage.getItem('excel_sync_v5_done')) {
-      handleExcelSync(true).then(() => {
-        localStorage.setItem('excel_sync_v5_done', 'true');
-      });
-    }
-  }, [user, activities.length]);
+  // Catatan: dulu ada sinkronisasi otomatis "data Excel 31 Mar 2026" yang menghapus & menulis ulang
+  // seluruh data Q1 setiap kali dasbor dibuka di HP/browser baru (penandanya hanya di localStorage).
+  // Itu dihapus karena memasang aplikasi (PWA) di HP baru akan mereset data progres yang sudah diisi.
 
   const handleAddItem = async () => {
     if (!newProgress.category || !newProgress.equipment_name) {
@@ -203,14 +219,14 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'maintenance_progress'), {
+      await addDocQueued(collection(db, 'maintenance_progress'), {
         ...newProgress,
         year: selectedYear,
         quarter: selectedQuarter,
         yesterday_qty: 0,
         createdAt: serverTimestamp()
       });
-      toast.success('Perangkat baru berhasil ditambahkan!');
+      toastWriteSuccess('Perangkat baru berhasil ditambahkan!');
       setShowAddModal(false);
       setNewProgress({
         category: '',
@@ -234,109 +250,8 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
 
     setLoading(true);
     try {
-      await deleteDoc(doc(db, 'maintenance_progress', id));
-      toast.success('Perangkat berhasil dihapus');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExcelSync = async (isAuto = false) => {
-    const isQ1 = selectedQuarter === 'Q1';
-    const confirmMsg = isQ1 
-      ? 'Ingin melakukan reset penuh database dengan data Excel 31 Mar 2026? Semua data lama untuk periode ini akan dihapus dan dibuat ulang.'
-      : `Ingin inisialisasi data ${selectedQuarter} menggunakan list perangkat Q1 dengan progress 0%? Semua data lama ${selectedQuarter} akan dihapus.`;
-
-    if (!isAuto && !window.confirm(confirmMsg)) return;
-
-    setLoading(true);
-    try {
-      const officialData = [
-        { cat: "A. ELECTRICAL SYSTEM", name: "TRANSFORMATOR",                   plan: 8,    yes: 8,      today: 8    },
-        { cat: "A. ELECTRICAL SYSTEM", name: "AUTOMATIC TRANSFER SWITCH (ATS)", plan: 15,   yes: 15,     today: 15   },
-        { cat: "A. ELECTRICAL SYSTEM", name: "MV & RMU PANEL",                  plan: 20,   yes: 0,      today: 0    },
-        { cat: "A. ELECTRICAL SYSTEM", name: "LV PANEL",                        plan: 7,    yes: 7,      today: 7    },
-        { cat: "A. ELECTRICAL SYSTEM", name: "PDU PANEL",                       plan: 52,   yes: 52,     today: 52   },
-        { cat: "A. ELECTRICAL SYSTEM", name: "LDB & RDB PANEL",                 plan: 161,  yes: 130,    today: 130  },
-        { cat: "A. ELECTRICAL SYSTEM", name: "GROUNDING",                       plan: 175,  yes: 154,    today: 154  },
-        { cat: "A. ELECTRICAL SYSTEM", name: "LIGHTNING PROTECTION",            plan: 119,  yes: 111,    today: 111  },
-        { cat: "A. ELECTRICAL SYSTEM", name: "UNINTERRUPTIBLE POWER SUPPLY (UPS)",plan: 19, yes: 19,     today: 19   },
-        { cat: "A. ELECTRICAL SYSTEM", name: "GENERATOR SET (GENSET)",          plan: 6,    yes: 6,      today: 6    },
-        { cat: "A. ELECTRICAL SYSTEM", name: "LOAD & CAP BANK",                 plan: 4,    yes: 0,      today: 0    },
-        { cat: "A. ELECTRICAL SYSTEM", name: "BUSDUCT",                         plan: 40,   yes: 22,     today: 39   },
-        { cat: "A. ELECTRICAL SYSTEM", name: "EXHAUST FAN",                     plan: 14,   yes: 0,      today: 0    },
-
-        { cat: "B. COOLING SYSTEM", name: "COOLING TOWER",                      plan: 3,    yes: 3,      today: 3    },
-        { cat: "B. COOLING SYSTEM", name: "COOLING PUMP",                       plan: 12,   yes: 0,      today: 0    },
-        { cat: "B. COOLING SYSTEM", name: "PHYSICAL COOLING AUTOMATION & TEST TAN", plan: 133, yes: 0,   today: 0    },
-        { cat: "B. COOLING SYSTEM", name: "CHILLER",                            plan: 3,    yes: 0,      today: 0    },
-        { cat: "B. COOLING SYSTEM", name: "CRAC",                               plan: 40,   yes: 0,      today: 0    },
-        { cat: "B. COOLING SYSTEM", name: "FCU",                                plan: 25,   yes: 25,     today: 25   },
-        { cat: "B. COOLING SYSTEM", name: "VRV",                                plan: 126,  yes: 112,    today: 114  },
-        { cat: "B. COOLING SYSTEM", name: "PAHU",                               plan: 12,   yes: 12,     today: 12   },
-        { cat: "B. COOLING SYSTEM", name: "SPLITWALL",                          plan: 11,   yes: 8,      today: 8    },
-        { cat: "B. COOLING SYSTEM", name: "Presuraziation & Degassing",         plan: 6,    yes: 0,      today: 0    },
-
-        { cat: "C. FIRE SYSTEM", name: "FSS",                                   plan: 942,  yes: 834,    today: 861  },
-        { cat: "C. FIRE SYSTEM", name: "Hydrant System",                        plan: 167,  yes: 129,    today: 129  },
-        { cat: "C. FIRE SYSTEM", name: "PREACTION",                             plan: 7,    yes: 7,      today: 7    },
-
-        { cat: "D. FUEL SYSTEM", name: "Fuel Pump",                             plan: 13,   yes: 13,     today: 13   },
-        { cat: "D. FUEL SYSTEM", name: "FUEL TANK",                             plan: 14,   yes: 14,     today: 14   },
-
-        { cat: "E. LIFTING SYSTEM", name: "Lift Units",                         plan: 21,   yes: 4.67,   today: 14   },
-        { cat: "E. LIFTING SYSTEM", name: "DOCK LEVELLER",                      plan: 3,    yes: 3,      today: 3    },
-
-        { cat: "F. LEAK DETECTION", name: "Water Leak",                         plan: 75,   yes: 75,     today: 75   },
-        { cat: "F. LEAK DETECTION", name: "FUEL LEAK DETECTION",                plan: 40,   yes: 40,     today: 40   },
-
-        { cat: "G. PLUMBING SYSTEM", name: "STP",                               plan: 4,    yes: 4,      today: 4    },
-        { cat: "G. PLUMBING SYSTEM", name: "WATER TREATMENT",                   plan: 3,    yes: 1,      today: 1    },
-        { cat: "G. PLUMBING SYSTEM", name: "PUMP",                              plan: 33,   yes: 0,      today: 0    },
-
-        { cat: "H. GATE & DOOR", name: "Gate",                                  plan: 7,    yes: 0,      today: 4    },
-        { cat: "H. GATE & DOOR", name: "DOOR",                                  plan: 14,   yes: 0,      today: 0    },
-        { cat: "H. GATE & DOOR", name: "X-RAY",                                 plan: 6,    yes: 0,      today: 6    },
-
-        { cat: "I. LIGHTING SYSTEM", name: "PJU & ALL LIGHTING",                plan: 2750, yes: 2750,   today: 2715 },
-      ];
-
-      const existingQuery = query(
-        collection(db, 'maintenance_progress'),
-        where('year', '==', selectedYear),
-        where('quarter', '==', selectedQuarter)
-      );
-      const existingSnap = await getDocs(existingQuery);
-
-      const deleteBatch = writeBatch(db);
-      existingSnap.docs.forEach(d => deleteBatch.delete(d.ref));
-      await deleteBatch.commit();
-
-      const insertBatch = writeBatch(db);
-      officialData.forEach(item => {
-        const newRef = doc(collection(db, 'maintenance_progress'));
-        insertBatch.set(newRef, {
-          category:       item.cat,
-          equipment_name: item.name,
-          plan_qty:       item.plan,
-          yesterday_qty:  isQ1 ? item.yes : 0,
-          actual_qty:     isQ1 ? item.today : 0,
-          year:           selectedYear,
-          quarter:        selectedQuarter,
-          remark:         '',
-          createdAt:      serverTimestamp()
-        });
-      });
-      await insertBatch.commit();
-
-      if (isQ1) {
-        toast.success('✅ Database Q1 direset & disinkronkan sempurna! Progress: 89.80%');
-      } else {
-        toast.success(`✅ Database ${selectedQuarter} berhasil diinisialisasi dengan progress 0%!`);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal sinkronisasi data');
+      await deleteDocQueued(doc(db, 'maintenance_progress', id));
+      toastWriteSuccess('Perangkat berhasil dihapus');
     } finally {
       setLoading(false);
     }
@@ -354,8 +269,8 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
         const docRef = doc(db, 'maintenance_progress', activity.id);
         batch.update(docRef, { yesterday_qty: activity.actual_qty });
       });
-      await batch.commit();
-      toast.success('Daily progress berhasil dibekukan!');
+      await commitBatchQueued(batch);
+      toastWriteSuccess('Daily progress berhasil dibekukan!');
     } catch (err) {
       console.error(err);
       toast.error('Gagal membekukan data');
@@ -368,11 +283,11 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
     setSaving(id);
     try {
       const docRef = doc(db, 'maintenance_progress', id);
-      await updateDoc(docRef, {
+      await updateDocQueued(docRef, {
         actual_qty: actualQty,
         remark: remark || ''
       });
-      toast.success('Progress berhasil diupdate');
+      toastWriteSuccess('Progress berhasil diupdate');
     } catch (error) {
       console.error(error);
       toast.error('Gagal mengupdate progress');
@@ -386,94 +301,111 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
     a.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
-          <p className="text-slate-400 animate-pulse">Memuat dashboard Manajer Situs...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen text-slate-800 font-sans">
-      {/* Top Navbar */}
-      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-sm text-slate-800">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6">
-          <div className="flex flex-col py-3 md:py-4 gap-3 md:gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 md:gap-3 min-w-0 max-w-[65%] md:max-w-none">
-                {user ? (
-                  <>
-                    <div className="hidden sm:block p-3 bg-blue-50 border border-blue-100 rounded-2xl">
-                       <LayoutDashboard className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <div>
-                       <h1 className="text-sm md:text-3xl font-black text-slate-900 tracking-tight leading-none mb-1 uppercase">
-                          Dashboard Progres
-                       </h1>
-                       <div className="flex items-center gap-2 text-blue-600 text-[8px] sm:text-xs font-bold uppercase tracking-wider">
-                          <ShieldCheck className="w-3.5 h-3.5" /> Monitoring Real-time
-                       </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                    <img
-                      src={logoDwimitra}
-                      alt="PT Dwimitra Ekatama Mandiri"
-                      className="w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-16 flex-shrink-0 object-contain"
-                    />
-                    <div className="min-w-0">
-                      <h1 className="text-[9px] sm:text-sm md:text-lg font-black text-slate-900 tracking-tight leading-none mb-0.5 uppercase whitespace-nowrap overflow-hidden text-ellipsis">
-                        PT Dwimitra Ekatama Mandiri
-                      </h1>
-                      <div className="flex items-center gap-2 text-blue-600 text-[7px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">
-                        Laporan Progres Pemeliharaan
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+    <div className="flex flex-col w-full min-h-screen text-slate-800 font-sans">
+      {/* Sidebar Kiri (Desktop) & Drawer (Mobile), sama dengan role lain */}
+      <AppSidebar
+        user={user}
+        activeTab={activeTab}
+        setActiveTab={(tab: SiteManagerTab) => setActiveTab(tab)}
+        navItems={SITE_MANAGER_NAV_ITEMS}
+        sections={SITE_MANAGER_MENU_SECTIONS}
+        pendingDeleteCount={0}
+        totalAbnormalCount={0}
+        isCollapsed={sidebarCollapsed}
+        setIsCollapsed={setSidebarCollapsed}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        onLogoutClick={() => setLogoutModalOpen(true)}
+      />
 
-              {!user ? (
-                <button
-                  onClick={onLogin}
-                  className="px-3 py-1.5 md:px-8 md:py-3 rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 font-black text-[9px] md:text-sm tracking-wide flex-shrink-0 ml-1 cursor-pointer"
-                >
-                  <LogIn className="w-3.5 h-3.5 md:w-5 md:h-5" />
-                  <span>Login</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowLogoutModal(true)}
-                  className="p-2 md:px-4 md:py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 transition-all flex items-center justify-center gap-2 group flex-shrink-0 font-bold cursor-pointer"
-                >
-                  <UserCircle className="w-5 h-5 md:w-6 md:h-6" />
-                  <span className="hidden sm:inline">Keluar</span>
-                </button>
-              )}
+      <div
+        className={`flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? 'md:pl-20' : 'md:pl-80'
+        }`}
+      >
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-xs px-4 sm:px-6 py-3 shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Mobile: Logo + Nama Perusahaan */}
+            <div className="md:hidden flex items-center gap-2 min-w-0">
+              <img src={logoDwimitra} alt="PT Dwimitra Ekatama Mandiri" className="w-7 h-7 object-contain shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-[11.5px] font-bold text-slate-900 leading-tight whitespace-nowrap overflow-hidden text-ellipsis tracking-tight">
+                  PT Dwimitra Ekatama Mandiri
+                </h2>
+                <p className="text-[9.5px] text-blue-700 font-bold leading-tight whitespace-nowrap overflow-hidden text-ellipsis mt-0.5 uppercase tracking-wide">
+                  Site Manager · Monitoring Progres
+                </p>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 md:gap-4">
-              <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+            {/* Desktop: Judul Halaman + Badge Role */}
+            <div className="hidden md:flex items-center gap-2.5 min-w-0">
+              <h1 className="text-base font-bold text-slate-900 truncate">{currentNavItem?.label || 'Dashboard Progres'}</h1>
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 rounded-full border border-blue-200 shrink-0">
+                <ShieldCheck className="w-3 h-3 text-blue-600" />
+                <span className="text-[10px] font-bold text-blue-700 uppercase">Site Manager</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden md:block text-right">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
+              <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
+            </div>
+
+            {/* Logout desktop (di mobile ada di dalam drawer sidebar) */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setLogoutModalOpen(true)}
+              className="hidden md:flex p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
+              title="Keluar Sesi"
+            >
+              <LogOut className="w-5 h-5" />
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 md:hidden bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 rounded-xl border border-slate-200 shadow-sm cursor-pointer"
+              title="Buka Menu"
+              aria-label="Buka Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </motion.button>
+          </div>
+        </header>
+
+        <main className="relative z-10 flex-1 w-full min-w-0 max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+          {/* Pilihan Periode (Tahun & Kuartal) untuk Ringkasan & Input Data */}
+          {activeTab !== 'documents' && (
+            <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight uppercase">Dashboard Progres</h2>
+                <p className="flex items-center gap-1.5 text-blue-600 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Monitoring Real-time
+                </p>
+              </div>
+              <div className="flex items-center gap-2 bg-white p-1 pl-3 rounded-xl border border-slate-200 shadow-sm">
+                <CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   title="Pilih Tahun"
-                  className="bg-transparent text-slate-700 text-[10px] sm:text-xs font-bold px-2 py-1 outline-none cursor-pointer uppercase"
+                  className="bg-transparent text-slate-700 text-xs font-bold px-2 py-1.5 outline-none cursor-pointer uppercase"
                 >
                   <option value={2026} className="bg-white">2026</option>
                   <option value={2025} className="bg-white">2025</option>
                 </select>
-                <div className="w-px h-3 bg-slate-200" />
+                <div className="w-px h-4 bg-slate-200" />
                 <select
                   value={selectedQuarter}
                   onChange={(e) => setSelectedQuarter(e.target.value)}
                   title="Pilih Kuartal"
-                  className="bg-transparent text-slate-700 text-[10px] sm:text-xs font-bold px-2 py-1 outline-none cursor-pointer uppercase"
+                  className="bg-transparent text-slate-700 text-xs font-bold px-2 py-1.5 outline-none cursor-pointer uppercase"
                 >
                   <option value="Q1" className="bg-white">Q1</option>
                   <option value="Q2" className="bg-white">Q2</option>
@@ -481,233 +413,218 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                   <option value="Q4" className="bg-white">Q4</option>
                 </select>
               </div>
-
-              {user && (
-                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm ml-auto flex-wrap">
-                  <button
-                    onClick={() => setActiveTab('summary')}
-                    className={`px-3 py-1.5 rounded-lg transition-all text-[10px] sm:text-xs font-bold uppercase ${
-                      activeTab === 'summary' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    Ringkasan
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('input')}
-                    className={`px-3 py-1.5 rounded-lg transition-all text-[10px] sm:text-xs font-bold uppercase ${
-                      activeTab === 'input' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    Input Data
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('documents')}
-                    className={`px-3 py-1.5 rounded-lg transition-all text-[10px] sm:text-xs font-bold uppercase flex items-center gap-1.5 ${
-                      activeTab === 'documents' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    <FolderOpen className="w-3.5 h-3.5" />
-                    <span>Management File</span>
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
-        </div>
-      </div>
+          )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 relative z-10">
-        <AnimatePresence mode="wait">
-          {activeTab === 'documents' ? (
-            <motion.div
-              key="documents"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="w-full"
-            >
-              <DocumentList />
-            </motion.div>
-          ) : activeTab === 'summary' ? (
-            <motion.div
-              key="summary"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
-            >
-              {summary && (
-                <>
-                  <div className="grid grid-cols-3 gap-3 md:gap-12 max-w-5xl mx-auto py-6">
-                    <StatDonut
-                      label="Kemarin"
-                      percent={summary.total_yesterday_percent}
-                      sublabel={`${summary.total_yesterday_qty.toFixed(0)} UNIT`}
-                      color="#94a3b8"
-                      glowColor="#cbd5e1"
-                      delay={0.1}
-                    />
-                    <StatDonut
-                      label="Total"
-                      percent={summary.total_today_percent}
-                      color="#6366f1"
-                      glowColor="#818cf8"
-                      delay={0.2}
-                    />
-                    <StatDonut
-                      label="Harian"
-                      percent={summary.daily_progress}
-                      color="#10b981"
-                      glowColor="#34d399"
-                      delay={0.3}
-                    />
-                  </div>
-
-                  <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl overflow-hidden shadow-lg">
-                    <div className="p-4 md:p-6 border-b border-slate-200 flex items-center justify-between">
-                      <h3 className="text-xs md:text-lg font-black uppercase tracking-widest text-slate-500">Ringkasan Progres</h3>
-                      {user && (
-                        <button
-                          onClick={() => import('@/utils/ResumePdfExport').then(m => m.generateResumePdf(summary, `RESUME MAINTENANCE ${selectedQuarter} ${selectedYear}`, `Reporting & Monitoring System - PT Dwimitra Ekatama Mandiri`))}
-                          className="p-2 md:px-4 md:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider shadow-md"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span className="hidden sm:inline">Laporan PDF</span>
-                        </button>
-                      )}
+          <AnimatePresence mode="wait">
+            {activeTab === 'documents' ? (
+              <motion.div
+                key="documents"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="w-full"
+              >
+                <DocumentList />
+              </motion.div>
+            ) : loading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="py-24 flex flex-col items-center gap-4"
+              >
+                <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
+                <p className="text-sm text-slate-500 animate-pulse">Memuat data progres pemeliharaan...</p>
+              </motion.div>
+            ) : activeTab === 'summary' ? (
+              <motion.div
+                key="summary"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                {summary && (
+                  <>
+                    <div className="grid grid-cols-3 gap-2.5 sm:gap-4 md:gap-12 max-w-5xl mx-auto md:py-6">
+                      <StatDonut
+                        label="Kemarin"
+                        percent={summary.total_yesterday_percent}
+                        sublabel={`${summary.total_yesterday_qty.toFixed(0)} UNIT`}
+                        color="#94a3b8"
+                        glowColor="#cbd5e1"
+                        delay={0.1}
+                      />
+                      <StatDonut
+                        label="Total"
+                        percent={summary.total_today_percent}
+                        color="#6366f1"
+                        glowColor="#818cf8"
+                        delay={0.2}
+                      />
+                      <StatDonut
+                        label="Harian"
+                        percent={summary.daily_progress}
+                        color="#10b981"
+                        glowColor="#34d399"
+                        delay={0.3}
+                      />
                     </div>
 
-                    <div className="overflow-x-auto scrollbar-thin">
-                      <table className="w-full text-center border-collapse min-w-[700px]">
-                        <thead>
-                          <tr className="bg-slate-50 text-[8px] md:text-[11px] font-black tracking-[0.2em] text-slate-500 uppercase">
-                            <th rowSpan={3} className="sticky left-0 z-30 bg-slate-100 p-3 md:px-4 border border-slate-200 w-10 md:w-16 shadow-[2px_0_10px_rgba(0,0,0,0.05)]">NO</th>
-                            <th rowSpan={3} className="sticky left-10 md:left-16 z-30 bg-slate-100 p-3 md:px-6 border border-slate-200 min-w-[140px] md:min-w-[280px] text-center shadow-[4px_0_15px_rgba(0,0,0,0.05)]">KATEGORI</th>
-                            <th colSpan={2} className="p-3 border border-slate-200 bg-indigo-50 text-indigo-600">RENCANA</th>
-                            <th colSpan={4} className="p-3 border border-slate-200 bg-emerald-50 text-emerald-600">PROGRES</th>
-                          </tr>
-                          <tr className="bg-white text-[7px] md:text-[9px]">
-                            <th rowSpan={2} className="p-1 md:p-3 border border-slate-200 bg-indigo-50/50">QTY</th>
-                            <th rowSpan={2} className="p-1 md:p-3 border border-slate-200 bg-indigo-50/50">WEIGHT %</th>
-                            <th colSpan={2} className="p-1 md:p-3 border border-slate-200 bg-emerald-50/50">KEMARIN</th>
-                            <th colSpan={2} className="p-1 md:p-3 border border-slate-200 bg-purple-50 text-purple-600">HARI INI</th>
-                          </tr>
-                          <tr className="text-[6px] md:text-[8px] text-slate-500">
-                            <th className="p-1 md:p-2 border border-slate-200">QTY</th>
-                            <th className="p-1 md:p-2 border border-slate-200">%</th>
-                            <th className="p-1 md:p-2 border border-slate-200">QTY</th>
-                            <th className="p-1 md:p-2 border border-slate-200">%</th>
+                    <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl overflow-hidden shadow-lg">
+                      <div className="p-4 md:p-6 border-b border-slate-200 flex items-center justify-between gap-3">
+                        <h3 className="text-xs md:text-lg font-black uppercase tracking-widest text-slate-500">Ringkasan Progres</h3>
+                        <button
+                          onClick={() => import('@/utils/ResumePdfExport').then(m => m.generateResumePdf(summary, `RESUME MAINTENANCE ${selectedQuarter} ${selectedYear}`, `Reporting & Monitoring System - PT Dwimitra Ekatama Mandiri`))}
+                          className="px-3 py-2 md:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all flex items-center gap-2 text-[11px] md:text-sm font-bold uppercase tracking-wider shadow-md cursor-pointer"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>PDF</span>
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto scrollbar-thin">
+                        <table className="w-full text-center border-collapse min-w-[700px]">
+                          <thead>
+                            <tr className="bg-slate-50 text-[8px] md:text-[11px] font-black tracking-[0.2em] text-slate-500 uppercase">
+                              <th rowSpan={3} className="sticky left-0 z-30 bg-slate-100 p-3 md:px-4 border border-slate-200 w-10 md:w-16 shadow-[2px_0_10px_rgba(0,0,0,0.05)]">NO</th>
+                              <th rowSpan={3} className="sticky left-10 md:left-16 z-30 bg-slate-100 p-3 md:px-6 border border-slate-200 min-w-[140px] md:min-w-[280px] text-center shadow-[4px_0_15px_rgba(0,0,0,0.05)]">KATEGORI</th>
+                              <th colSpan={2} className="p-3 border border-slate-200 bg-indigo-50 text-indigo-600">RENCANA</th>
+                              <th colSpan={4} className="p-3 border border-slate-200 bg-emerald-50 text-emerald-600">PROGRES</th>
+                            </tr>
+                            <tr className="bg-white text-[7px] md:text-[9px]">
+                              <th rowSpan={2} className="p-1 md:p-3 border border-slate-200 bg-indigo-50/50">QTY</th>
+                              <th rowSpan={2} className="p-1 md:p-3 border border-slate-200 bg-indigo-50/50">WEIGHT %</th>
+                              <th colSpan={2} className="p-1 md:p-3 border border-slate-200 bg-emerald-50/50">KEMARIN</th>
+                              <th colSpan={2} className="p-1 md:p-3 border border-slate-200 bg-purple-50 text-purple-600">HARI INI</th>
+                            </tr>
+                            <tr className="text-[6px] md:text-[8px] text-slate-500">
+                              <th className="p-1 md:p-2 border border-slate-200">QTY</th>
+                              <th className="p-1 md:p-2 border border-slate-200">%</th>
+                              <th className="p-1 md:p-2 border border-slate-200">QTY</th>
+                              <th className="p-1 md:p-2 border border-slate-200">%</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {summary.category_summaries.map((cat, idx) => (
+                              <tr key={idx} className="hover:bg-blue-50/50 transition-all group">
+                                <td className="sticky left-0 z-20 bg-white group-hover:bg-blue-50/50 p-2 md:px-4 border border-slate-200 text-slate-500 font-bold font-mono">
+                                  1.{idx + 1}
+                                </td>
+                                <td className="sticky left-10 md:left-16 z-20 bg-white group-hover:bg-blue-50/50 p-2 md:px-6 border border-slate-200 text-center">
+                                  <span className="font-bold text-slate-900 uppercase text-[9px] md:text-sm tracking-tight">{cat.category}</span>
+                                </td>
+                                <td className="p-2 md:p-4 border border-slate-200 text-slate-600">{cat.plan_qty.toLocaleString()}</td>
+                                <td className="p-2 md:p-4 border border-slate-200 text-indigo-600 font-bold">{cat.weight_percent.toFixed(2)}%</td>
+                                <td className="p-2 md:p-4 border border-slate-200 text-slate-500">{cat.yesterday_qty.toLocaleString()}</td>
+                                <td className="p-2 md:p-4 border border-slate-200 text-emerald-600 font-black">{cat.yesterday_percent.toFixed(2)}%</td>
+                                <td className="p-2 md:p-4 border border-slate-200 text-slate-500">{cat.today_qty.toLocaleString()}</td>
+                                <td className="p-2 md:p-4 border border-slate-200 text-purple-600 font-black">{cat.today_percent.toFixed(2)}%</td>
+                              </tr>
+                            ))}
+                            <tr className="bg-slate-50 font-black text-[10px] md:text-base border-t-2 border-blue-200">
+                              <td colSpan={2} className="sticky left-0 z-20 bg-slate-100 p-4 md:p-8 text-slate-900 uppercase tracking-[0.3em] text-right border border-slate-200">
+                                TOTAL
+                              </td>
+                              <td className="p-2 border border-slate-200 text-slate-600">{summary.total_plan_qty.toLocaleString()}</td>
+                              <td className="p-2 border border-slate-200 text-indigo-600">100.00%</td>
+                              <td className="p-2 border border-slate-200 text-slate-500">{summary.total_yesterday_qty.toLocaleString()}</td>
+                              <td className="p-2 border border-slate-200 text-emerald-600 tracking-tighter">{summary.total_yesterday_percent.toFixed(2)}%</td>
+                              <td className="p-2 border border-slate-200 text-slate-500">{summary.total_today_qty.toLocaleString()}</td>
+                              <td className="p-2 border border-slate-200 text-purple-600 tracking-tighter">{summary.total_today_percent.toFixed(2)}%</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="input"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4 sm:space-y-6"
+              >
+                <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Cari alat atau kategori..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-3 md:py-4 pl-12 pr-4 text-slate-900 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 md:flex gap-2 md:gap-3">
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Tambah Perangkat
+                    </button>
+                    <button
+                      onClick={handleEndDay}
+                      disabled={loading}
+                      className="px-4 py-2.5 bg-white text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      Akhiri Hari & Freeze
+                    </button>
+                  </div>
+                </div>
+
+                {filteredActivities.length === 0 ? (
+                  <div className="py-16 text-center bg-white/80 border border-dashed border-slate-300 rounded-2xl">
+                    <Database className="w-9 h-9 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-slate-600">Belum ada data perangkat untuk periode ini</p>
+                    <p className="text-xs text-slate-500 mt-1">Tekan "Tambah Perangkat" untuk mulai mengisi.</p>
+                  </div>
+                ) : (
+                  <div className="md:bg-white/90 md:backdrop-blur-xl md:border md:border-slate-200 md:rounded-2xl md:overflow-hidden md:shadow-lg">
+                    <div className="md:overflow-x-auto">
+                      <table className="block md:table w-full border-collapse">
+                        <thead className="hidden md:table-header-group bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest">
+                          <tr>
+                            <th className="px-6 py-4 text-left">Alat / Perangkat</th>
+                            <th className="px-6 py-4 text-center">Rencana Qty</th>
+                            <th className="px-6 py-4 text-center">Periode</th>
+                            <th className="px-6 py-4 text-center w-32">Aktual</th>
+                            <th className="px-6 py-4 text-center">Progres</th>
+                            <th className="px-6 py-4 text-left">Keterangan</th>
+                            <th className="px-6 py-4 text-center">Aksi</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {summary.category_summaries.map((cat, idx) => (
-                            <tr key={idx} className="hover:bg-blue-50/50 transition-all group">
-                              <td className="sticky left-0 z-20 bg-white group-hover:bg-blue-50/50 p-2 md:px-4 border border-slate-200 text-slate-500 font-bold font-mono">
-                                1.{idx + 1}
-                              </td>
-                              <td className="sticky left-10 md:left-16 z-20 bg-white group-hover:bg-blue-50/50 p-2 md:px-6 border border-slate-200 text-center">
-                                <span className="font-bold text-slate-900 uppercase text-[9px] md:text-sm tracking-tight">{cat.category}</span>
-                              </td>
-                              <td className="p-2 md:p-4 border border-slate-200 text-slate-600">{cat.plan_qty.toLocaleString()}</td>
-                              <td className="p-2 md:p-4 border border-slate-200 text-indigo-600 font-bold">{cat.weight_percent.toFixed(2)}%</td>
-                              <td className="p-2 md:p-4 border border-slate-200 text-slate-500">{cat.yesterday_qty.toLocaleString()}</td>
-                              <td className="p-2 md:p-4 border border-slate-200 text-emerald-600 font-black">{cat.yesterday_percent.toFixed(2)}%</td>
-                              <td className="p-2 md:p-4 border border-slate-200 text-slate-500">{cat.today_qty.toLocaleString()}</td>
-                              <td className="p-2 md:p-4 border border-slate-200 text-purple-600 font-black">{cat.today_percent.toFixed(2)}%</td>
-                            </tr>
+                        <tbody className="block md:table-row-group space-y-3 md:space-y-0 md:divide-y md:divide-slate-100">
+                          {filteredActivities.map((activity) => (
+                            <ActivityRow
+                              key={activity.id}
+                              activity={activity}
+                              onUpdate={handleUpdateProgress}
+                              onDelete={handleDelete}
+                              isSaving={saving === activity.id}
+                            />
                           ))}
-                          <tr className="bg-slate-50 font-black text-[10px] md:text-base border-t-2 border-blue-200">
-                            <td colSpan={2} className="sticky left-0 z-20 bg-slate-100 p-4 md:p-8 text-slate-900 uppercase tracking-[0.3em] text-right border border-slate-200">
-                              TOTAL
-                            </td>
-                            <td className="p-2 border border-slate-200 text-slate-600">{summary.total_plan_qty.toLocaleString()}</td>
-                            <td className="p-2 border border-slate-200 text-indigo-600">100.00%</td>
-                            <td className="p-2 border border-slate-200 text-slate-500">{summary.total_yesterday_qty.toLocaleString()}</td>
-                            <td className="p-2 border border-slate-200 text-emerald-600 tracking-tighter">{summary.total_yesterday_percent.toFixed(2)}%</td>
-                            <td className="p-2 border border-slate-200 text-slate-500">{summary.total_today_qty.toLocaleString()}</td>
-                            <td className="p-2 border border-slate-200 text-purple-600 tracking-tighter">{summary.total_today_percent.toFixed(2)}%</td>
-                          </tr>
                         </tbody>
                       </table>
                     </div>
                   </div>
-                </>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="input"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Cari alat atau kategori..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-slate-900 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm"
-                  />
-                </div>
-                <button
-                  onClick={handleEndDay}
-                  disabled={loading}
-                  className="px-4 py-2 bg-white text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-all flex items-center gap-2 border border-slate-200 shadow-sm"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Akhiri Hari & Freeze
-                </button>
-              </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
 
-              <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl overflow-hidden shadow-lg">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead className="bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                      <tr>
-                        <th className="px-6 py-4 text-left">Alat / Perangkat</th>
-                        <th className="px-6 py-4 text-center">Rencana Qty</th>
-                        <th className="px-6 py-4 text-center">Periode</th>
-                        <th className="px-6 py-4 text-center w-32">Aktual</th>
-                        <th className="px-6 py-4 text-center">Progres</th>
-                        <th className="px-6 py-4 text-left">Keterangan</th>
-                        <th className="px-6 py-4 text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredActivities.map((activity) => (
-                        <ActivityRow
-                          key={activity.id}
-                          activity={activity}
-                          onUpdate={handleUpdateProgress}
-                          onDelete={handleDelete}
-                          isSaving={saving === activity.id}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+        <Footer />
+      </div>
 
-      {user && (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setShowAddModal(true)}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 group border-b-4 border-indigo-800"
-        >
-          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
-        </motion.button>
-      )}
-
-      {}
+      {/* Modal Tambah Perangkat */}
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -719,22 +636,25 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Tambah Perangkat Baru"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white md:border md:border-slate-200 rounded-3xl md:rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh] md:max-h-none"
+              className="relative w-full max-w-2xl bg-white md:border md:border-slate-200 rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh]"
             >
-              <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <Database className="w-5 h-5 text-indigo-400" />
+              <div className="p-5 md:p-6 border-b border-slate-200 flex items-center justify-between">
+                <h3 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Database className="w-5 h-5 text-indigo-500" />
                   Tambah Perangkat Baru
                 </h3>
-                <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-700 transition-colors" title="Tutup Modal">
+                <button onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer" title="Tutup Modal">
                   <Plus className="w-6 h-6 rotate-45" />
                 </button>
               </div>
 
-               <div className="p-6 md:p-8 space-y-6">
+              <div className="p-5 md:p-8 space-y-5 md:space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div>
                     <label className="block text-sm font-medium text-slate-600 mb-2">Kategori</label>
@@ -744,7 +664,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                       value={newProgress.category}
                       onChange={(e) => setNewProgress({ ...newProgress, category: e.target.value })}
                       placeholder="Contoh: A. ELECTRICAL SYSTEM"
-                      className="w-full bg-white border border-slate-200 rounded-xl p-3 md:p-3.5 text-slate-900 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                      className={MODAL_INPUT_CLASS}
                     />
                     <datalist id="categories">
                       <option value="A. ELECTRICAL SYSTEM" />
@@ -762,29 +682,31 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                       value={newProgress.equipment_name}
                       onChange={(e) => setNewProgress({ ...newProgress, equipment_name: e.target.value })}
                       placeholder="Contoh: TRANSFORMATOR 01"
-                      className="w-full bg-white border border-slate-200 rounded-xl p-3 md:p-3.5 text-slate-900 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                      className={MODAL_INPUT_CLASS}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 mb-2">Plan Qty</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={newProgress.plan_qty}
                       onChange={(e) => setNewProgress({ ...newProgress, plan_qty: parseFloat(e.target.value) || 0 })}
                       placeholder="0"
                       title="Plan Qty"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-3.5 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                      className={MODAL_INPUT_CLASS}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 mb-2">Actual Qty (Awal)</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={newProgress.actual_qty}
                       onChange={(e) => setNewProgress({ ...newProgress, actual_qty: parseFloat(e.target.value) || 0 })}
                       placeholder="0"
                       title="Actual Qty"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-3.5 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                      className={MODAL_INPUT_CLASS}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -795,7 +717,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                         placeholder="23-Feb"
                         value={newProgress.plan_start}
                         onChange={(e) => setNewProgress({ ...newProgress, plan_start: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-3.5 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                        className={MODAL_INPUT_CLASS}
                       />
                     </div>
                     <div>
@@ -805,7 +727,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                         placeholder="27-Feb"
                         value={newProgress.plan_finish}
                         onChange={(e) => setNewProgress({ ...newProgress, plan_finish: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-3.5 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                        className={MODAL_INPUT_CLASS}
                       />
                     </div>
                   </div>
@@ -822,17 +744,17 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                   />
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-4">
+                <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-2 md:pt-4">
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="order-2 md:order-1 flex-1 px-6 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition-all"
+                    className="order-2 md:order-1 flex-1 px-6 py-3.5 md:py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition-all cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     onClick={handleAddItem}
                     disabled={loading}
-                    className="order-1 md:order-2 flex-1 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                    className="order-1 md:order-2 flex-1 px-6 py-3.5 md:py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                     Simpan Perangkat
@@ -844,48 +766,13 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
         )}
       </AnimatePresence>
 
-      {}
-      <AnimatePresence>
-        {showLogoutModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLogoutModal(false)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl text-center"
-            >
-              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <LogOut className="w-10 h-10 text-red-500" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Konfirmasi Logout</h3>
-              <p className="text-slate-500 mb-8">
-                Yakin ingin keluar dari akun <span className="text-blue-600 font-medium">{user?.email}</span>?
-              </p>
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => logout()}
-                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-600/20"
-                >
-                  Ya, Logout Sekarang
-                </button>
-                <button
-                  onClick={() => setShowLogoutModal(false)}
-                  className="w-full py-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-medium transition-all"
-                >
-                  Batal
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Modal Konfirmasi Log Out */}
+      <LogoutConfirmModal
+        isOpen={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+        onConfirm={logout}
+        userEmail={user?.email || ''}
+      />
     </div>
   );
 }
@@ -906,88 +793,85 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
   }, [activity]);
 
   const progressPercent = activity.plan_qty > 0 ? (parseFloat(qty) || 0) / activity.plan_qty * 100 : 0;
+  // HP: tiap baris tampil sebagai kartu 2 kolom; desktop: baris tabel biasa
+  const cell = 'block md:table-cell px-4 py-2.5 md:px-6 md:py-4';
+  const mobileLabel = 'md:hidden block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1';
 
   return (
-    <tr className="block md:table-row bg-white md:bg-transparent border border-slate-200 md:border-none rounded-2xl mb-4 md:mb-0 overflow-hidden hover:bg-blue-50/50 transition-colors">
-      <td className="block md:table-cell px-6 py-4 border-b border-slate-100 md:border-none">
-        <div className="flex flex-col">
-          <span className="md:hidden text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Perangkat</span>
-          <p className="font-medium text-slate-900">{activity.equipment_name}</p>
-          <p className="text-xs text-slate-500">{activity.category}</p>
+    <tr className="grid grid-cols-2 md:table-row bg-white md:bg-transparent border border-slate-200 md:border-0 rounded-2xl overflow-hidden shadow-xs md:shadow-none hover:bg-blue-50/50 transition-colors">
+      <td className={`${cell} col-span-2 bg-slate-50/80 md:bg-transparent border-b border-slate-100 md:border-0`}>
+        <p className="font-semibold text-slate-900">{activity.equipment_name}</p>
+        <p className="text-xs text-slate-500">{activity.category}</p>
+      </td>
+      <td className={`${cell} md:text-center`}>
+        <span className={mobileLabel}>Rencana Qty</span>
+        <span className="text-slate-600 font-mono">{activity.plan_qty}</span>
+      </td>
+      <td className={`${cell} md:text-center`}>
+        <span className={mobileLabel}>Periode Rencana</span>
+        <div className="flex items-center md:justify-center gap-1.5 text-[11px] text-slate-500 font-medium">
+          {activity.plan_start || activity.plan_finish ? (
+            <>
+              <span>{activity.plan_start || '-'}</span>
+              <ArrowRight className="w-3 h-3 text-slate-400" />
+              <span>{activity.plan_finish || '-'}</span>
+            </>
+          ) : (
+            <span>-</span>
+          )}
         </div>
       </td>
-      <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
-        <div className="flex justify-between items-center md:justify-center">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rencana Qty</span>
-          <span className="text-slate-400 font-mono">{activity.plan_qty}</span>
-        </div>
+      <td className={cell}>
+        <span className={mobileLabel}>Qty Aktual</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          value={qty}
+          onChange={(e) => {
+            setQty(e.target.value);
+            setHasChanges(true);
+          }}
+          placeholder="0"
+          title="Actual Qty"
+          className="w-full md:w-28 bg-white border border-slate-200 rounded-xl px-3 py-2 text-center text-slate-900 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+        />
       </td>
-      <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
-        <div className="flex justify-between items-center md:justify-center">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Periode Rencana</span>
-          <div className="flex items-center gap-2 text-[10px] md:text-[11px] text-slate-500 font-medium">
-            <span>{activity.plan_start}</span>
-            <ArrowRight className="w-3 h-3 text-slate-600" />
-            <span>{activity.plan_finish}</span>
+      <td className={`${cell} md:text-center`}>
+        <span className={mobileLabel}>Progres</span>
+        <div className="flex flex-col md:items-center gap-1 pt-2 md:pt-0">
+          <div className="w-full md:w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${
+                progressPercent >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'
+              }`}
+              ref={(el) => {
+                if (el) {
+                  el.style.width = `${Math.min(100, progressPercent)}%`;
+                }
+              }}
+            />
           </div>
+          <span className={`text-xs font-mono font-bold ${
+            progressPercent >= 100 ? 'text-emerald-600' : 'text-slate-500'
+          }`}>
+            {progressPercent.toFixed(1)}%
+          </span>
         </div>
       </td>
-      <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
-        <div className="flex flex-col gap-1.5">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Qty Aktual</span>
-          <input
-            type="number"
-            value={qty}
-            onChange={(e) => {
-              setQty(e.target.value);
-              setHasChanges(true);
-            }}
-            placeholder="0"
-            title="Actual Qty"
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-center text-slate-900 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-          />
-        </div>
+      <td className={`${cell} col-span-2`}>
+        <span className={mobileLabel}>Keterangan</span>
+        <input
+          type="text"
+          value={remark}
+          placeholder="Tambahkan catatan..."
+          onChange={(e) => {
+            setRemark(e.target.value);
+            setHasChanges(true);
+          }}
+          className="w-full bg-white md:bg-transparent border border-slate-200 md:border-none rounded-xl px-3 py-2 md:p-0 outline-none text-slate-600 placeholder-slate-400 text-sm focus:text-slate-900 transition-all"
+        />
       </td>
-      <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
-        <div className="flex justify-between items-center md:flex-col md:gap-1.5">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progres</span>
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 ${
-                  progressPercent >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'
-                }`}
-                ref={(el) => {
-                  if (el) {
-                    el.style.width = `${Math.min(100, progressPercent)}%`;
-                  }
-                }}
-              />
-            </div>
-            <span className={`text-xs font-mono font-bold ${
-              progressPercent >= 100 ? 'text-emerald-400' : 'text-slate-400'
-            }`}>
-              {progressPercent.toFixed(1)}%
-            </span>
-          </div>
-        </div>
-      </td>
-      <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
-        <div className="flex flex-col gap-1.5">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Keterangan</span>
-          <input
-            type="text"
-            value={remark}
-            placeholder="Tambahkan catatan..."
-            onChange={(e) => {
-              setRemark(e.target.value);
-              setHasChanges(true);
-            }}
-            className="w-full bg-white md:bg-transparent border border-slate-200 md:border-none rounded-xl px-4 py-2 md:p-0 outline-none text-slate-600 placeholder-slate-400 text-sm focus:text-slate-900 transition-all"
-          />
-        </div>
-      </td>
-      <td className="block md:table-cell px-6 py-4">
+      <td className={`${cell} col-span-2 pb-4`}>
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={() => {
@@ -995,23 +879,24 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
               setHasChanges(false);
             }}
             disabled={!hasChanges || isSaving}
-            className={`flex-1 md:flex-none flex items-center justify-center h-12 w-full md:w-12 rounded-xl transition-all ${
+            className={`flex-1 md:flex-none flex items-center justify-center h-11 md:h-12 w-full md:w-12 rounded-xl transition-all ${
               hasChanges
-                ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20'
+                ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20 cursor-pointer'
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed'
             }`}
+            title="Simpan Perubahan"
           >
             {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : (
               <>
                 <Save className="w-5 h-5 md:mr-0 mr-2" />
-                <span className="md:hidden">Simpan</span>
+                <span className="md:hidden text-sm font-semibold">Simpan</span>
               </>
             )}
           </button>
           <button
             onClick={() => onDelete(activity.id)}
             disabled={isSaving}
-            className="flex-1 md:flex-none p-3 md:p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-all disabled:opacity-50 border border-rose-500/20 md:border-none flex items-center justify-center gap-2"
+            className="flex-1 md:flex-none h-11 md:h-auto p-3 md:p-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all disabled:opacity-50 border border-rose-500/20 md:border-none flex items-center justify-center gap-2 cursor-pointer"
             title="Hapus Perangkat"
           >
             <Trash2 className="w-5 h-5" />
@@ -1022,4 +907,3 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
     </tr>
   );
 }
-

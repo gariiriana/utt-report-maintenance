@@ -233,7 +233,7 @@ Pusat pengelolaan dan penyusunan prosedur operasional berstandar data center tin
 
 ### 🚨 Abnormal Findings Center (Checklist PM & Manual Field Input)
 
-Pusat kendali temuan anomali komprehensif (`AbnormalFindingsCenter.tsx` & `FindingManagement.tsx`) yang menggabungkan temuan berkala dan temuan mendadak di lapangan:
+Pusat kendali temuan anomali komprehensif (`AbnormalFindingsCenter.tsx` & `ManualAbnormalFinding.tsx`) yang menggabungkan temuan berkala dan temuan mendadak di lapangan:
 
 - **Pemisahan Tab: Temuan Otomatis PM vs Temuan Abnormal Manual**:
   - **Temuan Otomatis (Checklist PM)**: Agregasi otomatis seluruh catatan inspeksi berkala yang berstatus *Not Good / Abnormal*.
@@ -432,7 +432,6 @@ DwimitraSystem/
 │   │   ├── MonthlyReportGenerator.tsx # ★ Bab 1-8 Comprehensive Monthly Report Generator
 │   │   ├── BOQMasterAsset.tsx     # BOQ Master Asset management
 │   │   ├── FileManagement.tsx     # ★ Centralized 16-Folder File Management
-│   │   ├── FindingManagement.tsx  # Finding tab switcher (PM vs Manual)
 │   │   ├── ManualAbnormalFinding.tsx # ★ Manual Abnormal Finding field input & presets
 │   │   ├── AbnormalFindingsCenter.tsx # ★ QC DME Abnormal Findings Center
 │   │   ├── PredictiveReportModal.tsx # ★ PdM Modal with 5-Role NeutraDC Approval Sheet

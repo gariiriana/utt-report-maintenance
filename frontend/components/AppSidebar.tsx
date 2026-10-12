@@ -38,13 +38,20 @@ interface AppSidebarProps {
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   onLogoutClick: () => void;
+  /** Pengelompokan menu khusus role (default: MENU_SECTIONS). */
+  sections?: readonly MenuSection[];
+}
+
+export interface MenuSection {
+  title: string;
+  itemIds: readonly string[];
 }
 
 // Pengelompokan / Klasifikasi menu logis komprehensif untuk seluruh role
-const MENU_SECTIONS = [
+const MENU_SECTIONS: readonly MenuSection[] = [
   {
     title: 'Monitoring & Kontrol',
-    itemIds: ['admin', 'delete_requests', 'abnormal_findings', 'manual_abnormal', 'findings', 'finding_archive', 'monitoring'],
+    itemIds: ['admin', 'delete_requests', 'abnormal_findings', 'manual_abnormal', 'finding_archive', 'monitoring'],
   },
   {
     title: 'Operasional & K3',
@@ -72,6 +79,7 @@ export function AppSidebar({
   mobileMenuOpen,
   setMobileMenuOpen,
   onLogoutClick,
+  sections = MENU_SECTIONS,
 }: AppSidebarProps) {
   const visibleItems = navItems.filter((i) => i.show);
 
@@ -149,7 +157,7 @@ export function AppSidebar({
   const renderNavSections = (isMobile: boolean = false) => {
     return (
       <div className="space-y-4">
-        {MENU_SECTIONS.map((section, idx) => {
+        {sections.map((section, idx) => {
           const sectionItems = visibleItems.filter((i) => section.itemIds.includes(i.id));
           if (sectionItems.length === 0) return null;
 
@@ -173,7 +181,7 @@ export function AppSidebar({
 
         {/* Item cadangan di luar klasifikasi jika ada */}
         {(() => {
-          const allSectionIds = MENU_SECTIONS.flatMap((s) => s.itemIds);
+          const allSectionIds = sections.flatMap((s) => s.itemIds);
           const leftoverItems = visibleItems.filter((i) => !allSectionIds.includes(i.id));
           if (leftoverItems.length === 0) return null;
 
@@ -202,7 +210,7 @@ export function AppSidebar({
           1. DESKTOP SIDEBAR (Permanent Left Side - Clean Classified White Theme)
           ──────────────────────────────────────────────────────────────────────── */}
       <aside
-        className={`hidden md:flex flex-col fixed inset-y-0 left-0 bg-white/95 backdrop-blur-md border-r border-slate-200/80 shadow-xs transition-all duration-300 ease-in-out z-40 ${
+        className={`hidden md:flex flex-col fixed inset-y-0 left-0 pl-[env(safe-area-inset-left)] bg-white/95 backdrop-blur-md border-r border-slate-200/80 shadow-xs transition-all duration-300 ease-in-out z-40 ${
           isCollapsed ? 'w-20' : 'w-80'
         }`}
       >
@@ -331,7 +339,7 @@ export function AppSidebar({
               </div>
 
               {/* Tombol Logout Mobile Di Dalam Sidebar */}
-              <div className="p-4 border-t border-slate-200 bg-slate-50">
+              <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-200 bg-slate-50">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

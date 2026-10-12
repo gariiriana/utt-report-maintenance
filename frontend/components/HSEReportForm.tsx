@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { HSEPhotoEditor } from '@/components/HSEPhotoEditor';
 import { generateHSEPdf, type HSEFormData } from '@/utils/HSEPdfExport';
 import { db } from '@/api/firebase';
+import { addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
 import { ExcelDocument } from '@/components/DocumentList';
@@ -519,6 +520,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection', r
             if (reportType) formData.reportType = reportType;
 
             let finalDocId = '';
+            // Keep the editing flow server-confirmed: it reads and replaces existing photos.
+            const savePhoto = editingData?.documentType === 'hse' ? addDoc : addDocQueued;
             
             const optimizedSioPhotos = await Promise.all(sioPhotos.map(async (p) => {
                 let dataUrl = p.dataUrl;
@@ -572,7 +575,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection', r
                     console.warn("Could not clear old photos, continuing anyway", e);
                 }
             } else {
-                const docRef = await addDoc(collection(db, 'hse'), {
+                const docRef = await addDocQueued(collection(db, 'hse'), {
                     ...reportData,
                     createdAt: serverTimestamp(),
                 });
@@ -592,7 +595,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection', r
                         }
                     }
 
-                    await addDoc(collection(db, `hse/${finalDocId}/photos`), {
+                    await savePhoto(collection(db, `hse/${finalDocId}/photos`), {
                         index: index + 1,
                         dataUrl: dataUrl,
                         description: photo.description || '',
@@ -604,7 +607,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection', r
 
             if (!silent && toastId) {
                 const message = editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!';
-                toast.success(message, { id: toastId });
+                toastWriteSuccess(message, { id: toastId });
             }
             if (onClearEdit) onClearEdit();
             return finalDocId;

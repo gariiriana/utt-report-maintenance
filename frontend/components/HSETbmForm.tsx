@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
+import { addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { collection, addDoc, updateDoc, doc, getDoc, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
 import { compressImage } from '@/utils/imageCompression';
@@ -239,6 +240,8 @@ export function HSETbmForm({ editingData, onClearEdit, onSuccess }: HSETbmFormPr
       };
 
       let finalDocId = '';
+      // Keep the editing flow server-confirmed: it reads and replaces existing photos.
+      const savePhoto = !!editingData?.id ? addDoc : addDocQueued;
 
       if (editingData && editingData.id) {
         finalDocId = editingData.id;
@@ -255,7 +258,7 @@ export function HSETbmForm({ editingData, onClearEdit, onSuccess }: HSETbmFormPr
         }
       } else {
         docData.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, 'hse'), docData);
+        const docRef = await addDocQueued(collection(db, 'hse'), docData);
         finalDocId = docRef.id;
       }
 
@@ -263,7 +266,7 @@ export function HSETbmForm({ editingData, onClearEdit, onSuccess }: HSETbmFormPr
       if (photos.length > 0) {
         for (let i = 0; i < photos.length; i++) {
           const p = photos[i];
-          await addDoc(collection(db, `hse/${finalDocId}/photos`), {
+          await savePhoto(collection(db, `hse/${finalDocId}/photos`), {
             dataUrl: p.base64,
             description: p.description || '',
             index: i,
@@ -272,7 +275,7 @@ export function HSETbmForm({ editingData, onClearEdit, onSuccess }: HSETbmFormPr
         }
       }
 
-      toast.success('Data Absen TBM berhasil disimpan ke Arsip Dokumen HSE!', { id: toastId });
+      toastWriteSuccess('Data Absen TBM berhasil disimpan ke Arsip Dokumen HSE!', { id: toastId });
 
       if (onSuccess) {
         onSuccess();

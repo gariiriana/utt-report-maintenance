@@ -8,14 +8,14 @@
 //            - Permit to Work (PTW) Management
 //            - Manajemen File & Dokumen Laporan
 //            - Corrective Maintenance (CM, SLA/SLG, PIR)
-//            - Finding Management (Temuan & Arsip)
+//            - Input Temuan Abnormal Manual & Arsip Temuan
 //            - Preventive Maintenance (PM) Schedule
 //            - Pusat Notifikasi & Perintah Suara JARVIS AI
 // ============================================================================
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, Trash2, BookOpen, HardHat, Languages } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, Trash2, BookOpen, HardHat, Languages } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -24,7 +24,7 @@ import { AdminDashboard } from '@/pages/AdminDashboard';
 import { ExcelDocument } from '@/components/DocumentList';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
 import { PIRManagement } from '@/components/PIRManagement';
-import { FindingManagement } from '../components/FindingManagement';
+import { ManualAbnormalFinding } from '@/components/ManualAbnormalFinding';
 import { FindingArchive } from '../components/FindingArchive';
 import { Footer } from '@/components/Footer';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
@@ -43,14 +43,17 @@ import { SOPEOPManagement } from '@/components/SOPEOPManagement';
 import { HSEArchiveHub } from '@/components/HSEArchiveHub';
 import { MOPBilingual } from '@/components/MOPBilingual';
 import { canUseMOPBilingual } from '@/utils/mopBilingualAccess';
-// ManualAbnormalFinding sekarang terintegrasi di FindingManagement tab
 import { AppSidebar } from '@/components/AppSidebar';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' |'delete_requests' | 'abnormal_findings' | 'manual_abnormal' | 'sop_eop' | 'mop_bilingual' | 'hse_archive';
+type Tab = 'notifications' | 'report' | 'documents' | 'arsip_dokumen' | 'pir' | 'admin' | 'files' | 'corrective' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'monthly_report' | 'berita_acara' |'delete_requests' | 'abnormal_findings' | 'manual_abnormal' | 'sop_eop' | 'mop_bilingual' | 'hse_archive';
+
+// Menu "Temuan" (form Sparepart / Trouble) sudah dihapus; notifikasi lama & perintah JARVIS
+// yang masih menyebut 'findings' diarahkan ke Input Abnormal Manual.
+const toTab = (tab: string): Tab => (tab === 'findings' ? 'manual_abnormal' : tab) as Tab;
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -146,7 +149,6 @@ export function MainApp() {
     { id: 'corrective', label: 'Corrective Maintenance', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
     { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: (userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer) || isDwimitra || userEmailLower === 'dwimitra@co.id' },
     { id: 'hse_archive', label: 'Arsip K3 & HSE', icon: HardHat, color: 'from-emerald-600 to-teal-600', show: isAdmin || isDwimitra || userRole === 'hse' },
-    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: !isAdmin && userRole !== 'DME' && !isK2Engineer && !isStandby },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: !isAdmin && userRole !== 'DME' && !isK2Engineer },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isAdmin && !isStandby && (userRole !== 'DME' || !!editingData) },
     { id: 'arsip_dokumen', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isAdmin && !isStandby && userRole !== 'DME' && userRole !== 'site_manager_dme' },
@@ -197,7 +199,7 @@ export function MainApp() {
         setNavTargetFolder(null);
       }
     } else if (item.targetTab) {
-      setActiveTab(item.targetTab as Tab);
+      setActiveTab(toTab(item.targetTab));
       setNavTargetFolder(null);
     }
 
@@ -230,7 +232,7 @@ export function MainApp() {
       const { action, page, report_id } = customEvent.detail || {};
 
       if (action === 'navigate' && page) {
-        setActiveTab(page as Tab);
+        setActiveTab(toTab(page));
       } else if (action === 'create_report') {
         setEditingData(null);
         setActiveTab('report');
@@ -283,9 +285,7 @@ export function MainApp() {
             setActiveTab('documents');
           }} />
         ) : activeTab === 'manual_abnormal' ? (
-          <FindingManagement initialSubTab="abnormal" onSubTabChange={(tab) => {
-            if (tab === 'part') setActiveTab('findings');
-          }} />
+          <ManualAbnormalFinding className="min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-10" />
         ) : activeTab === 'absen_tbm' ? (
           <AbsenTBM />
         ) : activeTab === 'absen_induction' ? (
@@ -309,10 +309,6 @@ export function MainApp() {
           <CorrectiveMaintenance readOnly={true} initialSearchQuery={navSearchQuery} />
         ) : activeTab === 'hse_archive' ? (
           <HSEArchiveHub onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
-        ) : activeTab === 'findings' ? (
-          <FindingManagement initialSubTab="part" onSubTabChange={(tab) => {
-            if (tab === 'abnormal') setActiveTab('manual_abnormal');
-          }} />
         ) : activeTab === 'finding_archive' ? (
           <FindingArchive />
         ) : activeTab === 'boq' ? (

@@ -25,7 +25,9 @@ export default defineConfig({
 
     // 3. Plugin PWA (Offline Service Worker & Manifest Web App)
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': versi baru menunggu user menekan "Perbarui" (lihat main.tsx), supaya aplikasi
+      // tidak reload sendiri saat user sedang mengisi form.
+      registerType: 'prompt',
       // Never serve/register a PWA worker from Vite. A stale worker can keep
       // controlling localhost and return cached production HTML during dev.
       devOptions: { enabled: false },
@@ -51,7 +53,12 @@ export default defineConfig({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg}'],
+        // .mjs (worker PDF) & .jpeg ikut disimpan, supaya versi lama yang masih terbuka tidak
+        // meminta file yang sudah terhapus dari hosting setelah deploy baru.
+        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,jpg,jpeg,webp,woff2}'],
+        cleanupOutdatedCaches: true,
+        // URL khusus Firebase Hosting (/__/auth, /__/firebase) tidak boleh dijawab index.html.
+        navigateFallbackDenylist: [/^\/__\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.web-fonts\.com\/.*/i,

@@ -29,7 +29,9 @@ import {
     Send,
     Check,
     Ban,
-    Pencil
+    Pencil,
+    Lock,
+    FolderInput
 } from 'lucide-react';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
@@ -144,6 +146,8 @@ const MAINTENANCE_TYPES = [
 ];
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
+// Kategori yang foldernya dipecah lagi per Tipe Maintenance / peralatan
+const MAINTENANCE_TYPE_CATEGORIES = ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'];
 // Laporan HSE disimpan per bulan (Monthly) atau per minggu dalam bulan (Weekly); quarter mengikuti bulan
 const HSE_REPORT_CATEGORIES = ['Weekly HSE Report', 'Monthly HSE Report'];
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -434,6 +438,31 @@ export function parseFilenameMetadata(filename: string): ParsedFileMetadata {
     return result;
 }
 
+// Hasil parse nama berkas di-cache: dipanggil per render untuk daftar antrean & pengecekan folder
+const parsedFilenameCache = new Map<string, ParsedFileMetadata>();
+function parseFilenameMetadataCached(filename: string): ParsedFileMetadata {
+    let parsed = parsedFilenameCache.get(filename);
+    if (!parsed) {
+        parsed = parseFilenameMetadata(filename);
+        parsedFilenameCache.set(filename, parsed);
+    }
+    return parsed;
+}
+
+// Folder tujuan satu berkas saat diunggah; `detected` = bagian yang terbaca dari nama berkas (bukan dari form)
+interface UploadTarget {
+    category: string;
+    customCategory: string | null;
+    maintenanceType: string | null;
+    quarter: string;
+    year: string;
+    month?: number;
+    week?: number;
+    detected: { category: boolean; maintenanceType: boolean; quarter: boolean; year: boolean };
+}
+
+type FolderFix = { category?: string; maintenanceType?: string; quarter?: string; year?: string };
+
 interface FileData {
     id: string;
     fileName: string;
@@ -591,10 +620,45 @@ export function FileManagement({
     const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString());
     const [selectedUploadMonth, setSelectedUploadMonth] = useState(new Date().getMonth() + 1);
     const [selectedUploadWeek, setSelectedUploadWeek] = useState(Math.min(5, Math.ceil(new Date().getDate() / 7)));
-    const [forceSelectedMetadata, setForceSelectedMetadata] = useState(true);
+    // Default mati: tiap berkas masuk ke foldernya sendiri sesuai nama berkas. Dulu default nyala,
+    // sehingga upload massal (AHU, FCU, Door, ...) masuk semua ke folder berkas pertama.
+    const [forceSelectedMetadata, setForceSelectedMetadata] = useState(false);
     const [failedUploads, setFailedUploads] = useState<{ file: File; error: string }[]>([]);
     const [isSLAModalOpen, setIsSLAModalOpen] = useState(false);
     const [slaRecapReports, setSlaRecapReports] = useState<any[] | undefined>(undefined);
+
+    // Dipakai bersama oleh daftar antrean (pratinjau tujuan) dan handleUpload, jadi yang terlihat = yang tersimpan.
+    // Mode otomatis: yang terbaca dari nama berkas menang, pilihan form hanya mengisi yang tidak terbaca.
+    // Mode kunci (atau simpleMode): semua berkas ikut pilihan form.
+    const resolveUploadTarget = (fileName: string): UploadTarget => {
+        const formCategory = simpleMode ? 'Dokumen' : (selectedCategory === 'Custom' ? customCategory.trim() : selectedCategory);
+        const parsed: ParsedFileMetadata = (simpleMode || forceSelectedMetadata) ? {} : parseFilenameMetadataCached(fileName);
+        // Engineer hanya boleh mengisi kategori miliknya; kategori lain dari nama berkas diabaikan
+        const parsedCategory = parsed.category && (!isEngineer || ENGINEER_CATEGORIES.includes(parsed.category))
+            ? parsed.category
+            : undefined;
+        const category = parsedCategory || formCategory;
+        const isHseReport = HSE_REPORT_CATEGORIES.includes(category);
+        const month = parsed.month || selectedUploadMonth;
+        const usesMaintenance = MAINTENANCE_TYPE_CATEGORIES.includes(category);
+        return {
+            category,
+            customCategory: !simpleMode && !parsedCategory && selectedCategory === 'Custom' ? customCategory : null,
+            maintenanceType: usesMaintenance ? (parsed.maintenanceType || selectedMaintenance) : null,
+            quarter: (category === 'SLD' || category === 'Layout')
+                ? 'N/A'
+                : isHseReport ? quarterOfMonth(month) : (parsed.quarter || selectedUploadQuarter),
+            year: parsed.year || selectedUploadYear,
+            ...(isHseReport ? { month } : {}),
+            ...(category === 'Weekly HSE Report' ? { week: parsed.week || selectedUploadWeek } : {}),
+            detected: {
+                category: Boolean(parsedCategory),
+                maintenanceType: usesMaintenance && Boolean(parsed.maintenanceType),
+                quarter: isHseReport ? Boolean(parsed.month) : Boolean(parsed.quarter),
+                year: Boolean(parsed.year),
+            },
+        };
+    };
 
     const [internalSearchQuery, setInternalSearchQuery] = useState(initialSearchQuery);
     const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
@@ -975,7 +1039,7 @@ export function FileManagement({
                 const firstParsed = parseFilenameMetadata(validFiles[0].name);
                 const detectedParts: string[] = [];
 
-                if (firstParsed.category && !simpleMode) {
+                if (firstParsed.category && !simpleMode && (!isEngineer || ENGINEER_CATEGORIES.includes(firstParsed.category))) {
                     setSelectedCategory(firstParsed.category);
                     detectedParts.push(`Kategori: ${firstParsed.category}`);
                 }
@@ -1000,7 +1064,9 @@ export function FileManagement({
                     detectedParts.push(`Minggu ke-${firstParsed.week}`);
                 }
 
-                if (detectedParts.length > 0) {
+                if (validFiles.length > 1 && !simpleMode && !forceSelectedMetadata) {
+                    toast.success('✨ Folder tujuan tiap berkas dibaca dari nama berkasnya — cek di daftar antrean sebelum mengunggah');
+                } else if (detectedParts.length > 0) {
                     toast.success(`✨ Otomatis terdeteksi dari nama berkas: ${detectedParts.join(' | ')}`);
                 }
             }
@@ -1022,6 +1088,10 @@ export function FileManagement({
     };
 
     const handleUpload = async () => {
+        if (!navigator.onLine) {
+            toast.error('Upload berkas butuh internet');
+            return;
+        }
         if (!canUpload || selectedFiles.length === 0 || !user) return;
 
         const finalCategory =
@@ -1039,6 +1109,7 @@ export function FileManagement({
             const totalOverallBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
             let uploadedOverallBytes = 0;
             let successCount = 0;
+            const uploadedCategories = new Set<string>();
             const failedList: { file: File; error: string }[] = [];
 
             // Concurrency pool (memproses 3 file secara paralel untuk kecepatan & stabilitas)
@@ -1050,21 +1121,8 @@ export function FileManagement({
                 let fileDocRef: any = null;
 
                 try {
-                    // Ekstraksi metadata: prioritaskan pilihan form jika forceSelectedMetadata aktif
-                    const parsed = parseFilenameMetadata(file.name);
-                    const fileCategory = forceSelectedMetadata ? finalCategory : (parsed.category || finalCategory);
-                    const fileMaintenance = (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(fileCategory))
-                        ? (forceSelectedMetadata ? selectedMaintenance : (parsed.maintenanceType || selectedMaintenance))
-                        : null;
-                    const isHseReport = HSE_REPORT_CATEGORIES.includes(fileCategory);
-                    const fileMonth = forceSelectedMetadata ? selectedUploadMonth : (parsed.month || selectedUploadMonth);
-                    const fileWeek = forceSelectedMetadata ? selectedUploadWeek : (parsed.week || selectedUploadWeek);
-                    const fileQuarter = (fileCategory === 'SLD' || fileCategory === 'Layout')
-                        ? 'N/A'
-                        : isHseReport
-                            ? quarterOfMonth(fileMonth)
-                            : (forceSelectedMetadata ? selectedUploadQuarter : (parsed.quarter || selectedUploadQuarter));
-                    const fileYear = forceSelectedMetadata ? selectedUploadYear : (parsed.year || selectedUploadYear);
+                    // Folder tujuan per berkas (sama persis dengan yang ditampilkan di daftar antrean)
+                    const target = resolveUploadTarget(file.name);
                     const resolvedMime = getFileMime(file);
 
                     // Step 1: Buat dokumen utama di Firestore dengan mekanisme retry
@@ -1074,13 +1132,13 @@ export function FileManagement({
                             fileName: file.name,
                             fileSize: file.size,
                             fileType: resolvedMime,
-                            category: fileCategory,
-                            maintenanceType: fileMaintenance,
-                            quarter: fileQuarter,
-                            year: fileYear,
-                            ...(isHseReport ? { month: fileMonth } : {}),
-                            ...(fileCategory === 'Weekly HSE Report' ? { week: fileWeek } : {}),
-                            customCategory: (selectedCategory === 'Custom' && !parsed.category) ? customCategory : null,
+                            category: target.category,
+                            maintenanceType: target.maintenanceType,
+                            quarter: target.quarter,
+                            year: target.year,
+                            ...(target.month !== undefined ? { month: target.month } : {}),
+                            ...(target.week !== undefined ? { week: target.week } : {}),
+                            customCategory: target.customCategory,
                             uploadedBy: user.uid,
                             uploadedByEmail: (user.email || '').toLowerCase(),
                             uploadedAt: serverTimestamp(),
@@ -1124,6 +1182,7 @@ export function FileManagement({
                     }, 3, 1000);
 
                     successCount++;
+                    uploadedCategories.add(target.category);
                 } catch (fileErr: any) {
                     console.error(`Gagal upload file "${file.name}":`, fileErr);
                     // Bersihkan dokumen mangkrak 'uploading' dari Firestore jika sempat dibuat
@@ -1153,14 +1212,16 @@ export function FileManagement({
             if (successCount > 0) {
                 delete sharedCollectionsCache[collectionName];
                 setRefreshTrigger(prev => prev + 1);
+                // Upload massal bisa tersebar ke beberapa kategori sekaligus
+                const categoryLabel = [...uploadedCategories].join(', ') || finalCategory;
                 try {
                     if (!fileOnly) await sendFileNotification({
-                        title: `${successCount} Berkas Baru: ${finalCategory}`,
-                        fileName: successCount === 1 ? selectedFiles[0].name : `${successCount} berkas baru (${finalCategory})`,
-                        category: finalCategory,
+                        title: `${successCount} Berkas Baru: ${categoryLabel}`,
+                        fileName: successCount === 1 ? selectedFiles[0].name : `${successCount} berkas baru (${categoryLabel})`,
+                        category: categoryLabel,
                         uploadedBy: user?.email || 'User DME',
                         targetTab: 'files',
-                        searchQuery: successCount === 1 ? selectedFiles[0].name : finalCategory
+                        searchQuery: successCount === 1 ? selectedFiles[0].name : [...uploadedCategories][0] || finalCategory
                     });
                 } catch (notifErr) {
                     console.warn('Gagal mengirim ringkasan notifikasi:', notifErr);
@@ -1546,6 +1607,61 @@ export function FileManagement({
         return false;
     };
 
+    // Berkas lama yang tersimpan di folder yang tidak sesuai nama berkasnya (misal upload massal sebelum
+    // perbaikan, semuanya masuk folder berkas pertama). Hanya admin/QC DME yang boleh memindahkan.
+    const canFixFolders = isAdmin && !isReadOnly && !simpleMode && !deleteRequestMode && collectionName === 'files';
+    const [isFixingFolders, setIsFixingFolders] = useState(false);
+    const [showFolderFixList, setShowFolderFixList] = useState(false);
+
+    // null = sudah sesuai / nama berkas tidak cukup jelas. Kategori HSE tidak dipindah otomatis
+    // karena butuh bulan/minggu yang belum tentu tertulis di nama berkas.
+    const getFolderFix = (file: FileData): FolderFix | null => {
+        if (file.isCorrectiveReport) return null;
+        const parsed = parseFilenameMetadataCached(file.fileName);
+        const fix: FolderFix = {};
+        let category = file.category;
+        if (parsed.category && !matchCategory(file.category, parsed.category)
+            && !HSE_REPORT_CATEGORIES.includes(parsed.category) && !HSE_REPORT_CATEGORIES.includes(file.category)) {
+            category = parsed.category;
+            fix.category = category;
+        }
+        if (MAINTENANCE_TYPE_CATEGORIES.includes(category) && parsed.maintenanceType && !isTypeMatch(file.maintenanceType, parsed.maintenanceType)) {
+            fix.maintenanceType = parsed.maintenanceType;
+        }
+        if (category === 'SLD' || category === 'Layout') {
+            if (fix.category && file.quarter !== 'N/A') fix.quarter = 'N/A';
+        } else if (!HSE_REPORT_CATEGORIES.includes(category) && parsed.quarter && file.quarter !== parsed.quarter) {
+            fix.quarter = parsed.quarter;
+        }
+        if (parsed.year && String(file.year ?? '') !== parsed.year) fix.year = parsed.year;
+        return Object.keys(fix).length > 0 ? fix : null;
+    };
+
+    const handleApplyFolderFixes = async (fixes: { file: FileData; fix: FolderFix }[]) => {
+        if (!canFixFolders || fixes.length === 0) return;
+        setIsFixingFolders(true);
+        try {
+            for (let i = 0; i < fixes.length; i += 400) {
+                const batch = writeBatch(db);
+                fixes.slice(i, i + 400).forEach(({ file, fix }) => batch.update(doc(db, collectionName, file.id), fix));
+                await batch.commit();
+            }
+            const fixById = new Map(fixes.map(({ file, fix }) => [file.id, fix]));
+            setFiles(prev => prev.map(f => {
+                const fix = fixById.get(f.id);
+                return fix ? { ...f, ...fix } : f;
+            }));
+            delete sharedCollectionsCache[collectionName];
+            setShowFolderFixList(false);
+            toast.success(`${fixes.length} berkas dipindahkan ke folder sesuai nama berkasnya`);
+        } catch (error: any) {
+            console.error('Error moving files to matching folders:', error);
+            toast.error('Gagal memindahkan berkas: ' + (error?.message || 'Terjadi kesalahan'));
+        } finally {
+            setIsFixingFolders(false);
+        }
+    };
+
     const sanitizeZipFolderName = (name: string): string => {
         return name
             .replace(/[/\\?%*:|"<>]/g, '-')
@@ -1767,6 +1883,13 @@ export function FileManagement({
             || (b.week || 0) - (a.week || 0));
     }
 
+    const folderFixes = canFixFolders && selectedFolder
+        ? displayFiles.flatMap(file => {
+            const fix = getFolderFix(file);
+            return fix ? [{ file, fix }] : [];
+        })
+        : [];
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -1776,13 +1899,14 @@ export function FileManagement({
     }
 
     return (
-        <div className={initialFolder ? "w-full" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
+        // Jarak tepi sudah diberi oleh halaman induk (DivisionApp / DrafterApp), jadi tidak diulang di sini.
+        <div className={initialFolder ? "w-full" : "w-full max-w-7xl mx-auto py-1 sm:py-4"}>
             {divisionName && (
-                <div className="mb-8">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                <div className="mb-5 sm:mb-8">
+                    <h1 className="text-xl sm:text-3xl font-bold text-slate-900 mb-1 sm:mb-2">
                         Divisi: {divisionName}
                     </h1>
-                    <p className="text-slate-400">
+                    <p className="text-sm sm:text-base text-slate-600">
                         Kelola dan akses dokumentasi ISO untuk divisi {divisionName}.
                     </p>
                 </div>
@@ -1860,8 +1984,12 @@ export function FileManagement({
                         {selectedFiles.length > 0 && (
                             <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-none">
                                 {selectedFiles.map((file, idx) => {
-                                    const parsed = parseFilenameMetadata(file.name);
-                                    const hasAnyParsed = parsed.category || parsed.maintenanceType || parsed.quarter || parsed.year;
+                                    const target = resolveUploadTarget(file.name);
+                                    // Bagian yang tidak terbaca dari nama berkas diambil dari pilihan form: tampilkan abu-abu bergaris putus
+                                    const chipClass = (fromName: boolean, color: string) => fromName
+                                        ? `px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${color}`
+                                        : 'px-1.5 py-0.5 rounded-md text-[10px] font-semibold border border-dashed border-slate-300 bg-white text-slate-500';
+                                    const formHint = forceSelectedMetadata || simpleMode ? undefined : 'Tidak terbaca dari nama berkas — memakai pilihan form di bawah';
                                     return (
                                         <div key={idx} className="flex items-center justify-between bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200 hover:border-blue-300 transition-all">
                                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -1871,31 +1999,31 @@ export function FileManagement({
                                                         <span className="text-xs text-slate-900 font-bold truncate max-w-[280px] sm:max-w-md">{file.name}</span>
                                                         <span className="text-[10px] text-slate-500 font-medium">({formatFileSize(file.size)})</span>
                                                     </div>
-                                                    {hasAnyParsed && (
-                                                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    {!simpleMode && (
+                                                        <div className="flex items-center gap-1.5 mt-1 flex-wrap" data-upload-target>
                                                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                                                <Sparkles className="w-3 h-3 text-amber-500 inline" /> Auto:
+                                                                {forceSelectedMetadata
+                                                                    ? <><Lock className="w-3 h-3 text-slate-500 inline" /> Dikunci ke:</>
+                                                                    : <><Sparkles className="w-3 h-3 text-amber-500 inline" /> Masuk ke:</>}
                                                             </span>
-                                                            {parsed.category && (
-                                                                <span className="px-1.5 py-0.5 bg-blue-100/80 text-blue-800 border border-blue-200/60 rounded-md text-[10px] font-bold">
-                                                                    {parsed.category}
+                                                            <span className={chipClass(target.detected.category, 'bg-blue-100/80 text-blue-800 border-blue-200/60')} title={target.detected.category ? undefined : formHint}>
+                                                                {target.category || '—'}
+                                                            </span>
+                                                            {target.quarter !== 'N/A' && (
+                                                                <span className={chipClass(target.detected.quarter, 'bg-emerald-100/80 text-emerald-800 border-emerald-200/60')} title={target.detected.quarter ? undefined : formHint}>
+                                                                    {target.month !== undefined
+                                                                        ? `${MONTHS[target.month - 1]}${target.week !== undefined ? ` · Minggu ke-${target.week}` : ''}`
+                                                                        : target.quarter}
                                                                 </span>
                                                             )}
-                                                            {parsed.maintenanceType && (
-                                                                <span className="px-1.5 py-0.5 bg-indigo-100/80 text-indigo-800 border border-indigo-200/60 rounded-md text-[10px] font-bold">
-                                                                    {parsed.maintenanceType}
+                                                            {target.maintenanceType && (
+                                                                <span className={chipClass(target.detected.maintenanceType, 'bg-indigo-100/80 text-indigo-800 border-indigo-200/60')} title={target.detected.maintenanceType ? undefined : formHint}>
+                                                                    {target.maintenanceType}
                                                                 </span>
                                                             )}
-                                                            {parsed.quarter && (
-                                                                <span className="px-1.5 py-0.5 bg-emerald-100/80 text-emerald-800 border border-emerald-200/60 rounded-md text-[10px] font-bold">
-                                                                    {parsed.quarter}
-                                                                </span>
-                                                            )}
-                                                            {parsed.year && (
-                                                                <span className="px-1.5 py-0.5 bg-amber-100/80 text-amber-800 border border-amber-200/60 rounded-md text-[10px] font-bold">
-                                                                    {parsed.year}
-                                                                </span>
-                                                            )}
+                                                            <span className={chipClass(target.detected.year, 'bg-amber-100/80 text-amber-800 border-amber-200/60')} title={target.detected.year ? undefined : formHint}>
+                                                                {target.year}
+                                                            </span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1911,6 +2039,12 @@ export function FileManagement({
                                     );
                                 })}
                             </div>
+                        )}
+
+                        {!simpleMode && !forceSelectedMetadata && selectedFiles.length > 0 && (
+                            <p className="text-[11px] text-slate-500 font-medium -mb-1">
+                                Pilihan di bawah hanya dipakai untuk bagian yang <strong className="text-slate-700">tidak terbaca dari nama berkas</strong> (label abu-abu bergaris putus di daftar atas).
+                            </p>
                         )}
 
                         {!simpleMode && (
@@ -2059,10 +2193,10 @@ export function FileManagement({
                                     />
                                     <div className="text-xs text-slate-700">
                                         <span className="font-bold text-slate-900 block">
-                                            Kunci Kategori & Quarter di atas ke seluruh berkas ({selectedFiles.length > 0 ? `${selectedFiles.length} file` : 'file'} dalam antrean)
+                                            Abaikan nama berkas — masukkan semua berkas ({selectedFiles.length > 0 ? `${selectedFiles.length} file` : 'file'} dalam antrean) ke pilihan di atas
                                         </span>
                                         <span className="text-slate-500 block text-[11px] mt-0.5">
-                                            Mencegah file terpencar otomatis ke folder lain berdasarkan kata kunci nama file. Sangat dianjurkan saat upload massal (seperti 150 file).
+                                            Biarkan mati agar tiap berkas otomatis masuk ke foldernya sendiri sesuai nama berkas (contoh: JSEA - PM - AHU - Q4 - 2026). Nyalakan hanya jika nama berkas tidak beraturan dan semuanya memang untuk satu folder.
                                         </span>
                                     </div>
                                 </label>
@@ -2605,6 +2739,55 @@ export function FileManagement({
                             </div>
                         ) : (
                             <>
+                                {folderFixes.length > 0 && (
+                                    <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-3 mb-4" data-folder-fix>
+                                        <div className="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row">
+                                            <div className="flex items-start gap-2.5 min-w-0">
+                                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+                                                <p className="text-xs sm:text-sm font-semibold text-amber-900">
+                                                    {folderFixes.length} berkas di sini menurut namanya milik folder lain.
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowFolderFixList(v => !v)}
+                                                className="text-xs font-bold text-amber-800 hover:text-amber-950 hover:underline cursor-pointer shrink-0"
+                                            >
+                                                {showFolderFixList ? 'Sembunyikan' : 'Lihat & pindahkan'}
+                                            </button>
+                                        </div>
+                                        {showFolderFixList && (
+                                            <div className="mt-3 space-y-2">
+                                                <ul className="space-y-1.5 max-h-60 overflow-y-auto">
+                                                    {folderFixes.map(({ file, fix }) => {
+                                                        const category = fix.category ?? file.category;
+                                                        const quarter = fix.quarter ?? file.quarter;
+                                                        const maintenanceType = MAINTENANCE_TYPE_CATEGORIES.includes(category) ? (fix.maintenanceType ?? file.maintenanceType) : null;
+                                                        const destination = [category, quarter && quarter !== 'N/A' ? quarter : null, maintenanceType].filter(Boolean).join(' › ');
+                                                        return (
+                                                            <li key={file.id} className="text-xs bg-white/80 border border-amber-200/80 rounded-lg px-2.5 py-1.5 min-w-0">
+                                                                <span className="block font-bold text-slate-800 break-words">{file.fileName}</span>
+                                                                <span className="block text-amber-800 font-semibold mt-0.5">
+                                                                    → {destination}{fix.year ? ` (tahun ${fix.year})` : ''}
+                                                                </span>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleApplyFolderFixes(folderFixes)}
+                                                    disabled={isFixingFolders}
+                                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white rounded-lg text-xs sm:text-sm font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
+                                                >
+                                                    {isFixingFolders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderInput className="w-4 h-4" />}
+                                                    Pindahkan {folderFixes.length} berkas ke folder yang sesuai
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {canDeleteOrRequest && (
                                     <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 flex-wrap gap-3">
                                         <div className="flex items-center gap-3">

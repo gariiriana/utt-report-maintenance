@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
-import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { setDocQueued, addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
+import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
 import { compressImage } from '@/utils/imageCompression';
 import { safeStorage } from '@/utils/safeStorage';
@@ -258,11 +259,11 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
       }
 
       if (savedDocId) {
-        await setDoc(doc(db, 'hse_findings', savedDocId), payload, { merge: true });
+        await setDocQueued(doc(db, 'hse_findings', savedDocId), payload, { merge: true });
         return savedDocId;
       } else {
         payload.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, 'hse_findings'), payload);
+        const docRef = await addDocQueued(collection(db, 'hse_findings'), payload);
         setSavedDocId(docRef.id);
         return docRef.id;
       }
@@ -318,7 +319,7 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
       };
 
       await exportSingleHSEFindingPDF(findingItem, { companyVariant });
-      toast.success(
+      toastWriteSuccess(
         savedDocId
           ? `Data di arsip diperbarui & PDF (${variantLabel}) berhasil diunduh!`
           : `Data masuk ke arsip & PDF (${variantLabel}) berhasil diunduh!`,
@@ -452,7 +453,7 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
         return;
       }
 
-      toast.success(
+      toastWriteSuccess(
         savedDocId
           ? 'Data temuan berhasil diperbarui di arsip!'
           : (findingType === 'positive' ? 'Temuan positif berhasil dicatat & masuk ke arsip!' : 'Temuan K3 berhasil dicatat & masuk ke arsip!'),

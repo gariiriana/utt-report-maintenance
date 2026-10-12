@@ -2004,7 +2004,7 @@ export function MonthlyReportGenerator() {
           </div>
 
           {/* Month & Year Selectors + Reset in Compact Card */}
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 self-start lg:self-center shrink-0">
+          <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 self-start lg:self-center max-w-full lg:shrink-0">
             <div className="flex items-center gap-1.5 px-2 py-1 text-slate-400 text-xs font-medium">
               <Calendar className="w-4 h-4 text-slate-500" />
               <span className="hidden sm:inline text-slate-600 font-semibold">Periode:</span>

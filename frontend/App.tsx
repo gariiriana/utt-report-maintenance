@@ -19,10 +19,14 @@ import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
 import { useEffect } from 'react';
-import { logFirebaseEvent } from '@/api/firebase';
+import { db, logFirebaseEvent } from '@/api/firebase';
+import { watchRestoredQueue } from '@/utils/offlineWrite';
 import { motion, AnimatePresence } from 'motion/react';
 import { AIChatWidget } from '@/components/AIChatWidget';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { initGlobalModalObserver } from '@/utils/modalScrollLock';
+import { isStandaloneApp } from '@/utils/pwa';
+import { initPwaBackGuard } from '@/utils/pwaBackGuard';
 
 /**
  * Helper internal: Memeriksa apakah URL browser mengakses dokumen publik Laporan HSE.
@@ -72,6 +76,10 @@ const PUBLIC_HSE_REPORT_ID = getHSEReportIdFromUri();
  */
 function AppContent() {
   const { user, userRole, loading } = useAuth();
+
+  // Data yang disimpan tanpa sinyal di sesi sebelumnya dikirim otomatis setelah login; pantau sampai terkirim
+  const uid = user?.uid;
+  useEffect(() => (uid ? watchRestoredQueue(db) : undefined), [uid]);
 
   // 1. Tampilkan indikator loading server saat autentikasi diproses
   if (loading) {
@@ -142,8 +150,11 @@ function AppWithBackground() {
         <AppContent />
       )}
 
-      {/* Notifikasi Toast Terpusat Aplikasi */}
-      <Toaster position="top-center" theme="light" richColors />
+      {/* Penanda saat HP tidak punya koneksi internet */}
+      <OfflineBanner />
+
+      {/* Notifikasi Toast Terpusat Aplikasi (di HP muncul di bawah top bar agar tombol menu tidak tertutup) */}
+      <Toaster position="top-center" theme="light" richColors mobileOffset={{ top: 68 }} />
     </div>
   );
 }
@@ -154,14 +165,19 @@ export default function App() {
     // Inisialisasi observer global pengunci background scroll saat modal aktif
     const cleanupModalObserver = initGlobalModalObserver();
 
+    // Aplikasi terpasang (PWA): tombol Back Android menutup popup dulu, bukan langsung keluar aplikasi
+    const standalone = isStandaloneApp();
+    const cleanupBackGuard = standalone ? initPwaBackGuard() : () => {};
+
     // Analytics Log Firebase Analytics session start
     logFirebaseEvent('session_start', {
       timestamp: new Date().toISOString(),
-      platform: 'web'
+      platform: standalone ? 'pwa' : 'web'
     });
 
     return () => {
       cleanupModalObserver();
+      cleanupBackGuard();
     };
   }, []);
 

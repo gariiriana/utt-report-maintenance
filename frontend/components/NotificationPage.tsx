@@ -398,7 +398,7 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10 space-y-4 sm:space-y-6">
+        <div className="w-full min-w-0 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10 space-y-4 sm:space-y-6">
             
             {/* Header & Filter Card - Natural App Design */}
             <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 space-y-5">

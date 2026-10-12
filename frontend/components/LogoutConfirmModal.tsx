@@ -1,5 +1,9 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { LogOut, X } from 'lucide-react';
+import { hasQueuedWrites } from '@/utils/offlineWrite';
+
+// Antrean Firestore tersimpan per akun di HP ini; data terkirim lagi saat akun yang sama masuk kembali
+const QUEUED_WRITES_WARNING = 'Masih ada data tersimpan di HP yang belum terkirim ke server. Sebaiknya tunggu sampai ada sinyal. Kalau keluar sekarang, data baru terkirim saat Anda masuk lagi dengan akun ini di HP ini.';
 
 interface LogoutConfirmModalProps {
   isOpen: boolean;
@@ -10,7 +14,8 @@ interface LogoutConfirmModalProps {
   warning?: string;
 }
 
-export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail, warning }: LogoutConfirmModalProps) {
+export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail, warning: customWarning }: LogoutConfirmModalProps) {
+  const warning = customWarning ?? (isOpen && hasQueuedWrites() ? QUEUED_WRITES_WARNING : undefined);
   return (
     <AnimatePresence>
       {isOpen && (

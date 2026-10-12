@@ -1,7 +1,18 @@
 import { Mail, Phone, MapPin, Globe, Linkedin, Instagram, Youtube, ChevronRight } from 'lucide-react';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
+import { isStandaloneApp } from '@/utils/pwa';
 
 export function Footer() {
+  // Di aplikasi terpasang, footer versi website (alamat, tautan sosial) hanya memenuhi layar.
+  // Ruang bawah ekstra menjaga konten terakhir tidak tertutup tombol Asisten AI.
+  if (isStandaloneApp()) {
+    return (
+      <footer className="mt-10 border-t border-slate-200/80 px-4 pt-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] text-center text-[11px] font-medium text-slate-500">
+        © {new Date().getFullYear()} PT Dwimitra Ekatama Mandiri · Sistem Pemeliharaan v2.0
+      </footer>
+    );
+  }
+
   return (
     <footer className="mt-20 bg-slate-900 text-slate-300 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-6 py-12 lg:py-16">

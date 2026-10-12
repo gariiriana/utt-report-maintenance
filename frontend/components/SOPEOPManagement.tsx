@@ -1517,14 +1517,14 @@ export function SOPEOPManagement() {
                     value={docItem.name}
                     onChange={(e) => updateReferencedDoc(idx, 'name', e.target.value)}
                     placeholder="Nama Dokumen (Contoh: Form Check Trafo)"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
+                    className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
                   />
                   <input
                     type="text"
                     value={docItem.number}
                     onChange={(e) => updateReferencedDoc(idx, 'number', e.target.value)}
                     placeholder="Nomor Dokumen (Contoh: FORM-TR-01)"
-                    className="w-48 sm:w-64 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
+                    className="w-28 sm:w-64 shrink-0 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
                   />
                   <button
                     type="button"
@@ -2352,7 +2352,7 @@ export function SOPEOPManagement() {
                       setEopData({ ...eopData, referencedDocuments: updated });
                     }}
                     placeholder="Nama Dokumen"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
+                    className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
                   />
                   <input
                     type="text"
@@ -2363,7 +2363,7 @@ export function SOPEOPManagement() {
                       setEopData({ ...eopData, referencedDocuments: updated });
                     }}
                     placeholder="Nomor Dokumen"
-                    className="w-48 sm:w-64 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
+                    className="w-28 sm:w-64 shrink-0 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
                   />
                   <button
                     type="button"

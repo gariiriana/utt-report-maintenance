@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where, getDocs } from 'firebase/firestore';
 import { db } from '@/api/firebase';
+import { addDocQueued, updateDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
@@ -32,6 +33,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { loadLogoBase64 } from '@/utils/ReportPdfExport';
+import { openBlobPreview } from '@/utils/pwa';
 
 // ─── Interfaces ───
 interface InductionRecord {
@@ -517,8 +519,8 @@ export function AbsenInduction() {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: contentType });
-      const fileURL = URL.createObjectURL(blob);
-      window.open(fileURL, '_blank');
+      // Tab pratinjau bisa diblokir/kosong (terutama di aplikasi terpasang); bila begitu file diunduh.
+      openBlobPreview(blob, pdfRecord.name.toLowerCase().endsWith('.pdf') ? pdfRecord.name : `${pdfRecord.name}.pdf`);
     } catch (err) {
       if (toastId) toast.dismiss(toastId);
       console.error("Gagal membuka PDF:", pdfRecord.name, err);
@@ -1129,7 +1131,7 @@ export function AbsenInduction() {
 
       // 1. Save participant rows
       const batchPromises = validRows.map(item =>
-        addDoc(collection(db, 'absen_induction'), {
+        addDocQueued(collection(db, 'absen_induction'), {
           tanggal: formDate,
           nama: item.nama.trim(),
           perusahaan: item.perusahaan.trim(),
@@ -1153,7 +1155,7 @@ export function AbsenInduction() {
         if (existingDoc) {
           docId = existingDoc.id;
         } else {
-          const docRef = await addDoc(collection(db, 'absen_induction'), {
+          const docRef = await addDocQueued(collection(db, 'absen_induction'), {
             tanggal: formDate,
             isDocumentation: true,
             photos: [],
@@ -1177,7 +1179,7 @@ export function AbsenInduction() {
           for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
             const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
             chunkPromises.push(
-              addDoc(collection(db, 'absen_induction_chunks'), {
+              addDocQueued(collection(db, 'absen_induction_chunks'), {
                 docId: docId,
                 pdfId: pdf.id,
                 chunkIndex: chunkIndex,
@@ -1201,7 +1203,7 @@ export function AbsenInduction() {
         }
         
         const docRef = doc(db, 'absen_induction', docId);
-        await updateDoc(docRef, {
+        await updateDocQueued(docRef, {
           photos: activityPhotos,
           pdfs: finalPdfs,
           updatedAt: serverTimestamp()
@@ -1209,9 +1211,9 @@ export function AbsenInduction() {
       }
 
       if (submitToastId) {
-        toast.success(`Berhasil menyimpan ${validRows.length} data induction!`, { id: submitToastId });
+        toastWriteSuccess(`Berhasil menyimpan ${validRows.length} data induction!`, { id: submitToastId });
       } else {
-        toast.success(`Berhasil menyimpan ${validRows.length} data induction!`);
+        toastWriteSuccess(`Berhasil menyimpan ${validRows.length} data induction!`);
       }
 
       // Auto-expand date filter range if the submitted date is outside the current range
@@ -1252,12 +1254,12 @@ export function AbsenInduction() {
       return;
     }
     try {
-      await updateDoc(doc(db, 'absen_induction', id), {
+      await updateDocQueued(doc(db, 'absen_induction', id), {
         nama: editedNama.trim(),
         perusahaan: editedPerusahaan.trim(),
         remark: editedRemark.trim()
       });
-      toast.success("Data berhasil diperbarui!");
+      toastWriteSuccess("Data berhasil diperbarui!");
       setEditingRecordId(null);
     } catch (err: any) {
       toast.error("Gagal memperbarui data: " + err.message);
@@ -1942,7 +1944,7 @@ export function AbsenInduction() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
+    <div className="w-full min-w-0 max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6">
       {/* ─── Header ─── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>

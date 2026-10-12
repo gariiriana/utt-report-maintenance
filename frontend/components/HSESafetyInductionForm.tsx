@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
+import { addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { collection, addDoc, updateDoc, doc, getDoc, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
 import { compressBase64Image, compressImage, getBase64SizeKB } from '@/utils/imageCompression';
@@ -359,6 +360,8 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
       };
 
       let finalDocId = '';
+      // Keep the editing flow server-confirmed: it reads and replaces existing photos.
+      const savePhoto = !!editingData?.id ? addDoc : addDocQueued;
 
       if (editingData && editingData.id) {
         finalDocId = editingData.id;
@@ -375,7 +378,7 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
         }
       } else {
         docData.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, 'hse'), docData);
+        const docRef = await addDocQueued(collection(db, 'hse'), docData);
         finalDocId = docRef.id;
       }
 
@@ -393,7 +396,7 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
       let globalIdx = 0;
       for (const { slot, photos } of allSlots) {
         for (let pi = 0; pi < photos.length; pi++) {
-          await addDoc(collection(db, `hse/${finalDocId}/photos`), {
+          await savePhoto(collection(db, `hse/${finalDocId}/photos`), {
             dataUrl: photos[pi],
             label: slot,
             description: `${slotDescMap[slot]} (${pi + 1})`,
@@ -403,7 +406,7 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
         }
       }
 
-      toast.success('Laporan Safety Induction berhasil disimpan ke Arsip Dokumen HSE!', { id: toastId });
+      toastWriteSuccess('Laporan Safety Induction berhasil disimpan ke Arsip Dokumen HSE!', { id: toastId });
 
       if (onSuccess) {
         onSuccess();

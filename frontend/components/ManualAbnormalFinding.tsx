@@ -7,8 +7,9 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Building2, CalendarDays, Camera, ClipboardPenLine, ImagePlus, Loader2, Trash2, Wrench, Sparkles, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
+import { setDocQueued } from '@/utils/offlineWrite';
 import { useAuth } from './AuthContext';
 
 const MONTHS = [
@@ -146,9 +147,10 @@ export function ManualAbnormalFinding({ className }: { className?: string } = {}
         updatedAt: serverTimestamp(),
       };
       if (photoBase64) payload.photoBase64 = photoBase64;
-      await addDoc(collection(db, 'findings'), payload);
+      const outcome = await setDocQueued(doc(collection(db, 'findings')), payload);
 
-      toast.success('Temuan abnormal manual tersimpan dan masuk ke Pusat Temuan Abnormal.');
+      // Tanpa sinyal, setDocQueued sudah memberi tahu "Tersimpan di HP"
+      if (outcome === 'synced') toast.success('Temuan abnormal manual tersimpan dan masuk ke Pusat Temuan Abnormal.');
       setForm((current) => ({
         ...current,
         maintenanceName: isPjuAccount ? 'PJU' : '',

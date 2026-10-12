@@ -23,11 +23,13 @@ import {
   doc, query, orderBy, serverTimestamp, Timestamp, getDocs, writeBatch, deleteField
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
+import { addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { safeHtml2Canvas } from '@/utils/ReportPdfExport';
+import { openBlobPreview } from '@/utils/pwa';
 import { 
   exportPTWListToExcel, 
   exportPTWListToPDF, 
@@ -654,15 +656,12 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       });
 
       const blob = new Blob(byteArrays as any[], { type: mimeString });
-      const url = URL.createObjectURL(blob);
-      
-      const previewWindow = window.open(url, '_blank');
-      if (!previewWindow) {
-        toast.error('Gagal membuka pratinjau. Silakan periksa blocker pop-up Anda.', { id: toastId });
-        return;
+      // Tab pratinjau bisa diblokir/kosong (terutama di aplikasi terpasang); bila begitu file diunduh.
+      if (openBlobPreview(blob, record.fileName)) {
+        toast.success('Pratinjau berhasil dibuka!', { id: toastId });
+      } else {
+        toast.dismiss(toastId);
       }
-      
-      toast.success('Pratinjau berhasil dibuka!', { id: toastId });
     } catch (err) {
       console.error(err);
       toast.error('Gagal memuat pratinjau', { id: toastId });
@@ -702,15 +701,12 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       });
 
       const blob = new Blob(byteArrays as any[], { type: mimeString });
-      const url = URL.createObjectURL(blob);
-      
-      const previewWindow = window.open(url, '_blank');
-      if (!previewWindow) {
-        toast.error('Gagal membuka pratinjau. Silakan periksa blocker pop-up Anda.', { id: toastId });
-        return;
+      // Tab pratinjau bisa diblokir/kosong (terutama di aplikasi terpasang); bila begitu file diunduh.
+      if (openBlobPreview(blob, record.closingFileName)) {
+        toast.success('Pratinjau file closing berhasil dibuka!', { id: toastId });
+      } else {
+        toast.dismiss(toastId);
       }
-      
-      toast.success('Pratinjau file closing berhasil dibuka!', { id: toastId });
     } catch (err) {
       console.error(err);
       toast.error('Gagal memuat pratinjau file closing', { id: toastId });
@@ -935,7 +931,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
           toast.loading(`Mengunggah PTW ${idx + 1} dari ${totalItems}: ${item.file ? item.file.name : 'Data Manual'}...`, { id: 'multi-upload-toast' });
           
           // Create doc first to get ID
-          const newDocRef = await addDoc(collection(db, 'ptw_records'), {
+          const newDocRef = await addDocQueued(collection(db, 'ptw_records'), {
             sequenceNumber: parseInt(item.sequenceNumber),
             ptwNumber: ptwNum,
             equipmentCode: normalizeEquipmentCode(item.equipmentCode),
@@ -967,7 +963,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               const end = Math.min(start + CHUNK_SIZE, currentFile.size);
               let chunkBase64 = await chunkToBase64(currentFile.slice(start, end));
               if (i === 0) chunkBase64 = `data:${currentFile.type};base64,${chunkBase64}`;
-              await addDoc(collection(db, 'ptw_records', newDocRef.id, 'chunks'), { 
+              await addDocQueued(collection(db, 'ptw_records', newDocRef.id, 'chunks'), {
                 index: i, 
                 data: chunkBase64,
                 isClosing: false
@@ -984,7 +980,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
           }
         }
         
-        toast.success(`Berhasil menambahkan ${totalItems} data PTW baru!`, { id: 'multi-upload-toast' });
+        toastWriteSuccess(`Berhasil menambahkan ${totalItems} data PTW baru!`, { id: 'multi-upload-toast' });
       }
 
       setUploadProgress(100);
@@ -1463,7 +1459,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+    <div className="w-full min-w-0 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
       <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 mb-8 border border-sky-100/90 shadow-md text-slate-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">

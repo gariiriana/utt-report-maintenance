@@ -421,7 +421,7 @@ export function AIChatWidget() {
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end" data-chat-widget="true">
+      <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[calc(1.5rem+env(safe-area-inset-right))] z-[9999] flex flex-col items-end" data-chat-widget="true">
         <AnimatePresence>
           {isOpen && (
             <motion.div

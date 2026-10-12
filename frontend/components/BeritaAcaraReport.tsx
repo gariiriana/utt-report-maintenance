@@ -386,7 +386,7 @@ export function BeritaAcaraReport() {
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="w-full min-w-0 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
       {/* ═══ PAGE HEADER ═══ */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

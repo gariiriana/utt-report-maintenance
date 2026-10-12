@@ -46,6 +46,9 @@ let analyticsInitialized = false;
 // Mengecek dulu apakah browser mendukung Analytics sebelum mengaktifkannya
 function initAnalytics(): Promise<any> {
   if (analyticsInitialized) return analyticsPromise!; // Kalau sudah pernah init, skip
+  // Aplikasi terpasang (PWA) bisa dibuka tanpa sinyal; Analytics lalu gagal dengan error tak tertangani.
+  // Tunda sampai online (dipanggil lagi oleh logFirebaseEvent berikutnya).
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return Promise.resolve(null);
   analyticsInitialized = true;
 
   analyticsPromise = isSupported().then(supported => {

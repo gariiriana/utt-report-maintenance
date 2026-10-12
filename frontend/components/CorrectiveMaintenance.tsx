@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
+import { updateDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import {
     collection,
     query,
@@ -55,7 +56,6 @@ import {
     onSnapshot,
     deleteDoc,
     doc,
-    updateDoc,
     deleteField,
     serverTimestamp,
     getDoc,
@@ -290,7 +290,7 @@ const invalidateReportMedia = (reportId: string) => {
 };
 
 const updateReportDoc = async (ref: DocumentReference, data: UpdateData<DocumentData>) => {
-    await updateDoc(ref, data);
+    await updateDocQueued(ref, data);
     invalidateReportMedia(ref.id);
     notifyReportsChanged();
 };
@@ -449,7 +449,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 predictiveEligibleUpdatedAt: new Date(),
                 predictiveEligibleUpdatedBy: user?.email || 'standby_engineer'
             } : r));
-            toast.success(
+            toastWriteSuccess(
                 eligible === true
                     ? 'Status laporan: ✓ BISA dibuatkan Predictive Report'
                     : eligible === false
@@ -1153,7 +1153,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 toast.info(`Filter status trouble disesuaikan ke 'Semua' agar laporan tetap terlihat.`, { icon: 'ℹ️' });
             }
 
-            toast.success(
+            toastWriteSuccess(
                 isClosed
                     ? 'Status trouble berhasil ditandai: CLOSED (Solved)'
                     : 'Status trouble berhasil ditandai: OPEN (Belum Selesai)',
@@ -1196,7 +1196,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 status: 'Resolved',
                 updatedAt: serverTimestamp()
             });
-            toast.success('Laporan CM berhasil ditandai: CLOSED (Solved)', { id: toastId });
+            toastWriteSuccess('Laporan CM berhasil ditandai: CLOSED (Solved)', { id: toastId });
             scrollToReport(report.id);
         } catch (err: any) {
             console.error('Error quick resolving trouble:', err);
@@ -1252,7 +1252,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 toast.info("Filter status dokumen disesuaikan ke 'Semua' agar laporan tetap terlihat.", { icon: 'ℹ️' });
             }
 
-            toast.success(
+            toastWriteSuccess(
                 isRevisi
                     ? 'Status dokumen ditandai: REVISI (Dikecualikan dari Rekapitulasi)'
                     : 'Status dokumen ditandai: FINAL / APPROVED (Siap Rekapitulasi)',
@@ -2583,7 +2583,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+        <div className="w-full min-w-0 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-slate-200 pb-5 gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
@@ -3096,7 +3096,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-2 justify-end shrink-0">
+                                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 justify-start sm:justify-end sm:shrink-0">
                                     {isAuthorizedRole && (
                                         archiveFolder === 'predictive' ? (
                                             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">

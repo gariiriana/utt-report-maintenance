@@ -4730,7 +4730,7 @@ export function DocumentList({
         {/* Tombol Export Rekap PDF HSE (NeutraDC & UTT) - Khusus Role HSE / filterOverride 'hse_utt' */}
         {filterOverride === 'hse_utt' && (
           <div className="mt-4 pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 p-3 sm:p-4 rounded-2xl border border-blue-100 shadow-2xs">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0 max-w-full">
               <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs shrink-0">
                 <ClipboardList className="w-4 h-4" />
               </div>

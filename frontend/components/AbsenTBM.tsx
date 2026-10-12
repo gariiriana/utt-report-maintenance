@@ -15,8 +15,9 @@ import {
   Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save,
   Clock, Download, Eye
 } from 'lucide-react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, setDoc, orderBy } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, getDocsFromCache, setDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/api/firebase';
+import { addDocQueued, toastWriteSuccess, commitBatchQueued, updateDocQueued, deleteDocQueued } from '@/utils/offlineWrite';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
@@ -993,14 +994,14 @@ export function AbsenTBM() {
     }
 
     try {
-      await addDoc(collection(db, 'absen_tbm'), {
+      await addDocQueued(collection(db, 'absen_tbm'), {
         isPersonnel: true,
         nama: newPersonName.trim(),
         jabatan: newPersonJabatan.trim(),
         category: newPersonCategory,
         createdAt: serverTimestamp()
       });
-      toast.success("Personil berhasil ditambahkan!");
+      toastWriteSuccess("Personil berhasil ditambahkan!");
       setNewPersonName('');
       setNewPersonJabatan('');
     } catch (err: any) {
@@ -1097,7 +1098,7 @@ export function AbsenTBM() {
           collection(db, 'absen_tbm'),
           where('tanggal', '==', formDate)
         );
-        const querySnapshot = await getDocs(qExisting);
+        const querySnapshot = await (navigator.onLine ? getDocs(qExisting) : getDocsFromCache(qExisting));
         const batch = writeBatch(db);
         let deleteCount = 0;
         querySnapshot.docs.forEach(docSnap => {
@@ -1117,7 +1118,7 @@ export function AbsenTBM() {
           }
         });
         if (deleteCount > 0) {
-          await batch.commit();
+          await commitBatchQueued(batch);
           console.log(`Deleted ${deleteCount} duplicate TBM records for date ${formDate}`);
         }
       }
@@ -1125,7 +1126,7 @@ export function AbsenTBM() {
       // Save all checklist items to Firestore
       const batchPromises = itemsToSubmit.map(item => {
         const jk = item.jamKerja || 0;
-        return addDoc(collection(db, 'absen_tbm'), {
+        return addDocQueued(collection(db, 'absen_tbm'), {
           tanggal: formDate,
           nama: item.nama.trim(),
           kehadiran: item.kehadiran,
@@ -1142,7 +1143,7 @@ export function AbsenTBM() {
 
       // Save documentation photo if uploaded
       if (submissionPhotos.length > 0) {
-        await addDoc(collection(db, 'absen_tbm'), {
+        await addDocQueued(collection(db, 'absen_tbm'), {
           tanggal: formDate,
           isDocumentation: true,
           photos: submissionPhotos,
@@ -1151,7 +1152,7 @@ export function AbsenTBM() {
         });
       }
       
-      toast.success(`Berhasil menyimpan absensi ${itemsToSubmit.length} karyawan!`);
+      toastWriteSuccess(`Berhasil menyimpan absensi ${itemsToSubmit.length} karyawan!`);
 
       // Reset only the submitted checklist items & photos
       const getLocalDay = (dateStr: string) => {
@@ -1205,7 +1206,7 @@ export function AbsenTBM() {
       return;
     }
     try {
-      await updateDoc(doc(db, 'absen_tbm', id), {
+      await updateDocQueued(doc(db, 'absen_tbm', id), {
         nama: editedNama.trim(),
         jabatan: editedJabatan.trim(),
         kehadiran: editedKehadiran,
@@ -1214,7 +1215,7 @@ export function AbsenTBM() {
         isLembur: false,
         jamLembur: 0
       });
-      toast.success("Data absen berhasil diperbarui!");
+      toastWriteSuccess("Data absen berhasil diperbarui!");
       setEditingRecordId(null);
     } catch (err: any) {
       console.error("Error updating record:", err);
@@ -1238,7 +1239,7 @@ export function AbsenTBM() {
     }
     const toastId = toast.loading("Menyimpan data absensi baru...");
     try {
-      await addDoc(collection(db, 'absen_tbm'), {
+      await addDocQueued(collection(db, 'absen_tbm'), {
         tanggal: selectedDate,
         nama: person.nama,
         jabatan: person.jabatan,
@@ -1250,7 +1251,7 @@ export function AbsenTBM() {
         jamLembur: 0,
         createdAt: serverTimestamp()
       });
-      toast.success("Absensi berhasil disimpan!", { id: toastId });
+      toastWriteSuccess("Absensi berhasil disimpan!", { id: toastId });
       setEditingRecordId(null);
     } catch (err: any) {
       console.error("Error creating record:", err);
@@ -1347,19 +1348,19 @@ export function AbsenTBM() {
     try {
       if (selectedDateDoc) {
         const updatedPhotos = [...selectedDateDoc.photos, ...newPhotos];
-        await updateDoc(doc(db, 'absen_tbm', selectedDateDoc.id), {
+        await updateDocQueued(doc(db, 'absen_tbm', selectedDateDoc.id), {
           photos: updatedPhotos
         });
-        toast.success("Dokumentasi foto berhasil diperbarui!");
+        toastWriteSuccess("Dokumentasi foto berhasil diperbarui!");
       } else {
-        await addDoc(collection(db, 'absen_tbm'), {
+        await addDocQueued(collection(db, 'absen_tbm'), {
           tanggal: selectedDate,
           isDocumentation: true,
           photos: newPhotos,
           category: 'Semua',
           createdAt: serverTimestamp()
         });
-        toast.success("Dokumentasi foto berhasil ditambahkan!");
+        toastWriteSuccess("Dokumentasi foto berhasil ditambahkan!");
       }
     } catch (err: any) {
       console.error("Error updating date photo:", err);
@@ -1375,13 +1376,13 @@ export function AbsenTBM() {
     try {
       const updatedPhotos = selectedDateDoc.photos.filter((_, idx) => idx !== photoIndex);
       if (updatedPhotos.length === 0) {
-        await deleteDoc(doc(db, 'absen_tbm', selectedDateDoc.id));
+        await deleteDocQueued(doc(db, 'absen_tbm', selectedDateDoc.id));
       } else {
-        await updateDoc(doc(db, 'absen_tbm', selectedDateDoc.id), {
+        await updateDocQueued(doc(db, 'absen_tbm', selectedDateDoc.id), {
           photos: updatedPhotos
         });
       }
-      toast.success("Foto dokumentasi berhasil dihapus");
+      toastWriteSuccess("Foto dokumentasi berhasil dihapus");
     } catch (err: any) {
       console.error("Error removing photo:", err);
       toast.error("Gagal menghapus foto: " + err.message);
@@ -2889,7 +2890,7 @@ export function AbsenTBM() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+    <div className="w-full min-w-0 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6">
       
       {/* ─── Header ────────────────────────────────────────────── */}
       <motion.div

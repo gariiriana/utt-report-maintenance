@@ -19,8 +19,9 @@ import {
   Loader2,
   Trash2
 } from 'lucide-react';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
+import { updateDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { toast } from 'sonner';
 import { ExcelDocument } from '@/components/DocumentList';
 import { useAuth } from '@/components/AuthContext';
@@ -200,7 +201,7 @@ export function UploadSRModal({
       }
 
       // Update dokumen Firestore
-      await updateDoc(doc(db, colName, docItem.id), updateData);
+      await updateDocQueued(doc(db, colName, docItem.id), updateData);
 
       // Simpan juga ke IndexedDB lokal agar selalu tersedia bahkan saat offline
       try {
@@ -232,7 +233,7 @@ export function UploadSRModal({
         attachedSrBase64: fileBase64 || undefined,
       });
 
-      toast.success('Service Report berhasil di-upload & disinkronkan ke dokumen!', { id: toastId });
+      toastWriteSuccess('Service Report berhasil di-upload & disinkronkan ke dokumen!', { id: toastId });
       onClose();
     } catch (err: any) {
       console.error('Error saving uploaded SR:', err);

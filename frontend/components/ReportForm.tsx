@@ -15,8 +15,9 @@ import { ExcelDocument, invalidateDocumentsCache } from '@/components/DocumentLi
 import { ImageEditor } from '@/components/ImageEditor';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { db, auth } from '@/api/firebase';
+import { addDocQueued, deleteDocQueued, updateDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { offlineReportStorage } from '@/utils/offlineReportStorage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -639,8 +640,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
           await setDoc(doc(db, colName, rep.id), docData, { merge: true });
 
-          // Sinkronkan foto subcollection
+          // Sinkronkan foto subcollection — lewati bila foto sudah ada di server
+          // (antrean Firestore biasanya sudah mengirimnya; menambah lagi = foto dobel di PDF)
           const photosRef = collection(db, `${colName}/${rep.id}/photos`);
+          const existingPhotos = await getDocs(photosRef).catch(() => null);
+          if (existingPhotos && !existingPhotos.empty) {
+            await offlineReportStorage.markSynced(rep.id);
+            continue;
+          }
           for (const p of photos) {
             if (p.photoBase64) {
               await addDoc(photosRef, {
@@ -937,37 +944,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     });
   };
 
-  const saveReportViaAPI = async (apiUrl: string, collectionName: string, reportData: any, photos: any[]) => {
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error('Not authenticated');
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          collection: collectionName,
-          sub_data: photos,
-          ...reportData,
-          processedBy: 'golang_api',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result.reportId;
-    } catch (error) {
-      console.error('API Save Error:', error);
-      return null;
-    }
-  };
-
   const saveReportToFirestore = async (unit: ReportUnit, pdfData?: { doc: jsPDF, fileName: string, filled: PhotoCard[] }) => {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
 
@@ -1051,61 +1027,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const effectiveDocType = unit.archiveType || (editingData ? editingData.documentType : 'pdf');
       const collectionName = effectiveDocType === 'excel' ? 'excel_documents' : (effectiveDocType === 'hse' ? 'hse' : 'pdf_documents');
 
-      const apiUrl = import.meta.env.VITE_API_URL;
-      const isOnline = navigator.onLine;
-      if (isOnline && apiUrl && !effectiveDocId) {
-        const photos = cardsToSave.map((card, i) => ({
-          index: i + 1,
-          photoBase64: card.photoBase64 || '',
-          description: card.description || '',
-          parameter: card.parameter || '',
-          hasPhoto: !!card.photoBase64
-        }));
-        const docIdFromAPI = await saveReportViaAPI(apiUrl, collectionName, reportData, photos);
-        if (docIdFromAPI) {
-          setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docIdFromAPI, archiveType: 'pdf' } : u));
-          toast.success(`Unit ${unit.specificDetail} disimpan (via API)`, { id: toastId });
-
-          // Cadangkan ke offline storage lokal
-          offlineReportStorage.saveReport({
-            id: docIdFromAPI,
-            fileName: reportData.fileName,
-            maintenanceName: reportData.maintenanceName,
-            maintenanceTime: reportData.maintenanceTime,
-            specificDetail: reportData.specificDetail,
-            companyType: companyType,
-            documentType: 'pdf',
-            fileSize: reportData.fileSize,
-            totalPhotos: cardsToSave.length,
-            photosWithImage,
-            hasAbnormal: reportData.hasAbnormal,
-            abnormalFinding: reportData.abnormalFinding,
-            serviceReportPayload: reportData.serviceReportPayload,
-            hasServiceReport: reportData.hasServiceReport,
-            attachedSrFile: reportData.attachedSrFile || undefined,
-            attachedSrBase64: reportData.attachedSrBase64 || undefined,
-            createdBy: reportData.createdBy || user?.email || '',
-            createdAt: Date.now(),
-            isSynced: true,
-          }, photos).catch(err => console.warn('Offline backup error:', err));
-
-          return docIdFromAPI;
-        }
-      }
-
+      // Laporan disimpan langsung ke Firestore. (Dulu dicoba POST ke VITE_API_URL dulu, tapi backend Go
+      // tidak punya rute POST /api sehingga selalu gagal setelah semua foto ikut terunggah; jalur
+      // Firestore juga yang bisa mengantre di HP saat tanpa sinyal.)
       let docId = '';
       if (effectiveDocId) {
         docId = effectiveDocId;
-        await withRetry(() => updateDoc(doc(db, collectionName, docId), reportData));
+        await withRetry(() => updateDocQueued(doc(db, collectionName, docId), reportData));
         const photosRef = collection(db, `${collectionName}/${docId}/photos`);
         const existingPhotos = await getDocs(photosRef);
         if (!existingPhotos.empty) {
           await Promise.all(existingPhotos.docs.map(photoDoc =>
-            deleteDoc(doc(db, `${collectionName}/${docId}/photos`, photoDoc.id))
+            deleteDocQueued(doc(db, `${collectionName}/${docId}/photos`, photoDoc.id))
           ));
         }
       } else {
-        const docRef = await withRetry(() => addDoc(collection(db, 'pdf_documents'), reportData));
+        const docRef = await withRetry(() => addDocQueued(collection(db, 'pdf_documents'), reportData));
         docId = docRef.id;
         setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docId, archiveType: 'pdf' } : u));
 
@@ -1152,7 +1089,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           attachedSrBase64: reportData.attachedSrBase64 || undefined,
           createdBy: reportData.createdBy || user?.email || '',
           createdAt: Date.now(),
-          isSynced: isOnline,
+          // Pengiriman ke server sudah dijamin antrean Firestore; salinan ini hanya cadangan lokal.
+          // (isSynced=false akan memicu sinkron ulang yang menggandakan foto.)
+          isSynced: true,
         }, offlinePhotos);
       } catch (offErr) {
         console.warn('Gagal mencadangkan laporan ke offlineReportStorage:', offErr);
@@ -1189,7 +1128,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               }
 
               await withRetry(async () => {
-                await addDoc(photosRef, {
+                await addDocQueued(photosRef, {
                   index: currentIdx,
                   photoBase64: b64,
                   description: card.description || '',
@@ -1207,7 +1146,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         }
       }
 
-      toast.success(`Unit ${unit.specificDetail} berhasil disimpan`, { id: toastId });
+      toastWriteSuccess(`Unit ${unit.specificDetail} berhasil disimpan`, { id: toastId });
       return docId;
     } catch (error: any) {
       console.error('Firestore save error:', error);
@@ -1264,7 +1203,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       let createdFindingId = '';
       if (abnormalStatus === 'abnormal' && user) {
         try {
-          const fRef = await addDoc(collection(db, 'findings'), {
+          const fRef = await addDocQueued(collection(db, 'findings'), {
             partName: findingData.partName,
             partNumber: findingData.partNumber,
             brandName: findingData.brandName,
@@ -1300,7 +1239,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         }
         // Bersihkan cache dokumen di memori agar Arsip Dokumen langsung sinkron dengan Firestore
         invalidateDocumentsCache();
-        toast.success('Perubahan laporan berhasil diperbarui di Arsip Dokumen!', { id: toastId });
+        toastWriteSuccess('Perubahan laporan berhasil diperbarui di Arsip Dokumen!', { id: toastId });
         const savedId = typeof saveResult === 'string' ? saveResult : editingData?.id;
         if (savedId) {
           safeStorage.setItem('dme_highlight_document_id', savedId);
@@ -1354,7 +1293,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       let createdFindingId = '';
       if (abnormalStatus === 'abnormal' && user) {
         try {
-          const fRef = await addDoc(collection(db, 'findings'), {
+          const fRef = await addDocQueued(collection(db, 'findings'), {
             partName: findingData.partName,
             partNumber: findingData.partNumber,
             brandName: findingData.brandName,
@@ -1436,7 +1375,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             }]);
             setActiveUnitId(newId);
 
-            toast.success("Laporan berhasil diekspor & disimpan! Form siap untuk laporan baru.", { id: toastId });
+            toastWriteSuccess("Laporan berhasil diekspor & disimpan! Form siap untuk laporan baru.", { id: toastId });
           } else {
             toast.error("Gagal menyimpan data ke database. PDF telah diunduh tetapi arsip tidak tersimpan.", { id: toastId });
           }

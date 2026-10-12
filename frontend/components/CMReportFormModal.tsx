@@ -37,7 +37,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
-import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { updateDocQueued, addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
+import { collection, serverTimestamp, getDoc, doc, deleteField } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
 import { exportCMReportToDocx } from '@/utils/docxReportExport';
@@ -653,9 +654,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           reportedAt: serverTimestamp(),
         };
         if (editId) {
-          await updateDoc(doc(db, 'corrective_reports', editId), reportPayload);
+          await updateDocQueued(doc(db, 'corrective_reports', editId), reportPayload);
         } else {
-          const newDocRef = await addDoc(collection(db, 'corrective_reports'), reportPayload);
+          const newDocRef = await addDocQueued(collection(db, 'corrective_reports'), reportPayload);
           await sendFileNotification({
             title: `Laporan CM Baru: ${formattedData.incidentName || formattedData.equipmentName || 'Corrective Maintenance'}`,
             fileName: formattedData.incidentName || formattedData.equipmentName || 'Laporan CM',
@@ -669,7 +670,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       }
 
       localStorage.removeItem('cm_report_draft');
-      toast.success('Laporan CM Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
+      toastWriteSuccess('Laporan CM Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
     } catch (err: any) {
       console.error('Error exporting DOCX:', err);
       toast.error('Gagal mengekspor Laporan CM Word');
@@ -768,13 +769,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
       let targetResultId = editId;
       if (editId) {
-        await updateDoc(doc(db, 'corrective_reports', editId), reportPayload);
-        toast.success('Laporan CM berhasil diperbarui!');
+        await updateDocQueued(doc(db, 'corrective_reports', editId), reportPayload);
+        toastWriteSuccess('Laporan CM berhasil diperbarui!');
       } else {
-        const newDocRef = await addDoc(collection(db, 'corrective_reports'), reportPayload);
+        const newDocRef = await addDocQueued(collection(db, 'corrective_reports'), reportPayload);
         targetResultId = newDocRef.id;
         localStorage.removeItem('cm_report_draft');
-        toast.success('Laporan CM berhasil disimpan!');
+        toastWriteSuccess('Laporan CM berhasil disimpan!');
 
         await sendFileNotification({
           title: `Laporan CM Baru: ${formData.incidentName || formData.equipmentName || 'AC VRV'}`,
