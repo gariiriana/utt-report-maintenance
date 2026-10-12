@@ -1,7 +1,13 @@
 # Catatan implementasi simpan offline
 
-Status: perubahan belum di-commit dan belum di-deploy. Pengujian browser/emulator
-diserahkan kepada pemilik proyek sesuai instruksi terbaru.
+Status: sudah di-commit. Diuji 2026-10-12 di Firebase Emulator + Playwright
+(Chrome, 390px, mode aplikasi terpasang) memakai form Input Abnormal Manual — 18/18 lulus:
+- offline: tombol Simpan aktif lagi dalam ±60 ms, toast "Tersimpan di HP", form dikosongkan,
+  penanda offline menyebut data tersimpan di HP, modal logout memperingatkan data belum terkirim;
+- aplikasi ditutup saat offline lalu dibuka lagi dengan sinyal: data terkirim, tidak dobel, sesi login tetap;
+- sinyal kembali di sesi yang sama: toast "sudah terkirim ✓", data tepat satu, penanda hilang;
+- sinyal lemah (online tapi server tidak menjawab): tombol lepas setelah ±6 detik, data terkirim saat pulih.
+Form lain memakai helper yang sama tetapi belum diuji satu per satu secara offline.
 
 ## Perubahan
 
@@ -38,6 +44,4 @@ setelah menulis, dan alur yang memanggil backend setelah menulis.
   Firestore; wrapper penulisannya telah ada sebelum pekerjaan ini dimulai.
 - Transaksi, proses backend, dan inisialisasi personil otomatis tidak dikonversi.
 
-Tidak ada hasil uji offline, reconnect, deduplikasi, atau pemulihan setelah browser
-ditutup yang dinyatakan lulus. Verifikasi perilaku tersebut masih perlu dilakukan
-sebelum commit/deploy. Backend Go tidak diubah.
+Backend Go tidak diubah.

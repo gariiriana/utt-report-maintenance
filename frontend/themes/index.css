@@ -326,7 +326,8 @@ body {
 
 /* Tombol bulat Asisten AI disembunyikan selama popup/drawer lain terbuka,
    supaya tidak menutupi tombol Simpan/Batal/Keluar di popup tersebut. */
-html.modal-scroll-locked [data-chat-widget="true"]:not(:has([role="dialog"])) {
+/* :not([role="dialog"]) — panel chat itu sendiri juga ber-data-chat-widget; jangan ikut disembunyikan */
+html.modal-scroll-locked [data-chat-widget="true"]:not([role="dialog"]):not(:has([role="dialog"])) {
   visibility: hidden;
   pointer-events: none;
 }
