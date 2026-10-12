@@ -39,7 +39,6 @@ import {
   getDefaultExecutiveSummaryParagraphs
 } from './monthlyReportData';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from './engineerSignatures';
-import { fetchAbnormalItemsForMonth, buildAbnormalPhotoMap } from './abnormalFindingsData';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 
 /** Enforces Times New Roman font on every TextRun throughout the DOCX export */
@@ -1591,7 +1590,7 @@ export async function generateMonthlyReportDOCX(
   // Sesuai Dokumen Resmi Template NeutraDC May 2026:
   // - Heading 10 pt bold: "Root Cause Analysis:"
   // - Items A, B, C... dengan Judul, English Desc, Indonesian Desc (italic)
-  // - Tabel "Documentasi Photo" 2 kolom (header biru #2E74B5, row foto, row caption)
+  // - Tanpa foto: RCA cukup berupa teks analisis (permintaan user 2026-10-12)
   // ──────────────────────────────────────────────────────────────────────────
   bodyChildren.push(
     new Paragraph({
@@ -1603,55 +1602,6 @@ export async function generateMonthlyReportDOCX(
   );
 
   const rcaItems = data.rootCauseAnalyses || [];
-
-  // Foto RCA otomatis tidak disimpan di laporan; ambil dari Pusat Temuan Abnormal saat export
-  // Cadangan: RCA yang fotonya belum terlampir di data (mis. foto masih dimuat) diambil langsung dari temuan
-  if (rcaItems.some(r => r.sourceId && !(r.photos || []).some(p => p?.url))) {
-    try {
-      const photoMap = buildAbnormalPhotoMap(await fetchAbnormalItemsForMonth(data.monthNumber, data.year));
-      rcaItems.forEach(r => {
-        if (!r.sourceId || (r.photos || []).some(p => p?.url)) return;
-        r.photos = (photoMap[r.sourceId] || []).map((url, i) => ({ caption: `${r.title} - Photo ${i + 1}`, url }));
-      });
-    } catch (err) {
-      console.warn('[MonthlyReport DOCX] Gagal memuat foto temuan untuk RCA:', err);
-    }
-  }
-
-  // Siapkan byte + ukuran asli tiap foto (URL diunduh dulu) karena pembuatan tabel di bawah berjalan sinkron
-  const rcaPhotoInfo = new Map<string, { bytes: Uint8Array; width: number; height: number }>();
-  for (const r of rcaItems) {
-    for (const ph of (r.photos || []).slice(0, 2)) {
-      if (!ph?.url || rcaPhotoInfo.has(ph.url)) continue;
-      const bytes = /^https?:/i.test(ph.url) ? await loadImageAsUint8Array(ph.url) : base64ToUint8Array(ph.url);
-      if (bytes.length === 0) continue;
-      let width = 4;
-      let height = 3;
-      try {
-        const bitmap = await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>]));
-        width = bitmap.width || width;
-        height = bitmap.height || height;
-        bitmap.close();
-      } catch {
-        // ukuran tidak terbaca -> pakai rasio 4:3
-      }
-      rcaPhotoInfo.set(ph.url, { bytes, width, height });
-    }
-  }
-  // Ukuran tampil di DOCX (px) menjaga rasio asli: 1 foto lebih besar, 2 foto berdampingan
-  const toRcaImageRun = (url: string, photoCount: number): ImageRun | null => {
-    const info = rcaPhotoInfo.get(url);
-    if (!info) return null;
-    const maxW = photoCount === 1 ? 460 : 300;
-    const maxH = photoCount === 1 ? 360 : 280;
-    const scale = Math.min(maxW / info.width, maxH / info.height);
-    const isPng = info.bytes[0] === 0x89 && info.bytes[1] === 0x50;
-    return new ImageRun({
-      data: info.bytes,
-      transformation: { width: Math.round(info.width * scale), height: Math.round(info.height * scale) },
-      type: isPng ? 'png' : 'jpg'
-    });
-  };
 
   if (rcaItems.length === 0) {
     bodyChildren.push(
@@ -1667,13 +1617,11 @@ export async function generateMonthlyReportDOCX(
     const letter = String.fromCharCode(65 + rcaIdx);
     const cleanTitle = rca.title.replace(/^[A-Z]\.\s*/, '').trim();
     const displayTitle = `${letter}. ${cleanTitle}`;
-    // RCA berfoto: judul + analisis + tabel foto dijaga utuh di satu halaman (keep with next / baris tidak terpotong)
-    const keepTogether = (rca.photos || []).some(ph => ph?.url);
 
-    // Item Title: 10 pt bold (size: 20)
+    // Item Title: 10 pt bold (size: 20) — tetap satu halaman dengan analisisnya
     bodyChildren.push(
       new Paragraph({
-        keepNext: keepTogether,
+        keepNext: true,
         keepLines: true,
         spacing: { before: 200, after: 80 },
         children: [
@@ -1697,7 +1645,7 @@ export async function generateMonthlyReportDOCX(
     if (descEn) {
       bodyChildren.push(
         new Paragraph({
-          keepNext: keepTogether,
+          keepNext: !!descId,
           keepLines: true,
           alignment: AlignmentType.JUSTIFIED,
           spacing: { before: 40, after: descId ? 40 : 120 },
@@ -1711,7 +1659,6 @@ export async function generateMonthlyReportDOCX(
     if (descId) {
       bodyChildren.push(
         new Paragraph({
-          keepNext: keepTogether,
           keepLines: true,
           alignment: AlignmentType.JUSTIFIED,
           spacing: { before: 40, after: 140 },
@@ -1721,73 +1668,6 @@ export async function generateMonthlyReportDOCX(
         })
       );
     }
-
-    // Photo Table: Documentasi Photo — hanya jika temuan punya foto; jumlah kolom = jumlah foto
-    const shownPhotos = (rca.photos || []).filter(ph => ph?.url).slice(0, 2);
-    if (shownPhotos.length === 0) return;
-    const colWidthPct = shownPhotos.length === 1 ? 100 : 50;
-    const imageCells = shownPhotos.map(ph => {
-      const run = toRcaImageRun(ph.url, shownPhotos.length);
-      return new TableCell({
-        width: { size: colWidthPct, type: WidthType.PERCENTAGE },
-        borders: borderThin,
-        verticalAlign: VerticalAlign.CENTER,
-        children: [
-          new Paragraph({
-            keepNext: true,
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 80, after: 80 },
-            children: run ? [run] : [new TextRun({ text: " ", size: 18 })]
-          })
-        ]
-      });
-    });
-    const captionCells = shownPhotos.map(ph => new TableCell({
-      width: { size: colWidthPct, type: WidthType.PERCENTAGE },
-      borders: borderThin,
-      verticalAlign: VerticalAlign.CENTER,
-      children: [
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 60, after: 60 },
-          children: [new TextRun({ text: ph.caption || cleanTitle, size: 18, font: "Times New Roman" })]
-        })
-      ]
-    }));
-
-    const photoRows: TableRow[] = [
-      // Header: Documentasi Photo
-      new TableRow({
-        cantSplit: true,
-        children: [
-          new TableCell({
-            columnSpan: shownPhotos.length,
-            shading: { fill: "2E74B5" },
-            borders: borderThin,
-            children: [
-              new Paragraph({
-                keepNext: true,
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 80, after: 80 },
-                children: [
-                  new TextRun({ text: "Documentasi Photo", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })
-                ]
-              })
-            ]
-          })
-        ]
-      }),
-      new TableRow({ cantSplit: true, children: imageCells }),
-      new TableRow({ cantSplit: true, children: captionCells })
-    ];
-
-    bodyChildren.push(
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: photoRows
-      }),
-      new Paragraph({ spacing: { after: 300 } })
-    );
   });
 
   // ══════════════════════════════════════════════════════════════════════════

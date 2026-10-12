@@ -54,7 +54,7 @@ import { draftStorage } from '@/utils/draftStorage';
 import { useAuth } from '@/components/AuthContext';
 import { db } from '@/api/firebase';
 import { collection, query, orderBy, onSnapshot, setDoc, deleteDoc, updateDoc, doc, Timestamp, serverTimestamp, deleteField } from 'firebase/firestore';
-import { offloadReportAssets, hydrateReportAssets, deleteReportAssets, compressImageDataUrl } from '@/utils/monthlyReportArchiveAssets';
+import { offloadReportAssets, hydrateReportAssets, deleteReportAssets } from '@/utils/monthlyReportArchiveAssets';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 
 import {
@@ -89,7 +89,7 @@ import {
   generateRcaWithAI,
   reconcileRootCauseAnalyses
 } from '@/utils/monthlyReportData';
-import { AbnormalItem, fetchAbnormalItemsForMonth, buildAbnormalPhotoMap } from '@/utils/abnormalFindingsData';
+import { fetchAbnormalItemsForMonth } from '@/utils/abnormalFindingsData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
   generateRecommendationsFromFindings,
@@ -101,16 +101,6 @@ import {
 } from '@/utils/monthlyReportAI';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
-
-// Foto temuan untuk RCA dikompres (maks 1280 px JPEG) agar ringan di draft & arsip
-async function buildCompressedRcaPhotoMap(items: AbnormalItem[]): Promise<Record<string, string[]>> {
-  const raw = buildAbnormalPhotoMap(items);
-  const out: Record<string, string[]> = {};
-  for (const [id, photos] of Object.entries(raw)) {
-    out[id] = await Promise.all(photos.map(src => compressImageDataUrl(src)));
-  }
-  return out;
-}
 
 const MONTH_OPTIONS = [
   { value: 1, label: 'Januari' },
@@ -412,8 +402,6 @@ export function MonthlyReportGenerator() {
   // RCA otomatis (Agentic AI) per temuan Tabel 23
   const [isGeneratingRca, setIsGeneratingRca] = useState<boolean>(false);
   const [rcaStage, setRcaStage] = useState<string>('');
-  // Foto temuan untuk RCA hanya disimpan di memori (bukan di data laporan / arsip Firestore)
-  const [rcaPhotoState, setRcaPhotoState] = useState<{ monthKey: string; map: Record<string, string[]> } | null>(null);
   // Di-set sinkron saat sinkron Tabel 23 mulai, supaya effect RCA di render yang sama tidak ikut jalan
   const observationSyncRunningRef = useRef<boolean>(false);
 
@@ -1532,9 +1520,6 @@ export function MonthlyReportGenerator() {
           executiveSummary: { ...prev.executiveSummary, totalFindings: result.total }
         };
       });
-      void buildCompressedRcaPhotoMap(freshItems)
-        .then(map => setRcaPhotoState({ monthKey: syncInfo.monthKey, map }))
-        .catch(err => console.warn('Gagal menyiapkan foto RCA:', err));
 
       // 2) Isi Tabel 23 wajib English: terjemahkan per batch & terapkan bertahap ke tabel
       const pendingCount = result.table.flatMap(s => s.items).filter(r => r.sourceId && !r.translated).length;
@@ -1669,50 +1654,15 @@ export function MonthlyReportGenerator() {
     void runRcaGeneration(reportData, true, false);
   };
 
-  // Muat foto temuan (untuk lampiran RCA) bila belum ada di memori untuk bulan laporan ini
-  const rcaPhotoLoadingRef = useRef<string | null>(null);
+  // RCA cukup berupa teks (tanpa foto). Draft / arsip lama yang masih menyimpan foto RCA
+  // dibersihkan saat dibuka, supaya tidak ikut tersimpan lagi atau terekspor.
   useEffect(() => {
-    if (!reportData?.monthNumber || !reportData.year) return;
-    const monthKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
-    if (rcaPhotoState?.monthKey === monthKey || rcaPhotoLoadingRef.current === monthKey) return;
-    // Selalu cek ke data temuan (tidak bergantung photoCount: baris lama belum punya field itu)
-    const needsPhotos = (reportData.rootCauseAnalyses || []).some(r => r.sourceId);
-    if (!needsPhotos) return;
-    rcaPhotoLoadingRef.current = monthKey;
-    fetchAbnormalItemsForMonth(reportData.monthNumber, reportData.year)
-      .then(buildCompressedRcaPhotoMap)
-      .then(map => setRcaPhotoState({ monthKey, map }))
-      .catch(err => {
-        console.warn('Gagal memuat foto temuan untuk RCA:', err);
-        rcaPhotoLoadingRef.current = null;
-      });
-  }, [reportData, rcaPhotoState]);
-
-  // Foto temuan masuk ke data RCA (rca.photos) — ikut tersimpan di draft & arsip (via subkoleksi aset)
-  useEffect(() => {
-    if (!reportData || !rcaPhotoState) return;
-    const monthKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
-    if (rcaPhotoState.monthKey !== monthKey) return;
-    const photoKey = (photos: RootCauseItem['photos'] | undefined) => (photos || []).map(ph => ph?.url || '').join('|');
-    const isOutdated = (r: RootCauseItem) => !!r.sourceId && photoKey(r.photos) !== (rcaPhotoState.map[r.sourceId] || []).join('|');
-    if (!(reportData.rootCauseAnalyses || []).some(isOutdated)) return;
-    setReportData(prev => {
-      if (!prev || prev.monthNumber !== reportData.monthNumber || prev.year !== reportData.year) return prev;
-      return {
-        ...prev,
-        rootCauseAnalyses: (prev.rootCauseAnalyses || []).map(r => {
-          if (!isOutdated(r)) return r;
-          const urls = rcaPhotoState.map[r.sourceId!] || [];
-          const title = (r.title || '').replace(/^[A-Z]\.\s*/, '').trim();
-          return {
-            ...r,
-            photoCount: urls.length,
-            photos: urls.map((url, i) => ({ url, caption: `${title} - Photo ${i + 1}` }))
-          };
-        })
-      };
-    });
-  }, [reportData, rcaPhotoState]);
+    if (!reportData || !(reportData.rootCauseAnalyses || []).some(r => (r.photos || []).length > 0 || r.photoCount)) return;
+    setReportData(prev => prev ? {
+      ...prev,
+      rootCauseAnalyses: (prev.rootCauseAnalyses || []).map(({ photoCount: _photoCount, ...rest }) => ({ ...rest, photos: [] }))
+    } : prev);
+  }, [reportData]);
 
   // Quick Action AI Triggers
   const handleAIRecs = () => {
@@ -5570,7 +5520,7 @@ export function MonthlyReportGenerator() {
                       </span>
                       <span>
                         {pendingCount === 0
-                          ? 'Semua temuan sudah punya RCA. Foto dilampirkan hanya untuk temuan yang memiliki foto.'
+                          ? 'Semua temuan sudah punya RCA.'
                           : `${pendingCount} temuan belum punya RCA${isGeneratingRca ? ' — sedang disusun...' : ' — klik "Generate RCA dengan AI".'}`}
                       </span>
                     </div>
@@ -5588,10 +5538,6 @@ export function MonthlyReportGenerator() {
                 {(reportData.rootCauseAnalyses || []).map((rca, rIdx) => {
                   const letter = String.fromCharCode(65 + rIdx);
                   const cleanTitle = (rca.title || '').replace(/^[A-Z]\.\s*/, '').trim();
-                  const monthKey = `${reportData.year}-${String(reportData.monthNumber).padStart(2, '0')}`;
-                  // Foto temuan tersimpan di data RCA (rca.photos)
-                  const photos = (rca.photos || []).filter(ph => ph?.url);
-                  const photosLoading = !!rca.sourceId && photos.length === 0 && rcaPhotoState?.monthKey !== monthKey;
                   const updateRca = (patch: Partial<RootCauseItem>) => {
                     setReportData(prev => prev ? {
                       ...prev,
@@ -5642,47 +5588,6 @@ export function MonthlyReportGenerator() {
                         onChange={(e) => updateRca({ description: e.target.value })}
                         className="w-full text-[10pt] text-slate-800 p-2 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-y font-serif leading-relaxed text-justify"
                       />
-                      {photosLoading && (
-                        <p className="print:hidden text-[11px] text-slate-500 font-sans flex items-center gap-1.5">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Memuat foto temuan...
-                        </p>
-                      )}
-                      {/* Tabel Dokumentasi Foto — hanya jika temuan memiliki foto; kolom mengikuti jumlah foto */}
-                      {photos.length > 0 && (() => {
-                        const shown = photos.slice(0, 2);
-                        const cellWidth = shown.length === 1 ? 'w-full' : 'w-1/2';
-                        return (
-                          <div className="border border-black overflow-hidden font-serif mt-3">
-                            <table className="w-full border-collapse text-[9pt] table-fixed">
-                              <thead>
-                                <tr className="bg-[#2E74B5] text-white">
-                                  <th colSpan={shown.length} className="py-1 px-2 text-center font-bold">Documentasi Photo</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr className="divide-x divide-black border-t border-black">
-                                  {shown.map((ph, pi) => (
-                                    <td key={pi} className={`${cellWidth} p-3 text-center align-middle bg-white`}>
-                                      <img
-                                        src={/^(data:|https?:)/.test(ph.url) ? ph.url : `data:image/jpeg;base64,${ph.url}`}
-                                        alt={`Photo ${pi + 1}`}
-                                        className={`mx-auto object-contain ${shown.length === 1 ? 'max-h-[380px] max-w-full' : 'max-h-[300px] max-w-full'}`}
-                                      />
-                                    </td>
-                                  ))}
-                                </tr>
-                                <tr className="divide-x divide-black border-t border-black bg-white">
-                                  {shown.map((ph, pi) => (
-                                    <td key={pi} className={`${cellWidth} py-1 px-2 text-center text-slate-800 font-sans text-xs`}>
-                                      {ph.caption}
-                                    </td>
-                                  ))}
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        );
-                      })()}
                     </div>
                   );
                 })}
