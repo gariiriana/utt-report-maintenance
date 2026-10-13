@@ -6,12 +6,12 @@
 //            dan penanganan error terisolasi dalam Bahasa Indonesia.
 // ============================================================================
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
-import { Turnstile } from '@marsidev/react-turnstile';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
@@ -22,6 +22,7 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false); // Toggle lihat/sembunyi password
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null); // Token CAPTCHA Turnstile
+  const turnstileRef = useRef<TurnstileInstance>(); // Untuk me-reset widget agar token baru dibuat
 
   // Ambil fungsi login dari AuthContext
   const { login } = useAuth();
@@ -67,7 +68,10 @@ export function Login() {
       }
 
       toast.error(errorMessage);
-      setTurnstileToken(null); // Reset token Turnstile jika login gagal
+      // Token Turnstile sekali pakai: reset widget agar otomatis membuat token baru,
+      // sehingga tombol Masuk bisa dipakai lagi tanpa refresh halaman.
+      setTurnstileToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -162,6 +166,7 @@ export function Login() {
               {/* Cloudflare Turnstile Anti-Bot Security */}
               <div className="pt-0.5 pb-0.5 flex justify-center items-center cf-turnstile" data-action="turnstile-spin-v2">
                 <Turnstile
+                  ref={turnstileRef}
                   siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD_fWrDH129FQ_Rm'}
                   onSuccess={(token) => setTurnstileToken(token)}
                   onExpire={() => setTurnstileToken(null)}
