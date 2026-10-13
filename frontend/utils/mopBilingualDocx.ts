@@ -230,6 +230,63 @@ function buildIdRunProps(doc: Document, allTextRuns: Element[]): Element {
   return rPr;
 }
 
+const SECTION_HEADING = /^Section\s+\d+\b/i;
+
+/**
+ * Judul section bar kuning ("[tab] Section 4 – … [tab]") di MOP diposisikan dengan tab stop
+ * rata-kiri yang disetel manual per judul (atau deretan spasi) agar teks Inggrisnya tampak di
+ * tengah, sehingga baris ID yang panjangnya berbeda jadi tidak sejajar. Tab stop itu diganti
+ * tab rata-tengah di titik tengah bar dan awalan teks dirapikan menjadi satu tab, jadi baris
+ * Inggris dan ID sama-sama tepat di tengah. Tab stop terakhir (ujung bar) dipertahankan.
+ */
+function centerSectionHeading(doc: Document, p: Element): void {
+  const attr = (el: Element | undefined, name: string) =>
+    el ? el.getAttributeNS(W_NS, name) || el.getAttribute(`w:${name}`) : null;
+  const pPr = childElements(p).find(c => isW(c, 'pPr'));
+  const tabs = pPr && childElements(pPr).find(c => isW(c, 'tabs'));
+  if (!pPr || !tabs) return;
+  if (attr(childElements(pPr).find(c => isW(c, 'jc')), 'val') === 'center') return;
+  const stops = childElements(tabs).filter(c => isW(c, 'tab'));
+  const positions = stops.map(stop => Number(attr(stop, 'pos')));
+  if (stops.length < 2 || positions.some(Number.isNaN)) return;
+
+  // Awalan sebelum teks pertama (tab & spasi), hanya pada run langsung di paragraf.
+  const runChildren = childElements(p).filter(c => isW(c, 'r')).flatMap(run => childElements(run));
+  const firstIndex = runChildren.findIndex(c => isW(c, 't') && (c.textContent || '').trim() !== '');
+  if (firstIndex < 0) return;
+  const firstText = runChildren[firstIndex];
+  const leading = runChildren.slice(0, firstIndex).filter(c => isW(c, 'tab') || isW(c, 't'));
+
+  const end = Math.max(...positions);
+  const ind = childElements(pPr).find(c => isW(c, 'ind'));
+  const left = Number(attr(ind, 'left') || attr(ind, 'start') || 0) || 0;
+  const endStop = stops[positions.indexOf(end)];
+  const centerStop = doc.createElementNS(W_NS, 'w:tab');
+  centerStop.setAttributeNS(W_NS, 'w:val', 'center');
+  centerStop.setAttributeNS(W_NS, 'w:pos', String(Math.round((left + end) / 2)));
+  for (const stop of stops) if (stop !== endStop) tabs.removeChild(stop);
+  tabs.insertBefore(centerStop, endStop);
+
+  firstText.textContent = (firstText.textContent || '').replace(/^\s+/, '');
+  const leadTab = doc.createElementNS(W_NS, 'w:tab');
+  if (leading.length > 0) {
+    // Run awalan pertama (ber-highlight) menjadi pembawa satu-satunya tab; sisanya dibuang.
+    leading[0].parentNode!.replaceChild(leadTab, leading[0]);
+    for (const el of leading.slice(1)) {
+      const run = el.parentNode as Element;
+      run.removeChild(el);
+      if (childElements(run).every(c => isW(c, 'rPr'))) run.parentNode!.removeChild(run);
+    }
+  } else {
+    const textRun = firstText.parentNode as Element;
+    const run = doc.createElementNS(W_NS, 'w:r');
+    const rPr = childElements(textRun).find(c => isW(c, 'rPr'));
+    if (rPr) run.appendChild(rPr.cloneNode(true));
+    run.appendChild(leadTab);
+    textRun.parentNode!.insertBefore(run, textRun);
+  }
+}
+
 /**
  * Susun DOCX bilingual dari file asli. `translations` dikunci dengan teks Inggris
  * (MOPSegment.text); teks tanpa terjemahan tidak diberi baris ID.
@@ -243,9 +300,12 @@ export async function buildBilingualMOPDocx(
   let translatedParagraphs = 0;
 
   for (const p of paragraphs) {
-    const { text, textRuns, leadingTabs, trailingTabs } = readParagraph(p);
+    const { text, trailingTabs: tabsAfterText } = readParagraph(p);
     const idText = text ? (translations[text] || '').trim() : '';
     if (!idText) continue;
+    // Bar kuning judul section selalu diakhiri tab sampai ujung bar.
+    if (tabsAfterText > 0 && SECTION_HEADING.test(text)) centerSectionHeading(doc, p);
+    const { textRuns, leadingTabs, trailingTabs } = readParagraph(p);
 
     const breakRun = doc.createElementNS(W_NS, 'w:r');
     breakRun.appendChild(doc.createElementNS(W_NS, 'w:br'));
