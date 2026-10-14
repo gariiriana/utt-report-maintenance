@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
@@ -62,7 +63,7 @@ export function PJUServiceReport({ prefillData, onClearPrefill, onChange }: PJUS
   const [timeSpent, setTimeSpent] = useState<PJUTimeSpent>(DEFAULT_PJU_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'customer' | 'photos' | 'visual' | 'cleaning' | 'measurement' | 'test' | 'status' | 'time'>('visual');
+  const [activeTab, setActiveTab] = useNavigationState<'customer' | 'photos' | 'visual' | 'cleaning' | 'measurement' | 'test' | 'status' | 'time'>('PJUServiceReport.activeTab', 'visual', ['customer', 'photos', 'visual', 'cleaning', 'measurement', 'test', 'status', 'time']);
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 

@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, Zap, FileType } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,7 +34,7 @@ export function TrafoServiceReport({ prefillData, onClearPrefill, onChange }: Tr
   const [timeSpent, setTimeSpent] = useState<TrafoTimeSpent>(DEFAULT_TRAFO_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'format1' | 'format2' | 'analysis' | 'customer' | 'time' | 'photos'>('format1');
+  const [activeTab, setActiveTab] = useNavigationState<'format1' | 'format2' | 'analysis' | 'customer' | 'time' | 'photos'>('TrafoServiceReport.activeTab', 'format1', ['format1', 'format2', 'analysis', 'customer', 'time', 'photos']);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Sync state with parent

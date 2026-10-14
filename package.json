@@ -7,6 +7,7 @@
     "build": "vite build",
     "build:prod": "vite build --mode production",
     "build:dev": "vite build --mode development",
+    "test:navigation": "node --test scripts/test-app-navigation.mjs",
     "export:prod": "vite build --mode production --outDir export/production",
     "export:dev": "vite build --mode development --outDir export/development",
     "backend": "cd backend && .\\server.exe",

@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import React, { useState, useEffect } from 'react';
 import {
   LdbrdbCustomerInfo,
@@ -27,7 +28,7 @@ export const LdbrdbServiceReport: React.FC<LdbrdbServiceReportProps> = ({
   onClearPrefill,
   onChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<string>('visual');
+  const [activeTab, setActiveTab] = useNavigationState<string>('LdbrdbServiceReport.activeTab', 'visual', ['visual', 'dpm', 'measurements', 'thermal', 'analysis', 'info', 'time']);
 
   const [customerInfo, setCustomerInfo] = useState<LdbrdbCustomerInfo>(DEFAULT_LDBRDB_CUSTOMER_INFO);
   const [visualInspection, setVisualInspection] = useState(DEFAULT_LDBRDB_VISUAL_ITEMS);

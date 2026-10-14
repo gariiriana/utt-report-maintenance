@@ -6,6 +6,7 @@
 //            serta sinkronisasi draft laporan realtime ke Firestore.
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,7 +45,7 @@ export function GeneratorServiceReport({ prefillData, onClearPrefill, onChange }
   const [timeSpent, setTimeSpent] = useState<GensetTimeSpent>(DEFAULT_GENSET_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'customer' | 'photos' | 'inspection' | 'cleaning' | 'measurement' | 'testing' | 'analysis' | 'time'>('inspection');
+  const [activeTab, setActiveTab] = useNavigationState<'customer' | 'photos' | 'inspection' | 'cleaning' | 'measurement' | 'testing' | 'analysis' | 'time'>('GeneratorServiceReport.activeTab', 'inspection', ['customer', 'photos', 'inspection', 'cleaning', 'measurement', 'testing', 'analysis', 'time']);
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [aiLimit, setAiLimit] = useState<{ total: number; used: number } | null>(null);

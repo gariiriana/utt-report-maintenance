@@ -1,3 +1,4 @@
+import { useMenuNavigation } from '@/hooks/useAppNavigation';
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { ClipboardList, FolderOpen, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
@@ -16,7 +17,7 @@ const DRAFTER_NAV_ITEMS: readonly NavItemDef[] = [
 
 export function DrafterApp() {
   const { user, logout } = useAuth();
-  const [tab, setTab] = useState<'boq' | 'files'>('boq');
+  const [tab, setTab] = useMenuNavigation<'boq' | 'files'>('boq', ['boq', 'files']);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);

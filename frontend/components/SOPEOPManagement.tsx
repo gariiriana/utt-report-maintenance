@@ -5,6 +5,7 @@
 //            Penyimpanan Arsip Cloud di Firestore, serta Ekspor Dokumen ke Word (.docx).
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -117,7 +118,7 @@ function ExportLanguageToggle({ value, onChange }: { value?: SopEopExportLanguag
 
 export function SOPEOPManagement() {
   const { user, isQcDme } = useAuth();
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('sop');
+  const [activeSubTab, setActiveSubTab] = useNavigationState<SubTab>('SOPEOPManagement.activeSubTab', 'sop', ['sop', 'eop', 'archive']);
 
   // File import ref & state
   const fileInputRef = useRef<HTMLInputElement>(null);

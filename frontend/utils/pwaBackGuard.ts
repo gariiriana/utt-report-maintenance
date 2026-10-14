@@ -2,26 +2,33 @@
 // FILE: frontend/utils/pwaBackGuard.ts
 // Deskripsi: Penjaga tombol Kembali (Back) Android / gesture kembali saat aplikasi
 //            berjalan sebagai PWA terpasang.
-//            Aplikasi ini menyimpan halaman aktif di state React (bukan URL), jadi tanpa
-//            penjaga ini satu kali tekan Back langsung menutup aplikasi dan form yang
-//            sedang diisi hilang. Dengan penjaga:
+//            Riwayat URL menangani navigasi halaman/folder. Penjaga hanya menangani
+//            popup dan batas awal sesi PWA. Dengan penjaga:
 //            1. Back saat ada popup/drawer terbuka → popup/drawer ditutup.
-//            2. Back di halaman biasa → muncul "Tekan Kembali sekali lagi untuk keluar".
+//            2. Back mengikuti riwayat halaman/folder; di awal sesi, tekan dua kali untuk keluar.
 // ============================================================================
 
 import { toast } from 'sonner';
 import { hasActiveModalsInDOM, isModalOverlayElement } from '@/utils/modalScrollLock';
+import { NAVIGATION_EVENT } from '@/utils/appNavigation';
 
 const GUARD_STATE = { dwimitraBackGuard: true };
 const EXIT_WINDOW_MS = 2500;
 
 let guardActive = false;
 let rearmTimer: number | null = null;
+let currentIndex = 0;
+let restoringModalRoute = false;
+
+function cancelRearm() {
+  if (rearmTimer !== null) window.clearTimeout(rearmTimer);
+  rearmTimer = null;
+}
 
 function pushGuard() {
   if (guardActive) return;
   guardActive = true;
-  window.history.pushState(GUARD_STATE, '', window.location.href);
+  window.history.pushState({ ...window.history.state, dwimitraBackBoundary: false, ...GUARD_STATE }, '', window.location.href);
 }
 
 function zIndexOf(el: HTMLElement): number {
@@ -90,11 +97,24 @@ function closeTopLayer(): boolean {
   return true;
 }
 
-function onPopState() {
-  guardActive = false;
-  if (rearmTimer !== null) {
-    window.clearTimeout(rearmTimer);
-    rearmTimer = null;
+function onPopState(event: PopStateEvent) {
+  const previousIndex = currentIndex;
+  currentIndex = event.state?.dwimitraNavigationIndex || 0;
+  guardActive = Boolean(event.state?.dwimitraBackGuard);
+  cancelRearm();
+
+  if (restoringModalRoute) {
+    restoringModalRoute = false;
+    return;
+  }
+
+  // Real route traversal must keep Back/Forward intact, including its forward stack.
+  if (!event.state?.dwimitraBackBoundary && (event.state?.dwimitraNavigation || event.state?.dwimitraBackGuard)) {
+    if (closeTopLayer()) {
+      restoringModalRoute = true;
+      window.history.go(previousIndex > currentIndex ? 1 : -1);
+    }
+    return;
   }
 
   if (closeTopLayer()) {
@@ -114,14 +134,32 @@ function onPopState() {
 export function initPwaBackGuard(): () => void {
   if (typeof window === 'undefined') return () => {};
   // Entri penjaga dibuat ulang saat user mengetuk layar, supaya browser tidak melewatinya.
-  const onPointerDown = () => pushGuard();
-  pushGuard();
+  const onPointerDown = () => {
+    if (window.history.state?.dwimitraBackBoundary || !window.history.state?.dwimitraNavigation) pushGuard();
+  };
+  const onNavigation = () => {
+    currentIndex = window.history.state?.dwimitraNavigationIndex || 0;
+    guardActive = Boolean(window.history.state?.dwimitraBackGuard);
+    if (window.history.state?.dwimitraBackBoundary) return;
+    cancelRearm();
+    toast.dismiss('pwa-back-exit');
+  };
+  guardActive = Boolean(window.history.state?.dwimitraBackGuard);
+  currentIndex = window.history.state?.dwimitraNavigationIndex || 0;
+  // Refreshing a routed entry must not insert a duplicate entry ahead of it.
+  if (!window.history.state?.dwimitraNavigation && !guardActive) {
+    window.history.replaceState({ ...window.history.state, dwimitraBackBoundary: true }, '', window.location.href);
+    pushGuard();
+  }
   window.addEventListener('popstate', onPopState);
+  window.addEventListener(NAVIGATION_EVENT, onNavigation);
   window.addEventListener('pointerdown', onPointerDown, { capture: true, passive: true });
   return () => {
     window.removeEventListener('popstate', onPopState);
+    window.removeEventListener(NAVIGATION_EVENT, onNavigation);
     window.removeEventListener('pointerdown', onPointerDown, { capture: true });
-    if (rearmTimer !== null) window.clearTimeout(rearmTimer);
-    rearmTimer = null;
+    cancelRearm();
+    guardActive = false;
+    restoringModalRoute = false;
   };
 }

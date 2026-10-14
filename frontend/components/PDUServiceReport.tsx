@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,7 +36,7 @@ export function PDUServiceReport({ prefillData, onClearPrefill, onChange }: PDUS
   const [timeSpent, setTimeSpent] = useState<PDUTimeSpent>(DEFAULT_PDU_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'customer' | 'photos' | 'inspection' | 'cleaning' | 'dpm' | 'iso_temp' | 'thermal_grounding' | 'status' | 'time'>('inspection');
+  const [activeTab, setActiveTab] = useNavigationState<'customer' | 'photos' | 'inspection' | 'cleaning' | 'dpm' | 'iso_temp' | 'thermal_grounding' | 'status' | 'time'>('PDUServiceReport.activeTab', 'inspection', ['customer', 'photos', 'inspection', 'cleaning', 'dpm', 'iso_temp', 'thermal_grounding', 'status', 'time']);
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [aiLimit, setAiLimit] = useState<{ total: number; used: number } | null>(null);

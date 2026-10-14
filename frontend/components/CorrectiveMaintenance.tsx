@@ -8,6 +8,7 @@
 //            Dilengkapi filter pencarian cepat, ekspor DOCX/Excel, serta konfirmasi hapus data.
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -648,7 +649,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     }, [showForm, scrollToReport, highlightedReportId]);
 
     // Filters State
-    const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir' | 'predictive'>('cm_pdf');
+    const [archiveFolder, setArchiveFolder] = useNavigationState<'cm_pdf' | 'sla' | 'pir' | 'predictive'>('CorrectiveMaintenance.archiveFolder', 'cm_pdf', ['cm_pdf', 'sla', 'pir', 'predictive']);
     const [selectedCMType, setSelectedCMType] = useState<'all' | 'sparepart_all' | 'non_sparepart' | 'sparepart_dme' | 'consumable' | 'pending_sparepart_type'>('all');
     const [selectedSLASource, setSelectedSLASource] = useState<'all' | 'cm' | 'pir'>('all');
     const [selectedQuarter, setSelectedQuarter] = useState<'all' | '1' | '2' | '3' | '4'>('all');
@@ -2247,7 +2248,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
     };
 
-    const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
+    const [activeFormTab, setActiveFormTab] = useNavigationState<'cm_pdf' | 'sla' | 'pir'>('CorrectiveMaintenance.activeFormTab', 'cm_pdf', ['cm_pdf', 'sla', 'pir']);
 
     const buildCMDataFromReport = (report: any) => {
         const dateFormatted = report.incidentDate ||

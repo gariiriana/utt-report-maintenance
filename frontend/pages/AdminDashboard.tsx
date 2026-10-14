@@ -6,6 +6,7 @@
 //            serta fitur ekspor Excel (.xlsx) & PDF batch secara langsung.
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles, AlertTriangle, X } from 'lucide-react';
@@ -66,9 +67,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [viewMode, setViewMode] = useState<'folder' | 'table'>('folder');
-  const [selectedCategoryFolder, setSelectedCategoryFolder] = useState<string | null>(null);
-  const [selectedDetailFolder, setSelectedDetailFolder] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useNavigationState<'folder' | 'table'>('AdminDashboard.viewMode', 'folder', ['folder', 'table']);
+  const [selectedCategoryFolder, setSelectedCategoryFolder] = useNavigationState<string | null>('AdminDashboard.selectedCategoryFolder', null);
+  const [selectedDetailFolder, setSelectedDetailFolder] = useNavigationState<string | null>('AdminDashboard.selectedDetailFolder', null);
   const [stats, setStats] = useState({
     totalDocuments: 0,
     totalExcel: 0,

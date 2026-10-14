@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,7 +48,7 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
   // State 5: Tab Navigasi Aktif Pengisian Form
-  const [activeTab, setActiveTab] = useState<'customer' | 'photos' | 'visual' | 'cleaning' | 'measurements' | 'status' | 'time'>('visual');
+  const [activeTab, setActiveTab] = useNavigationState<'customer' | 'photos' | 'visual' | 'cleaning' | 'measurements' | 'status' | 'time'>('FCUServiceReport.activeTab', 'visual', ['customer', 'photos', 'visual', 'cleaning', 'measurements', 'status', 'time']);
 
   // State 6: Status Animasi Loading Analisis AI Vision
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);

@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { FileType, Zap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,7 +48,7 @@ export function DocklevelerServiceReport({ prefillData, onClearPrefill, onChange
   const [timeSpent, setTimeSpent] = useState<DocklevelerTimeSpent>(DEFAULT_DOCKLEVELER_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'visual' | 'cleaning' | 'measurements' | 'analysis' | 'customer' | 'time' | 'photos'>('visual');
+  const [activeTab, setActiveTab] = useNavigationState<'visual' | 'cleaning' | 'measurements' | 'analysis' | 'customer' | 'time' | 'photos'>('DocklevelerServiceReport.activeTab', 'visual', ['visual', 'cleaning', 'measurements', 'analysis', 'customer', 'time', 'photos']);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Sync state with parent

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { auth } from '@/api/firebase';
@@ -673,7 +674,7 @@ export function ServiceReportContainer({
   // Status apakah accordion form Service Report dibuka/diaktifkan
   const [isEnabled, setIsEnabled] = useState<boolean>(!!initialData);
   const [isOpen, setIsOpen] = useState<boolean>(!!initialData);
-  const [activeTab, setActiveTab] = useState<'customer' | 'visual' | 'measurements' | 'time'>('customer');
+  const [activeTab, setActiveTab] = useNavigationState<'customer' | 'visual' | 'measurements' | 'time'>('ServiceReportContainer.activeTab', 'customer', ['customer', 'visual', 'measurements', 'time']);
   const [showFullPreview, setShowFullPreview] = useState(false);
 
   // ─── STATE FORM ───

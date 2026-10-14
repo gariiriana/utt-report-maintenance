@@ -5,6 +5,7 @@
 //            mengelola foto inspeksi keselamatan kerja, dan mengakses arsip dokumen HSE.
 // ============================================================================
 
+import { useMenuNavigation, useNavigationState } from '@/hooks/useAppNavigation';
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -56,9 +57,9 @@ export function HSEApp() {
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
     // State tab aktif HSE Portal
-    const [activeTab, setActiveTab] = useState<HSETab>('inspection');
+    const [activeTab, setActiveTab] = useMenuNavigation<HSETab>('inspection', HSE_NAV_ITEMS.map(item => item.id));
     // State tipe temuan K3 yang dipilih ('negative' atau 'positive')
-    const [findingsTypeSelection, setFindingsTypeSelection] = useState<'negative' | 'positive'>('negative');
+    const [findingsTypeSelection, setFindingsTypeSelection] = useNavigationState<'negative' | 'positive'>('HSEApp.findingsType', 'negative', ['negative', 'positive']);
     const [editingData, setEditingData] = useState<any>(null); // Data laporan yang sedang di-edit
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);   // Drawer navigasi HP (Mobile)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

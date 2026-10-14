@@ -7,6 +7,7 @@
 //            Navigasi lewat sidebar kiri (AppSidebar) yang sama dengan role lain.
 // ============================================================================
 
+import { useMenuNavigation } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -151,7 +152,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
 
 export function SiteManagerDashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<SiteManagerTab>('summary');
+  const [activeTab, setActiveTab] = useMenuNavigation<SiteManagerTab>('summary', SITE_MANAGER_NAV_ITEMS.map(item => item.id));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [summary, setSummary] = useState<MaintenanceSummary | null>(null);

@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { FileType, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,7 +48,7 @@ export function DoorServiceReport({ prefillData, onClearPrefill, onChange }: Doo
   const [timeSpent, setTimeSpent] = useState<DoorTimeSpent>(DEFAULT_DOOR_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'visual' | 'cleaning' | 'measurements' | 'analysis' | 'customer' | 'time' | 'photos'>('visual');
+  const [activeTab, setActiveTab] = useNavigationState<'visual' | 'cleaning' | 'measurements' | 'analysis' | 'customer' | 'time' | 'photos'>('DoorServiceReport.activeTab', 'visual', ['visual', 'cleaning', 'measurements', 'analysis', 'customer', 'time', 'photos']);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Sync state with parent

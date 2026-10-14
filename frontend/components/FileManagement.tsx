@@ -7,6 +7,8 @@
 //            serta sistem pengunduhan aman dan konfirmasi hapus data.
 // ============================================================================
 
+import { FILE_CATEGORIES, MAINTENANCE_TYPES, QUARTERS, FILE_FOLDER_LABELS, QUARTER_FOLDER_LABELS, MAINTENANCE_FOLDER_LABELS } from '@/config/fileFolders';
+import { useFolderNavigation } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -69,83 +71,8 @@ const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => 
     </svg>
 );
 
-const FILE_CATEGORIES = [
-    'Laporan Harian',
-    'Laporan Bulanan',
-    'Checklist Alat',
-    'Checklist APD',
-    'JSEA',
-    'MOP',
-    'Risk Register',
-    'D-DAY',
-    'BA (Berita Acara)',
-    'Report CM',
-    'Form SLA/SLG',
-    'Report PIR',
-    'SLA/SLG',
-    'SLD',
-    'Layout',
-    'Service Report',
-    'Service Report Approved',
-    'Predictive Report',
-    'Custom',
-    'Monthly',
-    'Weekly HSE Report',
-    'Monthly HSE Report'
-];
-
 const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY'];
 
-const MAINTENANCE_TYPES = [
-    'Water Leak Detector',
-    'Cooling Tower Water Treatment',
-    'Cooling Tower',
-    'FCU',
-    'Lift Units',
-    'Dock Leveler',
-    'Door',
-    'Rolling Door',
-    'Lobby Door',
-    'Fuel Leak',
-    'Fuel System',
-    'Fuel Tank',
-    'PJU',
-    'Hydrant System',
-    'Gate',
-    'STP & Plumbing',
-    'Exhaust Fan',
-    'Capacitor Bank',
-    'AHU',
-    'UPS',
-    'CRAC Data Hall & Supporting Room',
-    'Chiller',
-    'ATS',
-    'Cooling pump',
-    'Transformer / Trafo',
-    'Generator',
-    'MV Panel',
-    'RMU Panel',
-    'LV Panel',
-    'PDU Panel',
-    'FSS',
-    'Pre-Action System',
-    'Lighting Point',
-    'Grounding System',
-    'Lightning Protection System',
-    'VRV',
-    'AC Splits',
-    'Panel LDB & RDB (Distribution)',
-    'Road Blocker',
-    'X-Ray',
-    'Pressurization & Degassing',
-    'Pumps',
-    'Water Softener',
-    'Busduct',
-    'Physical Cooling Automation',
-    'Load Bank'
-];
-
-const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 // Kategori yang foldernya dipecah lagi per Tipe Maintenance / peralatan
 const MAINTENANCE_TYPE_CATEGORIES = ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'];
 // Laporan HSE disimpan per bulan (Monthly) atau per minggu dalam bulan (Weekly); quarter mengikuti bulan
@@ -605,7 +532,6 @@ export function FileManagement({
         }
     }, [isEngineer, simpleMode]);
 
-
     const [files, setFiles] = useState<FileData[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -672,9 +598,9 @@ export function FileManagement({
 
     const [filterCategory, setFilterCategory] = useState(deleteRequestMode ? 'PENDING_DELETE' : 'All');
     const [filterYear, setFilterYear] = useState('All');
-    const [selectedFolder, setSelectedFolder] = useState<string | null>(initialFolder);
-    const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
-    const [selectedMType, setSelectedMType] = useState<string | null>(null);
+    const [selectedFolder, setSelectedFolder] = useFolderNavigation(1, FILE_FOLDER_LABELS);
+    const [selectedQuarter, setSelectedQuarter] = useFolderNavigation(2, QUARTER_FOLDER_LABELS);
+    const [selectedMType, setSelectedMType] = useFolderNavigation(3, MAINTENANCE_FOLDER_LABELS);
     const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
 
     useEffect(() => {
@@ -686,11 +612,14 @@ export function FileManagement({
         }
     }, [deleteRequestMode]);
 
+    // Mounting on refresh/Back/Forward must preserve the complete URL hierarchy.
+    const previousInitialFolder = useRef(initialFolder);
     useEffect(() => {
-        setSelectedFolder(initialFolder || null);
-        setSelectedQuarter(null);
-        setSelectedMType(null);
-        setShowAllInFolder(false);
+        if (initialFolder && (previousInitialFolder.current !== initialFolder || !selectedFolder)) {
+            setSelectedFolder(initialFolder);
+            setShowAllInFolder(false);
+        }
+        previousInitialFolder.current = initialFolder;
     }, [initialFolder]);
 
     // Sinkronisasi pilihan form upload saat membuka folder tertentu

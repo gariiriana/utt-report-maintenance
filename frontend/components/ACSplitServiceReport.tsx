@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, Wind, FileType } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,7 +49,7 @@ export function ACSplitServiceReport({ prefillData, onClearPrefill, onChange }: 
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
   // State 5: Tab Navigasi Aktif Pengisian Form
-  const [activeTab, setActiveTab] = useState<'indoor' | 'outdoor' | 'testing' | 'analysis' | 'customer' | 'time' | 'photos'>('indoor');
+  const [activeTab, setActiveTab] = useNavigationState<'indoor' | 'outdoor' | 'testing' | 'analysis' | 'customer' | 'time' | 'photos'>('ACSplitServiceReport.activeTab', 'indoor', ['indoor', 'outdoor', 'testing', 'analysis', 'customer', 'time', 'photos']);
 
   // State 6: Modal Zoom Preview Foto
   const [previewImage, setPreviewImage] = useState<string | null>(null);

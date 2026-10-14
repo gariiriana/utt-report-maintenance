@@ -6,7 +6,7 @@
 //            navigasi terpadu dengan sub-tab pill switcher responsif & modern.
 // ============================================================================
 
-import { useState } from 'react';
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, FolderArchive, HardHat } from 'lucide-react';
 import { HSEFindingsArchive } from './HSEFindingsArchive';
@@ -19,7 +19,7 @@ interface HSEArchiveHubProps {
 
 export function HSEArchiveHub({ onEdit, initialSearchQuery }: HSEArchiveHubProps) {
   // State sub-tab aktif: 'findings' untuk Arsip Temuan K3, 'documents' untuk Arsip Dokumen HSE
-  const [activeSubTab, setActiveSubTab] = useState<'findings' | 'documents'>('findings');
+  const [activeSubTab, setActiveSubTab] = useNavigationState<'findings' | 'documents'>('HSEArchiveHub.activeSubTab', 'findings', ['findings', 'documents']);
 
   return (
     <div className="w-full flex-1 flex flex-col p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">

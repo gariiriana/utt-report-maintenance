@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, Zap, FileType } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,7 +36,7 @@ export function CTServiceReport({ prefillData, onClearPrefill, onChange }: CTSer
   const [timeSpent, setTimeSpent] = useState<CTTimeSpent>(DEFAULT_CT_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'customer' | 'photos' | 'inspection' | 'cleaning' | 'measurement' | 'analysis' | 'time'>('inspection');
+  const [activeTab, setActiveTab] = useNavigationState<'customer' | 'photos' | 'inspection' | 'cleaning' | 'measurement' | 'analysis' | 'time'>('CTServiceReport.activeTab', 'inspection', ['customer', 'photos', 'inspection', 'cleaning', 'measurement', 'analysis', 'time']);
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [aiLimit, setAiLimit] = useState<{ total: number; used: number } | null>(null);

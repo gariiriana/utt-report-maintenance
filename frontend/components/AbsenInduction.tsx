@@ -6,6 +6,7 @@
 //            dokumentasi foto penyerahan kartu akses, serta ekspor PDF & Excel (.xlsx).
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -425,9 +426,9 @@ export function AbsenInduction() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Folder navigation
-  const [viewLevel, setViewLevel] = useState<'month' | 'date' | 'records'>('month');
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [viewLevel, setViewLevel] = useNavigationState<'month' | 'date' | 'records'>('AbsenInduction.viewLevel', 'month', ['month', 'date', 'records']);
+  const [selectedMonth, setSelectedMonth] = useNavigationState<string | null>('AbsenInduction.selectedMonth', null);
+  const [selectedDate, setSelectedDate] = useNavigationState<string | null>('AbsenInduction.selectedDate', null);
 
   // Delete confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -529,7 +530,7 @@ export function AbsenInduction() {
   };
 
   // Tab and Chart refs
-  const [activeRightTab, setActiveRightTab] = useState<'chart' | 'list'>('chart');
+  const [activeRightTab, setActiveRightTab] = useNavigationState<'chart' | 'list'>('AbsenInduction.activeRightTab', 'chart', ['chart', 'list']);
   const webChartCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // ─── Firestore Realtime Listener ───

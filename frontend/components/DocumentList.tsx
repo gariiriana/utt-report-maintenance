@@ -7,6 +7,8 @@
 //            Mendukung 14 jenis Service Report Perangkat M/E & Laporan Inspeksi HSE.
 // ============================================================================
 
+import { useNavigationState, useFolderNavigation } from '@/hooks/useAppNavigation';
+import { FILE_FOLDER_LABELS } from '@/config/fileFolders';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye, ArrowLeft } from 'lucide-react';
@@ -453,27 +455,18 @@ export function DocumentList({
   const [previewHseDoc, setPreviewHseDoc] = useState<ExcelDocument | null>(null);
   const [selectedHseDoc, setSelectedHseDoc] = useState<any | null>(null);
 
-  const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
-  const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | 'tbm' | 'induction' | null>(null);
+  const [currentLevel, setCurrentLevel] = useNavigationState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('DocumentList.currentLevel', 'root', ['root', 'category', 'maintenance', 'month', 'week']);
+  const [selectedCategory, setSelectedCategory] = useNavigationState<'inspection' | 'sio' | 'silo' | 'tbm' | 'induction' | null>('DocumentList.selectedCategory', null, ['inspection', 'sio', 'silo', 'tbm', 'induction', null]);
   const [selectedMaintenance] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useNavigationState<string | null>('DocumentList.selectedMonth', null);
+  const [selectedWeek, setSelectedWeek] = useNavigationState<number | null>('DocumentList.selectedWeek', null, [1, 2, 3, 4, 5, null]);
 
-  const [dmeLevel, setDmeLevel] = useState<'root' | 'account' | 'month' | 'date' | 'documents' | 'management_files'>(() => {
-    return (safeStorage.getItem('dme_folder_level') as any) || 'root';
-  });
-  const [dmeSelectedFolder, setDmeSelectedFolder] = useState<string | null>(() => {
-    return safeStorage.getItem('dme_folder_name') || null;
-  });
-  const [dmeSelectedAccount, setDmeSelectedAccount] = useState<string | null>(() => {
-    return safeStorage.getItem('dme_folder_account') || null;
-  });
-  const [dmeSelectedMonth, setDmeSelectedMonth] = useState<string | null>(() => {
-    return safeStorage.getItem('dme_folder_month') || null;
-  });
-  const [dmeSelectedDate, setDmeSelectedDate] = useState<string | null>(() => {
-    return safeStorage.getItem('dme_folder_date') || null;
-  });
+  const [dmeNavigationLevel, setDmeLevel] = useNavigationState<'root' | 'account' | 'month' | 'date' | 'documents' | 'management_files'>('DocumentList.dmeLevel', 'root', ['root', 'account', 'month', 'date', 'documents', 'management_files']);
+  const [dmeSelectedFolder, setDmeSelectedFolder] = useFolderNavigation(1, FILE_FOLDER_LABELS);
+  const [dmeSelectedAccount, setDmeSelectedAccount] = useNavigationState<string | null>('DocumentList.dmeSelectedAccount', null);
+  const [dmeSelectedMonth, setDmeSelectedMonth] = useNavigationState<string | null>('DocumentList.dmeSelectedMonth', null);
+  const [dmeSelectedDate, setDmeSelectedDate] = useNavigationState<string | null>('DocumentList.dmeSelectedDate', null);
+  const dmeLevel = dmeSelectedFolder ? 'management_files' : dmeNavigationLevel;
   const [managementFilesCount, setManagementFilesCount] = useState(0);
   const [managementFilesSize, setManagementFilesSize] = useState(0);
   const [dmeSearchMode, setDmeSearchMode] = useState<'folder' | 'files'>(() => {
@@ -489,8 +482,7 @@ export function DocumentList({
           setDmeLevel('account');
           setDmeSelectedFolder(null);
         } else {
-          setDmeSelectedFolder(initialFolder);
-          setDmeLevel('management_files');
+          if (dmeSelectedFolder !== initialFolder) setDmeSelectedFolder(initialFolder);
           setDmeSearchMode('folder');
         }
       }
@@ -502,30 +494,6 @@ export function DocumentList({
       setDmeSearchMode('folder');
     }
   }, [searchQuery]);
-
-  useEffect(() => {
-    safeStorage.setItem('dme_folder_level', dmeLevel);
-  }, [dmeLevel]);
-
-  useEffect(() => {
-    if (dmeSelectedFolder) safeStorage.setItem('dme_folder_name', dmeSelectedFolder);
-    else safeStorage.removeItem('dme_folder_name');
-  }, [dmeSelectedFolder]);
-
-  useEffect(() => {
-    if (dmeSelectedAccount) safeStorage.setItem('dme_folder_account', dmeSelectedAccount);
-    else safeStorage.removeItem('dme_folder_account');
-  }, [dmeSelectedAccount]);
-
-  useEffect(() => {
-    if (dmeSelectedMonth) safeStorage.setItem('dme_folder_month', dmeSelectedMonth);
-    else safeStorage.removeItem('dme_folder_month');
-  }, [dmeSelectedMonth]);
-
-  useEffect(() => {
-    if (dmeSelectedDate) safeStorage.setItem('dme_folder_date', dmeSelectedDate);
-    else safeStorage.removeItem('dme_folder_date');
-  }, [dmeSelectedDate]);
 
   const contentAreaRef = useRef<HTMLDivElement>(null);
 
@@ -2511,7 +2479,7 @@ export function DocumentList({
                   type="button"
                   onClick={() => {
                     setDmeSelectedFolder('Laporan Harian');
-                    setDmeLevel('management_files');
+                    setDmeLevel('root');
                   }}
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 cursor-pointer transition-all hover:scale-105"
                   title="Unggah berkas dokumen ke folder"
@@ -2600,7 +2568,7 @@ export function DocumentList({
                 whileTap={{ scale: 0.99 }}
                 onClick={() => {
                   setDmeSelectedFolder(folder.name);
-                  setDmeLevel('management_files');
+                  setDmeLevel('root');
                 }}
                 className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
               >

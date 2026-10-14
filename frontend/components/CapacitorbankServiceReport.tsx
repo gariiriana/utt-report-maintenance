@@ -1,3 +1,4 @@
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import React, { useState, useEffect } from 'react';
 import {
   CapacitorbankCustomerInfo,
@@ -28,7 +29,7 @@ export const CapacitorbankServiceReport: React.FC<CapacitorbankServiceReportProp
   onClearPrefill,
   onChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<string>('visual');
+  const [activeTab, setActiveTab] = useNavigationState<string>('CapacitorbankServiceReport.activeTab', 'visual', ['visual', 'cleaning', 'measurements', 'thermal', 'grounding', 'analysis', 'info', 'time']);
 
   const [customerInfo, setCustomerInfo] = useState<CapacitorbankCustomerInfo>(DEFAULT_CAPACITORBANK_CUSTOMER_INFO);
   const [visualInspection, setVisualInspection] = useState(DEFAULT_CAPACITORBANK_VISUAL_ITEMS);

@@ -7,6 +7,7 @@
 //            serta fitur ekspor laporan resmi PTW ke format PDF & Excel.
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -97,7 +98,7 @@ interface PTWManagementProps {
 export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin' || userRole === 'qc_dme';
-  const [activeSubTab, setActiveSubTab] = useState<'list' | 'weekly' | 'numbers'>('list');
+  const [activeSubTab, setActiveSubTab] = useNavigationState<'list' | 'weekly' | 'numbers'>('PTWManagement.activeSubTab', 'list', ['list', 'weekly', 'numbers']);
   const [ptwTypeFilter, setPtwTypeFilter] = useState<'ALL' | 'PM' | 'CM'>('ALL');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());

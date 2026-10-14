@@ -13,6 +13,8 @@
 //            - Pusat Notifikasi & Perintah Suara JARVIS AI
 // ============================================================================
 
+import { useMenuNavigation, useFolderNavigation } from '@/hooks/useAppNavigation';
+import { FILE_FOLDER_LABELS } from '@/config/fileFolders';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, FolderOpen, LogOut, Menu, Shield, Files, PenTool, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, FileSignature, Trash2, BookOpen, HardHat, Languages } from 'lucide-react';
@@ -170,12 +172,12 @@ export function MainApp() {
     return 'report';
   };
 
-  const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
+  const [activeTab, setActiveTab] = useMenuNavigation<Tab>(getDefaultTab(), [...navItems.filter(item => item.show).map(item => item.id), getDefaultTab(), 'notifications']);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [navSearchQuery, setNavSearchQuery] = useState('');
-  const [navTargetFolder, setNavTargetFolder] = useState<string | null>(null);
+  const [navTargetFolder, setNavTargetFolder] = useFolderNavigation(1, FILE_FOLDER_LABELS);
 
   // Handler saat notifikasi diklik: Otomatis berpindah tab dan memicu pencarian dokumen
   const handleSelectNotification = (item: AppNotificationItem) => {

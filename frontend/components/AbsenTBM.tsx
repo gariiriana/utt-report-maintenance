@@ -6,6 +6,7 @@
 //            serta ekspor laporan presensi resmi ke format PDF & Excel (.xlsx).
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -156,14 +157,14 @@ export function AbsenTBM() {
     return new Date().toISOString().split('T')[0];
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeRightTab, setActiveRightTab] = useState<'chart' | 'list'>('chart');
+  const [activeRightTab, setActiveRightTab] = useNavigationState<'chart' | 'list'>('AbsenTBM.activeRightTab', 'chart', ['chart', 'list']);
   const webChartCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Folder navigation state
-  const [viewLevel, setViewLevel] = useState<'month' | 'date' | 'records'>('month');
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [recordsViewMode, setRecordsViewMode] = useState<'folder' | 'matrix'>('matrix');
+  const [viewLevel, setViewLevel] = useNavigationState<'month' | 'date' | 'records'>('AbsenTBM.viewLevel', 'month', ['month', 'date', 'records']);
+  const [selectedMonth, setSelectedMonth] = useNavigationState<string | null>('AbsenTBM.selectedMonth', null);
+  const [selectedDate, setSelectedDate] = useNavigationState<string | null>('AbsenTBM.selectedDate', null);
+  const [recordsViewMode, setRecordsViewMode] = useNavigationState<'folder' | 'matrix'>('AbsenTBM.recordsViewMode', 'matrix', ['folder', 'matrix']);
 
   // Date delete confirmation modal state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);

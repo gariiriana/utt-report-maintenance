@@ -6,6 +6,7 @@
 //            Navigasi lewat sidebar kiri (AppSidebar) yang sama dengan role lain.
 // ============================================================================
 
+import { useNavigationState, useMenuNavigation } from '@/hooks/useAppNavigation';
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -55,9 +56,10 @@ export function DivisionApp() {
     // Pengecekan peranan (role): Apakah jajaran Direksi atau Anggota Divisi spesifik
     const isDirector = ['dirut', 'direksiSDM', 'DireksiKeuangan'].includes(userRole || '');
     const isDivisionUser = ['pmo', 'sales', 'presales', 'purchasing'].includes(userRole || '');
-    const [activeDivision, setActiveDivision] = useState<string | null>(isDivisionUser ? userRole : null);
-    const [showVault, setShowVault] = useState(false);
-    const [currentTab, setCurrentTab] = useState<DivisionTab>('iso');
+    const [navigationDivision, setActiveDivision] = useNavigationState<string | null>('DivisionApp.activeDivision', null, ['pmo', 'sales', 'presales', 'purchasing', 'hse_reports', null]);
+    const activeDivision = isDivisionUser ? userRole : navigationDivision;
+    const [showVault, setShowVault] = useNavigationState<boolean>('DivisionApp.showVault', false);
+    const [currentTab, setCurrentTab] = useMenuNavigation<DivisionTab>('iso', ['iso', 'management_files']);
 
     // Pemetaan nama jabatan Direksi dalam Bahasa Indonesia
     const directorTitles: Record<string, string> = {

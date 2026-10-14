@@ -10,6 +10,7 @@
 //            - Fitur Ekspor ke Word (.docx) 100% Presisi & Cetak PDF Resmi
 // ============================================================================
 
+import { useNavigationState } from '@/hooks/useAppNavigation';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -296,7 +297,7 @@ export function MonthlyReportGenerator() {
   const { user, userRole, isQcDme } = useAuth();
 
   // ─── Main Navigation Tab: 'editor' | 'archives' ───────────────────
-  const [activeMainTab, setActiveMainTab] = useState<'editor' | 'archives'>('editor');
+  const [activeMainTab, setActiveMainTab] = useNavigationState<'editor' | 'archives'>('MonthlyReportGenerator.activeMainTab', 'editor', ['editor', 'archives']);
 
   // ─── Firestore Archives State ─────────────────────────────────────
   const [archives, setArchives] = useState<any[]>([]);

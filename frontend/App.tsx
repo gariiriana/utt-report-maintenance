@@ -38,17 +38,15 @@ function getHSEReportIdFromUri(): string | null {
 
     // 1. Ekstrak dari pathname URL
     const pathParts = window.location.pathname.split('/').filter(Boolean);
-    const hseIdx = pathParts.indexOf('hse');
-    if (hseIdx !== -1 && pathParts[hseIdx + 1]) {
-      id = pathParts[hseIdx + 1];
+    if (pathParts[0] === 'hse' && pathParts[1]) {
+      id = pathParts[1];
     }
 
     // 2. Ekstrak dari URL Hash jika dari pathname tidak ditemukan
     if (!id) {
       const hashParts = window.location.hash.replace('#', '').split('/').filter(Boolean);
-      const hseHashIdx = hashParts.indexOf('hse');
-      if (hseHashIdx !== -1 && hashParts[hseHashIdx + 1]) {
-        id = hashParts[hseHashIdx + 1];
+      if (hashParts[0] === 'hse' && hashParts[1]) {
+        id = hashParts[1];
       }
     }
 

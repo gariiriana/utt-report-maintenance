@@ -5,6 +5,7 @@
 //            MOP Workflow (Kanban Board), Monitoring, Arsip Standby, dsb.
 // ============================================================================
 
+import { useMenuNavigation } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -59,7 +60,7 @@ export function DMEDashboard() {
     ...tab,
     show: (tab.id !== 'sop_eop' || isDwimitra) && (tab.id !== 'mop_bilingual' || canViewMOPBilingual),
   }));
-  const [activeTab, setActiveTab] = useState<DMETab>('workflow');
+  const [activeTab, setActiveTab] = useMenuNavigation<DMETab>('workflow', navItems.filter(item => item.show).map(item => item.id));
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
   const [highlightedDocId, setHighlightedDocId] = useState<string | null>(null);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
