@@ -1,3 +1,4 @@
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, Wind, FileType } from 'lucide-react';
@@ -47,6 +48,14 @@ export function ACSplitServiceReport({ prefillData, onClearPrefill, onChange }: 
 
   // State 4: Array Foto Lampiran Perbaikan
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+
+  useAppUpdateDraft('ACSplitServiceReport', { customerInfo, reportData, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  }, true);
+
 
   // State 5: Tab Navigasi Aktif Pengisian Form
   const [activeTab, setActiveTab] = useNavigationState<'indoor' | 'outdoor' | 'testing' | 'analysis' | 'customer' | 'time' | 'photos'>('ACSplitServiceReport.activeTab', 'indoor', ['indoor', 'outdoor', 'testing', 'analysis', 'customer', 'time', 'photos']);

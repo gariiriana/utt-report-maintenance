@@ -7,6 +7,7 @@
 //            serta fitur ekspor laporan resmi PTW ke format PDF & Excel.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -163,6 +164,19 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const [selectedClosingFile, setSelectedClosingFile] = useState<File | null>(null);
   const [shouldDeleteClosingFile, setShouldDeleteClosingFile] = useState(false);
   const [queuedItems, setQueuedItems] = useState<QueuedPTWItem[]>([]);
+
+  useAppUpdateDraft('PTWManagement', { isAddModalOpen, isEditModalOpen, selectedRecord, formData, selectedFile, selectedClosingFile, shouldDeleteClosingFile, queuedItems }, saved => {
+    setIsAddModalOpen(saved.isAddModalOpen);
+    setIsEditModalOpen(saved.isEditModalOpen);
+    setSelectedRecord(saved.selectedRecord);
+    setFormData(saved.formData);
+    setSelectedFile(saved.selectedFile);
+    setSelectedClosingFile(saved.selectedClosingFile);
+    setShouldDeleteClosingFile(saved.shouldDeleteClosingFile);
+    setQueuedItems(saved.queuedItems);
+  }, true);
+  useAppUpdateBlocker(Boolean(submitting));
+
   const [isDragging, setIsDragging] = useState(false);
   const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 

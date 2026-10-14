@@ -1,3 +1,4 @@
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import React, { useState, useEffect } from 'react';
 import {
@@ -39,6 +40,19 @@ export const LdbrdbServiceReport: React.FC<LdbrdbServiceReportProps> = ({
   const [analysis, setAnalysis] = useState(DEFAULT_LDBRDB_ANALYSIS);
   const [timeSpent, setTimeSpent] = useState<LdbrdbTimeSpent>(DEFAULT_LDBRDB_TIME_SPENT);
   const [photos, setPhotos] = useState<Array<{ base64: string; label: string }>>([]);
+
+  useAppUpdateDraft('LdbrdbServiceReport', { customerInfo, visualInspection, dpmRecording, voltageAmpere, thermal, grounding, analysis, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setVisualInspection(saved.visualInspection);
+    setDpmRecording(saved.dpmRecording);
+    setVoltageAmpere(saved.voltageAmpere);
+    setThermal(saved.thermal);
+    setGrounding(saved.grounding);
+    setAnalysis(saved.analysis);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  });
+
 
   // Sync to parent component
   useEffect(() => {

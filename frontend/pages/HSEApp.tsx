@@ -1,3 +1,4 @@
+import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 // ============================================================================
 // FILE: HSEApp.tsx
 // Deskripsi: Aplikasi Dasbor Khusus Petugas HSE (Health, Safety, and Environment).
@@ -5,6 +6,7 @@
 //            mengelola foto inspeksi keselamatan kerja, dan mengakses arsip dokumen HSE.
 // ============================================================================
 
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useMenuNavigation, useNavigationState } from '@/hooks/useAppNavigation';
 import { useState } from 'react';
 import { motion } from 'motion/react';
@@ -60,7 +62,12 @@ export function HSEApp() {
     const [activeTab, setActiveTab] = useMenuNavigation<HSETab>('inspection', HSE_NAV_ITEMS.map(item => item.id));
     // State tipe temuan K3 yang dipilih ('negative' atau 'positive')
     const [findingsTypeSelection, setFindingsTypeSelection] = useNavigationState<'negative' | 'positive'>('HSEApp.findingsType', 'negative', ['negative', 'positive']);
-    const [editingData, setEditingData] = useState<any>(null); // Data laporan yang sedang di-edit
+    const [editingData, setEditingData] = useState<any>(null);
+
+    const restoringUpdateDraft = useAppUpdateDraft('HSEApp', { editingData }, saved => {
+      setEditingData(saved.editingData);
+    }, true);
+ // Data laporan yang sedang di-edit
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);   // Drawer navigasi HP (Mobile)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -320,7 +327,7 @@ export function HSEApp() {
 
                 {/* Konten Utama HSE Portal: Form Inspeksi HSE, Input Temuan K3, Arsip Temuan, atau Daftar Dokumen HSE */}
                 <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-8 transition-all">
-                    {activeTab === 'management_files' ? (
+                    {restoringUpdateDraft ? <ServerLoadingIndicator /> : activeTab === 'management_files' ? (
                         <DocumentList
                             onEdit={handleEditReport}
                         />

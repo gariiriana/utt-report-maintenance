@@ -28,6 +28,8 @@ export default defineConfig({
       // 'prompt': versi baru menunggu user menekan "Perbarui" (lihat main.tsx), supaya aplikasi
       // tidak reload sendiri saat user sedang mengisi form.
       registerType: 'prompt',
+      // Registration and guarded reloads are managed by registerAppServiceWorker.ts.
+      injectRegister: false,
       // Never serve/register a PWA worker from Vite. A stale worker can keep
       // controlling localhost and return cached production HTML during dev.
       devOptions: { enabled: false },

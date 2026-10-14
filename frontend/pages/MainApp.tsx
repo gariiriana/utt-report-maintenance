@@ -1,3 +1,4 @@
+import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 // ============================================================================
 // FILE: MainApp.tsx
 // Deskripsi: Aplikasi Utama DwimitraSystem (Main Application Shell).
@@ -13,6 +14,7 @@
 //            - Pusat Notifikasi & Perintah Suara JARVIS AI
 // ============================================================================
 
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useMenuNavigation, useFolderNavigation } from '@/hooks/useAppNavigation';
 import { FILE_FOLDER_LABELS } from '@/config/fileFolders';
 import { useState, useEffect } from 'react';
@@ -135,6 +137,11 @@ export function MainApp() {
 
   // State data laporan yang sedang disunting (edit mode)
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
+
+  const restoringUpdateDraft = useAppUpdateDraft('MainApp', { editingData }, saved => {
+    setEditingData(saved.editingData);
+  }, true);
+
   // State target dokumen yang disorot (auto-scroll & highlight setelah edit)
   const [highlightedDocId, setHighlightedDocId] = useState<string | null>(null);
 
@@ -275,7 +282,7 @@ export function MainApp() {
         transition={{ duration: 0.2 }}
         className="flex-1 flex flex-col w-full min-w-0 max-w-full"
       >
-        {activeTab === 'notifications' && userRole !== 'admin' ? (
+        {restoringUpdateDraft ? <ServerLoadingIndicator /> : activeTab === 'notifications' && userRole !== 'admin' ? (
           <NotificationPage onSelectNotification={handleSelectNotification} />
         ) : activeTab === 'admin' ? (
           <AdminDashboard onEdit={handleEditReport} />

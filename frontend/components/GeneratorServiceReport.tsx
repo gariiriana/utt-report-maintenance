@@ -6,6 +6,7 @@
 //            serta sinkronisasi draft laporan realtime ke Firestore.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
@@ -47,6 +48,15 @@ export function GeneratorServiceReport({ prefillData, onClearPrefill, onChange }
 
   const [activeTab, setActiveTab] = useNavigationState<'customer' | 'photos' | 'inspection' | 'cleaning' | 'measurement' | 'testing' | 'analysis' | 'time'>('GeneratorServiceReport.activeTab', 'inspection', ['customer', 'photos', 'inspection', 'cleaning', 'measurement', 'testing', 'analysis', 'time']);
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  useAppUpdateDraft('GeneratorServiceReport', { customerInfo, reportData, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  }, true);
+  useAppUpdateBlocker(Boolean(_isGeneratingAI));
+
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [aiLimit, setAiLimit] = useState<{ total: number; used: number } | null>(null);
 

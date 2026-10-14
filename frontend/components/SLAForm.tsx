@@ -7,6 +7,7 @@
 //            serta popup Panduan Matriks Prioritas terisolasi dengan React Portal.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -259,6 +260,13 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMR
     photosResolution: [] as PhotoItem[],
     resolutionRemark: '',
   });
+
+  useAppUpdateDraft('SLAForm', { formData, currentStep }, saved => {
+    setFormData(saved.formData);
+    setCurrentStep(saved.currentStep);
+  }, true);
+  useAppUpdateBlocker(Boolean(submitting));
+
 
   // Helper: migrate legacy single photo string to PhotoItem array
   const migratePhotos = (data: any, arrayKey: string, legacyKey: string): PhotoItem[] => {

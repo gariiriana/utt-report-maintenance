@@ -7,6 +7,7 @@
 //            utuh) ke Arsip MOP.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   collection, doc, onSnapshot, query, orderBy, getDocs, setDoc, writeBatch,
@@ -79,6 +80,20 @@ export function MOPBilingual() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
   const [retrying, setRetrying] = useState(false);
+
+  useAppUpdateDraft('MOPBilingual', { step, file, buffer, meta, segments, translations, warnings, failed, progress }, saved => {
+    setStep(saved.step);
+    setFile(saved.file);
+    setBuffer(saved.buffer);
+    setMeta(saved.meta);
+    setSegments(saved.segments);
+    setTranslations(saved.translations);
+    setWarnings(saved.warnings);
+    setFailed(saved.failed);
+    setProgress(saved.progress);
+  }, true);
+  useAppUpdateBlocker(Boolean(retrying || step === 'translating' || step === 'saving'));
+
 
   // ─── Arsip ─────────────────────────────────────────────────────────────────
   const [archive, setArchive] = useState<ArchiveDoc[]>([]);

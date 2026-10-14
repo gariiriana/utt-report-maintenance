@@ -1,3 +1,4 @@
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import React, { useState, useEffect } from 'react';
 import {
@@ -41,6 +42,20 @@ export const CapacitorbankServiceReport: React.FC<CapacitorbankServiceReportProp
   const [analysis, setAnalysis] = useState(DEFAULT_CAPACITORBANK_ANALYSIS);
   const [timeSpent, setTimeSpent] = useState<CapacitorbankTimeSpent>(DEFAULT_CAPACITORBANK_TIME_SPENT);
   const [photos, setPhotos] = useState<Array<{ base64: string; label: string }>>([]);
+
+  useAppUpdateDraft('CapacitorbankServiceReport', { customerInfo, visualInspection, cleaning, voltageAmpere, thermal, grounding, capacitance, analysis, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setVisualInspection(saved.visualInspection);
+    setCleaning(saved.cleaning);
+    setVoltageAmpere(saved.voltageAmpere);
+    setThermal(saved.thermal);
+    setGrounding(saved.grounding);
+    setCapacitance(saved.capacitance);
+    setAnalysis(saved.analysis);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  });
+
 
   // Sync to parent component
   useEffect(() => {

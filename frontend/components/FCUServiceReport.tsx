@@ -1,3 +1,4 @@
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
@@ -52,6 +53,15 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
 
   // State 6: Status Animasi Loading Analisis AI Vision
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  useAppUpdateDraft('FCUServiceReport', { customerInfo, reportData, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  }, true);
+  useAppUpdateBlocker(Boolean(_isGeneratingAI));
+
 
   // State 7: Modal Preview Gambar Perbesar Foto
   const [previewImage, setPreviewImage] = useState<string | null>(null);

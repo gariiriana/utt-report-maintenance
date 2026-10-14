@@ -1,3 +1,4 @@
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
@@ -818,6 +819,13 @@ export function BOQUpdate() {
   const [addError, setAddError] = useState('');
   const [toDelete, setToDelete] = useState<BOQItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useAppUpdateDraft('BOQUpdate', { selected, addOpen }, saved => {
+    setSelected(saved.selected);
+    setAddOpen(saved.addOpen);
+  });
+  useAppUpdateBlocker(Boolean(adding || deleting));
+
   const [exportStatus, setExportStatus] = useState('');
   const exporting = exportStatus !== '';
   const outbox = useBOQOutbox();

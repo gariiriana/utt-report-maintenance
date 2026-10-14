@@ -5,6 +5,7 @@
 //            dan mengunggah foto kegiatan TBM (multiple photos).
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -58,6 +59,17 @@ export function HSETbmForm({ editingData, onClearEdit, onSuccess }: HSETbmFormPr
 
   // State UI
   const [isSaving, setIsSaving] = useState(false);
+
+  useAppUpdateDraft('HSETbmForm', { date, time, totalSDM, lokasi, keterangan, photos }, saved => {
+    setDate(saved.date);
+    setTime(saved.time);
+    setTotalSDM(saved.totalSDM);
+    setLokasi(saved.lokasi);
+    setKeterangan(saved.keterangan);
+    setPhotos(saved.photos);
+  }, true);
+  useAppUpdateBlocker(Boolean(isSaving));
+
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 

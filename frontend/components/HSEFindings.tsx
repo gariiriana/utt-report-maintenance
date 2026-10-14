@@ -1,3 +1,4 @@
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -163,6 +164,14 @@ export function HSEFindings({ onSuccess, initialType = 'negative', onTypeChange 
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [exportingVariant, setExportingVariant] = useState<'neutradc' | 'utt' | null>(null);
+
+  useAppUpdateDraft('HSEFindings', { findingType, formData, savedDocId }, saved => {
+    setFindingType(saved.findingType);
+    setFormData(saved.formData);
+    setSavedDocId(saved.savedDocId);
+  });
+  useAppUpdateBlocker(Boolean(isSubmitting || exportingVariant));
+
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   const beforeFileInputRef = useRef<HTMLInputElement>(null);

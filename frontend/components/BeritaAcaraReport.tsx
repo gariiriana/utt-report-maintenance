@@ -6,6 +6,7 @@
 //            Menyimpan arsip berita acara di Firestore collection `berita_acara`.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -84,6 +85,26 @@ export function BeritaAcaraReport() {
   // ─── Archive State ───────────────────────────────────────────────
   const [archives, setArchives] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+
+  useAppUpdateDraft('BeritaAcaraReport', { selectedMonth, selectedYear, nomorKontrak, periodeStart, periodeEnd, tempat, tanggalBA, signerLeftName, signerLeftTitle, signerRightName, signerRightTitle, selectedCategoryIds, selectedCINames, executionDates, equipmentQuarters }, saved => {
+    setSelectedMonth(saved.selectedMonth);
+    setSelectedYear(saved.selectedYear);
+    setNomorKontrak(saved.nomorKontrak);
+    setPeriodeStart(saved.periodeStart);
+    setPeriodeEnd(saved.periodeEnd);
+    setTempat(saved.tempat);
+    setTanggalBA(saved.tanggalBA);
+    setSignerLeftName(saved.signerLeftName);
+    setSignerLeftTitle(saved.signerLeftTitle);
+    setSignerRightName(saved.signerRightName);
+    setSignerRightTitle(saved.signerRightTitle);
+    setSelectedCategoryIds(saved.selectedCategoryIds);
+    setSelectedCINames(saved.selectedCINames);
+    setExecutionDates(saved.executionDates);
+    setEquipmentQuarters(saved.equipmentQuarters);
+  });
+  useAppUpdateBlocker(Boolean(isExporting));
+
 
   // ─── Auto-fill periode dates ─────────────────────────────────────
   useEffect(() => {

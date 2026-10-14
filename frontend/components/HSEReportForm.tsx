@@ -1,3 +1,4 @@
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -73,6 +74,29 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection', r
 
     // Read-only, preview, and download states
     const [reportDate, setReportDate] = useState<string>('');
+
+    useAppUpdateDraft('HSEReportForm', { aktivitas, lokasi, personil, pic, anggota, inspectorK3, maintenanceCategory, checklist, photos, sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloFile, siloPdfUrl, msdsFile, msdsPdfUrl, reportDate }, saved => {
+      setAktivitas(saved.aktivitas);
+      setLokasi(saved.lokasi);
+      setPersonil(saved.personil);
+      setPic(saved.pic);
+      setAnggota(saved.anggota);
+      setInspectorK3(saved.inspectorK3);
+      setMaintenanceCategory(saved.maintenanceCategory);
+      setChecklist(saved.checklist);
+      setPhotos(saved.photos);
+      setSioOperatorName(saved.sioOperatorName);
+      setSioNumber(saved.sioNumber);
+      setSioExpiryDate(saved.sioExpiryDate);
+      setSioPhotos(saved.sioPhotos);
+      setSiloFile(saved.siloFile);
+      setSiloPdfUrl(saved.siloPdfUrl);
+      setMsdsFile(saved.msdsFile);
+      setMsdsPdfUrl(saved.msdsPdfUrl);
+      setReportDate(saved.reportDate);
+    }, !isDraftLoading);
+    useAppUpdateBlocker(Boolean(isSaving || isExporting || isGeneratingPdf));
+
     const [previewModalPhoto, setPreviewModalPhoto] = useState<PhotoItem | null>(null);
     const [isDownloadingZip, setIsDownloadingZip] = useState(false);
 

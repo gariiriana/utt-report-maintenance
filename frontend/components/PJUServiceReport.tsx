@@ -1,3 +1,4 @@
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
@@ -65,6 +66,15 @@ export function PJUServiceReport({ prefillData, onClearPrefill, onChange }: PJUS
 
   const [activeTab, setActiveTab] = useNavigationState<'customer' | 'photos' | 'visual' | 'cleaning' | 'measurement' | 'test' | 'status' | 'time'>('PJUServiceReport.activeTab', 'visual', ['customer', 'photos', 'visual', 'cleaning', 'measurement', 'test', 'status', 'time']);
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  useAppUpdateDraft('PJUServiceReport', { customerInfo, reportData, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  }, true);
+  useAppUpdateBlocker(Boolean(_isGeneratingAI));
+
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Sync state with parent onChange

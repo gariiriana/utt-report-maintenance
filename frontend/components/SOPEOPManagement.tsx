@@ -5,6 +5,7 @@
 //            Penyimpanan Arsip Cloud di Firestore, serta Ekspor Dokumen ke Word (.docx).
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -137,6 +138,15 @@ export function SOPEOPManagement() {
   const [isExportingEop, setIsExportingEop] = useState(false);
   const [isSavingEop, setIsSavingEop] = useState(false);
   const [isBilingualEop, setIsBilingualEop] = useState(false);
+
+  useAppUpdateDraft('SOPEOPManagement', { sopData, currentSopDocId, eopData, currentEopDocId }, saved => {
+    setSopData(saved.sopData);
+    setCurrentSopDocId(saved.currentSopDocId);
+    setEopData(saved.eopData);
+    setCurrentEopDocId(saved.currentEopDocId);
+  }, true);
+  useAppUpdateBlocker(Boolean(isImporting || isSavingSop || isSavingEop || isExportingSop || isExportingEop || isBilingualSop || isBilingualEop));
+
 
   // State Arsip
   const [archiveList, setArchiveList] = useState<Array<(SOPDocumentData | EOPDocumentData) & {

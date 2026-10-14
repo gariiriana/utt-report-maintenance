@@ -8,6 +8,7 @@
 //            - Pengeditan dan penghapusan data laporan PIR
 // ============================================================================
 
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -74,6 +75,13 @@ export function PIRManagement() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [slaPrefill, setSlaPrefill] = useState<SLAPrefillData | null>(null);
+
+  useAppUpdateDraft('PIRManagement', { showModal, editingId, slaPrefill }, saved => {
+    setShowModal(saved.showModal);
+    setEditingId(saved.editingId);
+    setSlaPrefill(saved.slaPrefill);
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');

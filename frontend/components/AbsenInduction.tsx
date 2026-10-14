@@ -6,6 +6,7 @@
 //            dokumentasi foto penyerahan kartu akses, serta ekspor PDF & Excel (.xlsx).
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -472,6 +473,23 @@ export function AbsenInduction() {
   const [editSessionPdfs, setEditSessionPdfs] = useState<Array<{ id: string; name: string; base64: string; isChunked?: boolean; description?: string }>>([]);
   const [isSavingSession, setIsSavingSession] = useState(false);
   const [isCompressingEditPhotos, setIsCompressingEditPhotos] = useState(false);
+
+  useAppUpdateDraft('AbsenInduction', { formDate, checklist, activityPhotos, activityPdfs, editingRecordId, editedNama, editedPerusahaan, editedRemark, isEditSessionOpen, editSessionDate, editSessionPhotos, editSessionPdfs }, saved => {
+    setFormDate(saved.formDate);
+    setChecklist(saved.checklist);
+    setActivityPhotos(saved.activityPhotos);
+    setActivityPdfs(saved.activityPdfs);
+    setEditingRecordId(saved.editingRecordId);
+    setEditedNama(saved.editedNama);
+    setEditedPerusahaan(saved.editedPerusahaan);
+    setEditedRemark(saved.editedRemark);
+    setIsEditSessionOpen(saved.isEditSessionOpen);
+    setEditSessionDate(saved.editSessionDate);
+    setEditSessionPhotos(saved.editSessionPhotos);
+    setEditSessionPdfs(saved.editSessionPdfs);
+  });
+  useAppUpdateBlocker(Boolean(isSubmitting || isCompressing || isSavingSession || isCompressingEditPhotos));
+
 
   const editSessionPhotoRef = useRef<HTMLInputElement | null>(null);
   const editSessionPdfRef = useRef<HTMLInputElement | null>(null);

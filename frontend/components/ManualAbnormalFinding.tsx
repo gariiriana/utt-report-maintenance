@@ -4,6 +4,7 @@
 //            lengkap (tanggal, bulan, dan tahun).
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Building2, CalendarDays, Camera, ClipboardPenLine, ImagePlus, Loader2, Trash2, Wrench, Sparkles, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -37,6 +38,13 @@ export function ManualAbnormalFinding({ className }: { className?: string } = {}
     description: isPjuAccount ? PJU_DEFAULT_DESCRIPTION : '',
     actionRecommendation: isPjuAccount ? PJU_DEFAULT_RECOMMENDATION : '',
   });
+
+  useAppUpdateDraft('ManualAbnormalFinding', { photoBase64, form }, saved => {
+    setPhotoBase64(saved.photoBase64);
+    setForm(saved.form);
+  }, true);
+  useAppUpdateBlocker(Boolean(isSaving));
+
 
   // Otomatis terapkan nilai default untuk akun pju@gmail.com atau watersoftener
   useEffect(() => {

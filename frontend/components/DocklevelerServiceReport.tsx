@@ -1,3 +1,4 @@
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { FileType, Zap } from 'lucide-react';
@@ -47,6 +48,14 @@ export function DocklevelerServiceReport({ prefillData, onClearPrefill, onChange
   });
   const [timeSpent, setTimeSpent] = useState<DocklevelerTimeSpent>(DEFAULT_DOCKLEVELER_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+
+  useAppUpdateDraft('DocklevelerServiceReport', { customerInfo, reportData, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  }, true);
+
 
   const [activeTab, setActiveTab] = useNavigationState<'visual' | 'cleaning' | 'measurements' | 'analysis' | 'customer' | 'time' | 'photos'>('DocklevelerServiceReport.activeTab', 'visual', ['visual', 'cleaning', 'measurements', 'analysis', 'customer', 'time', 'photos']);
   const [previewImage, setPreviewImage] = useState<string | null>(null);

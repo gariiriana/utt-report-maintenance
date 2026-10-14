@@ -268,7 +268,9 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'measrument N-G',
     'measrument Ampere R',
     'measrument Ampere S',
-    'measrument Ampere T'
+    'measrument Ampere T',
+    'Noise',
+    'Ground'
   ],
   'gate@gmail.com': [
     'Cleaning Motor',

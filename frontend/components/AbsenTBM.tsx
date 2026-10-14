@@ -6,6 +6,7 @@
 //            serta ekspor laporan presensi resmi ke format PDF & Excel (.xlsx).
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -237,6 +238,30 @@ export function AbsenTBM() {
   }>>([
     { nama: '', jabatan: '', kehadiran: 'Hadir', remark: '', category: 'Manual', jamKerja: 8 }
   ]);
+
+  useAppUpdateDraft('AbsenTBM', { formDate, formCategory, submissionPhotos, checklist, manualChecklist, isPersonnelPanelOpen, newPersonName, newPersonJabatan, newPersonCategory, editingPersonnelId, editPersonName, editPersonJabatan, editPersonCategory, editingRecordId, editedNama, editedJabatan, editedKehadiran, editedRemark, editedJamKerja }, saved => {
+    setFormDate(saved.formDate);
+    setFormCategory(saved.formCategory);
+    setSubmissionPhotos(saved.submissionPhotos);
+    setChecklist(saved.checklist);
+    setManualChecklist(saved.manualChecklist);
+    setIsPersonnelPanelOpen(saved.isPersonnelPanelOpen);
+    setNewPersonName(saved.newPersonName);
+    setNewPersonJabatan(saved.newPersonJabatan);
+    setNewPersonCategory(saved.newPersonCategory);
+    setEditingPersonnelId(saved.editingPersonnelId);
+    setEditPersonName(saved.editPersonName);
+    setEditPersonJabatan(saved.editPersonJabatan);
+    setEditPersonCategory(saved.editPersonCategory);
+    setEditingRecordId(saved.editingRecordId);
+    setEditedNama(saved.editedNama);
+    setEditedJabatan(saved.editedJabatan);
+    setEditedKehadiran(saved.editedKehadiran);
+    setEditedRemark(saved.editedRemark);
+    setEditedJamKerja(saved.editedJamKerja);
+  });
+  useAppUpdateBlocker(Boolean(isSubmitting || isCompressing));
+
 
   // Derived visible checklist based on selected category
   const visibleChecklist = useMemo(() => {

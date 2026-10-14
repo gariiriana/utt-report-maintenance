@@ -6,6 +6,7 @@
 //            analisis kecerdasan buatan AI Vision, serta pemodelan live preview & ekspor PDF/Excel.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -269,6 +270,16 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
   const [archiveType, setArchiveType] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  useAppUpdateDraft('ATSServiceReport', { customerInfo, reportData, timeSpent, photos, originalReportCards }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+    setOriginalReportCards(saved.originalReportCards);
+  }, !isDraftLoading);
+  useAppUpdateBlocker(Boolean(isSaving || isExporting));
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiLimit, setAiLimit] = useState<{ total: number; used: number } | null>(null);
 

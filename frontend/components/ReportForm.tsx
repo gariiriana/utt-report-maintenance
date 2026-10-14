@@ -7,6 +7,7 @@
 //            penyimpanan draft otomatis di IndexedDB, serta ekspor PDF & Excel.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Save, FileEdit } from 'lucide-react';
@@ -154,6 +155,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     actionRecommendation: '',
   });
   const [findingPhotos, setFindingPhotos] = useState<{ base64: string; description: string }[]>([]);
+
+  useAppUpdateDraft('ReportForm', { companyType, maintenanceName, maintenanceTime, units, activeUnitId, abnormalStatus, findingData, findingPhotos }, saved => {
+    setCompanyType(saved.companyType);
+    setMaintenanceName(saved.maintenanceName);
+    setMaintenanceTime(saved.maintenanceTime);
+    setUnits(saved.units);
+    setActiveUnitId(saved.activeUnitId);
+    setAbnormalStatus(saved.abnormalStatus);
+    setFindingData(saved.findingData);
+    setFindingPhotos(saved.findingPhotos);
+  }, !isDraftLoading);
+  useAppUpdateBlocker(Boolean(isSaving || isExporting));
+
   const [editingFindingPhotoIdx, setEditingFindingPhotoIdx] = useState<number | null>(null);
   const abnormalSectionRef = useRef<HTMLDivElement>(null);
 

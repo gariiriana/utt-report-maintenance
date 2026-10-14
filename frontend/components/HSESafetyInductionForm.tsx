@@ -8,6 +8,7 @@
 //            3. Foto sertifikat K3 dari TDE (Opsional)
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -78,6 +79,19 @@ export function HSESafetyInductionForm({ editingData, onClearEdit, onSuccess }: 
 
   // UI State
   const [isSaving, setIsSaving] = useState(false);
+
+  useAppUpdateDraft('HSESafetyInductionForm', { pesertaList, date, time, jabatan, catatan, fotoInduction, fotoSuratSehat, fotoSertifikatK3 }, saved => {
+    setPesertaList(saved.pesertaList);
+    setDate(saved.date);
+    setTime(saved.time);
+    setJabatan(saved.jabatan);
+    setCatatan(saved.catatan);
+    setFotoInduction(saved.fotoInduction);
+    setFotoSuratSehat(saved.fotoSuratSehat);
+    setFotoSertifikatK3(saved.fotoSertifikatK3);
+  }, true);
+  useAppUpdateBlocker(Boolean(isSaving));
+
   const [activeCameraSlot, setActiveCameraSlot] = useState<PhotoSlotType | null>(null);
   const [previewModalImg, setPreviewModalImg] = useState<{ url: string; title: string } | null>(null);
 

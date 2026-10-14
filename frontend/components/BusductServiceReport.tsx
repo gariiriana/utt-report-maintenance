@@ -1,3 +1,4 @@
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { FileType, Zap, Eye } from 'lucide-react';
@@ -47,6 +48,14 @@ export function BusductServiceReport({ prefillData, photoCards, companyType, mai
   });
   const [timeSpent, setTimeSpent] = useState<BusductTimeSpent>(DEFAULT_BUSDUCT_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+
+  useAppUpdateDraft('BusductServiceReport', { customerInfo, reportData, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  }, true);
+
 
   const [activeTab, setActiveTab] = useNavigationState<'visual' | 'cleaning' | 'thermal' | 'analysis' | 'customer' | 'time' | 'photos'>('BusductServiceReport.activeTab', 'visual', ['visual', 'cleaning', 'thermal', 'analysis', 'customer', 'time', 'photos']);
   const [previewImage, setPreviewImage] = useState<string | null>(null);

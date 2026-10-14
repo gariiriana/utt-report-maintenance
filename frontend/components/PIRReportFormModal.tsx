@@ -1,3 +1,4 @@
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -91,6 +92,13 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     preparedBySign: initialPrepSign,
     preparedByTitle: '(Shift Engineer)',
   });
+
+  useAppUpdateDraft('PIRReportFormModal', { formData, currentStep }, saved => {
+    setFormData(saved.formData);
+    setCurrentStep(saved.currentStep);
+  }, true);
+  useAppUpdateBlocker(Boolean(submitting));
+
 
   // Temporary Attendee Input State
   const [newTde, setNewTde] = useState('');

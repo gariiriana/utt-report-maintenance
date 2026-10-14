@@ -10,8 +10,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./themes/index.css";
 import "./api/firebase";
-import { registerSW } from 'virtual:pwa-register';
-import { toast } from 'sonner';
+import { registerAppServiceWorker } from '@/utils/registerAppServiceWorker';
 
 // Auto-redirect dari domain default Firebase ke Custom Domain resmi
 if (typeof window !== 'undefined') {
@@ -26,33 +25,7 @@ if (typeof window !== 'undefined') {
 // Keep the PWA service worker in production; unregister stale workers during local development
 // so Vite always serves the current source instead of a cached production bundle.
 if (import.meta.env.PROD) {
-  const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
-  const updateSW = registerSW({
-    immediate: true,
-    // Versi baru menunggu persetujuan user: reload otomatis bisa menghapus form yang sedang diisi.
-    onNeedRefresh() {
-      toast.info('Versi baru aplikasi tersedia', {
-        id: 'pwa-update',
-        duration: Infinity,
-        description: 'Simpan dulu pekerjaan Anda, lalu tekan Perbarui.',
-        action: { label: 'Perbarui', onClick: () => { void updateSW(true); } },
-      });
-    },
-    // Aplikasi terpasang bisa terbuka berhari-hari tanpa reload: cek versi baru berkala & saat dibuka lagi.
-    onRegisteredSW(_swUrl, registration) {
-      if (!registration) return;
-      let lastCheck = Date.now();
-      const checkForUpdate = () => {
-        if (!navigator.onLine || Date.now() - lastCheck < UPDATE_CHECK_INTERVAL) return;
-        lastCheck = Date.now();
-        registration.update().catch(() => undefined);
-      };
-      setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL);
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') checkForUpdate();
-      });
-    },
-  });
+  void registerAppServiceWorker();
 } else if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
   void navigator.serviceWorker.getRegistrations().then(registrations => {
     registrations.forEach(registration => { void registration.unregister(); });

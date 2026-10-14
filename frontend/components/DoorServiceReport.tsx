@@ -1,3 +1,4 @@
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect } from 'react';
 import { FileType, ShieldCheck } from 'lucide-react';
@@ -47,6 +48,14 @@ export function DoorServiceReport({ prefillData, onClearPrefill, onChange }: Doo
   });
   const [timeSpent, setTimeSpent] = useState<DoorTimeSpent>(DEFAULT_DOOR_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+
+  useAppUpdateDraft('DoorServiceReport', { customerInfo, reportData, timeSpent, photos }, saved => {
+    setCustomerInfo(saved.customerInfo);
+    setReportData(saved.reportData);
+    setTimeSpent(saved.timeSpent);
+    setPhotos(saved.photos);
+  }, true);
+
 
   const [activeTab, setActiveTab] = useNavigationState<'visual' | 'cleaning' | 'measurements' | 'analysis' | 'customer' | 'time' | 'photos'>('DoorServiceReport.activeTab', 'visual', ['visual', 'cleaning', 'measurements', 'analysis', 'customer', 'time', 'photos']);
   const [previewImage, setPreviewImage] = useState<string | null>(null);

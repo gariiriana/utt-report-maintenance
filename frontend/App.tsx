@@ -27,6 +27,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { initGlobalModalObserver } from '@/utils/modalScrollLock';
 import { isStandaloneApp } from '@/utils/pwa';
 import { initPwaBackGuard } from '@/utils/pwaBackGuard';
+import { AppUpdateDialog } from '@/components/AppUpdateDialog';
 
 /**
  * Helper internal: Memeriksa apakah URL browser mengakses dokumen publik Laporan HSE.
@@ -182,6 +183,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppWithBackground />
+      <AppUpdateDialog />
     </AuthProvider>
   );
 }

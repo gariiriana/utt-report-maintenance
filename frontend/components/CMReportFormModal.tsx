@@ -9,6 +9,7 @@
 //            Menyediakan ekspor instan ke format DOCX (.docx) & PDF standar UTT.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -184,6 +185,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     approvedByName: 'Budi Susanto',
     approvedByTitle: '(Assistant manager HDC Facility Management)'
   });
+
+  useAppUpdateDraft('CMReportFormModal', { formData, currentStep }, saved => {
+    setFormData(saved.formData);
+    setCurrentStep(saved.currentStep);
+  }, true);
+  useAppUpdateBlocker(Boolean(submitting));
+
 
   // Load draft or existing report if editing
   useEffect(() => {

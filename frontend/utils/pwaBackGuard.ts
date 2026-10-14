@@ -72,6 +72,8 @@ function findBackdropTarget(overlay: HTMLElement): HTMLElement | null {
 
 /** Tutup popup/drawer paling atas. Mengembalikan false bila tidak ada popup terbuka. */
 function closeTopLayer(): boolean {
+  // The required update dialog cannot be dismissed, including by Android Back.
+  if (document.querySelector('[data-app-update-required="true"][open]')) return true;
   if (!hasActiveModalsInDOM()) return false;
   const overlay = topmostOverlay();
 

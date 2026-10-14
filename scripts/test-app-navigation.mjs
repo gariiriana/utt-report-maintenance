@@ -73,7 +73,7 @@ const { initPwaBackGuard } = await import('data:text/javascript;base64,' + Buffe
 
 function guardEnvironment() {
   globalThis.guardMessages = []; globalThis.guardModalOpen = false;
-  globalThis.document = { querySelectorAll: () => [], dispatchEvent: () => { globalThis.guardModalOpen = false; } };
+  globalThis.document = { querySelector: () => null, querySelectorAll: () => [], dispatchEvent: () => { globalThis.guardModalOpen = false; } };
   globalThis.KeyboardEvent = class extends Event {};
   const timers = new Map(); let nextId = 0;
   window.setTimeout = callback => { timers.set(++nextId, callback); return nextId; };

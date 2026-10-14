@@ -10,6 +10,7 @@
 //            - Fitur Ekspor ke Word (.docx) 100% Presisi & Cetak PDF Resmi
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -549,6 +550,18 @@ export function MonthlyReportGenerator() {
   const [activeChapter, setActiveChapter] = useState<number>(0); // 0 = Semua / Cover
   const [isSavedLocally, setIsSavedLocally] = useState(false);
   const [isSavingManual, setIsSavingManual] = useState(false);
+
+  useAppUpdateDraft('MonthlyReportGenerator', { reportData, selectedMonth, selectedYear, reportTitle, isSetupModalOpen }, async saved => {
+    // The normal initialization reads this cache before generating report data.
+    if (saved.reportData) await draftStorage.set(`dwimitra_monthly_report_${saved.selectedYear}_${saved.selectedMonth}`, saved.reportData);
+    setReportData(saved.reportData);
+    setSelectedMonth(saved.selectedMonth);
+    setSelectedYear(saved.selectedYear);
+    setReportTitle(saved.reportTitle);
+    setIsSetupModalOpen(saved.isSetupModalOpen);
+  }, !generating);
+  useAppUpdateBlocker(Boolean(generating || isSavingManual || isSavingArchiveTitle));
+
   const [justSaved, setJustSaved] = useState(false);
 
   // Manual save handler untuk tombol floating save & toolbar (Simpan ke IndexedDB dan LANGSUNG ke Arsip Cloud Firestore)

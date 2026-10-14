@@ -1,3 +1,4 @@
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { motion, AnimatePresence } from 'motion/react';
@@ -778,6 +779,17 @@ export function ServiceReportContainer({
       grounding_remarks: isPump ? 'Nilai tahanan pentanahan baik' : ''
     }
   );
+
+  useAppUpdateDraft(`ServiceReportContainer:${userEmail}`, { isEnabled, isOpen, customerInfo, measurements, timeSpent, operationStatus, visualChecklist }, saved => {
+    setIsEnabled(saved.isEnabled);
+    setIsOpen(saved.isOpen);
+    setCustomerInfo(saved.customerInfo);
+    setMeasurements(saved.measurements);
+    setTimeSpent(saved.timeSpent);
+    setOperationStatus(saved.operationStatus);
+    setVisualChecklist(saved.visualChecklist);
+  }, true);
+
 
   // ─── AI VOICE NOTE AGENT STATE ───
   const [isListening, setIsListening] = useState(false);

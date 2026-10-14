@@ -7,6 +7,7 @@
 //            serta sistem pengunduhan aman dan konfirmasi hapus data.
 // ============================================================================
 
+import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraft';
 import { FILE_CATEGORIES, MAINTENANCE_TYPES, QUARTERS, FILE_FOLDER_LABELS, QUARTER_FOLDER_LABELS, MAINTENANCE_FOLDER_LABELS } from '@/config/fileFolders';
 import { useFolderNavigation } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef } from 'react';
@@ -550,6 +551,22 @@ export function FileManagement({
     // sehingga upload massal (AHU, FCU, Door, ...) masuk semua ke folder berkas pertama.
     const [forceSelectedMetadata, setForceSelectedMetadata] = useState(false);
     const [failedUploads, setFailedUploads] = useState<{ file: File; error: string }[]>([]);
+
+    useAppUpdateDraft('FileManagement', { selectedFiles, selectedCategory, selectedMaintenance, customCategory, description, selectedUploadQuarter, selectedUploadYear, selectedUploadMonth, selectedUploadWeek, forceSelectedMetadata, failedUploads }, saved => {
+      setSelectedFiles(saved.selectedFiles);
+      setSelectedCategory(saved.selectedCategory);
+      setSelectedMaintenance(saved.selectedMaintenance);
+      setCustomCategory(saved.customCategory);
+      setDescription(saved.description);
+      setSelectedUploadQuarter(saved.selectedUploadQuarter);
+      setSelectedUploadYear(saved.selectedUploadYear);
+      setSelectedUploadMonth(saved.selectedUploadMonth);
+      setSelectedUploadWeek(saved.selectedUploadWeek);
+      setForceSelectedMetadata(saved.forceSelectedMetadata);
+      setFailedUploads(saved.failedUploads);
+    }, true);
+    useAppUpdateBlocker(Boolean(uploading));
+
     const [isSLAModalOpen, setIsSLAModalOpen] = useState(false);
     const [slaRecapReports, setSlaRecapReports] = useState<any[] | undefined>(undefined);
 
@@ -1169,6 +1186,8 @@ export function FileManagement({
                 setDescription('');
                 toast.success(`Seluruh ${successCount} file berhasil diunggah!`);
             } else {
+                // Completed files must not reappear in the recovery queue after an update.
+                setSelectedFiles(failedList.map(item => item.file));
                 toast.warning(`${successCount} file berhasil, ${failedList.length} file gagal diunggah.`);
             }
             setUploading(false);

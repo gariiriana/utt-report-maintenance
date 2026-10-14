@@ -8,6 +8,7 @@
 //            Dilengkapi filter pencarian cepat, ekspor DOCX/Excel, serta konfirmasi hapus data.
 // ============================================================================
 
+import { useAppUpdateDraft } from '@/hooks/useAppUpdateDraft';
 import { useNavigationState } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -661,6 +662,20 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [manualAbnormalFindings, setManualAbnormalFindings] = useState<any[]>([]);
     const [isPeriodicModalOpen, setIsPeriodicModalOpen] = useState(false);
     const [selectedPeriodicData, setSelectedPeriodicData] = useState<PeriodicPredictiveReportData | null>(null);
+
+    useAppUpdateDraft('CorrectiveMaintenance', { showForm, reportFormType, formKey, editingReportId, prefillSlaData, predictiveModalOpen, activePredictiveData, activePredictiveReport, isPeriodicModalOpen, selectedPeriodicData }, saved => {
+      setShowForm(saved.showForm);
+      setReportFormType(saved.reportFormType);
+      setFormKey(saved.formKey);
+      setEditingReportId(saved.editingReportId);
+      setPrefillSlaData(saved.prefillSlaData);
+      setPredictiveModalOpen(saved.predictiveModalOpen);
+      setActivePredictiveData(saved.activePredictiveData);
+      setActivePredictiveReport(saved.activePredictiveReport);
+      setIsPeriodicModalOpen(saved.isPeriodicModalOpen);
+      setSelectedPeriodicData(saved.selectedPeriodicData);
+    }, true);
+
 
     // Trouble Status Update Modal State
     const [isTroubleModalOpen, setIsTroubleModalOpen] = useState(false);
