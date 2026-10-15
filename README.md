@@ -28,7 +28,7 @@
 - [Arsitektur](#-arsitektur)
 - [Tech Stack](#-tech-stack)
 - [Modul & Fitur](#-modul--fitur)
-  - [AI Service Report, Chat Copilot & Voice Agent](#-ai-service-report-chat-copilot--voice-agent)
+  - [AI Service Report & Chat Copilot](#-ai-service-report--chat-copilot)
   - [Predictive Report dari Laporan PM (Pilot FCU)](#-predictive-report-dari-laporan-pm-pilot-fcu)
   - [Predictive Maintenance CM & Periodik](#-predictive-maintenance-cm--periodik)
   - [Monthly Report Generator (13 Bab)](#-monthly-report-generator-13-bab)
@@ -64,6 +64,8 @@ Perubahan sejak pembaruan README terakhir (28 September 2026) sampai 15 Oktober 
 
 | Tanggal | Pembaruan |
 | :--- | :--- |
+| 15 Okt | Predictive Report PM: **ekspor DOCX** selain PDF, **foto kartu ikut masuk** ke PDF/DOCX, **pilih equipment** yang dianalisis, dan **edit angka** hasil baca AI setelah disimpan |
+| 15 Okt | **Voice Agent dihapus** (frontend, endpoint `/api/voice/ws`, dan dependensi WebSocket). Mic *Voice Note* (dikte ke chat) tetap ada |
 | 15 Okt | **[Predictive Report dari laporan PM](#-predictive-report-dari-laporan-pm-pilot-fcu)** (pilot FCU) di Arsip Dokumen: AI membaca foto alat ukur, engineer mengonfirmasi angka, status dan proyeksi dihitung terhadap standar |
 | 14 Okt | **[Update aplikasi aman](#-pwa-offline--update-aplikasi)**: draft formulir disimpan sebelum aplikasi dimuat ulang, lalu dipulihkan |
 | 14 Okt | **[Navigasi tersinkron dengan riwayat browser](#-navigasi--uiux)**: menu dan folder punya URL sendiri, tombol Back/Forward berfungsi |
@@ -112,7 +114,7 @@ Frontend SPA (React 18 + Vite 6 + Tailwind v4) ── Firebase Hosting
 
 Prinsip utama:
 
-- **Data langsung dari browser.** Sebagian besar baca/tulis memakai Firestore Web SDK dan dijaga Security Rules per koleksi dan role. Backend hanya dipakai untuk hal yang butuh rahasia server: AI, verifikasi Turnstile, pengelolaan user/role, WhatsApp, dan Voice Agent.
+- **Data langsung dari browser.** Sebagian besar baca/tulis memakai Firestore Web SDK dan dijaga Security Rules per koleksi dan role. Backend hanya dipakai untuk hal yang butuh rahasia server: AI, verifikasi Turnstile, pengelolaan user/role, dan WhatsApp.
 - **Tanpa Cloud Storage dan Cloud Functions.** Project Firebase memakai paket Spark. Foto dan berkas disimpan sebagai potongan (chunk) di subkoleksi Firestore (`photos`, `chunks`, `assets`) agar tiap dokumen tetap di bawah 1 MiB.
 - **Dokumen dibuat di browser.** PDF, Word, Excel, dan ZIP dirender di sisi klien, sehingga backend tetap ringan dan dalam batas fungsi serverless.
 - **AI gratis dengan pengaman.** Semua panggilan AI lewat backend dengan pool key Gemini, rotasi model, dan cooldown saat kena limit. Fitur yang menghasilkan angka (predictive) menghitung status secara deterministik; AI hanya membaca foto dan menulis narasi.
@@ -151,7 +153,6 @@ Prinsip utama:
 | **Vercel Functions** | `api/index.go`, maks 60 s | Hosting backend produksi, auto-deploy dari branch `main` |
 | **Firebase Admin SDK (Go)** | `v4.13` | Verifikasi ID token, custom claim role, Firestore |
 | **Google Gemini API** | endpoint OpenAI-compatible | Vision, reasoning, chat, terjemahan MOP, Predictive Report |
-| **Gorilla WebSocket** | `1.5.3` | Voice Agent |
 | **go-playground/validator** | `v10.30` | Validasi DTO |
 | **Fonnte API** | — | Pengiriman WhatsApp dari server |
 | **Baileys** (Node.js) | `7.0.0-rc14` | WA Gateway lokal opsional (`npm run wagateway`, port 5001) |
@@ -169,13 +170,12 @@ Prinsip utama:
 
 ## 🚀 Modul & Fitur
 
-### 🤖 AI Service Report, Chat Copilot & Voice Agent
+### 🤖 AI Service Report & Chat Copilot
 
 - **Analisis foto service report untuk 13 jenis peralatan**: ATS, FCU, PJU, PDU, Cooling Tower, Generator/Genset, Trafo, AC Split, Busduct, Dock Leveler, Door, Capacitor Bank, dan LDB/RDB. Catatan AI dibatasi 2–5 kata agar rapi di tabel cetak.
 - **Registry template service report** (`config/serviceReportRegistry.ts`) untuk 24 akun maintenance per peralatan: ATS, MV, Grounding, CRAC, VRV, Lift, X-Ray, PJU, Genset, PDU, Cooling Tower, LV, AC Split, UPS, Gate, Trafo, AHU, Pump, Dock Leveler, Door, Exhaust Fan, FCU, LDB/RDB, dan Busduct.
 - **Penerjemah aktivitas kartu foto EN ↔ ID** (`utils/translator.ts`): kamus statis dengan fallback AI.
-- **Chat Copilot** (`AIChatWidget.tsx`) untuk semua role kecuali Drafter.
-- **Voice Agent** (`AIVoiceAgent.tsx`): perintah suara lewat WebSocket `/api/voice/ws` (Gemini) dengan suara dari ElevenLabs.
+- **Chat Copilot** (`AIChatWidget.tsx`) untuk semua role kecuali Drafter, dengan mic *Voice Note* untuk mendikte pertanyaan (speech-to-text bawaan browser).
 - **Pool key dan kuota**: backend memutar beberapa key Gemini secara bergilir dan mencatat kuota harian di `system_status/ai_limit_tracker`. Klien AI untuk MOP dan predictive juga merotasi model dan memberi cooldown pada key yang kena limit (429).
 
 ### 🔮 Predictive Report dari Laporan PM (Pilot FCU)
@@ -186,9 +186,10 @@ Predictive report dibuat langsung dari laporan Preventive Maintenance yang diisi
 
 1. Isi *Nama unit untuk riwayat* (mis. `FCU-01 Lt.2`). Sistem mencari predictive sebelumnya untuk unit yang sama.
 2. AI membaca foto kartu: angka display alat ukur, nameplate motor, dan kondisi visual evaporator.
-3. Engineer memeriksa dan mengonfirmasi setiap angka (edit, zoom foto, isi manual, atau baca ulang foto yang gagal). Angka baru masuk riwayat setelah dikonfirmasi.
+3. Engineer memeriksa dan mengonfirmasi setiap angka (edit, zoom foto, isi manual, atau baca ulang foto yang gagal), lalu **mencentang equipment yang mau dianalisis**. Equipment yang terbaca AI otomatis tercentang; yang tidak dicentang tidak masuk analisis dan riwayatnya tidak bertambah, tetapi angkanya tetap disimpan. Angka baru masuk riwayat setelah dikonfirmasi.
 4. Sistem menghitung status, tren, dan proyeksi. AI menulis narasi per equipment dan ringkasan eksekutif.
-5. Narasi dan status bisa disunting, lalu disimpan dan diekspor ke PDF.
+5. Narasi dan status bisa disunting, lalu disimpan dan diekspor ke **PDF** atau **DOCX**.
+6. Predictive yang sudah tersimpan bisa dibuka lagi lewat **Edit angka & equipment**: angka dan pilihan equipment terisi dari dokumen tersimpan (tanpa panggilan AI baca foto), lalu dianalisis ulang. Nomor dokumen dan tanda tangan tetap.
 
 **Prinsip akurasi.** AI hanya membaca foto dan menulis narasi. Status, tren (regresi linier per kuartal), dan proyeksi tanggal mencapai batas dihitung oleh kode (`utils/pmPredictiveEngine.ts`) terhadap batas acuan di profil (`config/pmPredictiveProfiles.ts`):
 
@@ -210,7 +211,7 @@ Predictive report dibuat langsung dari laporan Preventive Maintenance yang diisi
 
 **Biaya AI.** Sekitar 8 panggilan per predictive FCU (3 batch baca foto, 4 narasi equipment, 1 ringkasan), memakai pool key Gemini gratis yang sama dengan fitur AI lain. Bila AI tidak tersedia, angka bisa diisi manual dan narasi dibuat otomatis.
 
-**PDF** (`utils/PmPredictivePdfExport.ts`): identitas dan nameplate, ringkasan eksekutif, bagian per equipment (nilai, nilai sebelumnya, tren per kuartal, batas acuan, status, proyeksi, narasi), lampiran dasar batas acuan, dan lembar pengesahan.
+**PDF & DOCX** (`utils/PmPredictivePdfExport.ts`, `utils/PmPredictiveWordExport.ts`, helper bersama `utils/pmPredictiveExportShared.ts`): kop surat di setiap halaman, identitas dan foto nameplate, ringkasan eksekutif (termasuk equipment yang tidak dianalisis), bagian per equipment (nilai, nilai sebelumnya, tren per kuartal, batas acuan, status, proyeksi, narasi, dan **dokumentasi foto** kartu PM yang dipakai beserta angka hasil bacanya), lampiran dasar batas acuan, dan lembar pengesahan. Foto diambil dari laporan PM sumber dan dikecilkan di browser sebelum dimasukkan ke dokumen.
 
 **Menambah jenis unit**: buat profil baru di `config/pmPredictiveProfiles.ts` (akun, pola nama, pemetaan kartu → parameter, batas acuan beserta sumbernya, pengelompokan equipment). Mesin hitung dan UI membaca profil tersebut, lalu uji dengan `npm run test:pm-predictive`.
 
@@ -356,13 +357,13 @@ DwimitraSystem/
 │   ├── core/
 │   │   ├── config/               # Firebase, env helper, logger
 │   │   ├── controllers/          # ai, auth, report, user, archive, audit, finding, health,
-│   │   │                         # maintenance_progress, mop, pm_predictive, voice, wa
+│   │   │                         # maintenance_progress, mop, pm_predictive, wa
 │   │   ├── middlewares/          # RequestID, logger, panic recovery, security headers, CORS, rate limit, auth
 │   │   ├── models/               # DTO & validasi
 │   │   ├── repositories/         # Akses Firestore
 │   │   ├── routes/               # routes.go (dependency injection) & api_routes.go (dispatch + throttle)
 │   │   └── services/             # ai_service (key pool + kuota), mop_translate_*, pm_predictive_service,
-│   │                             # voice, turnstile, report, user, dll.
+│   │                             # turnstile, report, user, dll.
 │   ├── pkg/                      # helpers, logger (slog), sanitizer
 │   └── wagateway.js              # WA Gateway lokal (Baileys, port 5001)
 ├── frontend/
@@ -374,7 +375,7 @@ DwimitraSystem/
 │   ├── components/               # Modul UI + ui/ (primitive Radix)
 │   ├── config/                   # fileFolders, pmPredictiveProfiles, serviceReportRegistry,
 │   │                             # pdfTemplateRegistry, templates
-│   ├── hooks/                    # useAppNavigation, useAppUpdateDraft, usePresence, useVoiceAgent, ...
+│   ├── hooks/                    # useAppNavigation, useAppUpdateDraft, usePresence, ...
 │   ├── service_reports/          # Generator PDF/Excel service report per jenis peralatan
 │   ├── types/                    # DTO per modul
 │   ├── utils/                    # Ekspor dokumen, klien AI, offline & PWA, navigasi, predictive engine
@@ -397,7 +398,7 @@ DwimitraSystem/
 
 Base URL produksi diatur lewat `VITE_API_URL` (saat ini `https://utt-report-maintenance.vercel.app`). Saat development `VITE_API_URL` dikosongkan, dan Vite meneruskan `/api` ke backend lokal `http://localhost:8080`.
 
-Semua endpoint kecuali health check mewajibkan `Authorization: Bearer <firebase_id_token>`. WebSocket Voice Agent mengirim token lewat query `?token=`.
+Semua endpoint kecuali health check mewajibkan `Authorization: Bearer <firebase_id_token>`.
 
 Tier throttle: 🔴 **Heavy** 5 rps (burst 10), 🟢 **Standard** 20 rps (burst 40). Di atasnya ada rate limiter global 20 rps (burst 40).
 
@@ -431,10 +432,9 @@ Tier throttle: 🔴 **Heavy** 5 rps (burst 10), 🟢 **Standard** 20 rps (burst 
 | `PATCH` | `/api/users/:id/role` | Ubah role (profil + custom claim) | 🔴 |
 | `DELETE` | `/api/users/:id` | Nonaktifkan akun | 🔴 |
 | `GET` | `/api/audit`, `/api/audit/me` | Jejak audit | 🟢 |
-| `GET` | `/api/voice/ws` | Sesi Voice Agent (WebSocket) | — |
 | `POST` | `/api/wa/send` | Kirim WhatsApp lewat Fonnte | 🔴 |
 
-Batas fungsi Vercel: 60 detik per request dan body maksimal 4,5 MB. Karena itu foto predictive dikirim per batch dan dikompresi di browser. Vercel Functions tidak bisa menjadi server WebSocket, jadi Voice Agent membutuhkan backend Go yang berjalan sebagai server biasa (mis. `npm run backend` lokal).
+Batas fungsi Vercel: 60 detik per request dan body maksimal 4,5 MB. Karena itu foto predictive dikirim per batch dan dikompresi di browser.
 
 ---
 
@@ -486,13 +486,12 @@ Batas fungsi Vercel: 60 detik per request dan body maksimal 4,5 MB. Karena itu f
 Request → RequestID → Logger (slog) → PanicRecovery → SecurityHeaders → CORS Whitelist → RateLimiter → Firebase Auth → Route
 ```
 
-Endpoint AI, predictive, dan Voice menolak role Drafter. Ukuran body dan jumlah foto divalidasi sebelum diteruskan ke AI.
+Endpoint AI dan predictive menolak role Drafter. Ukuran body dan jumlah foto divalidasi sebelum diteruskan ke AI.
 
 ### Rahasia & variabel `VITE_*`
 
 - Key AI hanya disimpan di environment backend (Vercel, tipe Secret).
-- Jangan menaruh rahasia di variabel `VITE_*`. Semua variabel `VITE_*` yang dibaca kode frontend ikut tertanam di file JavaScript publik saat build.
-- Voice Agent saat ini memanggil ElevenLabs langsung dari browser, sehingga `VITE_ELEVENLABS_API_KEY` ikut tertanam di bundle. Gunakan key dengan batas kuota, atau pindahkan pemanggilan TTS ke backend.
+- Jangan menaruh rahasia di variabel `VITE_*`. Semua variabel `VITE_*` yang dibaca kode frontend ikut tertanam di file JavaScript publik saat build. Layanan berbayar yang butuh key (seperti TTS) harus dipanggil lewat backend.
 
 ---
 
@@ -536,7 +535,6 @@ VITE_API_URL=
 
 # Opsional
 VITE_WA_GATEWAY_URL=http://localhost:5001
-VITE_ELEVENLABS_VOICE_ID=your_voice_id
 ```
 
 Backend (lokal: `.env` atau `.env.local` di akar proyek; produksi: Environment Variables di Vercel):
@@ -560,10 +558,6 @@ NVIDIA_NIM_CHAT_MODEL=models/gemini-3.1-flash-lite
 # Opsional: urutan model untuk fitur tertentu (dipisah koma)
 MOP_TRANSLATE_MODELS=models/gemini-3-flash-preview,models/gemini-3.5-flash
 PM_PREDICTIVE_MODELS=models/gemini-3-flash-preview,models/gemini-3.5-flash
-
-# Voice Agent (opsional; fallback ke NVIDIA_NIM_API_KEY(S))
-GEMINI_API_KEY=your_gemini_key
-GEMINI_VOICE_MODEL=gemini-2.0-flash-lite
 ```
 
 ---
