@@ -161,6 +161,13 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/ai/chat" && r.Method == http.MethodPost:
 		heavy(deps.AICtrl.Chat)(w, r)
 
+	// --- Predictive Report dari laporan PM ---
+	case path == "/api/ai/pm-predictive/extract" && r.Method == http.MethodPost:
+		heavy(deps.PMPredictiveCtrl.Extract)(w, r)
+
+	case path == "/api/ai/pm-predictive/analyze" && r.Method == http.MethodPost:
+		heavy(deps.PMPredictiveCtrl.Analyze)(w, r)
+
 	// --- Bilingual MOP (Claude) ---
 	case path == "/api/mop/translate" && r.Method == http.MethodPost:
 		heavy(deps.MOPCtrl.Translate)(w, r)

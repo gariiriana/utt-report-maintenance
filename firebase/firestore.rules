@@ -720,6 +720,20 @@ service cloud.firestore {
     }
 
     // ============================================================================
+    // Koleksi: pm_predictive_reports — Predictive Report dari laporan PM (Arsip Dokumen)
+    // id dokumen = id laporan PM asal; akun unit pemilik laporan boleh membuat/memperbarui
+    // ============================================================================
+    match /pm_predictive_reports/{reportId} {
+      allow read: if !isDrafter() && (request.auth != null);
+      allow create, update: if !isDrafter() && (request.auth != null
+                    && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME()
+                        || request.resource.data.account == getEmail().lower())
+                    && request.resource.data.sourceDocId == reportId
+                    && hasAcceptableFieldCount(request.resource.data, 60));
+      allow delete: if !isDrafter() && (isStrictQcDme());
+    }
+
+    // ============================================================================
     // Koleksi: periodic_predictive_reports — Laporan PdM Periodik (Bulanan & Tahunan)
     // Akses: Admin, QC DME, Engineer, Standby Engineer, DME & Privileged can CRUD
     // ============================================================================

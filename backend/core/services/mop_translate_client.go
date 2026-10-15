@@ -62,6 +62,12 @@ type mopChatClient struct {
 	noReasoning atomic.Bool // endpoint menolak parameter reasoning_effort
 	httpClient  *http.Client
 
+	// Opsional; nilai kosong = perilaku penerjemah MOP.
+	logName        string        // awalan nama log, default "mop_translate"
+	maxTokens      int           // default 8192
+	effort         string        // reasoning_effort Gemini, default "low"
+	attemptTimeout time.Duration // default mopAttemptTimeout
+
 	mu       sync.Mutex
 	keyIndex int                    // giliran key berikutnya
 	cooldown map[mopRoute]time.Time // kombinasi yang sedang diistirahatkan sampai waktu ini; dipakai ulang antar-permintaan
@@ -163,20 +169,39 @@ func (c *mopChatClient) restModel(model int, d time.Duration) {
 	}
 }
 
-func (c *mopChatClient) post(ctx context.Context, model, apiKey, system, user string) (int, []byte, error) {
+func (c *mopChatClient) name() string {
+	if c.logName != "" {
+		return c.logName
+	}
+	return "mop_translate"
+}
+
+func (c *mopChatClient) timeout() time.Duration {
+	if c.attemptTimeout > 0 {
+		return c.attemptTimeout
+	}
+	return mopAttemptTimeout
+}
+
+func (c *mopChatClient) post(ctx context.Context, model, apiKey string, messages []map[string]interface{}) (int, []byte, error) {
+	maxTokens := c.maxTokens
+	if maxTokens <= 0 {
+		maxTokens = 8192
+	}
 	payload := map[string]interface{}{
-		"model": model,
-		"messages": []map[string]string{
-			{"role": "system", "content": system},
-			{"role": "user", "content": user},
-		},
+		"model":       model,
+		"messages":    messages,
 		"temperature": 0.1,
-		"max_tokens":  8192,
+		"max_tokens":  maxTokens,
 		"stream":      false,
 	}
 	// Model Gemini "berpikir" dulu secara default; untuk terjemahan cukup sedikit agar tetap di bawah batas waktu.
 	if isGeminiEndpoint(c.baseURL) && !c.noReasoning.Load() {
-		payload["reasoning_effort"] = "low"
+		effort := c.effort
+		if effort == "" {
+			effort = "low"
+		}
+		payload["reasoning_effort"] = effort
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -277,6 +302,15 @@ func sleepWithin(ctx context.Context, d, keep time.Duration) bool {
 }
 
 func (c *mopChatClient) Complete(ctx context.Context, system, user string) (string, error) {
+	return c.CompleteMessages(ctx, []map[string]interface{}{
+		{"role": "system", "content": system},
+		{"role": "user", "content": user},
+	})
+}
+
+// CompleteMessages mengirim percakapan lengkap; content boleh berupa teks atau array
+// bagian OpenAI-compatible (text + image_url) untuk model vision.
+func (c *mopChatClient) CompleteMessages(ctx context.Context, messages []map[string]interface{}) (string, error) {
 	maxFailures := len(c.apiKeys) * 2
 	if maxFailures < 3 {
 		maxFailures = 3
@@ -296,19 +330,19 @@ func (c *mopChatClient) Complete(ctx context.Context, system, user string) (stri
 			if lastErr == nil || errors.Is(lastErr, ErrMOPRateLimited) {
 				return "", ErrMOPRateLimited
 			}
-			return "", fmt.Errorf("tidak ada model AI yang tersedia untuk penerjemahan: %v", lastErr)
+			return "", fmt.Errorf("tidak ada model AI yang tersedia: %v", lastErr)
 		}
 		model := c.models[route.model]
 
-		attemptCtx, cancel := context.WithTimeout(ctx, mopAttemptTimeout)
-		status, body, err := c.post(attemptCtx, model, c.apiKeys[route.key], system, user)
+		attemptCtx, cancel := context.WithTimeout(ctx, c.timeout())
+		status, body, err := c.post(attemptCtx, model, c.apiKeys[route.key], messages)
 		hung := err != nil && attemptCtx.Err() != nil && ctx.Err() == nil
 		cancel()
 		bodyStr := string(body)
 		switch {
 		case hung:
-			slog.Warn("mop_translate_attempt_timeout", slog.String("model", model), slog.Int("key", route.key+1))
-			lastErr = fmt.Errorf("model %s tidak menjawab dalam %v", model, mopAttemptTimeout)
+			slog.Warn(c.name()+"_attempt_timeout", slog.String("model", model), slog.Int("key", route.key+1))
+			lastErr = fmt.Errorf("model %s tidak menjawab dalam %v", model, c.timeout())
 			failures++
 			c.restModel(route.model, mopCooldownHung)
 		case err != nil:
@@ -317,13 +351,13 @@ func (c *mopChatClient) Complete(ctx context.Context, system, user string) (stri
 		case status == http.StatusOK:
 			content, perr := parseMOPChatContent(body)
 			if perr == nil {
-				slog.Info("mop_translate_ai_ok", slog.String("model", model), slog.Int("key", route.key+1), slog.Int("rate_limited", rateLimits))
+				slog.Info(c.name()+"_ai_ok", slog.String("model", model), slog.Int("key", route.key+1), slog.Int("rate_limited", rateLimits))
 				return content, nil
 			}
 			lastErr = perr
 			failures++
 		case isModelUnavailable(status, bodyStr):
-			slog.Warn("mop_translate_model_unavailable", slog.String("model", model), slog.Int("key", route.key+1), slog.Int("status", status))
+			slog.Warn(c.name()+"_model_unavailable", slog.String("model", model), slog.Int("key", route.key+1), slog.Int("status", status))
 			lastErr = fmt.Errorf("model %s tidak tersedia (HTTP %d)", model, status)
 			c.rest(route, mopCooldownUnavailable)
 		case status == http.StatusBadRequest && strings.Contains(strings.ToLower(bodyStr), "reasoning") && !c.noReasoning.Load():
@@ -332,7 +366,7 @@ func (c *mopChatClient) Complete(ctx context.Context, system, user string) (stri
 			// Kuota dihitung per project key per model: istirahatkan kombinasi ini, langsung coba yang lain.
 			rateLimits++
 			lastErr = ErrMOPRateLimited
-			slog.Warn("mop_translate_rate_limited", slog.String("model", model), slog.Int("key", route.key+1))
+			slog.Warn(c.name()+"_rate_limited", slog.String("model", model), slog.Int("key", route.key+1))
 			c.rest(route, rateLimitCooldown(bodyStr, rateLimits))
 		case status == http.StatusUnauthorized || status == http.StatusForbidden:
 			lastErr = fmt.Errorf("AI API error (%d): %.200s", status, bodyStr)

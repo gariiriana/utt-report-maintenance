@@ -25,6 +25,7 @@ type AppDeps struct {
 	FindingCtrl             *controllers.FindingController
 	AICtrl                  *controllers.AIController
 	MOPCtrl                 *controllers.MOPController
+	PMPredictiveCtrl        *controllers.PMPredictiveController
 	VoiceCtrl               *controllers.VoiceController
 	WACtrl                  *controllers.WAController
 	RateLimiter             *middlewares.RateLimiter // global catch-all
@@ -69,6 +70,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	aiSvc := services.NewAIService(firestoreClient)
 	aiCtrl := controllers.NewAIController(aiSvc)
 	mopCtrl := controllers.NewMOPController(services.NewMOPTranslateService(aiSvc))
+	pmPredictiveCtrl := controllers.NewPMPredictiveController(services.NewPMPredictiveService(aiSvc))
 	voiceSvc := services.NewVoiceService(firestoreClient)
 	voiceCtrl := controllers.NewVoiceController(voiceSvc)
 	waCtrl := controllers.NewWAController()
@@ -88,6 +90,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		FindingCtrl:             findingCtrl,
 		AICtrl:                  aiCtrl,
 		MOPCtrl:                 mopCtrl,
+		PMPredictiveCtrl:        pmPredictiveCtrl,
 		VoiceCtrl:               voiceCtrl,
 		WACtrl:                  waCtrl,
 		RateLimiter:             rateLimiter,

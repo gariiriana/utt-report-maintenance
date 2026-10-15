@@ -11,7 +11,7 @@ import { useNavigationState, useFolderNavigation } from '@/hooks/useAppNavigatio
 import { FILE_FOLDER_LABELS } from '@/config/fileFolders';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye, ArrowLeft } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye, ArrowLeft, Bot } from 'lucide-react';
 import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp, getDoc, getDocFromCache } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -46,6 +46,9 @@ import { HSEReportViewer } from './HSEReportViewer';
 import { HSEReportForm } from './HSEReportForm';
 import { isServiceReportSupported } from '@/config/serviceReportRegistry';
 import { safeStorage } from '@/utils/safeStorage';
+import { PmPredictiveModal, STATUS_BADGE as PM_STATUS_BADGE } from './PmPredictiveModal';
+import { resolvePmProfile } from '@/config/pmPredictiveProfiles';
+import { STATUS_LABEL as PM_STATUS_LABEL } from '@/utils/pmPredictiveEngine';
 
 interface PhotoData {
   index: number;
@@ -395,6 +398,7 @@ export function DocumentList({
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [uploadSrModalDoc, setUploadSrModalDoc] = useState<ExcelDocument | null>(null);
   const [abnormalModalDoc, setAbnormalModalDoc] = useState<ExcelDocument | null>(null);
+  const [pmPredictiveDoc, setPmPredictiveDoc] = useState<ExcelDocument | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; title: string } | null>(null);
   const [downloadChoiceDoc, setDownloadChoiceDoc] = useState<ExcelDocument | null>(null);
   const [loading, setLoading] = useState(true);
@@ -726,6 +730,7 @@ export function DocumentList({
           hasServiceReport: Boolean(data.hasServiceReport || data.attachedSrFile || data.attachedSrBase64 || data.serviceReportPayload),
           attachedSrFile: data.attachedSrFile || null,
           attachedSrBase64: data.attachedSrBase64 || null,
+          pmPredictive: data.pmPredictive || null,
           deleteRequested: data.deleteRequested || false,
           deleteRequestedBy: data.deleteRequestedBy || '',
           deleteReason: data.deleteReason || '',
@@ -3923,6 +3928,11 @@ export function DocumentList({
     );
     const hasSR = Boolean(document.attachedSrFile || document.attachedSrBase64);
     const isHighlighted = activeHighlightedId === document.id;
+    const showPmPredictive = Boolean(
+      document.documentType === 'pdf' &&
+      resolvePmProfile(document.createdBy, document.maintenanceName) &&
+      (isEngineer || isAdmin || document.pmPredictive)
+    );
 
     return (
       <motion.div
@@ -3999,6 +4009,11 @@ export function DocumentList({
                 {document.hasMsds && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 shadow-2xs">
                     <FileCheck className="w-3 h-3 shrink-0" /> MSDS
+                  </span>
+                )}
+                {document.pmPredictive?.overallStatus && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border flex items-center gap-1 shadow-2xs ${PM_STATUS_BADGE[document.pmPredictive.overallStatus as keyof typeof PM_STATUS_BADGE] || PM_STATUS_BADGE.unknown}`}>
+                    <Bot className="w-3 h-3 shrink-0" /> PREDICTIVE: {PM_STATUS_LABEL[document.pmPredictive.overallStatus as keyof typeof PM_STATUS_LABEL] || '-'}
                   </span>
                 )}
                 {document.deleteRequested && (
@@ -4172,6 +4187,24 @@ export function DocumentList({
                     <span className="sm:hidden font-bold">Edit</span>
                   </>
                 )}
+              </motion.button>
+            )}
+
+            {/* Tombol Predictive Report dari laporan PM (pilot: FCU) */}
+            {showPmPredictive && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setPmPredictiveDoc(document)}
+                className={`w-full sm:w-auto py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap ${
+                  document.pmPredictive
+                    ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                    : 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white border-indigo-700'
+                }`}
+                title={document.pmPredictive ? 'Lihat / Perbarui Predictive Report' : 'Generate Predictive Report dari laporan PM ini (AI)'}
+              >
+                <Bot className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-bold">{document.pmPredictive ? 'Predictive' : 'Predictive AI'}</span>
               </motion.button>
             )}
 
@@ -4962,6 +4995,17 @@ export function DocumentList({
             )
           );
           setUploadSrModalDoc(null);
+        }}
+      />
+
+      <PmPredictiveModal
+        isOpen={!!pmPredictiveDoc}
+        onClose={() => setPmPredictiveDoc(null)}
+        document={pmPredictiveDoc}
+        readOnly={!(isEngineer || isAdmin)}
+        onSaved={(marker) => {
+          if (!pmPredictiveDoc) return;
+          setDocuments(prev => prev.map(d => (d.id === pmPredictiveDoc.id ? { ...d, pmPredictive: marker } : d)));
         }}
       />
 
