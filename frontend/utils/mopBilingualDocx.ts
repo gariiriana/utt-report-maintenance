@@ -232,34 +232,132 @@ function buildIdRunProps(doc: Document, allTextRuns: Element[]): Element {
 
 const SECTION_HEADING = /^Section\s+\d+\b/i;
 
+// Atribut w:* yang tidak ada -> null (sebagian parser DOM mengembalikan string kosong).
+const wAttr = (el: Element | undefined | null, name: string) =>
+  (el && (el.getAttributeNS(W_NS, name) || el.getAttribute(`w:${name}`))) || null;
+
+// Urutan anak w:pPr dan w:tcPr menurut skema; Word menolak elemen yang urutannya salah.
+const PPR_ORDER = [
+  'pStyle', 'keepNext', 'keepLines', 'pageBreakBefore', 'framePr', 'widowControl', 'numPr',
+  'suppressLineNumbers', 'pBdr', 'shd', 'tabs', 'suppressAutoHyphens', 'kinsoku', 'wordWrap',
+  'overflowPunct', 'topLinePunct', 'autoSpaceDE', 'autoSpaceDN', 'bidi', 'adjustRightInd',
+  'snapToGrid', 'spacing', 'ind', 'contextualSpacing', 'mirrorIndents', 'suppressOverlap', 'jc',
+  'textDirection', 'textAlignment', 'textboxTightWrap', 'outlineLvl', 'divId', 'cnfStyle', 'rPr',
+  'sectPr', 'pPrChange',
+];
+const TCPR_ORDER = [
+  'cnfStyle', 'tcW', 'gridSpan', 'hMerge', 'vMerge', 'tcBorders', 'shd', 'noWrap', 'tcMar',
+  'textDirection', 'tcFitText', 'vAlign', 'hideMark', 'headers', 'cellIns', 'cellDel', 'cellMerge', 'tcPrChange',
+];
+
+/** Pasang `el` di `parent` pada posisi sesuai `order`, menggantikan elemen bernama sama. */
+function setOrderedChild(parent: Element, el: Element, order: string[]): void {
+  const rank = order.indexOf(el.localName);
+  const existing = childElements(parent).find(c => isW(c, el.localName));
+  if (existing) parent.removeChild(existing);
+  const next = childElements(parent).find(c => order.indexOf(c.localName) > rank);
+  parent.insertBefore(el, next || null);
+}
+
+const childW = (el: Element | undefined | null, name: string) =>
+  el ? childElements(el).find(c => isW(c, name)) : undefined;
+
+/** Elemen sifat (w:pPr / w:tcPr) milik `el`; dibuat sebagai anak pertama bila belum ada. */
+function ensureProps(doc: Document, el: Element, name: string): Element {
+  const existing = childW(el, name);
+  if (existing) return existing;
+  const props = doc.createElementNS(W_NS, `w:${name}`);
+  el.insertBefore(props, el.firstChild);
+  return props;
+}
+
+// Warna w:highlight -> hex untuk shading paragraf.
+const HIGHLIGHT_HEX: Record<string, string> = {
+  yellow: 'FFFF00', green: '00FF00', cyan: '00FFFF', magenta: 'FF00FF', blue: '0000FF', red: 'FF0000',
+  darkBlue: '000080', darkCyan: '008080', darkGreen: '008000', darkMagenta: '800080', darkRed: '800000',
+  darkYellow: '808000', darkGray: '808080', lightGray: 'C0C0C0', black: '000000', white: 'FFFFFF',
+};
+
 /**
- * Judul section bar kuning ("[tab] Section 4 – … [tab]") di MOP diposisikan dengan tab stop
- * rata-kiri yang disetel manual per judul (atau deretan spasi) agar teks Inggrisnya tampak di
- * tengah, sehingga baris ID yang panjangnya berbeda jadi tidak sejajar. Tab stop itu diganti
- * tab rata-tengah di titik tengah bar dan awalan teks dirapikan menjadi satu tab, jadi baris
- * Inggris dan ID sama-sama tepat di tengah. Tab stop terakhir (ujung bar) dipertahankan.
+ * Pengisi sebelum/sesudah teks judul (tab, run berisi spasi saja) pada run langsung di paragraf,
+ * plus teks pertama & terakhir yang terlihat.
  */
-function centerSectionHeading(doc: Document, p: Element): void {
-  const attr = (el: Element | undefined, name: string) =>
-    el ? el.getAttributeNS(W_NS, name) || el.getAttribute(`w:${name}`) : null;
-  const pPr = childElements(p).find(c => isW(c, 'pPr'));
-  const tabs = pPr && childElements(pPr).find(c => isW(c, 'tabs'));
-  if (!pPr || !tabs) return;
-  if (attr(childElements(pPr).find(c => isW(c, 'jc')), 'val') === 'center') return;
+function headingPadding(p: Element) {
+  const items = childElements(p).filter(c => isW(c, 'r')).flatMap(run => childElements(run))
+    .filter(c => isW(c, 't') || isW(c, 'tab'));
+  const visible = (c: Element) => isW(c, 't') && (c.textContent || '').trim() !== '';
+  const firstIndex = items.findIndex(visible);
+  if (firstIndex < 0) return null;
+  let lastIndex = items.length - 1;
+  while (!visible(items[lastIndex])) lastIndex--;
+  return {
+    leading: items.slice(0, firstIndex),
+    trailing: items.slice(lastIndex + 1),
+    first: items[firstIndex],
+    last: items[lastIndex],
+  };
+}
+
+/**
+ * Sel lain di baris judul yang kosong dan berwarna sama dengan sel judul: pengganjal agar teks
+ * tampak di tengah bar. [] bila judul satu-satunya sel; null bila baris itu baris tabel biasa.
+ */
+function spacerCells(cell: Element): Element[] | null {
+  const row = cell.parentNode;
+  if (!row || !isW(row, 'tr')) return null;
+  const prop = (tc: Element, name: string) => childW(childW(tc, 'tcPr'), name);
+  const fill = (tc: Element) => wAttr(prop(tc, 'shd'), 'fill');
+  const others = childElements(row).filter(c => isW(c, 'tc') && c !== cell);
+  const isSpacer = (tc: Element) => (tc.textContent || '').trim() === ''
+    && tc.getElementsByTagNameNS(W_NS, 'drawing').length === 0
+    && !prop(tc, 'vMerge') && fill(tc) === fill(cell);
+  return !prop(cell, 'vMerge') && others.every(isSpacer) ? others : null;
+}
+
+/** Gabungkan sel pengganjal ke sel judul (gridSpan & lebar dijumlah) supaya teks bisa di tengah bar. */
+function absorbSpacerCells(doc: Document, cell: Element, spacers: Element[]): void {
+  const cells = [cell, ...spacers];
+  const prop = (tc: Element, name: string) => childW(childW(tc, 'tcPr'), name);
+  const span = cells.reduce((sum, tc) => sum + (Number(wAttr(prop(tc, 'gridSpan'), 'val')) || 1), 0);
+  const width = cells.reduce((sum, tc) => {
+    const tcW = prop(tc, 'tcW');
+    return (wAttr(tcW, 'type') || 'dxa') === 'dxa' ? sum + Number(wAttr(tcW, 'w')) : NaN;
+  }, 0);
+  const tcPr = ensureProps(doc, cell, 'tcPr');
+  if (Number.isFinite(width)) {
+    const tcW = doc.createElementNS(W_NS, 'w:tcW');
+    tcW.setAttributeNS(W_NS, 'w:w', String(width));
+    tcW.setAttributeNS(W_NS, 'w:type', 'dxa');
+    setOrderedChild(tcPr, tcW, TCPR_ORDER);
+  }
+  const gridSpan = doc.createElementNS(W_NS, 'w:gridSpan');
+  gridSpan.setAttributeNS(W_NS, 'w:val', String(span));
+  setOrderedChild(tcPr, gridSpan, TCPR_ORDER);
+  for (const tc of spacers) tc.parentNode!.removeChild(tc);
+}
+
+type HeadingPadding = NonNullable<ReturnType<typeof headingPadding>>;
+
+/** Buang tab/spasi pengisi; run yang jadi kosong ikut dibuang. */
+function removePadding(items: Element[]): void {
+  for (const el of items) {
+    const run = el.parentNode as Element;
+    run.removeChild(el);
+    if (childElements(run).every(c => isW(c, 'rPr'))) run.parentNode!.removeChild(run);
+  }
+}
+
+/**
+ * Bar highlight yang lebarnya dibentuk tab stop ("[tab] Section 4 – … [tab]"): tab stop pengisi
+ * diganti satu tab rata-tengah di titik tengah bar dan awalan teks dirapikan menjadi satu tab.
+ * Tab stop terakhir (ujung bar) dipertahankan, jadi bar tetap persis selebar aslinya.
+ */
+function centerOnTabStop(doc: Document, pPr: Element, tabs: Element, padding: HeadingPadding): void {
   const stops = childElements(tabs).filter(c => isW(c, 'tab'));
-  const positions = stops.map(stop => Number(attr(stop, 'pos')));
-  if (stops.length < 2 || positions.some(Number.isNaN)) return;
-
-  // Awalan sebelum teks pertama (tab & spasi), hanya pada run langsung di paragraf.
-  const runChildren = childElements(p).filter(c => isW(c, 'r')).flatMap(run => childElements(run));
-  const firstIndex = runChildren.findIndex(c => isW(c, 't') && (c.textContent || '').trim() !== '');
-  if (firstIndex < 0) return;
-  const firstText = runChildren[firstIndex];
-  const leading = runChildren.slice(0, firstIndex).filter(c => isW(c, 'tab') || isW(c, 't'));
-
+  const positions = stops.map(stop => Number(wAttr(stop, 'pos')));
   const end = Math.max(...positions);
-  const ind = childElements(pPr).find(c => isW(c, 'ind'));
-  const left = Number(attr(ind, 'left') || attr(ind, 'start') || 0) || 0;
+  const ind = childW(pPr, 'ind');
+  const left = Number(wAttr(ind, 'left') || wAttr(ind, 'start')) || 0;
   const endStop = stops[positions.indexOf(end)];
   const centerStop = doc.createElementNS(W_NS, 'w:tab');
   centerStop.setAttributeNS(W_NS, 'w:val', 'center');
@@ -267,24 +365,144 @@ function centerSectionHeading(doc: Document, p: Element): void {
   for (const stop of stops) if (stop !== endStop) tabs.removeChild(stop);
   tabs.insertBefore(centerStop, endStop);
 
-  firstText.textContent = (firstText.textContent || '').replace(/^\s+/, '');
+  padding.first.textContent = (padding.first.textContent || '').replace(/^\s+/, '');
   const leadTab = doc.createElementNS(W_NS, 'w:tab');
-  if (leading.length > 0) {
-    // Run awalan pertama (ber-highlight) menjadi pembawa satu-satunya tab; sisanya dibuang.
-    leading[0].parentNode!.replaceChild(leadTab, leading[0]);
-    for (const el of leading.slice(1)) {
-      const run = el.parentNode as Element;
-      run.removeChild(el);
-      if (childElements(run).every(c => isW(c, 'rPr'))) run.parentNode!.removeChild(run);
-    }
+  const [carrier, ...rest] = padding.leading;
+  if (carrier) {
+    // Run awalan pertama (ber-highlight) menjadi pembawa satu-satunya tab.
+    carrier.parentNode!.replaceChild(leadTab, carrier);
+    removePadding(rest);
   } else {
-    const textRun = firstText.parentNode as Element;
+    const textRun = padding.first.parentNode as Element;
     const run = doc.createElementNS(W_NS, 'w:r');
-    const rPr = childElements(textRun).find(c => isW(c, 'rPr'));
+    const rPr = childW(textRun, 'rPr');
     if (rPr) run.appendChild(rPr.cloneNode(true));
     run.appendChild(leadTab);
     textRun.parentNode!.insertBefore(run, textRun);
   }
+}
+
+/**
+ * Judul section ("Section 6 – …") di template MOP ditengahkan dengan berbagai akal-akalan:
+ * tab stop yang disetel manual per judul, deretan spasi, rata kanan + indent, indent kiri
+ * di text box, atau sel kosong pengganjal di kiri sel judul. Baris ID yang panjangnya berbeda
+ * jadi tidak sejajar dengan baris Inggris. Bar highlight bertab ditengahkan dengan tab
+ * rata-tengah (lebar bar tetap); selain itu pengisi dibuang dan paragrafnya dibuat rata tengah,
+ * dengan bar highlight tanpa tab stop diganti shading paragraf. Judul polos (tanpa bar/pengisi)
+ * dan judul di baris tabel berisi tidak diubah.
+ */
+function alignSectionHeading(doc: Document, p: Element): void {
+  const padding = headingPadding(p);
+  if (!padding) return;
+  const inTextBox = nearestAncestor(p, 'txbxContent') !== null;
+  const cell = inTextBox ? null : nearestAncestor(p, 'tc');
+  const oldPPr = childW(p, 'pPr');
+  const shd = childW(oldPPr, 'shd');
+  const oldInd = childW(oldPPr, 'ind');
+  const highlight = childElements(p).filter(c => isW(c, 'r'))
+    .map(run => wAttr(childW(childW(run, 'rPr'), 'highlight'), 'val'))
+    .find(val => val && val !== 'none');
+  const padded = padding.leading.length > 0 || padding.trailing.length > 0
+    || /^\s{2,}/.test(padding.first.textContent || '') || /\s{2,}$/.test(padding.last.textContent || '');
+
+  let spacers: Element[] = [];
+  if (cell) {
+    const found = spacerCells(cell);
+    const cellFill = wAttr(childW(childW(cell, 'tcPr'), 'shd'), 'fill');
+    const isBar = (found && found.length > 0) || (cellFill !== null && !/^(auto|FFFFFF)$/i.test(cellFill));
+    const indented = Number(wAttr(oldInd, 'left') || wAttr(oldInd, 'start')) > 0;
+    if (!found || !isBar || (found.length === 0 && !indented && !padded)) return;
+    spacers = found;
+  } else if (!inTextBox && !padded && !highlight && !shd) {
+    return;
+  }
+
+  const pPr = ensureProps(doc, p, 'pPr');
+  const make = (name: string, attrs: Record<string, string>) => {
+    const el = doc.createElementNS(W_NS, `w:${name}`);
+    for (const [key, value] of Object.entries(attrs)) el.setAttributeNS(W_NS, `w:${key}`, value);
+    return el;
+  };
+  const tabs = childW(pPr, 'tabs');
+  const stops = tabs ? childElements(tabs).filter(c => isW(c, 'tab')) : [];
+  if (!inTextBox && !cell && highlight && !shd && stops.length > 0
+    && stops.every(stop => Number.isFinite(Number(wAttr(stop, 'pos'))))) {
+    centerOnTabStop(doc, pPr, tabs!, padding);
+    return;
+  }
+
+  const ind = make('ind', {});
+  if (inTextBox || cell) {
+    // Indent di text box / sel hanya dipakai untuk menggeser judul ke tengah.
+    ind.setAttributeNS(W_NS, 'w:left', '0');
+    ind.setAttributeNS(W_NS, 'w:right', '0');
+    if (cell && spacers.length > 0) absorbSpacerCells(doc, cell, spacers);
+  } else {
+    for (const name of ['left', 'start', 'right', 'end']) {
+      const value = wAttr(oldInd, name);
+      if (value !== null) ind.setAttributeNS(W_NS, `w:${name}`, value);
+    }
+    // Bar highlight tanpa tab stop (diperlebar dengan spasi) hilang begitu spasinya dibuang.
+    const hex = highlight ? HIGHLIGHT_HEX[highlight] : undefined;
+    if (!shd && hex) setOrderedChild(pPr, make('shd', { val: 'clear', color: 'auto', fill: hex }), PPR_ORDER);
+  }
+  // Indent baris pertama akan menggeser baris Inggris saja; baris ID ada di baris berikutnya.
+  ind.setAttributeNS(W_NS, 'w:firstLine', '0');
+  setOrderedChild(pPr, ind, PPR_ORDER);
+  if (tabs) pPr.removeChild(tabs);
+  setOrderedChild(pPr, make('jc', { val: 'center' }), PPR_ORDER);
+
+  removePadding([...padding.leading, ...padding.trailing]);
+  padding.first.textContent = (padding.first.textContent || '').replace(/^\s+/, '');
+  padding.last.textContent = (padding.last.textContent || '').replace(/\s+$/, '');
+}
+
+const WP_NS = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+const A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const WPS_NS = 'http://schemas.microsoft.com/office/word/2010/wordprocessingShape';
+const EMU_PER_PT = 12700;
+const DEFAULT_TEXTBOX_INSET = 91440; // 0,1 inci
+
+/** Elemen wp:anchor / wp:inline text box (wps) tempat paragraf berada; null bila bukan text box. */
+function textBoxDrawing(p: Element): Element | null {
+  if (!nearestAncestor(p, 'txbxContent')) return null;
+  for (let el = p.parentNode; el; el = el.parentNode) {
+    if (el.nodeType !== 1) continue;
+    const node = el as Element;
+    if (node.localName === 'Fallback') return null; // salinan VML, tidak dipakai Word modern
+    if (node.namespaceURI === WP_NS && (node.localName === 'anchor' || node.localName === 'inline')) return node;
+  }
+  return null;
+}
+
+/**
+ * Perkiraan tinggi (EMU) yang dibutuhkan baris ID di text box: jumlah baris dari panjang teks
+ * dan lebar kotak, dibulatkan ke atas agar baris ID tidak terpotong.
+ */
+function idLineHeight(drawing: Element, idRPr: Element, idText: string): number {
+  const extent = Array.from(drawing.getElementsByTagNameNS(WP_NS, 'extent'))[0];
+  const bodyPr = Array.from(drawing.getElementsByTagNameNS(WPS_NS, 'bodyPr'))[0];
+  const inset = (name: string) => {
+    const value = bodyPr?.getAttribute(name);
+    return value !== null && value !== undefined && value !== '' ? Number(value) : DEFAULT_TEXTBOX_INSET;
+  };
+  const sz = Number(wAttr(childElements(idRPr).find(c => isW(c, 'sz')), 'val')) || 22;
+  const fontPt = sz / 2;
+  const widthPt = (Number(extent?.getAttribute('cx')) - inset('lIns') - inset('rIns')) / EMU_PER_PT;
+  const charsPerLine = Number.isFinite(widthPt) && widthPt > 0 ? Math.max(1, Math.floor(widthPt / (fontPt * 0.5))) : 60;
+  const lines = Math.ceil(idText.length / charsPerLine);
+  return Math.ceil(lines * fontPt * 1.2 * EMU_PER_PT);
+}
+
+/** Tambah tinggi text box (wp:extent & a:ext) agar baris ID yang disisipkan tidak terpotong. */
+function growTextBox(drawing: Element, extraEmu: number): void {
+  const grow = (el: Element | undefined) => {
+    const cy = Number(el?.getAttribute('cy'));
+    if (el && Number.isFinite(cy)) el.setAttribute('cy', String(cy + extraEmu));
+  };
+  grow(Array.from(drawing.getElementsByTagNameNS(WP_NS, 'extent'))[0]);
+  const xfrm = Array.from(drawing.getElementsByTagNameNS(A_NS, 'xfrm'))[0];
+  grow(xfrm && childElements(xfrm).find(c => c.namespaceURI === A_NS && c.localName === 'ext'));
 }
 
 /**
@@ -297,21 +515,22 @@ export async function buildBilingualMOPDocx(
   translations: Record<string, string>
 ): Promise<{ blob: Blob; translatedParagraphs: number }> {
   const { zip, entryName, doc, xml, paragraphs } = await loadDocument(buffer);
+  const textBoxGrowth = new Map<Element, number>();
   let translatedParagraphs = 0;
 
   for (const p of paragraphs) {
-    const { text, trailingTabs: tabsAfterText } = readParagraph(p);
+    const { text } = readParagraph(p);
     const idText = text ? (translations[text] || '').trim() : '';
     if (!idText) continue;
-    // Bar kuning judul section selalu diakhiri tab sampai ujung bar.
-    if (tabsAfterText > 0 && SECTION_HEADING.test(text)) centerSectionHeading(doc, p);
+    if (SECTION_HEADING.test(text)) alignSectionHeading(doc, p);
     const { textRuns, leadingTabs, trailingTabs } = readParagraph(p);
 
     const breakRun = doc.createElementNS(W_NS, 'w:r');
     breakRun.appendChild(doc.createElementNS(W_NS, 'w:br'));
 
     const idRun = doc.createElementNS(W_NS, 'w:r');
-    idRun.appendChild(buildIdRunProps(doc, textRuns));
+    const idRPr = buildIdRunProps(doc, textRuns);
+    idRun.appendChild(idRPr);
     for (let i = 0; i < leadingTabs; i++) idRun.appendChild(doc.createElementNS(W_NS, 'w:tab'));
     const t = doc.createElementNS(W_NS, 'w:t');
     t.setAttributeNS(XML_NS, 'xml:space', 'preserve');
@@ -322,7 +541,12 @@ export async function buildBilingualMOPDocx(
     p.appendChild(breakRun);
     p.appendChild(idRun);
     translatedParagraphs++;
+
+    // Text box bertinggi tetap: baris ID di luar tinggi kotak tidak tampil.
+    const drawing = textBoxDrawing(p);
+    if (drawing) textBoxGrowth.set(drawing, (textBoxGrowth.get(drawing) || 0) + idLineHeight(drawing, idRPr, idText));
   }
+  textBoxGrowth.forEach((extra, drawing) => growTextBox(drawing, extra));
 
   const declaration = xml.match(/^<\?xml[^>]*\?>/)?.[0] ?? '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
   const body = new XMLSerializer().serializeToString(doc).replace(/^<\?xml[^>]*\?>\s*/, '');
