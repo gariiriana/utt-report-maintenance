@@ -3,8 +3,8 @@
 // Deskripsi: PDF resmi Predictive Report dari laporan Preventive Maintenance.
 //            Satu dokumen untuk satu unit: identitas & nameplate, ringkasan
 //            eksekutif, satu bagian per equipment (tabel parameter + tren +
-//            proyeksi + narasi), lampiran dasar batas acuan, dan lembar pengesahan
-//            (format sama dengan Predictive Report CM/Temuan Abnormal).
+//            proyeksi + narasi + foto dokumentasi), lampiran dasar batas acuan,
+//            dan lembar pengesahan (format sama dengan Predictive Report CM).
 // ============================================================================
 
 import { jsPDF } from 'jspdf';
@@ -13,8 +13,12 @@ import { toast } from 'sonner';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import type { PmPredictiveReport, PmStatus } from '@/types/pmPredictiveTypes';
-import { PM_PREDICTIVE_PROFILES } from '@/config/pmPredictiveProfiles';
-import { STATUS_LABEL, effectiveStatus, fmtNum, fmtDate, fmtMonthYear } from '@/utils/pmPredictiveEngine';
+import type { PmSourcePhoto } from '@/utils/pmPredictiveService';
+import { STATUS_LABEL, effectiveStatus, fmtDate } from '@/utils/pmPredictiveEngine';
+import {
+  METHOD_TEXT, nameplateText, paramRowText, limitSourceRows, excludedEquipmentNames,
+  collectPmExportPhotos, safeFileName, type PmExportPhoto,
+} from '@/utils/pmPredictiveExportShared';
 
 type RGB = [number, number, number];
 
@@ -72,22 +76,7 @@ function t(text: string | number | null | undefined): string {
     .replace(/(?:&«|[⚫▪►▶⁃●◆])/g, '•');
 }
 
-function nameplateText(r: PmPredictiveReport): string {
-  const n = r.nameplate || {};
-  const parts = [
-    [n.brand, n.model].filter(Boolean).join(' '),
-    n.serial ? `S/N ${n.serial}` : '',
-    n.ratedVoltage ? `${fmtNum(n.ratedVoltage)} V` : '',
-    n.ratedCurrent ? `${fmtNum(n.ratedCurrent)} A` : '',
-    n.ratedPowerKw ? `${fmtNum(n.ratedPowerKw)} kW` : '',
-    n.phase ? `${n.phase} fasa` : '',
-    n.frequencyHz ? `${fmtNum(n.frequencyHz)} Hz` : '',
-  ].filter(Boolean);
-  if (!parts.length) return 'Data nameplate tidak terbaca';
-  return parts.join(' | ') + (n.source === 'predictive sebelumnya' ? ' (dari predictive sebelumnya)' : '');
-}
-
-export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promise<void> {
+export async function exportPmPredictiveToPdf(report: PmPredictiveReport, loadedPhotos?: PmSourcePhoto[]): Promise<void> {
   const toastId = toast.loading('Membuat PDF Predictive Report...');
   try {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
@@ -98,9 +87,14 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
     const HEADER_TOP = 10;
     const HEADER_DIVIDER_Y = 30;
     const CONTENT_START_Y = 36;
+    const BOTTOM_LIMIT = pageH - 14;
     const tableMargin = { top: CONTENT_START_Y, left: margin, right: margin, bottom: 14 };
 
-    const [logoDme, logoNdc] = await Promise.all([loadImageBase64(logoDwimitra), loadImageBase64(logoNeutraDC)]);
+    const [logoDme, logoNdc, photos] = await Promise.all([
+      loadImageBase64(logoDwimitra),
+      loadImageBase64(logoNeutraDC),
+      collectPmExportPhotos(report, loadedPhotos),
+    ]);
 
     const drawHeader = () => {
       if (logoDme) doc.addImage(logoDme, 'PNG', margin, HEADER_TOP, 32, 13);
@@ -146,12 +140,56 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
     };
     const label = (content: string) => ({ content: t(content), styles: { fontStyle: 'bold' as const, fillColor: [248, 250, 252] as RGB } });
 
+    /** Grid foto 3 kolom dengan keterangan; baris yang tidak muat pindah ke halaman baru. */
+    const drawPhotoGrid = (title: string, items: PmExportPhoto[]) => {
+      if (!items.length) return;
+      const cols = 3;
+      const gap = 4;
+      const cellW = (contentW - gap * (cols - 1)) / cols;
+      const imgH = cellW * 0.75;
+      const capH = 7;
+      const rowH = imgH + capH + 2;
+      ensureSpace(rowH + 22);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text(t(title), margin, y);
+      y += 2.5;
+      let rowY = y;
+      items.forEach((p, i) => {
+        const col = i % cols;
+        if (col === 0) {
+          if (i > 0) rowY += rowH;
+          if (rowY + rowH > BOTTOM_LIMIT) {
+            doc.addPage();
+            rowY = CONTENT_START_Y;
+          }
+        }
+        const x = margin + col * (cellW + gap);
+        const ratio = Math.min(cellW / p.width, imgH / p.height);
+        const w = p.width * ratio;
+        const h = p.height * ratio;
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.2);
+        doc.rect(x, rowY, cellW, imgH, 'FD');
+        doc.addImage(p.dataUrl, 'JPEG', x + (cellW - w) / 2, rowY + (imgH - h) / 2, w, h, `pm-photo-${p.index}`, 'FAST');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(15, 23, 42);
+        const lines = doc.splitTextToSize(t(`#${p.index}  ${p.caption}`), cellW).slice(0, 2);
+        doc.text(lines, x, rowY + imgH + 3);
+      });
+      y = rowY + rowH + 3;
+    };
+
     // ─── 1. Identitas ───────────────────────────────────────────────────────
     sectionTitle('1', 'Identitas Unit & Dokumen Asal', 35);
     autoTable(doc, {
       startY: y,
       margin: tableMargin,
       theme: 'grid',
+      rowPageBreak: 'avoid',
       styles: { fontSize: 8, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica' },
       columnStyles: { 0: { cellWidth: 34 }, 2: { cellWidth: 34 } },
       body: [
@@ -161,20 +199,25 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
         [label('Nameplate'), { content: t(nameplateText(report)), colSpan: 3 }],
       ],
     });
-    afterTable();
+    afterTable(3);
+    drawPhotoGrid('Foto nameplate', photos.nameplate);
+    y += 2;
 
     // ─── 2. Ringkasan eksekutif ─────────────────────────────────────────────
     sectionTitle('2', 'Ringkasan Eksekutif', 40);
     const overall = report.overallStatus;
+    const excluded = excludedEquipmentNames(report);
     autoTable(doc, {
       startY: y,
       margin: tableMargin,
       theme: 'grid',
+      rowPageBreak: 'avoid',
       styles: { fontSize: 8, cellPadding: 2.2, textColor: [15, 23, 42], font: 'helvetica' },
       columnStyles: { 0: { cellWidth: 45 } },
       body: [
         [label('Status Keseluruhan'), { content: t(STATUS_LABEL[overall]).toUpperCase(), styles: { fontStyle: 'bold', textColor: STATUS_COLOR[overall], fillColor: STATUS_FILL[overall] } }],
         [label('Status per Equipment'), t(report.sections.map(s => `${s.name}: ${STATUS_LABEL[effectiveStatus(s)]}`).join('\n'))],
+        ...(excluded.length ? [[label('Tidak Dianalisis'), t(`${excluded.join(', ')} (dikecualikan oleh engineer)`)]] : []),
         [label('Ringkasan'), t(report.summary.ringkasan)],
         [label('Prioritas Tindakan'), t(report.summary.prioritas.map((p, i) => `${i + 1}. ${p}`).join('\n') || '-')],
       ],
@@ -190,9 +233,8 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
       doc.setFontSize(9);
       doc.setTextColor(15, 23, 42);
       doc.text(t(`3.${i + 1}  ${section.name}`), margin, y);
-      const statusText = t(`Status: ${STATUS_LABEL[status]}`);
       doc.setTextColor(...STATUS_COLOR[status]);
-      doc.text(statusText, pageW - margin, y, { align: 'right' });
+      doc.text(t(`Status: ${STATUS_LABEL[status]}`), pageW - margin, y, { align: 'right' });
       y += 1.5;
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(7);
@@ -206,27 +248,21 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
           startY: y,
           margin: tableMargin,
           theme: 'grid',
+          rowPageBreak: 'avoid',
           styles: { fontSize: 6.8, cellPadding: 1.4, textColor: [15, 23, 42], font: 'helvetica', valign: 'middle' },
           headStyles: { fillColor: [0, 89, 156], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 6.8 },
           columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 17, halign: 'center' }, 2: { cellWidth: 22, halign: 'center' }, 3: { cellWidth: 22, halign: 'center' }, 4: { cellWidth: 40 }, 5: { cellWidth: 18, halign: 'center' } },
           head: [['Parameter', 'Nilai', 'Sebelumnya', 'Perubahan / Tren', 'Batas Acuan', 'Status', 'Proyeksi']],
           body: section.params.map(p => {
-            const unit = p.unit === '%' ? '%' : ` ${p.unit}`;
-            const change = p.change !== null
-              ? `${p.change > 0 ? '+' : ''}${fmtNum(p.change)}${unit}${p.trendPerQuarter !== null && p.points >= 3 ? `\n${p.trendPerQuarter > 0 ? '+' : ''}${fmtNum(p.trendPerQuarter)}${unit}/kuartal` : ''}`
-              : 'Baseline';
-            const projection = p.projection
-              ? `${p.projection.level === 'alarm' ? 'Kritis' : 'Peringatan'} ${fmtNum(p.projection.limit)}${unit} ~${fmtMonthYear(p.projection.date)} (${p.confidence})`
-              : p.points >= 2 ? 'Tidak mengarah ke batas' : '-';
-            const shownStatus: PmStatus = p.value === null ? 'unknown' : p.status;
+            const row = paramRowText(p);
             return [
-              t(p.label),
-              { content: p.value === null ? '-' : `${fmtNum(p.value)}${unit}`, styles: { fontStyle: 'bold' as const } },
-              t(p.previous ? `${fmtNum(p.previous.value)}${unit}\n(${fmtDate(p.previous.date)})` : '-'),
-              t(change),
-              t(p.limitText),
-              { content: shownStatus === 'unknown' && p.value !== null ? 'Info' : t(STATUS_LABEL[shownStatus]), styles: { textColor: STATUS_COLOR[shownStatus], fillColor: STATUS_FILL[shownStatus], fontStyle: 'bold' as const } },
-              t(projection),
+              t(row.label),
+              { content: t(row.value), styles: { fontStyle: 'bold' as const } },
+              t(row.previous),
+              t(row.change),
+              t(row.limit),
+              { content: t(row.statusText), styles: { textColor: STATUS_COLOR[row.status], fillColor: STATUS_FILL[row.status], fontStyle: 'bold' as const } },
+              t(row.projection),
             ];
           }),
         });
@@ -238,6 +274,7 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
           startY: y,
           margin: tableMargin,
           theme: 'grid',
+          rowPageBreak: 'avoid',
           styles: { fontSize: 7, cellPadding: 1.5, textColor: [15, 23, 42], font: 'helvetica' },
           headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold' },
           columnStyles: { 0: { cellWidth: 45 }, 1: { cellWidth: 28 } },
@@ -251,49 +288,42 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
         startY: y,
         margin: tableMargin,
         theme: 'grid',
+        rowPageBreak: 'avoid',
         styles: { fontSize: 7.5, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica' },
         columnStyles: { 0: { cellWidth: 38 } },
         body: [
           [label('Kondisi Saat Ini'), t(section.narrative.kondisi || '-')],
           [label('Analisis Tren'), t(section.narrative.analisisTren || '-')],
           [label('Prediksi & Risiko'), t(section.narrative.prediksiRisiko || '-')],
-          [label('Rekomendasi'), t(section.narrative.rekomendasi.map((r, k) => `${k + 1}. ${r}`).join('\n') || '-')],
+          [label('Rekomendasi'), t(section.narrative.rekomendasi.filter(r => r.trim()).map((r, k) => `${k + 1}. ${r}`).join('\n') || '-')],
         ],
       });
-      afterTable(7);
+      afterTable(4);
+      drawPhotoGrid(`Dokumentasi foto - ${section.name}`, photos.bySection[section.id] || []);
+      y += 3;
     });
 
     // ─── 4. Dasar batas acuan & metode ──────────────────────────────────────
-    const profile = PM_PREDICTIVE_PROFILES.find(p => p.id === report.profileId);
-    const usedParams = report.sections.flatMap(s => s.params.map(p => p.param));
-    if (profile && usedParams.length) {
+    const sourceRows = limitSourceRows(report);
+    if (sourceRows.length) {
       sectionTitle('4', 'Dasar Batas Acuan & Metode', 40);
       autoTable(doc, {
         startY: y,
         margin: tableMargin,
         theme: 'grid',
+        rowPageBreak: 'avoid',
         styles: { fontSize: 6.8, cellPadding: 1.5, textColor: [15, 23, 42], font: 'helvetica' },
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
         columnStyles: { 0: { cellWidth: 40 } },
         head: [['Parameter', 'Sumber / Dasar Batas Acuan']],
-        // Parameter dengan dasar acuan yang sama (mis. 6 titik tegangan) digabung satu baris.
-        body: Array.from(
-          Array.from(new Set(usedParams)).reduce((bySource, p) => {
-            const source = profile.params[p]?.source || '-';
-            bySource.set(source, [...(bySource.get(source) || []), profile.params[p]?.label || p]);
-            return bySource;
-          }, new Map<string, string[]>()),
-        ).map(([source, labels]) => [t(labels.join(', ')), t(source)]),
+        body: sourceRows.map(([labels, source]) => [t(labels), t(source)]),
       });
       afterTable(3);
       ensureSpace(25);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(71, 85, 105);
-      const method = 'Metode: angka pengukuran dibaca oleh AI dari foto dokumentasi PM lalu diperiksa dan dikonfirmasi engineer. '
-        + 'Status ditentukan dari batas acuan di atas. Tren dihitung dengan regresi linier atas riwayat pengukuran unit yang sama pada laporan predictive sebelumnya; '
-        + 'proyeksi waktu mencapai batas bersifat indikatif dan keyakinannya bergantung pada jumlah titik data (2 titik = rendah, 3 = sedang, >=4 dengan tren konsisten = tinggi).';
-      const lines = doc.splitTextToSize(t(method), contentW);
+      const lines = doc.splitTextToSize(t(METHOD_TEXT), contentW);
       doc.text(lines, margin, y + 2);
       y += lines.length * 3 + 6;
     }
@@ -301,7 +331,7 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
     // ─── 5. Lembar pengesahan ───────────────────────────────────────────────
     const APPROVAL_BLOCK_HEIGHT = 120;
     ensureSpace(APPROVAL_BLOCK_HEIGHT);
-    sectionTitle(profile && usedParams.length ? '5' : '4', 'Lembar Pengesahan Resmi', APPROVAL_BLOCK_HEIGHT);
+    sectionTitle(sourceRows.length ? '5' : '4', 'Lembar Pengesahan Resmi', APPROVAL_BLOCK_HEIGHT);
     const sig = report.signatures;
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
@@ -315,6 +345,7 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
       margin: tableMargin,
       pageBreak: 'avoid',
       theme: 'grid',
+      rowPageBreak: 'avoid',
       styles: { fontSize: 7.5, cellPadding: 2, textColor: [15, 23, 42], font: 'helvetica', halign: 'center' },
       body: [
         [head('PREPARED BY,'), head('REVIEWED BY,')],
@@ -336,9 +367,9 @@ export async function exportPmPredictiveToPdf(report: PmPredictiveReport): Promi
       doc.text(t(`Predictive Report PM — ${report.unitLabel}  |  Hal ${i} dari ${totalPages}`), pageW - margin, pageH - 6, { align: 'right' });
     }
 
-    const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
-    doc.save(`Predictive_Report_${safe(report.unitLabel) || 'Unit'}_${report.maintenanceDate}.pdf`);
-    toast.success('PDF Predictive Report berhasil diunduh', { id: toastId });
+    doc.save(`Predictive_Report_${safeFileName(report.unitLabel) || 'Unit'}_${report.maintenanceDate}.pdf`);
+    const photoCount = photos.nameplate.length + Object.values(photos.bySection).reduce((n, list) => n + list.length, 0);
+    toast.success(photoCount ? 'PDF Predictive Report berhasil diunduh' : 'PDF diunduh tanpa foto (foto laporan PM tidak bisa dimuat)', { id: toastId });
   } catch (error: any) {
     console.error('exportPmPredictiveToPdf error:', error);
     toast.error(`Gagal membuat PDF: ${error?.message || 'error tidak diketahui'}`, { id: toastId });

@@ -127,6 +127,8 @@ export interface PmPredictiveReport {
   previousReportId: string | null;
   previousMaintenanceDate: string | null;
   sections: PmEquipmentSection[];
+  /** Equipment yang sengaja tidak dianalisis engineer (angkanya tetap disimpan di readings). */
+  excludedEquipment?: string[];
   overallStatus: PmStatus;
   summary: { ringkasan: string; prioritas: string[]; source: 'ai' | 'otomatis' };
   signatures: {
