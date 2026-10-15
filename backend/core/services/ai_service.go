@@ -1055,7 +1055,6 @@ PAGES & MODULES:
 KEY FEATURES:
 - AI Auto-Fill: Upload photos of equipment → AI analyzes and auto-fills the service report form.
 - PDF Export: Generate and download professional service reports as PDF files (in English).
-- Voice Agent (JARVIS): This voice interface you are currently powering — supports interactive multi-turn conversation and autonomous page navigation.
 - Real-time Updates: Data syncs in real-time across all users using Firebase Firestore.
 - Photo Upload: Attach inspection photos to service reports, organized by category.
 - Search & Filter: Search reports by date range, keyword, or customer name.
@@ -1064,7 +1063,7 @@ KEY FEATURES:
 TECH STACK (for technical questions):
 - Frontend: React + TypeScript + Vite, TailwindCSS, Framer Motion
 - Backend: Go (Golang), Firebase Firestore, Firebase Auth
-- AI: NVIDIA NIM API (Llama/Gemma models) + Google Gemini (for voice agent)
+- AI: Google Gemini (OpenAI-compatible endpoint)
 - PDF Generation: jsPDF + jspdf-autotable
 - Deployment: Backend runs on port 8080, frontend on Vite dev server port 5173
 

@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Send, Loader2, Mic, MicOff, Paperclip, Plus, MessageSquare, Trash2, Copy, Check, Menu, AudioLines, ArrowDown } from 'lucide-react';
+import { X, Send, Loader2, Mic, MicOff, Paperclip, Plus, MessageSquare, Trash2, Copy, Check, Menu, ArrowDown } from 'lucide-react';
 import { auth } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import robotLogo from '@/assets/robot_assistant.png';
 import { compressImage } from '@/utils/imageCompression';
-import { AIVoiceAgent } from '@/components/AIVoiceAgent';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -81,7 +80,6 @@ export function AIChatWidget() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
 
   // Lock body scroll when chat widget is open
   useEffect(() => {
@@ -646,17 +644,6 @@ export function AIChatWidget() {
                 >
                   {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsVoiceMode(true)}
-                  disabled={isLoading}
-                  className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-colors disabled:opacity-50 relative group/voice"
-                  title="Voice Agent — Bicara dengan AI"
-                >
-                  <AudioLines className="w-4 h-4" />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping opacity-75" />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full" />
-                </button>
                 <input
                   type="text"
                   placeholder={isRecording ? 'Bicara sekarang...' : 'Ketik pertanyaan teknis...'}
@@ -701,8 +688,6 @@ export function AIChatWidget() {
       </div>
     </div>
 
-    {/* Voice Agent Modal */}
-    {isVoiceMode && <AIVoiceAgent onClose={() => setIsVoiceMode(false)} />}
   </>
   );
 }

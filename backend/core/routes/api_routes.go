@@ -182,10 +182,6 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case strings.HasPrefix(path, "/api/findings/") && r.Method == http.MethodDelete:
 		heavy(deps.FindingCtrl.DeleteFinding)(w, r)
 
-	// --- Voice Agent WebSocket ---
-	case path == "/api/voice/ws" && r.Method == http.MethodGet:
-		deps.VoiceCtrl.HandleVoiceSession(w, r)
-
 	// --- WhatsApp Cloud Send ---
 	case path == "/api/wa/send" && r.Method == http.MethodPost:
 		heavy(deps.WACtrl.SendMessage)(w, r)

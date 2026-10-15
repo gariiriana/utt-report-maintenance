@@ -11,7 +11,6 @@ import (
 	"github.com/gariiriana/DwimitraSystem/backend/core/middlewares"
 	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
 	"github.com/gariiriana/DwimitraSystem/backend/core/services"
-	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
 
 type AppDeps struct {
@@ -26,7 +25,6 @@ type AppDeps struct {
 	AICtrl                  *controllers.AIController
 	MOPCtrl                 *controllers.MOPController
 	PMPredictiveCtrl        *controllers.PMPredictiveController
-	VoiceCtrl               *controllers.VoiceController
 	WACtrl                  *controllers.WAController
 	RateLimiter             *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
@@ -71,8 +69,6 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	aiCtrl := controllers.NewAIController(aiSvc)
 	mopCtrl := controllers.NewMOPController(services.NewMOPTranslateService(aiSvc))
 	pmPredictiveCtrl := controllers.NewPMPredictiveController(services.NewPMPredictiveService(aiSvc))
-	voiceSvc := services.NewVoiceService(firestoreClient)
-	voiceCtrl := controllers.NewVoiceController(voiceSvc)
 	waCtrl := controllers.NewWAController()
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
@@ -91,7 +87,6 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		AICtrl:                  aiCtrl,
 		MOPCtrl:                 mopCtrl,
 		PMPredictiveCtrl:        pmPredictiveCtrl,
-		VoiceCtrl:               voiceCtrl,
 		WACtrl:                  waCtrl,
 		RateLimiter:             rateLimiter,
 		ThrottleHeavy:           throttleHeavy,
@@ -130,33 +125,6 @@ func buildHandler(deps *AppDeps) http.HandlerFunc {
 				path == "/metrics" || path == "/api/metrics" {
 				RouteRequest(w, r, deps)
 				return
-			}
-
-			// WebSocket: auth via query parameter (browsers can't set headers on WS upgrade)
-			if path == "/api/voice/ws" {
-				token := r.URL.Query().Get("token")
-				if token != "" {
-					// Verify the Firebase ID token from query param
-					decoded, err := deps.AuthClient.VerifyIDToken(r.Context(), token)
-					if err == nil {
-						if role, _ := decoded.Claims["role"].(string); role == "drafter" {
-							helpers.SendError(w, "Forbidden: voice is unavailable for Drafter", http.StatusForbidden)
-							return
-						}
-						ctx := r.Context()
-						ctx = context.WithValue(ctx, middlewares.ClaimsKeyExported, decoded)
-						ctx = context.WithValue(ctx, middlewares.UserUIDKeyExported, decoded.UID)
-						if email, ok := decoded.Claims["email"].(string); ok {
-							ctx = context.WithValue(ctx, middlewares.UserEmailKeyExported, email)
-						}
-						if role, ok := decoded.Claims["role"].(string); ok {
-							ctx = context.WithValue(ctx, middlewares.UserRoleKeyExported, role)
-						}
-						RouteRequest(w, r.WithContext(ctx), deps)
-						return
-					}
-				}
-				// Fallback: try standard Authorization header
 			}
 
 			// AUTHENTICATION: Enforce Firebase ID Token verification

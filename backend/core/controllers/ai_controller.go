@@ -5,7 +5,6 @@
 //            - /api/ai/ats-report (Analisa Foto Perangkat ATS & Panel Listrik)
 //            - /api/ai/digitize-paper (Digitasi Dokumen Kertas Cetak ke JSON Laporan)
 //            - /api/ai/chat (Asisten Percakapan & Penerjemahan Istilah M/E)
-//            - /api/ai/voice-command (Integrasi Agen Suara JARVIS AI)
 // ============================================================================
 
 package controllers
