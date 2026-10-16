@@ -499,8 +499,10 @@ function extractPTWDataFromText(text: string): PTWExtractedData | null {
       sequenceNumber: seqNum || '0000',
       equipmentCode: eqCode || 'GENERIC',
       quarter: quarter || '1',
-      startDate: startDate || new Date().toISOString().split('T')[0],
-      endDate: endDate || new Date().toISOString().split('T')[0],
+      // Tanpa tanggal di isi PDF dikembalikan kosong (bukan "hari ini") supaya tidak menimpa
+      // tanggal yang sudah benar; pemanggil hanya mengisi field yang ada nilainya.
+      startDate: startDate,
+      endDate: endDate || startDate,
       maintenanceName: ptwType === 'CM' ? 'Corrective Maintenance' : 'Preventive Maintenance',
       ptwType: ptwType,
     };

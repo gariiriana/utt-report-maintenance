@@ -18,6 +18,7 @@ import {
   AlertCircle, Download, FileUp, File, ChevronDown, Eye, FolderArchive
 } from 'lucide-react';
 import { parsePTWPdf, parsePTWFromFilename } from '@/utils/ptwPdfParser';
+import { checkForAppUpdate } from '@/utils/registerAppServiceWorker';
 import { normalizeEquipmentCode } from '@/utils/ptwTextImport';
 import { PTWNumberRegister } from './PTWNumberRegister';
 import {
@@ -87,6 +88,23 @@ const QUEUE_REQUIRED_FIELDS: { key: keyof QueuedPTWItem; label: string }[] = [
 
 const getMissingQueueFields = (item: QueuedPTWItem): string[] =>
   QUEUE_REQUIRED_FIELDS.filter(f => !item[f.key]).map(f => f.label);
+
+// Antrean yang dipulihkan setelah update aplikasi masih berisi hasil parser versi lama.
+// Item yang belum lengkap diisi ulang dari nama file dengan parser versi sekarang.
+const refreshQueuedItemFromFilename = (item: QueuedPTWItem): QueuedPTWItem => {
+  if (!item.file || getMissingQueueFields(item).length === 0) return item;
+  const parsed = parsePTWFromFilename(item.file.name);
+  if (!parsed) return item;
+  // Quarter kosong = tanggal belum pernah dipilih (versi lama mengisinya dengan "hari ini"),
+  // jadi tanggal dari nama file lebih bisa dipercaya.
+  const nameDate = item.quarter ? '' : parsed.startDate || '';
+  return {
+    ...item,
+    sequenceNumber: item.sequenceNumber || parsed.sequenceNumber || '',
+    equipmentCode: item.equipmentCode || parsed.equipmentCode || '',
+    ...(nameDate ? { quarter: parsed.quarter || '', startDate: nameDate, endDate: parsed.endDate || nameDate } : {}),
+  };
+};
 
 export interface PTWWeeklySegment {
   weekNum: number;
@@ -184,7 +202,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     setSelectedFile(saved.selectedFile);
     setSelectedClosingFile(saved.selectedClosingFile);
     setShouldDeleteClosingFile(saved.shouldDeleteClosingFile);
-    setQueuedItems(saved.queuedItems);
+    setQueuedItems(saved.queuedItems.map(refreshQueuedItemFromFilename));
   }, true);
   useAppUpdateBlocker(Boolean(submitting));
 
@@ -235,6 +253,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
           else if (month <= 9) updated.quarter = '3';
           else updated.quarter = '4';
         } catch (e) {}
+        // Tanggal selesai ikut tanggal mulai bila masih kosong atau jadi lebih awal dari tanggal mulai
+        if (!updated.endDate || updated.endDate < value) updated.endDate = value;
       }
       
       return updated;
@@ -366,8 +386,10 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         sequenceNumber: filenameData?.sequenceNumber || '',
         equipmentCode: filenameData?.equipmentCode || '',
         quarter: filenameData?.quarter || '',
-        startDate: filenameData?.startDate || new Date().toISOString().split('T')[0],
-        endDate: filenameData?.endDate || new Date().toISOString().split('T')[0],
+        // Tanggal yang tidak terbaca dibiarkan kosong (bukan "hari ini") supaya user diminta memilihnya;
+        // Quarter otomatis ikut saat tanggal dipilih.
+        startDate: filenameData?.startDate || '',
+        endDate: filenameData?.endDate || '',
         notes: filenameData?.maintenanceName || '',
         ptwType: filenameData?.ptwType || 'PM',
         isScanning: false,
@@ -1504,7 +1526,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => { resetForm(); setIsAddModalOpen(true); }}
+                onClick={() => { resetForm(); setIsAddModalOpen(true); checkForAppUpdate(); }}
                 className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all border border-blue-500 cursor-pointer"
               >
                 <Plus className="w-5 h-5" />
