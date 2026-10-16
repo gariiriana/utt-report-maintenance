@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "test:navigation": "node --test scripts/test-app-navigation.mjs",
     "test:pm-predictive": "node --test scripts/test-pm-predictive-engine.mjs",
+    "test:hse-weekly": "node --test scripts/test-hse-weekly-report.mjs",
     "test:ptw-filename": "node --test scripts/test-ptw-filename-parser.mjs",
     "export:prod": "vite build --mode production --outDir export/production",
     "export:dev": "vite build --mode development --outDir export/development",

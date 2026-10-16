@@ -20,7 +20,8 @@ import {
     ShieldAlert,
     FolderArchive,
     Clock,
-    UserCheck
+    UserCheck,
+    FileSpreadsheet
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { AppSidebar, MenuSection, NavItemDef } from '@/components/AppSidebar';
@@ -32,9 +33,10 @@ import { HSEFindings } from '@/components/HSEFindings';
 import { HSEFindingsArchive } from '@/components/HSEFindingsArchive';
 import { HSETbmForm } from '@/components/HSETbmForm';
 import { HSESafetyInductionForm } from '@/components/HSESafetyInductionForm';
+import { HSEWeeklyReport } from '@/components/HSEWeeklyReport';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
-type HSETab = 'inspection' | 'tbm' | 'induction' | 'findings' | 'findings_archive' | 'iso' | 'management_files';
+type HSETab = 'inspection' | 'tbm' | 'induction' | 'findings' | 'findings_archive' | 'weekly_report' | 'iso' | 'management_files';
 
 // Menu navigasi HSE Portal (sidebar kiri di desktop, drawer di HP — sama dengan role lain)
 const HSE_NAV_ITEMS: readonly NavItemDef[] = [
@@ -43,6 +45,7 @@ const HSE_NAV_ITEMS: readonly NavItemDef[] = [
     { id: 'induction', label: 'Safety Induction', icon: UserCheck, color: 'from-amber-500 to-orange-600', show: true },
     { id: 'findings', label: 'Input Temuan K3', icon: AlertTriangle, color: 'from-red-600 to-rose-600', show: true },
     { id: 'findings_archive', label: 'Arsip Temuan HSE', icon: ShieldAlert, color: 'from-teal-600 to-cyan-700', show: true },
+    { id: 'weekly_report', label: 'Weekly Report (Excel)', icon: FileSpreadsheet, color: 'from-sky-600 to-blue-700', show: true },
     { id: 'iso', label: 'Arsip Dokumen HSE', icon: FolderArchive, color: 'from-blue-600 to-indigo-600', show: true },
     { id: 'management_files', label: 'Management File', icon: FolderArchive, color: 'from-amber-500 to-orange-600', show: true },
 ];
@@ -50,6 +53,7 @@ const HSE_NAV_ITEMS: readonly NavItemDef[] = [
 const HSE_MENU_SECTIONS: readonly MenuSection[] = [
     { title: 'Laporan & Absensi K3', itemIds: ['inspection', 'tbm', 'induction'] },
     { title: 'Temuan K3', itemIds: ['findings', 'findings_archive'] },
+    { title: 'Rekap Laporan', itemIds: ['weekly_report'] },
     { title: 'Arsip & Dokumen', itemIds: ['iso', 'management_files'] },
 ];
 
@@ -142,6 +146,16 @@ export function HSEApp() {
                     color: 'text-teal-600',
                     bg: 'bg-teal-50',
                     border: 'border-teal-200'
+                };
+            case 'weekly_report':
+                return {
+                    title: 'HSE Weekly Report',
+                    subtitle: 'Rekap Mingguan Inspeksi HSE, Absen TBM, Safety Induction & Temuan K3 dalam 1 File Excel',
+                    icon: FileSpreadsheet,
+                    badge: 'Rekap Mingguan',
+                    color: 'text-sky-600',
+                    bg: 'bg-sky-50',
+                    border: 'border-sky-200'
                 };
             case 'management_files':
                 return {
@@ -356,6 +370,8 @@ export function HSEApp() {
                         />
                     ) : activeTab === 'findings_archive' ? (
                         <HSEFindingsArchive />
+                    ) : activeTab === 'weekly_report' ? (
+                        <HSEWeeklyReport />
                     ) : (
                         <HSEReportForm
                             mode="inspection"
