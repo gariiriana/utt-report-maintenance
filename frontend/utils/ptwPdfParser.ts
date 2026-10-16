@@ -54,6 +54,12 @@ function cleanMonthName(raw: string): string {
   return ''; // Kembalikan string kosong jika bulan tidak teridentifikasi
 }
 
+// Nama bulan lengkap / singkatan baku (ID & EN). Dipakai saat nama file tidak
+// mencantumkan tahun, jadi harus ketat agar kata lain (misal "Desk", "Junction") tidak dianggap bulan.
+const MONTH_WORD_PATTERN =
+  'jan(?:uari|uary)?|feb(?:ruari|ruary)?|mar(?:et|ch)?|apr(?:il)?|mei|may|jun(?:i|e)?|jul(?:i|y)?|' +
+  'agu(?:stus)?|agt|aug(?:ust)?|sep(?:t(?:ember)?)?|okt(?:ober)?|oct(?:ober)?|nov(?:ember)?|des(?:ember)?|dec(?:ember)?';
+
 /**
  * Helper internal: Mengubah string tanggal Bahasa Indonesia/Inggris (misal: "19 Januari 2026" atau "19/01/2026")
  * menjadi format tanggal baku ISO "YYYY-MM-DD" ("2026-01-19").
@@ -162,6 +168,24 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
       detectedMonth = parseInt(monthDigit, 10);
       detectedYear = year;
       detectedDateStr = `${year}-${monthDigit}-${day}`;
+    }
+  }
+
+  // Pola A2: Tanggal + nama bulan TANPA tahun (misal: "PTW CM Lift 14 Oktober 0838")
+  // Tahun = tahun berjalan; jika hasilnya > 6 bulan ke depan (misal "28 Desember"
+  // di-upload bulan Januari), pakai tahun sebelumnya.
+  if (!detectedDateStr) {
+    const dayMonthMatch = cleanName.match(new RegExp(`(?:^|[\\s\\-_])(\\d{1,2})[\\s\\-_]+(${MONTH_WORD_PATTERN})(?=[\\s\\-_]|$)`, 'i'));
+    const dayNum = dayMonthMatch ? parseInt(dayMonthMatch[1], 10) : 0;
+    if (dayMonthMatch && dayNum >= 1 && dayNum <= 31) {
+      const monthDigit = cleanMonthName(dayMonthMatch[2]);
+      const now = new Date();
+      let year = now.getFullYear();
+      const sixMonthsAhead = new Date(year, now.getMonth() + 6, now.getDate());
+      if (new Date(year, parseInt(monthDigit, 10) - 1, dayNum) > sixMonthsAhead) year -= 1;
+      detectedMonth = parseInt(monthDigit, 10);
+      detectedYear = String(year);
+      detectedDateStr = `${year}-${monthDigit}-${String(dayNum).padStart(2, '0')}`;
     }
   }
 

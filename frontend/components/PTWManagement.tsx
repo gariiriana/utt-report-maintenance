@@ -77,6 +77,17 @@ interface QueuedPTWItem {
   isExpanded: boolean;
 }
 
+const QUEUE_REQUIRED_FIELDS: { key: keyof QueuedPTWItem; label: string }[] = [
+  { key: 'sequenceNumber', label: 'No. Urut' },
+  { key: 'quarter', label: 'Quarter' },
+  { key: 'equipmentCode', label: 'Equipment Code' },
+  { key: 'startDate', label: 'Tanggal Mulai' },
+  { key: 'endDate', label: 'Tanggal Selesai' },
+];
+
+const getMissingQueueFields = (item: QueuedPTWItem): string[] =>
+  QUEUE_REQUIRED_FIELDS.filter(f => !item[f.key]).map(f => f.label);
+
 export interface PTWWeeklySegment {
   weekNum: number;
   startStr: string;
@@ -373,7 +384,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     setQueuedItems(prev => [...prev, ...newItems]);
     
     newItems.forEach(item => {
-      const isComplete = Boolean(item.sequenceNumber && item.equipmentCode && item.quarter && item.startDate && item.endDate);
+      const isComplete = getMissingQueueFields(item).length === 0;
       if (!isComplete && item.file) {
         runOcrOnItem(item.id, item.file);
       } else if (isComplete) {
@@ -922,11 +933,16 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         }
 
         // Validate all queued items have required fields
-        const invalidItems = queuedItems.filter(item => 
-          !item.sequenceNumber || !item.equipmentCode || !item.quarter || !item.startDate || !item.endDate
-        );
+        const invalidItems = queuedItems.filter(item => getMissingQueueFields(item).length > 0);
         if (invalidItems.length > 0) {
-          toast.error('Ada berkas dalam antrean yang datanya belum lengkap. Silakan lengkapi data terlebih dahulu.');
+          // Buka kartu yang belum lengkap supaya field yang kosong langsung terlihat
+          const invalidIds = new Set(invalidItems.map(item => item.id));
+          setQueuedItems(prev => prev.map(item => invalidIds.has(item.id) ? { ...item, isExpanded: true } : item));
+          const first = invalidItems[0];
+          toast.error(
+            `${invalidItems.length} berkas belum lengkap. "${first.file?.name || 'Data PTW Manual'}" kurang: ${getMissingQueueFields(first).join(', ')}.`,
+            { duration: 6000 }
+          );
           setSubmitting(false);
           return;
         }
@@ -2765,7 +2781,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                       {/* Scrollable Queue Card List */}
                       <div className="max-h-[380px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">
                         {queuedItems.map((item, idx) => {
-                          const isComplete = item.sequenceNumber && item.equipmentCode && item.quarter && item.startDate && item.endDate;
+                          const missingFields = getMissingQueueFields(item);
+                          const isComplete = missingFields.length === 0;
                           return (
                             <div key={item.id} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-xs transition hover:border-slate-300">
                               {/* Card Header */}
@@ -2808,7 +2825,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                         </span>
                                       ) : (
                                         <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                          ⚠️ Belum Lengkap
+                                          ⚠️ Belum Lengkap: {missingFields.join(', ')}
                                         </span>
                                       )}
                                     </div>
