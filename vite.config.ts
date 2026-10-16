@@ -8,6 +8,7 @@
 
 import { defineConfig } from 'vite'
 import path from 'path'
+import { execSync } from 'child_process'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -15,7 +16,25 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Paksa buka browser Chrome saat dev server dijalankan
 process.env.BROWSER = 'chrome'
 
+// Hash commit untuk label versi di sidebar ("-dirty" bila ada perubahan yang belum di-commit),
+// supaya laporan "masih error" bisa langsung dicek: user masih memakai versi lama atau tidak.
+function buildVersion(): string {
+  try {
+    const git = (args: string) => execSync(`git ${args}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+    const hash = git('rev-parse --short HEAD')
+    return git('status --porcelain') ? `${hash}-dirty` : hash
+  } catch {
+    return process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'dev'
+  }
+}
+
 export default defineConfig({
+  // Dibaca oleh frontend/utils/appVersion.ts
+  define: {
+    __APP_VERSION__: JSON.stringify(buildVersion()),
+    __APP_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
+
   plugins: [
     // 1. Plugin React Fast Refresh
     react(),

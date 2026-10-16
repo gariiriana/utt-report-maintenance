@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import { User } from 'firebase/auth';
+import { APP_VERSION, APP_VERSION_LABEL } from '@/utils/appVersion';
+import { checkForAppUpdate } from '@/utils/registerAppServiceWorker';
 
 export interface NavItemDef {
   id: string;
@@ -94,6 +96,8 @@ export function AppSidebar({
         onClick={() => {
           setActiveTab(item.id);
           if (isMobile) setMobileMenuOpen(false);
+          // Pindah menu = kesempatan mendeteksi versi baru sebelum user mulai mengisi/upload
+          checkForAppUpdate();
         }}
         title={isCollapsed && !isMobile ? item.label : undefined}
         className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
@@ -277,6 +281,14 @@ export function AppSidebar({
         <div className="flex-1 overflow-y-auto px-3 py-3 custom-scrollbar">
           {renderNavSections(false)}
         </div>
+
+        {/* Versi build: saat ada laporan error, cek dulu apakah user masih memakai versi lama */}
+        <div
+          className="shrink-0 truncate border-t border-slate-200/80 px-3 py-2 text-center text-[10px] font-medium text-slate-400"
+          title={APP_VERSION_LABEL}
+        >
+          {isCollapsed ? APP_VERSION : APP_VERSION_LABEL}
+        </div>
       </aside>
 
       {/* ────────────────────────────────────────────────────────────────────────
@@ -350,6 +362,7 @@ export function AppSidebar({
                   <LogOut className="w-4 h-4" />
                   <span>Keluar Sesi</span>
                 </button>
+                <p className="mt-2 truncate text-center text-[10px] font-medium text-slate-400">{APP_VERSION_LABEL}</p>
               </div>
             </motion.div>
           </>

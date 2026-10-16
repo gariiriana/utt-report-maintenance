@@ -1,10 +1,25 @@
 import { getAppUpdateSnapshot, requireAppUpdate } from './appUpdate';
 
+let activeRegistration: ServiceWorkerRegistration | null = null;
+let lastCheck = 0;
+
+/**
+ * Cek versi baru di server (paling sering sekali per 30 detik). Selain saat load, tab aktif lagi,
+ * dan tiap 30 menit, dipanggil juga saat pindah menu / buka modal upload supaya tab yang lama
+ * terbuka tidak tertinggal versi. Tanpa service worker (dev, browser lama) tidak melakukan apa-apa.
+ */
+export function checkForAppUpdate() {
+  if (!activeRegistration || !navigator.onLine || Date.now() - lastCheck < 30000) return;
+  lastCheck = Date.now();
+  void activeRegistration.update().catch(() => undefined);
+}
+
 export async function registerAppServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   try {
     const container = navigator.serviceWorker;
     const registration = await container.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+    activeRegistration = registration;
     let hasController = Boolean(container.controller);
     const activateAndReload = async () => {
       if (registration.waiting) {
@@ -37,15 +52,9 @@ export async function registerAppServiceWorker() {
       if (hasController && getAppUpdateSnapshot().phase !== 'updating') announce();
       hasController = true;
     });
-    let lastCheck = 0;
-    const check = () => {
-      if (!navigator.onLine || Date.now() - lastCheck < 30000) return;
-      lastCheck = Date.now();
-      void registration.update().catch(() => undefined);
-    };
-    check();
-    window.setInterval(check, 30 * 60 * 1000);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    checkForAppUpdate();
+    window.setInterval(checkForAppUpdate, 30 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForAppUpdate(); });
   } catch (error) {
     console.warn('[AppUpdate] Service worker registration failed:', error);
   }
