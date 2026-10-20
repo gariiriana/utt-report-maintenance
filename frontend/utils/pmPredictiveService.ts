@@ -12,7 +12,10 @@ import { db, auth } from '@/api/firebase';
 import { getApiEndpoint } from '@/utils/apiConfig';
 import { offlineReportStorage } from '@/utils/offlineReportStorage';
 import { compressBase64Image } from '@/utils/imageCompression';
-import type { PmExtractResult, PmPredictiveReport, PmSectionNarrative, PmCardKind } from '@/types/pmPredictiveTypes';
+import type { PmProfile } from '@/config/pmPredictiveProfiles';
+import { fallbackNarrative, fallbackSummary, sectionAIContext, summaryAIContext } from '@/utils/pmPredictiveEngine';
+import { runPool, type CardPlan } from '@/utils/pmPredictiveWorkflow';
+import type { PmExtractResult, PmPredictiveReport, PmSectionNarrative, PmCardKind, PmEquipmentSection, PmNameplate } from '@/types/pmPredictiveTypes';
 
 export const PM_PREDICTIVE_COLLECTION = 'pm_predictive_reports';
 
@@ -154,6 +157,88 @@ export async function analyzeSummaryAI(context: unknown): Promise<{ ringkasan: s
   return { ringkasan: res.result?.ringkasan || '', prioritas: Array.isArray(res.result?.prioritas) ? res.result.prioritas : [] };
 }
 
+/**
+ * AI membaca foto kartu (per kelompok, 2 panggilan paralel). Setiap kelompok yang
+ * selesai langsung diteruskan ke onBatch; kelompok gagal diteruskan sebagai failed.
+ */
+export async function readPlansWithAI(
+  profile: PmProfile,
+  unitLabel: string,
+  targets: CardPlan[],
+  o: {
+    onProgress?: (text: string) => void;
+    onBatch: (results: PmExtractResult[], failedIdx: number[]) => void;
+    isCancelled?: () => boolean;
+  },
+): Promise<{ failedBatches: number; lastError?: string }> {
+  const items: PmExtractRequestItem[] = [];
+  for (let i = 0; i < targets.length; i++) {
+    const p = targets[i];
+    o.onProgress?.(`Menyiapkan foto ${i + 1} dari ${targets.length}...`);
+    const def = p.param ? profile.params[p.param] : undefined;
+    items.push({
+      index: p.photo.index,
+      label: p.photo.description || `Foto #${p.photo.index}`,
+      kind: p.kind,
+      expected: def?.expected || (p.kind === 'visual' ? profile.visualLabels[p.visualKey || ''] || 'Kondisi fisik yang terlihat' : undefined),
+      unit: def?.unit,
+      imageBase64: await prepareImageForAI(p.photo.photoBase64),
+    });
+    if (o.isCancelled?.()) return { failedBatches: 0 };
+  }
+  const batches = batchExtractItems(items);
+  let done = 0;
+  let failedBatches = 0;
+  let lastError: string | undefined;
+  o.onProgress?.(`AI membaca foto (0 dari ${batches.length} kelompok)...`);
+  await runPool(batches.map(batch => async () => {
+    if (o.isCancelled?.()) return;
+    try {
+      const results = await extractBatchAI(profile.unitType, unitLabel, batch);
+      if (!o.isCancelled?.()) o.onBatch(results, []);
+    } catch (err: any) {
+      console.warn('Baca foto AI gagal:', err);
+      failedBatches++;
+      lastError = err?.message || 'error';
+      if (!o.isCancelled?.()) o.onBatch([], batch.map(b => b.index));
+    }
+    done++;
+    if (!o.isCancelled?.()) o.onProgress?.(`AI membaca foto (${done} dari ${batches.length} kelompok)...`);
+  }), 2);
+  return { failedBatches, lastError };
+}
+
+export type PmNarrativeState = 'pending' | 'running' | 'ai' | 'otomatis';
+
+/** AI menulis narasi per equipment lalu ringkasan; cadangan otomatis bila AI tidak tersedia. */
+export async function narrateSections(
+  unitInfo: { unitType: string; unitLabel: string; maintenanceName: string; date: string; nameplate: PmNameplate },
+  sections: PmEquipmentSection[],
+  o: { onSection?: (id: string, state: PmNarrativeState) => void; onProgress?: (text: string) => void } = {},
+): Promise<{ sections: PmEquipmentSection[]; summary: PmPredictiveReport['summary'] }> {
+  o.onProgress?.('AI menulis analisis per equipment...');
+  const narrated = await runPool(sections.map(section => async () => {
+    o.onSection?.(section.id, 'running');
+    try {
+      const narrative = await analyzeSectionAI(sectionAIContext(unitInfo, section));
+      o.onSection?.(section.id, 'ai');
+      return { ...section, narrative, narrativeSource: 'ai' as const };
+    } catch (err) {
+      console.warn(`Narasi AI ${section.id} gagal:`, err);
+      o.onSection?.(section.id, 'otomatis');
+      return { ...section, narrative: fallbackNarrative(section), narrativeSource: 'otomatis' as const };
+    }
+  }), 2);
+  o.onProgress?.('AI menulis ringkasan eksekutif...');
+  let summary: PmPredictiveReport['summary'];
+  try {
+    summary = { ...(await analyzeSummaryAI(summaryAIContext(unitInfo, narrated))), source: 'ai' };
+  } catch {
+    summary = { ...fallbackSummary(unitInfo.unitLabel, narrated), source: 'otomatis' };
+  }
+  return { sections: narrated, summary };
+}
+
 // ─── Firestore ───────────────────────────────────────────────────────────────
 
 export async function getPmPredictive(sourceDocId: string): Promise<PmPredictiveReport | null> {
@@ -164,13 +249,15 @@ export async function getPmPredictive(sourceDocId: string): Promise<PmPredictive
 /**
  * Predictive terakhir untuk unit yang sama yang tanggal PM-nya lebih awal dari
  * laporan ini. Satu query equality (tanpa index komposit); jumlah dokumen per unit
- * kecil (sekitar 4 per tahun).
+ * kecil (sekitar 4 per tahun). excludeIds: predictive lama yang sedang dibuat ulang
+ * (generate per quarter) tidak dipakai sebagai pembanding.
  */
-export async function findPreviousPmPredictive(unitKey: string, maintenanceDate: string, excludeId: string): Promise<{ previous: PmPredictiveReport | null; total: number; newerExists: boolean }> {
+export async function findPreviousPmPredictive(unitKey: string, maintenanceDate: string, excludeId: string, excludeIds: string[] = []): Promise<{ previous: PmPredictiveReport | null; total: number; newerExists: boolean }> {
   const snap = await getDocs(query(collection(db, PM_PREDICTIVE_COLLECTION), where('unitKey', '==', unitKey)));
+  const excluded = new Set([excludeId, ...excludeIds]);
   const reports = snap.docs
     .map(d => ({ ...(d.data() as PmPredictiveReport), id: d.id }))
-    .filter(r => r.id !== excludeId);
+    .filter(r => !excluded.has(r.id));
   const earlier = reports.filter(r => r.maintenanceDate < maintenanceDate).sort((a, b) => a.maintenanceDate.localeCompare(b.maintenanceDate));
   return {
     previous: earlier.length ? earlier[earlier.length - 1] : null,

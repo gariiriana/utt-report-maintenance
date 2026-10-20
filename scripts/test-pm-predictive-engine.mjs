@@ -111,6 +111,18 @@ test('baseline pertama: tanpa tren dan tanpa proyeksi', () => {
   assert.match(r.note, /baseline/i);
 });
 
+test('arus per fasa dinilai terhadap FLA nameplate; tanpa FLA tidak dinilai', () => {
+  const at = (value, nameplate) => evaluateParam({ param: 'i_r', def: fcu.params.i_r, series: [], value, date: '2026-07-10', nameplate });
+  assert.equal(at(2.7, { ratedCurrent: 4 }).status, 'normal');
+  assert.equal(at(3.5, { ratedCurrent: 4 }).status, 'watch', '87.5% FLA');
+  assert.equal(at(3.7, { ratedCurrent: 4 }).status, 'warning', '92.5% FLA');
+  assert.equal(at(4.2, { ratedCurrent: 4 }).status, 'alarm', 'di atas FLA');
+  assert.equal(at(2.7, { ratedCurrent: 4 }).limitText, 'pantau >3.2 A; peringatan >3.6 A; kritis >4 A (FLA nameplate 4 A)');
+  const noFla = at(2.7, {});
+  assert.equal(noFla.status, 'unknown');
+  assert.equal(noFla.limitText, '');
+});
+
 test('getaran, kebisingan, dan selisih tekanan negatif', () => {
   const vib = (v) => evaluateParam({ param: 'vibration', def: fcu.params.vibration, series: [], value: v, date: '2026-07-10', nameplate: {} }).status;
   assert.equal(vib(1.2), 'normal');

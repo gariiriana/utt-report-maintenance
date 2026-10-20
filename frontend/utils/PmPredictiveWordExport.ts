@@ -1,10 +1,11 @@
 // ============================================================================
 // FILE: frontend/utils/PmPredictiveWordExport.ts
 // Deskripsi: Dokumen Word (.docx) Predictive Report dari laporan Preventive
-//            Maintenance. Isi dan urutan sama dengan PDF: identitas & nameplate,
-//            ringkasan eksekutif, bagian per equipment (tabel parameter, observasi
-//            visual, narasi, foto dokumentasi), dasar batas acuan, dan lembar
-//            pengesahan. Kop surat dua logo diulang di setiap halaman.
+//            Maintenance. Isi dan urutan sama dengan PDF: satu unit (identitas &
+//            nameplate, ringkasan eksekutif, bagian per equipment, dasar batas
+//            acuan, lembar pengesahan) atau gabungan satu quarter (ringkasan periode,
+//            satu bab per unit, satu dasar batas acuan & pengesahan). Kop surat dua
+//            logo diulang di setiap halaman.
 // ============================================================================
 
 import {
@@ -16,11 +17,12 @@ import { toast } from 'sonner';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import type { PmPredictiveReport, PmStatus } from '@/types/pmPredictiveTypes';
-import type { PmSourcePhoto } from '@/utils/pmPredictiveService';
+import { loadPmSourcePhotos, type PmSourcePhoto } from '@/utils/pmPredictiveService';
 import { STATUS_LABEL, effectiveStatus, fmtDate } from '@/utils/pmPredictiveEngine';
 import {
-  METHOD_TEXT, nameplateText, paramRowText, limitSourceRows, excludedEquipmentNames,
-  collectPmExportPhotos, safeFileName, type PmExportPhoto,
+  METHOD_TEXT, nameplateText, paramRowText, exportParams, hasComparison, exportStatusText, sectionStatusLines,
+  limitSourceRows, attentionText, collectPmExportPhotos, countExportPhotos, safeFileName, sortBundleReports,
+  type PmExportPhoto, type PmExportPhotos, type PmBundleEntry, type PmBundlePeriod,
 } from '@/utils/pmPredictiveExportShared';
 
 const FONT = 'Calibri';
@@ -148,6 +150,10 @@ function labelCell(text: string, width: number): TableCell {
   return cell(text, { width, fill: COLOR_LABEL_BG, bold: true });
 }
 
+function statusCell(status: PmStatus, text: string, width: number, size = 15): TableCell {
+  return cell(text, { width, size, bold: true, color: STATUS_HEX[status], fill: STATUS_FILL_HEX[status], align: AlignmentType.CENTER });
+}
+
 function table(widths: number[], rows: TableRow[], noOuterBorders = false): Table {
   return new Table({
     width: { size: widths.reduce((a, b) => a + b, 0), type: WidthType.DXA },
@@ -157,13 +163,28 @@ function table(widths: number[], rows: TableRow[], noOuterBorders = false): Tabl
   });
 }
 
+/** "1. JUDUL" untuk bab, "2.1 JUDUL" untuk sub-bab. */
 function sectionHeading(num: string, title: string): Paragraph {
   return new Paragraph({
     keepNext: true,
     spacing: { before: 240, after: 120 },
     children: [
-      new TextRun({ text: `${num}. `, bold: true, size: 22, color: COLOR_SECONDARY, font: FONT }),
+      new TextRun({ text: num.includes('.') ? `${num} ` : `${num}. `, bold: true, size: 22, color: COLOR_SECONDARY, font: FONT }),
       new TextRun({ text: title.toUpperCase(), bold: true, size: 22, color: COLOR_PRIMARY, font: FONT }),
+    ],
+  });
+}
+
+/** Judul bab unit pada laporan gabungan: selalu mulai di halaman baru. */
+function chapterHeading(num: string, title: string, right: string): Paragraph {
+  return new Paragraph({
+    pageBreakBefore: true,
+    keepNext: true,
+    shading: { type: ShadingType.CLEAR, fill: COLOR_PRIMARY, color: 'auto' },
+    spacing: { before: 0, after: 160 },
+    children: [
+      new TextRun({ text: ` ${num}. ${title}`, bold: true, size: 24, color: 'FFFFFF', font: FONT }),
+      new TextRun({ text: `     ${right}`, bold: true, size: 17, color: 'DCE6F1', font: FONT }),
     ],
   });
 }
@@ -191,7 +212,7 @@ function photoTable(items: PmExportPhoto[]): Table {
               alignment: AlignmentType.CENTER,
               children: [new ImageRun({ type: 'jpg', data: base64ToBytes(p.dataUrl), transformation: { width: Math.round(p.width * ratio), height: Math.round(p.height * ratio) } })],
             }),
-            para(`#${p.index}  ${p.caption}`, { size: 14, align: AlignmentType.CENTER, before: 40 }),
+            para(p.caption, { size: 14, align: AlignmentType.CENTER, before: 40 }),
           ],
         });
       }),
@@ -206,216 +227,300 @@ function photoBlock(title: string, items: PmExportPhoto[]): (Paragraph | Table)[
   return [para(title, { bold: true, size: 16, color: '475569', keepNext: true, before: 120, after: 60 }), photoTable(items)];
 }
 
-export async function exportPmPredictiveToDocx(report: PmPredictiveReport, loadedPhotos?: PmSourcePhoto[]): Promise<void> {
-  const toastId = toast.loading('Membuat DOCX Predictive Report...');
-  try {
-    const [logoDme, logoNdc, photos] = await Promise.all([
-      loadLogo(logoDwimitra),
-      loadLogo(logoNeutraDC),
-      collectPmExportPhotos(report, loadedPhotos),
-    ]);
-
-    // ─── Kop surat (header setiap halaman) ─────────────────────────────────
-    const logoCell = (bytes: Uint8Array, fallback: string, align: (typeof AlignmentType)[keyof typeof AlignmentType]) => new TableCell({
-      width: { size: 2300, type: WidthType.DXA },
-      borders: borderNone,
-      verticalAlign: VerticalAlign.CENTER,
-      children: [new Paragraph({
-        alignment: align,
-        children: bytes.length
-          ? [new ImageRun({ type: 'png', data: bytes, transformation: { width: 110, height: 42 } })]
-          : runs(fallback, { bold: true, size: 18, color: COLOR_PRIMARY }),
-      })],
+async function exportPhotosOf(report: PmPredictiveReport, loaded?: PmSourcePhoto[]): Promise<PmExportPhotos> {
+  let source = loaded && loaded.length ? loaded : [];
+  if (!source.length) {
+    source = await loadPmSourcePhotos(report.sourceDocId, report.sourceCollection).catch(err => {
+      console.warn('Foto laporan PM tidak bisa dimuat untuk ekspor:', err);
+      return [] as PmSourcePhoto[];
     });
-    const headerTable = new Table({
-      width: { size: CONTENT_W, type: WidthType.DXA },
-      columnWidths: [2300, CONTENT_W - 4600, 2300],
-      borders: tableBorderNone,
-      rows: [new TableRow({
+  }
+  return collectPmExportPhotos(report, source);
+}
+
+const headCell = (text: string, width: number, fill = COLOR_PRIMARY) => cell(text, { width, fill, bold: true, color: 'FFFFFF', size: 15 });
+
+/** Identitas, ringkasan, dan analisis per equipment satu unit. */
+function reportBlocks(report: PmPredictiveReport, photos: PmExportPhotos, nums: { identity: string; summary: string; analysis: string }): (Paragraph | Table)[] {
+  const idW = [1900, 3333, 1900, 3333];
+  const identity = table(idW, [
+    new TableRow({ children: [labelCell('Nama Unit', idW[0]), cell(report.unitLabel, { width: idW[1], bold: true }), labelCell('Jenis Unit', idW[2]), cell(report.unitType, { width: idW[3] })] }),
+    new TableRow({ children: [labelCell('Laporan PM', idW[0]), cell(report.maintenanceName, { width: idW[1] }), labelCell('Tanggal PM', idW[2]), cell(fmtDate(report.maintenanceDate), { width: idW[3] })] }),
+    new TableRow({ children: [labelCell('Nameplate', idW[0]), cell(nameplateText(report), { width: idW[1] + idW[2] + idW[3], colSpan: 3 })] }),
+  ]);
+
+  const sumW = [2600, CONTENT_W - 2600];
+  const overall = report.overallStatus;
+  const summary = table(sumW, [
+    new TableRow({ children: [labelCell('Status Keseluruhan', sumW[0]), statusCell(overall, exportStatusText(overall).toUpperCase(), sumW[1], 16)] }),
+    new TableRow({ children: [labelCell('Status per Equipment', sumW[0]), cell(sectionStatusLines(report), { width: sumW[1] })] }),
+    new TableRow({ children: [labelCell('Ringkasan', sumW[0]), cell(report.summary.ringkasan || '-', { width: sumW[1] })] }),
+    new TableRow({ children: [labelCell('Prioritas Tindakan', sumW[0]), cell(report.summary.prioritas.filter(p => p.trim()).map((p, i) => `${i + 1}. ${p}`).join('\n') || '-', { width: sumW[1] })] }),
+  ]);
+
+  const compare = hasComparison(report);
+  const paramW = compare ? [1900, 1000, 1400, 1400, CONTENT_W - 6900, 1200] : [2600, 1300, CONTENT_W - 5200, 1300];
+  const paramHead = compare ? ['Parameter', 'Nilai', 'Sebelumnya', 'Perubahan / Tren', 'Batas Acuan', 'Status'] : ['Parameter', 'Nilai', 'Batas Acuan', 'Status'];
+  const visW = [2600, 1600, CONTENT_W - 4200];
+  const narW = [2200, CONTENT_W - 2200];
+  const equipmentBlocks = report.sections.flatMap((section, i) => {
+    const status = effectiveStatus(section);
+    const blocks: (Paragraph | Table)[] = [
+      new Paragraph({
+        keepNext: true,
+        spacing: { before: 200, after: 40 },
         children: [
-          logoCell(logoDme, 'PT DME', AlignmentType.LEFT),
-          new TableCell({
-            width: { size: CONTENT_W - 4600, type: WidthType.DXA },
-            borders: borderNone,
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              para('PT DWIMITRA EKATAMA MANDIRI', { bold: true, size: 20, align: AlignmentType.CENTER }),
-              para('PREDICTIVE MAINTENANCE REPORT', { bold: true, size: 24, color: COLOR_SECONDARY, align: AlignmentType.CENTER }),
-              para('DATA CENTER NEUTRA DC CIKARANG', { bold: true, size: 18, color: COLOR_PRIMARY, align: AlignmentType.CENTER }),
-              para(`No: ${report.reportNumber}  |  Berbasis PM ${fmtDate(report.maintenanceDate)}`, { size: 14, color: COLOR_MUTED, align: AlignmentType.CENTER }),
-            ],
-          }),
-          logoCell(logoNdc, 'NeutraDC', AlignmentType.RIGHT),
+          new TextRun({ text: `${nums.analysis}.${i + 1}  ${section.name}`, bold: true, size: 20, color: COLOR_DARK, font: FONT }),
+          ...(status !== 'unknown' ? [new TextRun({ text: `   •   Status: ${STATUS_LABEL[status]}`, bold: true, size: 18, color: STATUS_HEX[status], font: FONT })] : []),
         ],
-      })],
-    });
-    const divider = new Paragraph({
-      spacing: { before: 60, after: 0 },
-      border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: COLOR_PRIMARY } },
-      children: [],
-    });
-
-    // ─── 1. Identitas ──────────────────────────────────────────────────────
-    const idW = [1900, 3333, 1900, 3333];
-    const identity = table(idW, [
-      new TableRow({ children: [labelCell('Nama Unit', idW[0]), cell(report.unitLabel, { width: idW[1], bold: true }), labelCell('Jenis Unit', idW[2]), cell(report.unitType, { width: idW[3] })] }),
-      new TableRow({ children: [labelCell('Laporan PM Asal', idW[0]), cell(report.maintenanceName, { width: idW[1] }), labelCell('Tanggal PM', idW[2]), cell(fmtDate(report.maintenanceDate), { width: idW[3] })] }),
-      new TableRow({ children: [labelCell('Akun Unit', idW[0]), cell(report.account, { width: idW[1] }), labelCell('Predictive Sebelumnya', idW[2]), cell(report.previousMaintenanceDate ? `PM ${fmtDate(report.previousMaintenanceDate)}` : 'Belum ada (baseline)', { width: idW[3] })] }),
-      new TableRow({ children: [labelCell('Nameplate', idW[0]), cell(nameplateText(report), { width: idW[1] + idW[2] + idW[3], colSpan: 3 })] }),
-    ]);
-
-    // ─── 2. Ringkasan ──────────────────────────────────────────────────────
-    const sumW = [2600, CONTENT_W - 2600];
-    const overall = report.overallStatus;
-    const excluded = excludedEquipmentNames(report);
-    const summary = table(sumW, [
-      new TableRow({ children: [labelCell('Status Keseluruhan', sumW[0]), cell(STATUS_LABEL[overall].toUpperCase(), { width: sumW[1], bold: true, color: STATUS_HEX[overall], fill: STATUS_FILL_HEX[overall] })] }),
-      new TableRow({ children: [labelCell('Status per Equipment', sumW[0]), cell(report.sections.map(s => `${s.name}: ${STATUS_LABEL[effectiveStatus(s)]}`).join('\n'), { width: sumW[1] })] }),
-      ...(excluded.length ? [new TableRow({ children: [labelCell('Tidak Dianalisis', sumW[0]), cell(`${excluded.join(', ')} (dikecualikan oleh engineer)`, { width: sumW[1] })] })] : []),
-      new TableRow({ children: [labelCell('Ringkasan', sumW[0]), cell(report.summary.ringkasan || '-', { width: sumW[1] })] }),
-      new TableRow({ children: [labelCell('Prioritas Tindakan', sumW[0]), cell(report.summary.prioritas.filter(p => p.trim()).map((p, i) => `${i + 1}. ${p}`).join('\n') || '-', { width: sumW[1] })] }),
-    ]);
-
-    // ─── 3. Per equipment ──────────────────────────────────────────────────
-    const paramW = [1700, 1000, 1300, 1300, 2566, 1100, 1500];
-    const visW = [2600, 1600, CONTENT_W - 4200];
-    const narW = [2200, CONTENT_W - 2200];
-    const headCell = (text: string, width: number, fill = COLOR_PRIMARY) => cell(text, { width, fill, bold: true, color: 'FFFFFF', size: 15 });
-    const equipmentBlocks = report.sections.flatMap((section, i) => {
-      const status = effectiveStatus(section);
-      const blocks: (Paragraph | Table)[] = [
-        new Paragraph({
-          keepNext: true,
-          spacing: { before: 200, after: 40 },
-          children: [
-            new TextRun({ text: `3.${i + 1}  ${section.name}`, bold: true, size: 20, color: COLOR_DARK, font: FONT }),
-            new TextRun({ text: `   •   Status: ${STATUS_LABEL[status]}`, bold: true, size: 18, color: STATUS_HEX[status], font: FONT }),
-          ],
-        }),
-        para(section.role, { italics: true, size: 15, color: COLOR_MUTED, keepNext: true, after: 80 }),
-      ];
-      if (section.params.length) {
-        blocks.push(table(paramW, [
-          new TableRow({
-            tableHeader: true,
-            children: ['Parameter', 'Nilai', 'Sebelumnya', 'Perubahan / Tren', 'Batas Acuan', 'Status', 'Proyeksi'].map((h, k) => headCell(h, paramW[k])),
-          }),
-          ...section.params.map(p => {
-            const row = paramRowText(p);
-            return new TableRow({
-              cantSplit: true,
-              children: [
-                cell(row.label, { width: paramW[0], size: 15 }),
-                cell(row.value, { width: paramW[1], size: 15, bold: true, align: AlignmentType.CENTER }),
+      }),
+      para(section.role, { italics: true, size: 15, color: COLOR_MUTED, keepNext: true, after: 80 }),
+    ];
+    const params = exportParams(section);
+    if (params.length) {
+      blocks.push(table(paramW, [
+        new TableRow({ tableHeader: true, children: paramHead.map((h, k) => headCell(h, paramW[k])) }),
+        ...params.map(p => {
+          const row = paramRowText(p);
+          const label = cell(row.label, { width: paramW[0], size: 15 });
+          const value = cell(row.value, { width: paramW[1], size: 15, bold: true, align: AlignmentType.CENTER });
+          return new TableRow({
+            cantSplit: true,
+            children: compare
+              ? [label, value,
                 cell(row.previous, { width: paramW[2], size: 15, align: AlignmentType.CENTER }),
                 cell(row.change, { width: paramW[3], size: 15, align: AlignmentType.CENTER }),
                 cell(row.limit, { width: paramW[4], size: 14 }),
-                cell(row.statusText, { width: paramW[5], size: 15, bold: true, color: STATUS_HEX[row.status], fill: STATUS_FILL_HEX[row.status], align: AlignmentType.CENTER }),
-                cell(row.projection, { width: paramW[6], size: 14 }),
-              ],
-            });
-          }),
-        ]));
-        blocks.push(para('', { after: 60 }));
-      }
-      if (section.visuals.length) {
-        blocks.push(table(visW, [
-          new TableRow({ tableHeader: true, children: ['Observasi Visual', 'Kondisi', 'Keterangan'].map((h, k) => headCell(h, visW[k], '475569')) }),
-          ...section.visuals.map(v => new TableRow({
-            cantSplit: true,
-            children: [cell(v.cardLabel, { width: visW[0] }), cell(v.condition, { width: visW[1] }), cell(v.observation || '-', { width: visW[2] })],
-          })),
-        ]));
-        blocks.push(para('', { after: 60 }));
-      }
-      blocks.push(table(narW, [
-        new TableRow({ children: [labelCell('Kondisi Saat Ini', narW[0]), cell(section.narrative.kondisi || '-', { width: narW[1] })] }),
-        new TableRow({ children: [labelCell('Analisis Tren', narW[0]), cell(section.narrative.analisisTren || '-', { width: narW[1] })] }),
-        new TableRow({ children: [labelCell('Prediksi & Risiko', narW[0]), cell(section.narrative.prediksiRisiko || '-', { width: narW[1] })] }),
-        new TableRow({ children: [labelCell('Rekomendasi', narW[0]), cell(section.narrative.rekomendasi.filter(r => r.trim()).map((r, k) => `${k + 1}. ${r}`).join('\n') || '-', { width: narW[1] })] }),
+                statusCell(row.status, row.statusText, paramW[5])]
+              : [label, value,
+                cell(row.limit, { width: paramW[2], size: 14 }),
+                statusCell(row.status, row.statusText, paramW[3])],
+          });
+        }),
       ]));
-      blocks.push(...photoBlock(`Dokumentasi foto – ${section.name}`, photos.bySection[section.id] || []));
-      return blocks;
-    });
+      blocks.push(para('', { after: 60 }));
+    }
+    if (section.visuals.length) {
+      blocks.push(table(visW, [
+        new TableRow({ tableHeader: true, children: ['Observasi Visual', 'Kondisi', 'Keterangan'].map((h, k) => headCell(h, visW[k], '475569')) }),
+        ...section.visuals.map(v => new TableRow({
+          cantSplit: true,
+          children: [cell(v.cardLabel, { width: visW[0] }), cell(v.condition, { width: visW[1] }), cell(v.observation || '-', { width: visW[2] })],
+        })),
+      ]));
+      blocks.push(para('', { after: 60 }));
+    }
+    blocks.push(table(narW, [
+      new TableRow({ children: [labelCell('Kondisi Saat Ini', narW[0]), cell(section.narrative.kondisi || '-', { width: narW[1] })] }),
+      new TableRow({ children: [labelCell('Analisis Tren', narW[0]), cell(section.narrative.analisisTren || '-', { width: narW[1] })] }),
+      new TableRow({ children: [labelCell('Prediksi & Risiko', narW[0]), cell(section.narrative.prediksiRisiko || '-', { width: narW[1] })] }),
+      new TableRow({ children: [labelCell('Rekomendasi', narW[0]), cell(section.narrative.rekomendasi.filter(r => r.trim()).map((r, k) => `${k + 1}. ${r}`).join('\n') || '-', { width: narW[1] })] }),
+    ]));
+    blocks.push(...photoBlock(`Dokumentasi foto – ${section.name}`, photos.bySection[section.id] || []));
+    return blocks;
+  });
 
-    // ─── 4. Dasar batas acuan ──────────────────────────────────────────────
-    const sourceRows = limitSourceRows(report);
-    const srcW = [2600, CONTENT_W - 2600];
-    const limitBlocks: (Paragraph | Table)[] = sourceRows.length ? [
-      sectionHeading('4', 'Dasar Batas Acuan & Metode'),
-      table(srcW, [
-        new TableRow({ tableHeader: true, children: [cell('Parameter', { width: srcW[0], bold: true, fill: 'F1F5F9' }), cell('Sumber / Dasar Batas Acuan', { width: srcW[1], bold: true, fill: 'F1F5F9' })] }),
-        ...sourceRows.map(([labels, source]) => new TableRow({ cantSplit: true, children: [cell(labels, { width: srcW[0], size: 15 }), cell(source, { width: srcW[1], size: 15 })] })),
-      ]),
-      para(METHOD_TEXT, { size: 15, color: '475569', before: 100 }),
-    ] : [];
+  return [
+    sectionHeading(nums.identity, 'Identitas Unit & Laporan PM'),
+    identity,
+    ...photoBlock('Foto nameplate', photos.nameplate),
+    sectionHeading(nums.summary, 'Ringkasan Eksekutif'),
+    summary,
+    sectionHeading(nums.analysis, 'Analisis Prediktif per Equipment'),
+    ...equipmentBlocks,
+  ];
+}
 
-    // ─── 5. Lembar pengesahan ──────────────────────────────────────────────
-    const sig = report.signatures;
-    const half = Math.floor(CONTENT_W / 2);
-    const sigW = [half, CONTENT_W - half];
-    const sigHead = (text: string, width: number, colSpan?: number) => cell(text, { width, colSpan, fill: HEADER_FILL, bold: true, align: AlignmentType.CENTER, keepNext: true });
-    const sigBox = (s: { name: string; title: string }, width: number, colSpan?: number) => cell('', {
-      width,
-      colSpan,
-      children: [
-        para('\n\n', { keepNext: true }),
-        para(s.name, { bold: true, align: AlignmentType.CENTER, keepNext: true }),
-        para(s.title, { align: AlignmentType.CENTER, keepNext: true }),
-      ],
-    });
-    const signatureTable = table(sigW, [
+/** Dasar batas acuan & metode (kosong bila tidak ada parameter yang dicetak). */
+function limitBlocks(reports: PmPredictiveReport[], num: string): (Paragraph | Table)[] {
+  const rows = limitSourceRows(reports);
+  if (!rows.length) return [];
+  const srcW = [2600, CONTENT_W - 2600];
+  return [
+    sectionHeading(num, 'Dasar Batas Acuan & Metode'),
+    table(srcW, [
+      new TableRow({ tableHeader: true, children: [cell('Parameter', { width: srcW[0], bold: true, fill: 'F1F5F9' }), cell('Sumber / Dasar Batas Acuan', { width: srcW[1], bold: true, fill: 'F1F5F9' })] }),
+      ...rows.map(([labels, source]) => new TableRow({ cantSplit: true, children: [cell(labels, { width: srcW[0], size: 15 }), cell(source, { width: srcW[1], size: 15 })] })),
+    ]),
+    para(METHOD_TEXT, { size: 15, color: '475569', before: 100 }),
+  ];
+}
+
+function signatureBlocks(sig: PmPredictiveReport['signatures'], num: string): (Paragraph | Table)[] {
+  const half = Math.floor(CONTENT_W / 2);
+  const sigW = [half, CONTENT_W - half];
+  const sigHead = (text: string, width: number, colSpan?: number) => cell(text, { width, colSpan, fill: HEADER_FILL, bold: true, align: AlignmentType.CENTER, keepNext: true });
+  const sigBox = (s: { name: string; title: string }, width: number, colSpan?: number) => cell('', {
+    width,
+    colSpan,
+    children: [
+      para('\n\n', { keepNext: true }),
+      para(s.name, { bold: true, align: AlignmentType.CENTER, keepNext: true }),
+      para(s.title, { align: AlignmentType.CENTER, keepNext: true }),
+    ],
+  });
+  return [
+    sectionHeading(num, 'Lembar Pengesahan Resmi'),
+    para(`AUTHOR BY, ${sig.authorName}`, { bold: true, size: 18, keepNext: true, after: 80 }),
+    table(sigW, [
       new TableRow({ cantSplit: true, children: [sigHead('PREPARED BY,', sigW[0]), sigHead('REVIEWED BY,', sigW[1])] }),
       new TableRow({ cantSplit: true, children: [sigBox(sig.preparedBy, sigW[0]), sigBox(sig.reviewedBy, sigW[1])] }),
       new TableRow({ cantSplit: true, children: [sigHead('ACKNOWLEDGED BY,', CONTENT_W, 2)] }),
       new TableRow({ cantSplit: true, children: [sigBox(sig.acknowledgedBy1, sigW[0]), sigBox(sig.acknowledgedBy2, sigW[1])] }),
       new TableRow({ cantSplit: true, children: [sigHead('APPROVED BY,', CONTENT_W, 2)] }),
       new TableRow({ cantSplit: true, children: [sigBox(sig.approvedBy, CONTENT_W, 2)] }),
-    ]);
+    ]),
+  ];
+}
 
-    const doc = new Document({
-      creator: 'DwimitraSystem',
-      title: `Predictive Report ${report.unitLabel}`,
-      sections: [{
-        properties: {
-          page: { margin: { top: 2100, bottom: 900, left: 720, right: 720, header: 360, footer: 360 } },
-        },
-        headers: { default: new Header({ children: [headerTable, divider] }) },
-        footers: {
-          default: new Footer({
-            children: [new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              children: [
-                new TextRun({ text: `Predictive Report PM — ${report.unitLabel}  |  Halaman `, size: 14, color: COLOR_MUTED, font: FONT }),
-                new TextRun({ children: [PageNumber.CURRENT], size: 14, color: COLOR_MUTED, font: FONT }),
-                new TextRun({ text: ' dari ', size: 14, color: COLOR_MUTED, font: FONT }),
-                new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 14, color: COLOR_MUTED, font: FONT }),
-              ],
-            })],
-          }),
-        },
-        children: [
-          sectionHeading('1', 'Identitas Unit & Dokumen Asal'),
-          identity,
-          ...photoBlock('Foto nameplate', photos.nameplate),
-          sectionHeading('2', 'Ringkasan Eksekutif'),
-          summary,
-          sectionHeading('3', 'Analisis Prediktif per Equipment'),
-          ...equipmentBlocks,
-          ...limitBlocks,
-          sectionHeading(sourceRows.length ? '5' : '4', 'Lembar Pengesahan Resmi'),
-          para(`AUTHOR BY, ${sig.authorName}`, { bold: true, size: 18, keepNext: true, after: 80 }),
-          signatureTable,
-        ],
-      }],
-    });
+/** Dokumen A4 dengan kop surat dua logo dan nomor halaman di setiap halaman. */
+async function buildDocument(title: string, headerLine: string, footerLabel: string, children: (Paragraph | Table)[]): Promise<Blob> {
+  const [logoDme, logoNdc] = await Promise.all([loadLogo(logoDwimitra), loadLogo(logoNeutraDC)]);
+  const logoCell = (bytes: Uint8Array, fallback: string, align: (typeof AlignmentType)[keyof typeof AlignmentType]) => new TableCell({
+    width: { size: 2300, type: WidthType.DXA },
+    borders: borderNone,
+    verticalAlign: VerticalAlign.CENTER,
+    children: [new Paragraph({
+      alignment: align,
+      children: bytes.length
+        ? [new ImageRun({ type: 'png', data: bytes, transformation: { width: 110, height: 42 } })]
+        : runs(fallback, { bold: true, size: 18, color: COLOR_PRIMARY }),
+    })],
+  });
+  const headerTable = new Table({
+    width: { size: CONTENT_W, type: WidthType.DXA },
+    columnWidths: [2300, CONTENT_W - 4600, 2300],
+    borders: tableBorderNone,
+    rows: [new TableRow({
+      children: [
+        logoCell(logoDme, 'PT DME', AlignmentType.LEFT),
+        new TableCell({
+          width: { size: CONTENT_W - 4600, type: WidthType.DXA },
+          borders: borderNone,
+          verticalAlign: VerticalAlign.CENTER,
+          children: [
+            para('PT DWIMITRA EKATAMA MANDIRI', { bold: true, size: 20, align: AlignmentType.CENTER }),
+            para('PREDICTIVE MAINTENANCE REPORT', { bold: true, size: 24, color: COLOR_SECONDARY, align: AlignmentType.CENTER }),
+            para('DATA CENTER NEUTRA DC CIKARANG', { bold: true, size: 18, color: COLOR_PRIMARY, align: AlignmentType.CENTER }),
+            para(headerLine, { size: 14, color: COLOR_MUTED, align: AlignmentType.CENTER }),
+          ],
+        }),
+        logoCell(logoNdc, 'NeutraDC', AlignmentType.RIGHT),
+      ],
+    })],
+  });
+  const divider = new Paragraph({
+    spacing: { before: 60, after: 0 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: COLOR_PRIMARY } },
+    children: [],
+  });
+  const doc = new Document({
+    creator: 'DwimitraSystem',
+    title,
+    sections: [{
+      properties: {
+        page: { margin: { top: 2100, bottom: 900, left: 720, right: 720, header: 360, footer: 360 } },
+      },
+      headers: { default: new Header({ children: [headerTable, divider] }) },
+      footers: {
+        default: new Footer({
+          children: [new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({ text: `${footerLabel}  |  Halaman `, size: 14, color: COLOR_MUTED, font: FONT }),
+              new TextRun({ children: [PageNumber.CURRENT], size: 14, color: COLOR_MUTED, font: FONT }),
+              new TextRun({ text: ' dari ', size: 14, color: COLOR_MUTED, font: FONT }),
+              new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 14, color: COLOR_MUTED, font: FONT }),
+            ],
+          })],
+        }),
+      },
+      children,
+    }],
+  });
+  return Packer.toBlob(doc);
+}
 
-    const blob = await Packer.toBlob(doc);
+export async function exportPmPredictiveToDocx(report: PmPredictiveReport, loadedPhotos?: PmSourcePhoto[]): Promise<void> {
+  const toastId = toast.loading('Membuat DOCX Predictive Report...');
+  try {
+    const photos = await exportPhotosOf(report, loadedPhotos);
+    const limits = limitBlocks([report], '4');
+    const blob = await buildDocument(
+      `Predictive Report ${report.unitLabel}`,
+      `Berbasis PM ${fmtDate(report.maintenanceDate)}`,
+      `Predictive Report PM — ${report.unitLabel}`,
+      [
+        ...reportBlocks(report, photos, { identity: '1', summary: '2', analysis: '3' }),
+        ...limits,
+        ...signatureBlocks(report.signatures, limits.length ? '5' : '4'),
+      ],
+    );
     saveAs(blob, `Predictive_Report_${safeFileName(report.unitLabel) || 'Unit'}_${report.maintenanceDate}.docx`);
-    const photoCount = photos.nameplate.length + Object.values(photos.bySection).reduce((n, list) => n + list.length, 0);
-    toast.success(photoCount ? 'DOCX Predictive Report berhasil diunduh' : 'DOCX diunduh tanpa foto (foto laporan PM tidak bisa dimuat)', { id: toastId });
+    toast.success(countExportPhotos(photos) ? 'DOCX Predictive Report berhasil diunduh' : 'DOCX diunduh tanpa foto (foto laporan PM tidak bisa dimuat)', { id: toastId });
   } catch (error: any) {
     console.error('exportPmPredictiveToDocx error:', error);
     toast.error(`Gagal membuat DOCX: ${error?.message || 'error tidak diketahui'}`, { id: toastId });
+  }
+}
+
+/** Satu DOCX untuk seluruh predictive satu quarter: ringkasan periode lalu satu bab per unit. */
+export async function exportPmPredictiveBundleToDocx(entries: PmBundleEntry[], period: PmBundlePeriod): Promise<void> {
+  if (!entries.length) return;
+  const toastId = toast.loading(`Membuat DOCX gabungan ${period.label}...`);
+  try {
+    const sorted = sortBundleReports(entries);
+    const reports = sorted.map(e => e.report);
+    const sumW = [800, 2900, 1500, 1500, CONTENT_W - 6700];
+    const children: (Paragraph | Table)[] = [
+      sectionHeading('1', `Ringkasan Periode ${period.label}`),
+      para(`Predictive maintenance report untuk ${reports.length} unit ${reports[0].unitType} berdasarkan hasil Preventive Maintenance periode ${period.label} (${period.months}). Rincian setiap unit disajikan pada bab berikutnya.`, { size: 17, after: 120 }),
+      table(sumW, [
+        new TableRow({ tableHeader: true, children: ['Bab', 'Unit', 'Tanggal PM', 'Status', 'Equipment Perlu Perhatian'].map((h, k) => headCell(h, sumW[k])) }),
+        ...reports.map((r, k) => new TableRow({
+          cantSplit: true,
+          children: [
+            cell(String(k + 2), { width: sumW[0], align: AlignmentType.CENTER }),
+            cell(r.unitLabel, { width: sumW[1], bold: true }),
+            cell(fmtDate(r.maintenanceDate), { width: sumW[2], align: AlignmentType.CENTER }),
+            statusCell(r.overallStatus, exportStatusText(r.overallStatus), sumW[3], 16),
+            cell(attentionText(r), { width: sumW[4] }),
+          ],
+        })),
+      ]),
+    ];
+
+    let photoTotal = 0;
+    for (let k = 0; k < sorted.length; k++) {
+      const { report, photos } = sorted[k];
+      toast.loading(`Membuat DOCX gabungan ${period.label} (${k + 1}/${sorted.length})...`, { id: toastId });
+      const exportPhotos = await exportPhotosOf(report, photos);
+      photoTotal += countExportPhotos(exportPhotos);
+      const chapter = String(k + 2);
+      children.push(
+        chapterHeading(chapter, report.unitLabel, `PM ${fmtDate(report.maintenanceDate)}`),
+        ...reportBlocks(report, exportPhotos, { identity: `${chapter}.1`, summary: `${chapter}.2`, analysis: `${chapter}.3` }),
+      );
+    }
+
+    const next = sorted.length + 2;
+    const limits = limitBlocks(reports, String(next));
+    children.push(
+      new Paragraph({ pageBreakBefore: true, children: [] }),
+      ...limits,
+      ...signatureBlocks(reports[0].signatures, String(limits.length ? next + 1 : next)),
+    );
+
+    const blob = await buildDocument(
+      `Predictive Report ${period.label}`,
+      `Periode ${period.label} (${period.months})`,
+      `Predictive Report PM ${period.label}`,
+      children,
+    );
+    saveAs(blob, `Predictive_Report_${safeFileName(reports[0].profileId.toUpperCase())}_${safeFileName(period.label)}.docx`);
+    toast.success(photoTotal ? `DOCX gabungan ${period.label} (${reports.length} unit) berhasil diunduh` : 'DOCX gabungan diunduh tanpa foto (foto laporan PM tidak bisa dimuat)', { id: toastId });
+  } catch (error: any) {
+    console.error('exportPmPredictiveBundleToDocx error:', error);
+    toast.error(`Gagal membuat DOCX gabungan: ${error?.message || 'error tidak diketahui'}`, { id: toastId });
   }
 }

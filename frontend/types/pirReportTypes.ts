@@ -7,6 +7,8 @@
 //            serta matrik tanda tangan penanggung jawab TDE & DME.
 // ============================================================================
 
+import type { RevisionHistoryEntry } from '@/utils/documentRevision';
+
 /** Tipe Data Rencana Tindakan Perbaikan (Corrective Action Item) PIR */
 export interface PIRCorrectiveAction {
     actionItem: string;                     // Rincian tindakan perbaikan (misal "Pembersihan filter CRAC 03")
@@ -108,6 +110,7 @@ export interface PIRReportData {
     revisionNote?: string;                   // Catatan alasan/detail revisi
     revisionUpdatedAt?: any;                 // Timestamp kapan status revisi diupdate
     revisionUpdatedBy?: string;              // Nama/email yang mengupdate status revisi
+    revisionHistory?: RevisionHistoryEntry[]; // Riwayat tiap kali dikembalikan / disetujui (Revisi ke-N)
 }
 
 // Data Awal Bawaan Format Baku PIR Laporan UTT / NeutraDC

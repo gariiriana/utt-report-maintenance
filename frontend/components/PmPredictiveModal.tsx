@@ -3,53 +3,48 @@
 // Deskripsi: Generate Predictive Report dari satu laporan Preventive Maintenance
 //            (dibuka dari kartu dokumen di Arsip Dokumen).
 //            Alur: 1) siapkan unit & riwayat  2) AI membaca angka dari foto
-//            3) engineer memeriksa & mengonfirmasi angka  4) status, tren, proyeksi
-//            dihitung sistem lalu AI menulis analisis per equipment  5) edit, simpan,
+//            3) engineer memeriksa & mengonfirmasi angka  4) status & tren dihitung
+//            sistem lalu AI menulis analisis per equipment  5) edit, simpan,
 //            unduh PDF/DOCX (dengan foto). Engineer memilih equipment yang dianalisis
 //            dan bisa mengedit ulang angka predictive yang sudah tersimpan.
 //            Riwayat tren dibaca dari predictive sebelumnya unit yang sama.
+//            Langkah & komponennya dipakai bersama generate per quarter
+//            (PmPredictiveQuarterModal) lewat pmPredictiveWorkflow & PmPredictiveParts.
 // ============================================================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { X, Bot, Camera, CheckCircle2, AlertTriangle, Loader2, FileDown, FileText, Save, RotateCw, History, ChevronRight, PencilLine } from 'lucide-react';
+import { X, Bot, Camera, CheckCircle2, AlertTriangle, Loader2, FileDown, FileText, Save, History, ChevronRight, PencilLine } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useModalScrollLock } from '@/utils/modalScrollLock';
 import { resolvePmProfile, type PmProfile } from '@/config/pmPredictiveProfiles';
+import { unitKeyOf, fmtDate } from '@/utils/pmPredictiveEngine';
 import {
-  matchCard, unitKeyOf, convertToCanonical, computeDerived, mergeHistory, buildSections,
-  worstStatus, effectiveStatus, fallbackNarrative, fallbackSummary, sectionAIContext, summaryAIContext,
-  STATUS_LABEL, fmtNum, fmtDate, fmtMonthYear, toISODate,
-} from '@/utils/pmPredictiveEngine';
-import {
-  loadPmSourcePhotos, prepareImageForAI, batchExtractItems, extractBatchAI, analyzeSectionAI, analyzeSummaryAI,
-  getPmPredictive, findPreviousPmPredictive, savePmPredictive,
-  type PmSourcePhoto, type PmExtractRequestItem,
+  loadPmSourcePhotos, getPmPredictive, findPreviousPmPredictive, savePmPredictive, readPlansWithAI, narrateSections,
+  type PmSourcePhoto, type PmNarrativeState,
 } from '@/utils/pmPredictiveService';
+import {
+  EMPTY_DRAFT, planCards, initDraft, markDraftPending, applyExtraction, draftFromReport, draftStats,
+  composeAnalysis, buildPmReport, maintenanceDateOf, type PmPredictiveSourceDoc, type PmReadingDraft,
+} from '@/utils/pmPredictiveWorkflow';
 import { exportPmPredictiveToPdf } from '@/utils/PmPredictivePdfExport';
 import { exportPmPredictiveToDocx } from '@/utils/PmPredictiveWordExport';
-import type {
-  PmPredictiveReport, PmStatus, PmConfidence, PmVisualCondition, PmNameplate, PmReading,
-  PmVisualObservation, PmEquipmentSection, PmCardKind,
-} from '@/types/pmPredictiveTypes';
+import { PmReadingsEditor, PmPredictiveResultView, PmPhotoZoom, applyReportChange, type PmZoom } from './PmPredictiveParts';
+import type { PmPredictiveReport, PmStatus } from '@/types/pmPredictiveTypes';
 
-export interface PmPredictiveSourceDoc {
-  id: string;
-  maintenanceName: string;
-  maintenanceTime: string;
-  specificDetail?: string;
-  createdBy: string;
-  fileName?: string;
-  createdAt?: any;
-}
+export { STATUS_BADGE } from './PmPredictiveParts';
+export type { PmPredictiveSourceDoc } from '@/utils/pmPredictiveWorkflow';
 
 export interface PmPredictiveMarker {
   reportNumber: string;
   overallStatus: PmStatus;
   updatedAt: string;
 }
+
+export const markerOf = (report: PmPredictiveReport): PmPredictiveMarker =>
+  ({ reportNumber: report.reportNumber, overallStatus: report.overallStatus, updatedAt: new Date().toISOString() });
 
 interface PmPredictiveModalProps {
   isOpen: boolean;
@@ -60,121 +55,12 @@ interface PmPredictiveModalProps {
 }
 
 type Step = 'loading' | 'setup' | 'reading' | 'confirm' | 'analyzing' | 'result' | 'error';
-type RowState = 'pending' | 'done' | 'failed' | 'manual';
-
-interface CardPlan {
-  photo: PmSourcePhoto;
-  kind: PmCardKind;
-  param?: string;
-  visualKey?: string;
-}
-
-interface MeasureRow {
-  photoIndex: number;
-  cardLabel: string;
-  param: string;
-  aiValue: number | null;
-  aiUnit?: string;
-  aiRaw?: string;
-  aiConfidence: PmConfidence;
-  aiConverted: number | null;
-  input: string;
-  note?: string;
-  state: RowState;
-}
-
-interface VisualRow {
-  photoIndex: number;
-  cardLabel: string;
-  key: string;
-  condition: PmVisualCondition;
-  observation: string;
-  aiConfidence: PmConfidence;
-  state: RowState;
-}
-
-/** Equipment di dalam unit beserta baris angka & observasinya di langkah konfirmasi. */
-interface EquipmentGroup {
-  id: string;
-  name: string;
-  rows: MeasureRow[];
-  visuals: VisualRow[];
-  /** Ada angka/observasi yang terbaca (oleh AI atau diisi manual): dicentang otomatis. */
-  detected: boolean;
-}
 
 interface HistoryLookup {
   unitKey: string;
   previous: PmPredictiveReport | null;
   total: number;
   newerExists: boolean;
-}
-
-export const STATUS_BADGE: Record<PmStatus, string> = {
-  normal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  watch: 'bg-amber-50 text-amber-700 border-amber-200',
-  warning: 'bg-orange-50 text-orange-700 border-orange-300',
-  alarm: 'bg-red-50 text-red-700 border-red-300',
-  unknown: 'bg-slate-50 text-slate-500 border-slate-200',
-};
-
-const CONFIDENCE_BADGE: Record<PmConfidence, string> = {
-  tinggi: 'bg-emerald-50 text-emerald-700',
-  sedang: 'bg-amber-50 text-amber-700',
-  rendah: 'bg-red-50 text-red-700',
-};
-
-const AUTHOR_NAME = 'Rizki Novri Yanda – Data Center Operation';
-
-function maintenanceDateOf(d: PmPredictiveSourceDoc): string {
-  const raw = (d.maintenanceTime || '').trim();
-  const first = raw.includes(' - ') ? raw.split(' - ')[0].trim() : raw;
-  const iso = (y: number, m: number, day: number) => `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  let m = first.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
-  if (m) return iso(+m[1], +m[2], +m[3]);
-  m = first.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
-  if (m) return iso(+m[3], +m[2], +m[1]);
-  const parsed = first ? new Date(first) : null;
-  if (parsed && !isNaN(parsed.getTime())) return toISODate(parsed);
-  const created = d.createdAt?.toDate ? d.createdAt.toDate() : d.createdAt ? new Date(d.createdAt) : null;
-  return created && !isNaN(created.getTime()) ? toISODate(created) : toISODate(new Date());
-}
-
-function parseInput(text: string): number | null {
-  const s = (text || '').trim().replace(',', '.');
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
-function isInputInvalid(text: string): boolean {
-  return Boolean((text || '').trim()) && parseInput(text) === null;
-}
-
-function hasNameplateData(n: PmNameplate | null | undefined): boolean {
-  return Boolean(n && (n.brand || n.model || n.ratedVoltage || n.ratedCurrent || n.ratedPowerKw));
-}
-
-/** Jalankan tugas dengan paralelisme terbatas (jaga kuota per menit AI gratis). */
-async function runPool<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
-  const results: T[] = new Array(tasks.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < tasks.length) {
-      const i = next++;
-      results[i] = await tasks[i]();
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
-  return results;
-}
-
-function StatusBadge({ status, small }: { status: PmStatus; small?: boolean }) {
-  return (
-    <span className={`inline-flex items-center rounded-full border font-black uppercase tracking-wide ${small ? 'px-2 py-0.5 text-[9px]' : 'px-2.5 py-1 text-[10px]'} ${STATUS_BADGE[status]}`}>
-      {STATUS_LABEL[status]}
-    </span>
-  );
 }
 
 export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly = false, onSaved }: PmPredictiveModalProps) {
@@ -196,19 +82,13 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
   const [unitLabel, setUnitLabel] = useState('');
   const [lookup, setLookup] = useState<HistoryLookup | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [measures, setMeasures] = useState<MeasureRow[]>([]);
-  const [visualRows, setVisualRows] = useState<VisualRow[]>([]);
-  const [nameplate, setNameplate] = useState<PmNameplate>({});
-  const [nameplatePhotoIndex, setNameplatePhotoIndex] = useState<number | null>(null);
-  const [nameplateState, setNameplateState] = useState<RowState>('manual');
+  const [draft, setDraft] = useState<PmReadingDraft>(EMPTY_DRAFT);
   const [confirmed, setConfirmed] = useState(false);
-  const [sectionProgress, setSectionProgress] = useState<Record<string, 'pending' | 'running' | 'ai' | 'otomatis'>>({});
+  const [sectionProgress, setSectionProgress] = useState<Record<string, PmNarrativeState>>({});
   const [report, setReport] = useState<PmPredictiveReport | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [zoom, setZoom] = useState<{ src: string; title: string } | null>(null);
-  /** Pilihan engineer per equipment; tanpa pilihan = ikut deteksi (ada angka/observasi). */
-  const [selection, setSelection] = useState<Record<string, boolean>>({});
+  const [zoom, setZoom] = useState<PmZoom | null>(null);
   /** Sedang mengedit angka predictive yang sudah ada (dari langkah Hasil). */
   const [editing, setEditing] = useState(false);
   const [exporting, setExporting] = useState<'pdf' | 'docx' | null>(null);
@@ -216,44 +96,7 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
 
   const unitKey = useMemo(() => unitKeyOf(account, unitLabel), [account, unitLabel]);
   const photoByIndex = useMemo(() => new Map(photos.map(p => [p.index, p])), [photos]);
-
-  const equipmentGroups: EquipmentGroup[] = useMemo(() => {
-    if (!profile) return [];
-    const visualOwner = (key: string) => profile.equipment.find(eq => eq.visualKeys?.includes(key))?.id || 'other';
-    const defs = [
-      ...profile.equipment.map(eq => ({ id: eq.id, name: eq.name, params: eq.params })),
-      { id: 'other', name: 'Observasi Visual Lainnya', params: [] as string[] },
-    ];
-    return defs.map(d => {
-      const rows = measures.filter(m => d.params.includes(m.param));
-      const visuals = visualRows.filter(v => visualOwner(v.key) === d.id);
-      const detected = rows.some(r => r.state === 'manual' || r.input.trim() !== '')
-        || visuals.some(v => v.state === 'manual' || v.condition !== 'tidak jelas' || v.observation.trim() !== '');
-      return { id: d.id, name: d.name, rows, visuals, detected };
-    }).filter(g => g.rows.length || g.visuals.length);
-  }, [profile, measures, visualRows]);
-
-  const isIncluded = (g: EquipmentGroup) => selection[g.id] ?? g.detected;
-
-  const plans: CardPlan[] = useMemo(() => {
-    if (!profile) return [];
-    const usedParams = new Set<string>();
-    let hasNameplate = false;
-    return photos.map(photo => {
-      const m = matchCard(profile, photo.description);
-      if (m?.kind === 'measurement' && m.param && !usedParams.has(m.param)) {
-        usedParams.add(m.param);
-        return { photo, kind: 'measurement' as const, param: m.param };
-      }
-      if (m?.kind === 'nameplate' && !hasNameplate) {
-        hasNameplate = true;
-        return { photo, kind: 'nameplate' as const };
-      }
-      if (m?.kind === 'visual' && m.visualKey) return { photo, kind: 'visual' as const, visualKey: m.visualKey };
-      // Kartu di luar profil (atau duplikat) tetap dinilai secara visual.
-      return { photo, kind: 'visual' as const, visualKey: `other-${photo.index}` };
-    });
-  }, [photos, profile]);
+  const plans = useMemo(() => (profile ? planCards(profile, photos) : []), [photos, profile]);
 
   // ─── Buka modal: predictive yang sudah ada langsung ditampilkan ───────────
   useEffect(() => {
@@ -264,14 +107,10 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
     setExisting(null);
     setReport(null);
     setPhotos([]);
-    setMeasures([]);
-    setVisualRows([]);
-    setNameplate({});
-    setNameplatePhotoIndex(null);
+    setDraft(EMPTY_DRAFT);
     setConfirmed(false);
     setDirty(false);
     setLookup(null);
-    setSelection({});
     setEditing(false);
     setUnitLabel((srcDoc.specificDetail || srcDoc.maintenanceName || '').trim());
     (async () => {
@@ -335,108 +174,30 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
   }, [isOpen, srcDoc, step, unitKey, unitLabel, maintenanceDate, lookup?.unitKey]);
 
   // ─── Langkah 2: AI membaca foto ──────────────────────────────────────────
-  const initRows = (state: RowState) => {
-    if (!profile) return;
-    setMeasures(plans.filter(p => p.kind === 'measurement').map(p => ({
-      photoIndex: p.photo.index, cardLabel: p.photo.description, param: p.param!,
-      aiValue: null, aiConfidence: 'rendah', aiConverted: null, input: '', state,
-    })));
-    setVisualRows(plans.filter(p => p.kind === 'visual').map(p => ({
-      photoIndex: p.photo.index, cardLabel: p.photo.description || `Foto #${p.photo.index}`, key: p.visualKey!,
-      condition: 'tidak jelas', observation: '', aiConfidence: 'rendah', state,
-    })));
-    const np = plans.find(p => p.kind === 'nameplate');
-    setNameplatePhotoIndex(np ? np.photo.index : null);
-    setNameplateState(np ? state : 'manual');
-    setNameplate({});
-  };
-
-  const applyResults = (results: Awaited<ReturnType<typeof extractBatchAI>>, failedIdx: number[]) => {
-    if (!profile) return;
-    const byIndex = new Map(results.map(r => [r.index, r]));
-    const failed = new Set(failedIdx);
-    setMeasures(prev => prev.map(row => {
-      if (failed.has(row.photoIndex)) return { ...row, state: 'failed', note: 'AI gagal membaca foto ini; isi manual.' };
-      const r = byIndex.get(row.photoIndex);
-      if (!r) return row;
-      const conv = convertToCanonical(r.value, r.unit, profile.params[row.param].unit);
-      return {
-        ...row,
-        aiValue: r.value, aiUnit: r.unit, aiRaw: r.raw, aiConfidence: r.confidence,
-        aiConverted: conv.value,
-        input: conv.value === null ? '' : String(conv.value),
-        note: conv.note || (r.value === null ? (r.observation || 'Angka tidak terbaca; isi manual.') : r.observation || undefined),
-        state: 'done',
-      };
-    }));
-    setVisualRows(prev => prev.map(row => {
-      if (failed.has(row.photoIndex)) return { ...row, state: 'failed' };
-      const r = byIndex.get(row.photoIndex);
-      if (!r) return row;
-      return { ...row, condition: (r.condition || 'tidak jelas') as PmVisualCondition, observation: r.observation || '', aiConfidence: r.confidence, state: 'done' };
-    }));
-    const npIndex = plans.find(p => p.kind === 'nameplate')?.photo.index;
-    if (npIndex !== undefined) {
-      if (failed.has(npIndex)) setNameplateState('failed');
-      const r = byIndex.get(npIndex);
-      if (r) {
-        if (r.nameplate) setNameplate({ ...r.nameplate, source: 'foto' });
-        setNameplateState('done');
-      }
-    }
-  };
-
   const runExtraction = async (onlyIndexes?: Set<number>) => {
     if (!profile || !srcDoc) return;
     const run = runRef.current;
     if (onlyIndexes) {
-      setMeasures(prev => prev.map(r => (onlyIndexes.has(r.photoIndex) ? { ...r, state: 'pending', note: undefined } : r)));
-      setVisualRows(prev => prev.map(r => (onlyIndexes.has(r.photoIndex) ? { ...r, state: 'pending' } : r)));
+      setDraft(d => markDraftPending(d, onlyIndexes));
     } else {
-      initRows('pending');
-      setSelection({});
+      setDraft(initDraft(plans, 'pending'));
       setEditing(false);
     }
     setStep('reading');
-    const targets = plans.filter(p => !onlyIndexes || onlyIndexes.has(p.photo.index));
-    const items: PmExtractRequestItem[] = [];
-    for (let i = 0; i < targets.length; i++) {
-      const p = targets[i];
-      setProgress(`Menyiapkan foto ${i + 1} dari ${targets.length}...`);
-      const def = p.param ? profile.params[p.param] : undefined;
-      items.push({
-        index: p.photo.index,
-        label: p.photo.description || `Foto #${p.photo.index}`,
-        kind: p.kind,
-        expected: def?.expected || (p.kind === 'visual' ? profile.visualLabels[p.visualKey || ''] || 'Kondisi fisik yang terlihat' : undefined),
-        unit: def?.unit,
-        imageBase64: await prepareImageForAI(p.photo.photoBase64),
-      });
-      if (run !== runRef.current) return;
-    }
-    const batches = batchExtractItems(items);
-    let done = 0;
-    setProgress(`AI membaca foto (0 dari ${batches.length} kelompok)...`);
-    await runPool(batches.map(batch => async () => {
-      try {
-        const results = await extractBatchAI(profile.unitType, unitLabel, batch);
-        if (run === runRef.current) applyResults(results, []);
-      } catch (err: any) {
-        console.warn('Baca foto AI gagal:', err);
-        if (run === runRef.current) applyResults([], batch.map(b => b.index));
-        toast.error(`Sebagian foto gagal dibaca AI: ${err?.message || 'error'}`);
-      }
-      done++;
-      if (run === runRef.current) setProgress(`AI membaca foto (${done} dari ${batches.length} kelompok)...`);
-    }), 2);
-    if (run !== runRef.current) return;
+    const isCancelled = () => run !== runRef.current;
+    const res = await readPlansWithAI(profile, unitLabel, plans.filter(p => !onlyIndexes || onlyIndexes.has(p.photo.index)), {
+      onProgress: text => { if (!isCancelled()) setProgress(text); },
+      onBatch: (results, failed) => setDraft(d => applyExtraction(d, profile, results, failed)),
+      isCancelled,
+    });
+    if (isCancelled()) return;
+    if (res.failedBatches) toast.error(`Sebagian foto gagal dibaca AI: ${res.lastError || 'error'}`);
     setConfirmed(false);
     setStep('confirm');
   };
 
   const startManual = () => {
-    initRows('manual');
-    setSelection({});
+    setDraft(initDraft(plans, 'manual'));
     setEditing(false);
     setConfirmed(false);
     setStep('confirm');
@@ -460,28 +221,7 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
       setPhotos(loaded);
     }
     setUnitLabel(report.unitLabel);
-    setMeasures(report.readings.map(r => ({
-      photoIndex: r.photoIndex, cardLabel: r.cardLabel, param: r.param,
-      aiValue: r.aiValue, aiUnit: r.aiUnit, aiRaw: r.aiRaw, aiConfidence: r.aiConfidence,
-      aiConverted: convertToCanonical(r.aiValue, r.aiUnit, r.unit).value,
-      input: r.value === null ? '' : String(r.value),
-      note: r.note,
-      state: r.aiRaw || r.aiValue !== null ? 'done' : 'manual',
-    })));
-    setVisualRows(report.visuals.map(v => ({
-      photoIndex: v.photoIndex, cardLabel: v.cardLabel, key: v.key, condition: v.condition,
-      observation: v.observation, aiConfidence: v.aiConfidence, state: 'done',
-    })));
-    setNameplate(report.nameplate || {});
-    setNameplatePhotoIndex(loaded.find(p => matchCard(profile, p.description)?.kind === 'nameplate')?.index ?? null);
-    setNameplateState('done');
-    const excluded = new Set(report.excludedEquipment || []);
-    const analysed = new Set(report.sections.map(s => s.id));
-    // Equipment tanpa data di predictive lama dibiarkan ikut deteksi otomatis.
-    setSelection(Object.fromEntries([
-      ...[...excluded].map(id => [id, false] as const),
-      ...[...analysed].filter(id => !excluded.has(id)).map(id => [id, true] as const),
-    ]));
+    setDraft(draftFromReport(report, profile, loaded));
     setConfirmed(false);
     setEditing(true);
     setStep('confirm');
@@ -496,18 +236,9 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
   // ─── Langkah 4: hitung + narasi AI ───────────────────────────────────────
   const runAnalysis = async () => {
     if (!profile || !srcDoc || !user) return;
-    const included = equipmentGroups.filter(isIncluded);
-    if (!included.length) {
-      toast.error('Pilih minimal satu equipment untuk dianalisis.');
-      return;
-    }
-    const includedIds = new Set(included.map(g => g.id));
-    const excludedIds = equipmentGroups.filter(g => !includedIds.has(g.id)).map(g => g.id);
-    const includedParams = new Set(included.flatMap(g => g.rows.map(r => r.param)));
-    const includedVisuals = new Set(included.flatMap(g => g.visuals.map(v => v.photoIndex)));
     const run = runRef.current;
     setStep('analyzing');
-    setProgress('Menghitung status, tren, dan proyeksi...');
+    setProgress('Menghitung status dan tren...');
 
     let hist = lookup;
     if (!hist || hist.unitKey !== unitKey) {
@@ -516,131 +247,48 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
       setLookup(hist);
     }
     const previous = hist.previous;
-
-    const finalNameplate: PmNameplate = hasNameplateData(nameplate)
-      ? { ...nameplate, source: nameplate.source || 'manual' }
-      : hasNameplateData(previous?.nameplate) ? { ...previous!.nameplate, source: 'predictive sebelumnya' } : nameplate;
-
-    const readings: PmReading[] = measures.map(m => {
-      const value = parseInput(m.input);
-      return {
-        param: m.param, photoIndex: m.photoIndex, cardLabel: m.cardLabel, value, unit: profile.params[m.param].unit,
-        aiValue: m.aiValue, aiUnit: m.aiUnit, aiRaw: m.aiRaw, aiConfidence: m.aiConfidence,
-        edited: value !== m.aiConverted, note: m.note,
-      };
-    });
-    // Angka equipment yang tidak dipilih tetap disimpan di readings, tetapi tidak masuk
-    // riwayat (riwayat lamanya dibawa apa adanya) dan tidak dianalisis.
-    const values: Record<string, number | null> = {};
-    for (const r of readings) if (includedParams.has(r.param)) values[r.param] = r.value;
-    const allValues = computeDerived(profile, values, finalNameplate);
-    const history = mergeHistory(previous?.history, allValues, maintenanceDate, srcDoc.id);
-    const visuals: PmVisualObservation[] = visualRows.map(v => ({
-      key: v.key, photoIndex: v.photoIndex, cardLabel: v.cardLabel, condition: v.condition, observation: v.observation.trim(), aiConfidence: v.aiConfidence,
-    }));
-    const sections = buildSections(profile, allValues, history, visuals.filter(v => includedVisuals.has(v.photoIndex)), maintenanceDate, finalNameplate)
-      .filter(s => includedIds.has(s.id));
-    if (!sections.length) {
-      toast.error('Belum ada angka atau observasi yang bisa dianalisis.');
+    const analysis = composeAnalysis(profile, draft, previous, maintenanceDate, srcDoc.id);
+    if ('error' in analysis) {
+      toast.error(analysis.error);
       setStep('confirm');
       return;
     }
 
-    setSectionProgress(Object.fromEntries(sections.map(s => [s.id, 'pending'])));
-    const unitInfo = { unitType: profile.unitType, unitLabel: unitLabel.trim(), maintenanceName: srcDoc.maintenanceName, date: maintenanceDate, nameplate: finalNameplate };
-    setProgress('AI menulis analisis per equipment...');
-    const narrated: PmEquipmentSection[] = await runPool(sections.map(section => async () => {
-      setSectionProgress(p => ({ ...p, [section.id]: 'running' }));
-      try {
-        const narrative = await analyzeSectionAI(sectionAIContext(unitInfo, section));
-        setSectionProgress(p => ({ ...p, [section.id]: 'ai' }));
-        return { ...section, narrative, narrativeSource: 'ai' as const };
-      } catch (err) {
-        console.warn(`Narasi AI ${section.id} gagal:`, err);
-        setSectionProgress(p => ({ ...p, [section.id]: 'otomatis' }));
-        return { ...section, narrative: fallbackNarrative(section), narrativeSource: 'otomatis' as const };
-      }
-    }), 2);
-    if (run !== runRef.current) return;
-
-    setProgress('AI menulis ringkasan eksekutif...');
-    let summary: PmPredictiveReport['summary'];
-    try {
-      const s = await analyzeSummaryAI(summaryAIContext(unitInfo, narrated));
-      summary = { ...s, source: 'ai' };
-    } catch {
-      summary = { ...fallbackSummary(unitLabel.trim(), narrated), source: 'otomatis' };
-    }
-    if (run !== runRef.current) return;
-
-    const [yyyy, mm] = maintenanceDate.split('-');
-    // Akun unit (mis. fcu@gmail.com) bukan nama orang: penanda tangan dibawa dari predictive
-    // kuartal sebelumnya, cukup dikoreksi sekali di langkah Hasil.
-    const carriedPreparer = previous?.signatures?.preparedBy?.name ? previous.signatures.preparedBy : null;
-    const next: PmPredictiveReport = {
-      id: srcDoc.id,
-      reportNumber: existing?.reportNumber || report?.reportNumber || `PDM-PM/DME-NDC/${yyyy}/${mm}/${srcDoc.id.slice(-4).toUpperCase()}`,
-      profileId: profile.id,
-      profileVersion: profile.version,
-      unitType: profile.unitType,
-      account,
-      unitLabel: unitLabel.trim(),
-      unitKey,
-      maintenanceName: srcDoc.maintenanceName,
-      maintenanceDate,
-      sourceDocId: srcDoc.id,
-      sourceCollection: 'pdf_documents',
-      sourceFileName: srcDoc.fileName,
-      nameplate: finalNameplate,
-      readings,
-      visuals,
-      history,
-      previousReportId: previous?.id || null,
-      previousMaintenanceDate: previous?.maintenanceDate || null,
-      sections: narrated,
-      excludedEquipment: excludedIds,
-      overallStatus: worstStatus(narrated.map(effectiveStatus)),
-      summary,
-      // Saat edit angka, penanda tangan yang sudah dikoreksi di langkah Hasil tetap dipakai.
-      signatures: report?.signatures || existing?.signatures || {
-        authorName: AUTHOR_NAME,
-        preparedBy: carriedPreparer || { name: 'Asep Mohammad Fauzi', title: '(Electrical Engineer)' },
-        reviewedBy: { name: 'Arif Budiman', title: '(Technical Manager)' },
-        acknowledgedBy1: { name: 'Habib Mulyana', title: '(Chief Engineer)' },
-        acknowledgedBy2: { name: 'Supriyatno', title: '(Facility manager)' },
-        approvedBy: { name: 'Budi Susanto', title: '(Assistant manager HDC Facility Management)' },
+    setSectionProgress(Object.fromEntries(analysis.sections.map(s => [s.id, 'pending' as const])));
+    const narrated = await narrateSections(
+      { unitType: profile.unitType, unitLabel: unitLabel.trim(), maintenanceName: srcDoc.maintenanceName, date: maintenanceDate, nameplate: analysis.nameplate },
+      analysis.sections,
+      {
+        onSection: (id, state) => setSectionProgress(p => ({ ...p, [id]: state })),
+        onProgress: text => { if (run === runRef.current) setProgress(text); },
       },
-      generatedBy: user.email || '',
-      createdAt: existing?.createdAt,
-    };
-    setReport(next);
+    );
+    if (run !== runRef.current) return;
+
+    setReport(buildPmReport({
+      profile, src: srcDoc, unitLabel, maintenanceDate, analysis,
+      sections: narrated.sections, summary: narrated.summary,
+      previous, existing, current: report, generatedBy: user.email || '',
+    }));
     setDirty(true);
     setEditing(false);
     setStep('result');
   };
 
-  // ─── Simpan & PDF ────────────────────────────────────────────────────────
+  // ─── Simpan & ekspor ─────────────────────────────────────────────────────
   const updateReport = (fn: (r: PmPredictiveReport) => PmPredictiveReport) => {
-    setReport(r => {
-      if (!r) return r;
-      const updated = fn(r);
-      return { ...updated, overallStatus: worstStatus(updated.sections.map(effectiveStatus)) };
-    });
+    setReport(r => (r ? applyReportChange(r, fn) : r));
     setDirty(true);
   };
-
-  const updateSection = (id: string, fn: (s: PmEquipmentSection) => PmEquipmentSection) =>
-    updateReport(r => ({ ...r, sections: r.sections.map(s => (s.id === id ? fn(s) : s)) }));
 
   const save = async (): Promise<boolean> => {
     if (!report || readOnly) return true;
     setSaving(true);
     try {
       await savePmPredictive(report, !existing);
-      const marker: PmPredictiveMarker = { reportNumber: report.reportNumber, overallStatus: report.overallStatus, updatedAt: new Date().toISOString() };
       setExisting(report);
       setDirty(false);
-      onSaved?.(marker);
+      onSaved?.(markerOf(report));
       toast.success('Predictive Report tersimpan');
       return true;
     } catch (err: any) {
@@ -700,26 +348,7 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
   // ─── Render ──────────────────────────────────────────────────────────────
   const stepIndex = { loading: 0, setup: 0, reading: 1, confirm: 1, analyzing: 2, result: 3, error: 0 }[step];
   const steps = ['Siapkan', 'Konfirmasi Angka', 'Analisis', 'Hasil'];
-  const includedGroups = equipmentGroups.filter(isIncluded);
-  const includedRows = includedGroups.flatMap(g => g.rows);
-  const pendingRows = includedRows.filter(m => m.state === 'failed' || (m.state !== 'manual' && m.input === '')).length;
-  const lowConfidence = includedRows.filter(m => m.state === 'done' && m.aiConfidence !== 'tinggi').length;
-  const invalidInputs = includedRows.filter(m => isInputInvalid(m.input)).length;
-  const failedIndexes = new Set([
-    ...measures.filter(m => m.state === 'failed').map(m => m.photoIndex),
-    ...visualRows.filter(v => v.state === 'failed').map(v => v.photoIndex),
-    ...(nameplateState === 'failed' && nameplatePhotoIndex !== null ? [nameplatePhotoIndex] : []),
-  ]);
-
-  const Thumb = ({ index, title }: { index: number; title: string }) => {
-    const p = photoByIndex.get(index);
-    if (!p) return <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><Camera className="w-4 h-4 text-slate-400" /></div>;
-    return (
-      <button type="button" onClick={() => setZoom({ src: p.photoBase64, title })} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0 cursor-zoom-in" title="Perbesar foto">
-        <img src={p.photoBase64} alt={title} className="w-full h-full object-cover" />
-      </button>
-    );
-  };
+  const stats = profile ? draftStats(profile, draft) : null;
 
   const renderSetup = () => {
     const mapped = plans.filter(p => p.kind === 'measurement').length;
@@ -750,7 +379,7 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
               ) : lookup.previous ? (
                 <span>Riwayat ditemukan: predictive PM <strong>{fmtDate(lookup.previous.maintenanceDate)}</strong> ({lookup.total} predictive untuk unit ini). Tren dihitung dari riwayat tersebut.</span>
               ) : (
-                <span>Belum ada predictive sebelumnya untuk unit ini, jadi laporan ini menjadi <strong>baseline</strong>. Pastikan penulisan nama unit sama dengan kuartal lalu.</span>
+                <span>Belum ada predictive sebelumnya untuk unit ini, jadi laporan ini menjadi <strong>pengukuran pertama</strong>. Pastikan penulisan nama unit sama dengan kuartal lalu.</span>
               )}
             </div>
             {lookup?.unitKey === unitKey && lookup.newerExists && (
@@ -788,63 +417,8 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
     );
   };
 
-  const renderMeasureRow = (m: MeasureRow) => {
-    if (!profile) return null;
-    const def = profile.params[m.param];
-    const flagged = m.state === 'failed' || (m.state === 'done' && (m.aiConfidence !== 'tinggi' || m.input === ''));
-    return (
-      <div key={m.photoIndex} className={`flex items-center gap-3 p-2.5 ${flagged ? 'bg-amber-50/60' : ''}`}>
-        <Thumb index={m.photoIndex} title={`${m.cardLabel} — ${def.label}`} />
-        <div className="flex-1 min-w-0 text-xs">
-          <p className="font-bold text-slate-800 truncate">{def.label} <span className="font-medium text-slate-400">· kartu "{m.cardLabel}"</span></p>
-          {m.state === 'done' && (
-            <p className="text-slate-500 mt-0.5 flex flex-wrap items-center gap-1">
-              AI: <strong className="text-slate-700">{m.aiRaw || (m.aiValue !== null ? `${m.aiValue} ${m.aiUnit || ''}` : 'tidak terbaca')}</strong>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${CONFIDENCE_BADGE[m.aiConfidence]}`}>{m.aiConfidence}</span>
-            </p>
-          )}
-          {m.note && <p className="text-[10px] text-amber-700 mt-0.5">{m.note}</p>}
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <input
-            value={m.input}
-            onChange={e => setMeasures(prev => prev.map(r => (r.photoIndex === m.photoIndex ? { ...r, input: e.target.value } : r)))}
-            inputMode="decimal"
-            disabled={m.state === 'pending'}
-            className={`w-20 sm:w-24 px-2 py-1.5 rounded-lg border text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-indigo-300 ${isInputInvalid(m.input) ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-            placeholder="-"
-            aria-label={`Nilai ${def.label}`}
-          />
-          <span className="w-12 text-[11px] font-bold text-slate-500">{def.unit}</span>
-        </div>
-      </div>
-    );
-  };
-
-  const renderVisualRow = (v: VisualRow) => (
-    <div key={v.photoIndex} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-2.5">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <Thumb index={v.photoIndex} title={v.cardLabel} />
-        <p className="text-xs font-bold text-slate-800 truncate">{v.cardLabel}</p>
-      </div>
-      <select
-        value={v.condition}
-        onChange={e => setVisualRows(prev => prev.map(r => (r.photoIndex === v.photoIndex ? { ...r, condition: e.target.value as PmVisualCondition } : r)))}
-        className="px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-bold bg-white"
-      >
-        {(['baik', 'perlu perhatian', 'buruk', 'tidak jelas'] as const).map(c => <option key={c} value={c}>{c}</option>)}
-      </select>
-      <input
-        value={v.observation}
-        onChange={e => setVisualRows(prev => prev.map(r => (r.photoIndex === v.photoIndex ? { ...r, observation: e.target.value } : r)))}
-        placeholder="Keterangan kondisi"
-        className="sm:w-72 px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300"
-      />
-    </div>
-  );
-
   const renderConfirm = () => {
-    if (!profile) return null;
+    if (!profile || !stats) return null;
     return (
       <div className="space-y-4">
         {editing && (
@@ -853,85 +427,16 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
             <button type="button" onClick={cancelEdit} className="px-3 py-1.5 rounded-lg border border-indigo-200 bg-white font-bold text-indigo-700 shrink-0 cursor-pointer">Batal edit</button>
           </div>
         )}
-        <div className="flex flex-wrap gap-2 text-[11px] font-bold">
-          <span className="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800">{includedGroups.length} dari {equipmentGroups.length} equipment dianalisis</span>
-          <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">{includedRows.length} angka</span>
-          {lowConfidence > 0 && <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800">{lowConfidence} keyakinan AI tidak tinggi, cek fotonya</span>}
-          {pendingRows > 0 && <span className="px-2.5 py-1 rounded-lg bg-red-100 text-red-700">{pendingRows} kosong / gagal dibaca</span>}
-          {failedIndexes.size > 0 && (
-            <button type="button" onClick={() => runExtraction(failedIndexes)} className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white flex items-center gap-1 cursor-pointer">
-              <RotateCw className="w-3 h-3" /> Baca ulang {failedIndexes.size} foto gagal
-            </button>
-          )}
-        </div>
-
-        <p className="text-[11px] text-slate-500">
-          Centang equipment yang ingin dimasukkan ke predictive. Equipment yang angka atau kondisinya ditemukan AI sudah dicentang otomatis.
-        </p>
-
-        {equipmentGroups.map(g => {
-          const on = isIncluded(g);
-          const filled = g.rows.filter(r => r.input.trim() !== '').length;
-          const info = [
-            g.rows.length ? `${filled}/${g.rows.length} angka` : '',
-            g.visuals.length ? `${g.visuals.length} observasi` : '',
-          ].filter(Boolean).join(' · ');
-          return (
-            <div key={g.id} className={`rounded-2xl border overflow-hidden ${on ? 'border-slate-200' : 'border-dashed border-slate-300'}`}>
-              <label className={`px-3 py-2 border-b flex items-center gap-2 cursor-pointer ${on ? 'bg-slate-50 border-slate-200' : 'bg-white border-transparent'}`}>
-                <input
-                  type="checkbox"
-                  checked={on}
-                  onChange={e => setSelection(s => ({ ...s, [g.id]: e.target.checked }))}
-                  className="w-4 h-4 accent-indigo-600 shrink-0"
-                  aria-label={`Masukkan ${g.name} ke predictive`}
-                />
-                <span className={`flex-1 min-w-0 text-xs font-black ${on ? 'text-slate-800' : 'text-slate-400'}`}>{g.name}</span>
-                <span className="text-[10px] font-semibold text-slate-500 shrink-0">{info}{g.detected && !editing && g.rows.some(r => r.state === 'done') ? ' · terdeteksi AI' : ''}</span>
-              </label>
-              {on ? (
-                <div className="divide-y divide-slate-100">
-                  {g.rows.map(renderMeasureRow)}
-                  {g.visuals.map(renderVisualRow)}
-                </div>
-              ) : (
-                <p className="px-3 pb-2.5 text-[11px] text-slate-500">Tidak dimasukkan ke predictive. Angkanya tetap disimpan, tetapi tidak dianalisis dan riwayat equipment ini tidak diperbarui.</p>
-              )}
-            </div>
-          );
-        })}
-
-        <div className="rounded-2xl border border-violet-200 overflow-hidden">
-          <div className="px-3 py-2 bg-violet-50 border-b border-violet-200 text-xs font-black text-violet-900 flex items-center justify-between gap-2">
-            <span>Nameplate (rating pabrik)</span>
-            {nameplateState === 'done' && <span className="text-[10px] font-semibold text-violet-700">dibaca AI, periksa kembali</span>}
-          </div>
-          <div className="p-3 flex gap-3">
-            {nameplatePhotoIndex !== null && <Thumb index={nameplatePhotoIndex} title="Nameplate" />}
-            <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-              {([
-                ['brand', 'Merk', 'text'], ['model', 'Model', 'text'], ['ratedVoltage', 'Tegangan (V)', 'num'], ['ratedCurrent', 'Arus FLA (A)', 'num'],
-                ['ratedPowerKw', 'Daya (kW)', 'num'], ['phase', 'Fasa', 'num'], ['frequencyHz', 'Frek. (Hz)', 'num'], ['serial', 'Serial', 'text'],
-              ] as const).map(([key, lbl, kind]) => (
-                <label key={key} className="font-bold text-slate-600">
-                  {lbl}
-                  <input
-                    value={(nameplate as any)[key] ?? ''}
-                    inputMode={kind === 'num' ? 'decimal' : undefined}
-                    onChange={e => setNameplate(n => ({ ...n, [key]: kind === 'num' ? parseInput(e.target.value) : e.target.value, source: 'manual' }))}
-                    className="mt-0.5 w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-300"
-                  />
-                </label>
-              ))}
-            </div>
-          </div>
-          {!hasNameplateData(nameplate) && lookup?.previous && hasNameplateData(lookup.previous.nameplate) && (
-            <p className="px-3 pb-3 text-[11px] text-violet-800">Kosong: akan memakai nameplate dari predictive sebelumnya ({[lookup.previous.nameplate.brand, lookup.previous.nameplate.model].filter(Boolean).join(' ') || 'data rating'}).</p>
-          )}
-          {!hasNameplateData(nameplate) && (!lookup?.previous || !hasNameplateData(lookup.previous.nameplate)) && (
-            <p className="px-3 pb-3 text-[11px] text-slate-500">Tanpa arus FLA nameplate, beban motor terhadap rating tidak bisa dinilai.</p>
-          )}
-        </div>
+        <PmReadingsEditor
+          profile={profile}
+          draft={draft}
+          onChange={setDraft}
+          photoByIndex={photoByIndex}
+          onZoom={setZoom}
+          editing={editing}
+          previousNameplate={lookup?.previous?.nameplate}
+          onRetryFailed={indexes => runExtraction(indexes)}
+        />
 
         <label className="flex items-start gap-2 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-900 cursor-pointer">
           <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-emerald-600" />
@@ -947,139 +452,12 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
           <button
             type="button"
             onClick={runAnalysis}
-            disabled={!confirmed || invalidInputs > 0 || includedGroups.length === 0}
+            disabled={!confirmed || stats.invalidInputs > 0 || stats.included.length === 0}
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs font-black flex items-center justify-center gap-2 shadow-md disabled:opacity-50 cursor-pointer"
           >
             <Bot className="w-4 h-4" /> Analisis prediktif <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-      </div>
-    );
-  };
-
-  const renderResult = () => {
-    if (!report) return null;
-    const ta = 'w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-50 disabled:text-slate-700';
-    return (
-      <div className="space-y-4">
-        <div className={`p-4 rounded-2xl border ${STATUS_BADGE[report.overallStatus]}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-wider opacity-80">Status keseluruhan · {report.unitLabel}</p>
-              <p className="text-lg font-black">{STATUS_LABEL[report.overallStatus]}</p>
-            </div>
-            <div className="text-[11px] text-slate-600 sm:text-right">
-              <p>No. {report.reportNumber}</p>
-              <p>PM {fmtDate(report.maintenanceDate)} · {report.previousMaintenanceDate ? `riwayat sejak PM ${fmtDate(report.previousMaintenanceDate)}` : 'baseline'}</p>
-            </div>
-          </div>
-          {(report.excludedEquipment || []).length > 0 && (
-            <p className="mt-2 text-[11px] text-slate-600">
-              Tidak dianalisis: {(report.excludedEquipment || []).map(id => (id === 'other' ? 'Observasi Visual Lainnya' : profile?.equipment.find(e => e.id === id)?.name || id)).join(', ')}
-            </p>
-          )}
-        </div>
-
-        <div className="p-3 rounded-2xl border border-slate-200 space-y-2">
-          <p className="text-xs font-black text-slate-800">Ringkasan eksekutif {report.summary.source === 'otomatis' && <span className="font-semibold text-amber-700">(disusun otomatis, AI tidak tersedia)</span>}</p>
-          <textarea rows={4} disabled={readOnly} value={report.summary.ringkasan} onChange={e => updateReport(r => ({ ...r, summary: { ...r.summary, ringkasan: e.target.value } }))} className={ta} />
-          <label className="block text-[11px] font-bold text-slate-600">Prioritas tindakan (satu per baris)
-            <textarea rows={3} disabled={readOnly} value={report.summary.prioritas.join('\n')} onChange={e => updateReport(r => ({ ...r, summary: { ...r.summary, prioritas: e.target.value.split('\n') } }))} className={ta} />
-          </label>
-        </div>
-
-        {report.sections.map(section => {
-          const status = effectiveStatus(section);
-          return (
-            <div key={section.id} className="rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="px-3 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-black text-slate-900">{section.name}</p>
-                  <p className="text-[10px] text-slate-500">{section.role}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={status} />
-                  {!readOnly && (
-                    <select
-                      value={section.statusOverride || ''}
-                      onChange={e => updateSection(section.id, s => ({ ...s, statusOverride: (e.target.value || null) as PmStatus | null }))}
-                      className="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-bold bg-white"
-                      title="Koreksi status oleh engineer"
-                    >
-                      <option value="">Status sistem ({STATUS_LABEL[section.status]})</option>
-                      {(['normal', 'watch', 'warning', 'alarm'] as const).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {section.params.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] min-w-[640px]">
-                    <thead className="bg-white text-slate-500 text-[10px] uppercase">
-                      <tr>
-                        <th className="text-left px-3 py-1.5">Parameter</th>
-                        <th className="text-right px-2 py-1.5">Nilai</th>
-                        <th className="text-right px-2 py-1.5">Sebelumnya</th>
-                        <th className="text-left px-2 py-1.5">Batas acuan</th>
-                        <th className="text-left px-2 py-1.5">Status</th>
-                        <th className="text-left px-3 py-1.5">Tren / proyeksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {section.params.map(p => {
-                        const unit = p.unit === '%' ? '%' : ` ${p.unit}`;
-                        return (
-                          <tr key={p.param} className="align-top">
-                            <td className="px-3 py-1.5 font-semibold text-slate-800">{p.label}</td>
-                            <td className="px-2 py-1.5 text-right font-black text-slate-900 whitespace-nowrap">{p.value === null ? '-' : `${fmtNum(p.value)}${unit}`}</td>
-                            <td className="px-2 py-1.5 text-right text-slate-500 whitespace-nowrap">{p.previous ? `${fmtNum(p.previous.value)}${unit}` : '-'}</td>
-                            <td className="px-2 py-1.5 text-slate-500">{p.limitText}</td>
-                            <td className="px-2 py-1.5">{p.value === null ? <span className="text-slate-400">-</span> : p.status === 'unknown' ? <span className="text-slate-400 font-bold">Info</span> : <StatusBadge status={p.status} small />}</td>
-                            <td className="px-3 py-1.5 text-slate-600">
-                              {p.projection ? (
-                                <span className="font-bold text-orange-700">Batas {p.projection.level === 'alarm' ? 'kritis' : 'peringatan'} ~{fmtMonthYear(p.projection.date)} <span className="font-medium">({p.confidence})</span></span>
-                              ) : p.note}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {section.visuals.length > 0 && (
-                <div className="px-3 py-2 border-t border-slate-100 text-[11px] text-slate-600 space-y-0.5">
-                  {section.visuals.map(v => <p key={v.photoIndex}><strong className="text-slate-800">{v.cardLabel}:</strong> {v.condition}{v.observation ? ` — ${v.observation}` : ''}</p>)}
-                </div>
-              )}
-
-              <div className="p-3 border-t border-slate-100 space-y-2">
-                {section.narrativeSource === 'otomatis' && <p className="text-[10px] font-bold text-amber-700">Narasi disusun otomatis karena AI tidak tersedia; silakan disempurnakan.</p>}
-                {([['kondisi', 'Kondisi saat ini'], ['analisisTren', 'Analisis tren'], ['prediksiRisiko', 'Prediksi & risiko']] as const).map(([key, lbl]) => (
-                  <label key={key} className="block text-[11px] font-bold text-slate-600">{lbl}
-                    <textarea rows={3} disabled={readOnly} value={section.narrative[key]} onChange={e => updateSection(section.id, s => ({ ...s, narrative: { ...s.narrative, [key]: e.target.value } }))} className={ta} />
-                  </label>
-                ))}
-                <label className="block text-[11px] font-bold text-slate-600">Rekomendasi (satu per baris)
-                  <textarea rows={3} disabled={readOnly} value={section.narrative.rekomendasi.join('\n')} onChange={e => updateSection(section.id, s => ({ ...s, narrative: { ...s.narrative, rekomendasi: e.target.value.split('\n') } }))} className={ta} />
-                </label>
-              </div>
-            </div>
-          );
-        })}
-
-        {!readOnly && (
-          <div className="p-3 rounded-2xl border border-slate-200 grid sm:grid-cols-2 gap-2 text-[11px]">
-            <label className="font-bold text-slate-600">Prepared by (nama)
-              <input value={report.signatures.preparedBy.name} onChange={e => updateReport(r => ({ ...r, signatures: { ...r.signatures, preparedBy: { ...r.signatures.preparedBy, name: e.target.value } } }))} className="mt-0.5 w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold" />
-            </label>
-            <label className="font-bold text-slate-600">Jabatan
-              <input value={report.signatures.preparedBy.title} onChange={e => updateReport(r => ({ ...r, signatures: { ...r.signatures, preparedBy: { ...r.signatures.preparedBy, title: e.target.value } } }))} className="mt-0.5 w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold" />
-            </label>
-          </div>
-        )}
       </div>
     );
   };
@@ -1142,7 +520,9 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
           )}
           {profile && step === 'setup' && renderSetup()}
           {profile && step === 'confirm' && renderConfirm()}
-          {profile && step === 'result' && renderResult()}
+          {profile && step === 'result' && report && (
+            <PmPredictiveResultView report={report} profile={profile} readOnly={readOnly} onChange={updateReport} />
+          )}
         </div>
 
         {step === 'result' && report && (
@@ -1177,12 +557,7 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
         )}
       </motion.div>
 
-      {zoom && (
-        <div className="fixed inset-0 z-[160] bg-black/85 flex flex-col items-center justify-center p-4" onClick={() => setZoom(null)}>
-          <p className="text-white text-sm font-bold mb-3">{zoom.title}</p>
-          <img src={zoom.src} alt={zoom.title} className="max-w-full max-h-[80vh] rounded-xl object-contain" />
-        </div>
-      )}
+      <PmPhotoZoom zoom={zoom} onClose={() => setZoom(null)} />
     </div>,
     document.body,
   );

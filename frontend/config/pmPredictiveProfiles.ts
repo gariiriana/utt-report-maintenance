@@ -21,10 +21,12 @@ export type PmCanonicalUnit = 'V' | 'A' | '%' | 'mm/s' | 'dB(A)' | 'm/s' | '%RH'
  * - changeFromBaseline: perubahan % (dua arah) dari baseline.
  * - riseFromPrevious: kenaikan absolut dari periode sebelumnya.
  * - nonNegative: nilai negatif menandakan kejanggalan pembacaan/aliran.
+ * - pctOfRatedCurrent: % dari arus nominal (FLA) nameplate; tanpa FLA tidak dinilai.
  */
 export type PmRule =
   | { type: 'band'; nominal: number; nominalFrom?: 'ratedVoltageLL' | 'ratedVoltageLN'; watchPct?: number; warningPct?: number; warningLowPct?: number; alarmPct?: number }
   | { type: 'upper'; watch?: number; warning: number; alarm?: number }
+  | { type: 'pctOfRatedCurrent'; watchPct?: number; warningPct: number; alarmPct?: number }
   | { type: 'range'; lowAlarm?: number; lowWarning?: number; highWatch?: number; highWarning?: number; highAlarm?: number }
   | { type: 'dropFromBaseline'; watchPct: number; warningPct: number; alarmPct?: number }
   | { type: 'changeFromBaseline'; watchPct: number; warningPct: number }
@@ -85,9 +87,13 @@ const VOLTAGE_LN_RULES: PmRule[] = [
   { type: 'band', nominal: 230, nominalFrom: 'ratedVoltageLN', alarmPct: 10 },
 ];
 
+// Arus per fasa dibanding FLA nameplate (ambang sama dengan beban %FLA); tanpa FLA tidak dinilai.
+const PHASE_CURRENT_RULES: PmRule[] = [{ type: 'pctOfRatedCurrent', watchPct: 80, warningPct: 90, alarmPct: 100 }];
+const PHASE_CURRENT_SOURCE = 'Arus per fasa dibanding arus nominal (FLA) nameplate: >80% pantau, >90% peringatan, >100% kritis. Keseimbangan antar fasa dinilai pada baris ketidakseimbangan arus.';
+
 const FCU_PROFILE: PmProfile = {
   id: 'fcu',
-  version: 1,
+  version: 2,
   unitType: 'FCU (Fan Coil Unit)',
   accounts: ['fcu@gmail.com'],
   namePattern: /\bfcu\b|fan\s*coil/i,
@@ -123,9 +129,9 @@ const FCU_PROFILE: PmProfile = {
       rules: [{ type: 'upper', watch: 1, warning: 2, alarm: 5 }],
       source: 'NEMA MG-1: ketidakseimbangan >1% menuntut derating motor, maksimum operasi 5%.',
     },
-    i_r: { label: 'Arus fasa R', unit: 'A', expected: 'Arus fasa R motor fan FCU, clamp meter mode A AC', rules: [], source: 'Dinilai lewat beban terhadap FLA nameplate, keseimbangan antar fasa, dan tren.' },
-    i_s: { label: 'Arus fasa S', unit: 'A', expected: 'Arus fasa S motor fan FCU, clamp meter mode A AC', rules: [], source: 'Dinilai lewat beban terhadap FLA nameplate, keseimbangan antar fasa, dan tren.' },
-    i_t: { label: 'Arus fasa T', unit: 'A', expected: 'Arus fasa T motor fan FCU, clamp meter mode A AC', rules: [], source: 'Dinilai lewat beban terhadap FLA nameplate, keseimbangan antar fasa, dan tren.' },
+    i_r: { label: 'Arus fasa R', unit: 'A', expected: 'Arus fasa R motor fan FCU, clamp meter mode A AC', rules: PHASE_CURRENT_RULES, source: PHASE_CURRENT_SOURCE },
+    i_s: { label: 'Arus fasa S', unit: 'A', expected: 'Arus fasa S motor fan FCU, clamp meter mode A AC', rules: PHASE_CURRENT_RULES, source: PHASE_CURRENT_SOURCE },
+    i_t: { label: 'Arus fasa T', unit: 'A', expected: 'Arus fasa T motor fan FCU, clamp meter mode A AC', rules: PHASE_CURRENT_RULES, source: PHASE_CURRENT_SOURCE },
     i_unbalance: {
       label: 'Ketidakseimbangan arus', unit: '%', derived: 'currentUnbalance', minBasis: 0.5,
       rules: [{ type: 'upper', watch: 5, warning: 10, alarm: 20 }],
@@ -146,8 +152,8 @@ const FCU_PROFILE: PmProfile = {
       rules: [{ type: 'upper', warning: 85 }, { type: 'riseFromPrevious', watch: 3, warning: 6 }],
       source: 'Permenaker No. 5/2018: NAB kebisingan 85 dB(A); kenaikan >=3 dB dari periode sebelumnya (energi bunyi 2x) perlu dipantau.',
     },
-    p_supply: { label: 'Tekanan chilled water supply', unit: 'bar', expected: 'Tekanan pipa chilled water supply (pressure gauge)', rules: [], source: 'Tanpa batas absolut (data desain tidak tersedia); dinilai dari tren dan selisih supply-return.' },
-    p_return: { label: 'Tekanan chilled water return', unit: 'bar', expected: 'Tekanan pipa chilled water return (pressure gauge)', rules: [], source: 'Tanpa batas absolut (data desain tidak tersedia); dinilai dari tren dan selisih supply-return.' },
+    p_supply: { label: 'Tekanan chilled water supply', unit: 'bar', expected: 'Tekanan pipa chilled water supply (pressure gauge)', rules: [], source: 'Tidak ada batas absolut (data desain tidak tersedia); kondisi aliran dinilai dari selisih tekanan supply-return.' },
+    p_return: { label: 'Tekanan chilled water return', unit: 'bar', expected: 'Tekanan pipa chilled water return (pressure gauge)', rules: [], source: 'Tidak ada batas absolut (data desain tidak tersedia); kondisi aliran dinilai dari selisih tekanan supply-return.' },
     p_diff: {
       label: 'Selisih tekanan supply-return', unit: 'bar', derived: 'pressureDiff',
       rules: [{ type: 'nonNegative' }, { type: 'changeFromBaseline', watchPct: 20, warningPct: 35 }],

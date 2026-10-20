@@ -290,6 +290,15 @@ function limitsOf(rule: PmRule, np: PmNameplate, baseline: number | null): Limit
       push('warning', rule.warning, 'above');
       push('alarm', rule.alarm, 'above');
       break;
+    case 'pctOfRatedCurrent': {
+      const fla = np.ratedCurrent;
+      if (fla && fla > 0) {
+        if (rule.watchPct !== undefined) push('watch', fla * rule.watchPct / 100, 'above');
+        push('warning', fla * rule.warningPct / 100, 'above');
+        if (rule.alarmPct !== undefined) push('alarm', fla * rule.alarmPct / 100, 'above');
+      }
+      break;
+    }
     case 'range':
       push('warning', rule.lowWarning, 'below');
       push('alarm', rule.lowAlarm, 'below');
@@ -348,18 +357,27 @@ function ruleText(rule: PmRule, unit: string, np: PmNameplate, baseline: number 
         `peringatan >${fmtNum(rule.warning)}${u}`,
         rule.alarm !== undefined ? `kritis >${fmtNum(rule.alarm)}${u}` : '',
       ].filter(Boolean).join('; ');
+    case 'pctOfRatedCurrent': {
+      const fla = np.ratedCurrent;
+      if (!fla || fla <= 0) return '';
+      return [
+        rule.watchPct !== undefined ? `pantau >${fmtNum(fla * rule.watchPct / 100)}${u}` : '',
+        `peringatan >${fmtNum(fla * rule.warningPct / 100)}${u}`,
+        rule.alarmPct !== undefined ? `kritis >${fmtNum(fla * rule.alarmPct / 100)}${u}` : '',
+      ].filter(Boolean).join('; ') + ` (FLA nameplate ${fmtNum(fla)}${u})`;
+    }
     case 'range':
       return `Normal ${fmtNum(rule.lowWarning ?? rule.lowAlarm)}-${fmtNum(rule.highWatch ?? rule.highWarning)}${u}`
         + (rule.highWarning !== undefined ? `; peringatan >${fmtNum(rule.highWarning)}${u}` : '')
         + (rule.highAlarm !== undefined ? `; kritis >${fmtNum(rule.highAlarm)}${u}` : '');
     case 'dropFromBaseline':
       return baseline !== null
-        ? `Turun >${rule.watchPct}% dari baseline ${fmtNum(baseline)}${u} = pantau; >${rule.warningPct}% = peringatan`
-        : `Baseline: dibandingkan pada pengukuran berikutnya (turun >${rule.watchPct}% = pantau)`;
+        ? `Turun >${rule.watchPct}% dari acuan awal ${fmtNum(baseline)}${u} = pantau; >${rule.warningPct}% = peringatan`
+        : `Pengukuran pertama menjadi acuan; turun >${rule.watchPct}% pada pengukuran berikutnya = pantau`;
     case 'changeFromBaseline':
       return baseline !== null
-        ? `Berubah >${rule.watchPct}% dari baseline ${fmtNum(baseline)}${u} = pantau; >${rule.warningPct}% = peringatan`
-        : `Baseline: dibandingkan pada pengukuran berikutnya (berubah >${rule.watchPct}% = pantau)`;
+        ? `Berubah >${rule.watchPct}% dari acuan awal ${fmtNum(baseline)}${u} = pantau; >${rule.warningPct}% = peringatan`
+        : `Pengukuran pertama menjadi acuan; berubah >${rule.watchPct}% pada pengukuran berikutnya = pantau`;
     case 'riseFromPrevious':
       return `naik >=${fmtNum(rule.watch)}${u} dari periode sebelumnya = pantau`;
     case 'nonNegative':
@@ -390,8 +408,10 @@ export function evaluateParam({ param, def, series, value, date, nameplate }: Ev
     change: null, changePct: null, trendPerQuarter: null, projection: null, confidence: 'Rendah', note: '',
   };
 
-  const texts = def.rules.map(r => ruleText(r, unit, nameplate, baseline)).filter(Boolean);
-  base.limitText = texts.join('; ') || 'Dinilai dari tren';
+  // Aturan berbasis FLA hanya berlaku bila nameplate memuat arus nominal; parameter tanpa
+  // aturan yang berlaku (mis. tekanan supply/return) dinilai lewat parameter turunannya.
+  const rules = def.rules.filter(r => r.type !== 'pctOfRatedCurrent' || (nameplate.ratedCurrent ?? 0) > 0);
+  base.limitText = rules.map(r => ruleText(r, unit, nameplate, baseline)).filter(Boolean).join('; ');
 
   if (value === null) {
     base.note = def.derived === 'currentLoadPct'
@@ -401,9 +421,9 @@ export function evaluateParam({ param, def, series, value, date, nameplate }: Ev
   }
 
   // Status dari aturan absolut / relatif.
-  let status: PmStatus = def.rules.length ? 'normal' : 'unknown';
+  let status: PmStatus = rules.length ? 'normal' : 'unknown';
   const allLimits: Limit[] = [];
-  for (const rule of def.rules) {
+  for (const rule of rules) {
     if (rule.type === 'nonNegative') {
       if (value < 0) {
         status = STATUS_RANK.warning > STATUS_RANK[status] ? 'warning' : status;
@@ -495,10 +515,9 @@ export function effectiveStatus(section: PmEquipmentSection): PmStatus {
   return section.statusOverride || section.status;
 }
 
-/** Label status parameter; parameter tanpa batas absolut (mis. arus per fasa) bersifat informasi. */
-export function paramStatusLabel(p: PmParamResult): string {
-  if (p.value !== null && p.status === 'unknown') return 'Informasi, dinilai dari tren';
-  return STATUS_LABEL[p.status];
+/** Label status untuk narasi & AI; null bila tidak ada batas acuan untuk dinilai. */
+export function knownStatusLabel(status: PmStatus): string | null {
+  return status === 'unknown' ? null : STATUS_LABEL[status];
 }
 
 // ─── Susun bagian per equipment ──────────────────────────────────────────────
@@ -540,14 +559,15 @@ export function buildSections(
 export function fallbackNarrative(section: PmEquipmentSection): PmSectionNarrative {
   const withValue = section.params.filter(p => p.value !== null);
   const flagged = withValue.filter(p => STATUS_RANK[p.status] >= STATUS_RANK.watch);
+  const sectionStatus = knownStatusLabel(effectiveStatus(section));
   const kondisi = withValue.length
-    ? `${section.name} berstatus ${STATUS_LABEL[effectiveStatus(section)]}. ` + withValue
-      .map(p => `${p.label} ${fmtNum(p.value)} ${p.unit} (${paramStatusLabel(p)})`).join(', ') + '.'
+    ? `${section.name}${sectionStatus ? ` berstatus ${sectionStatus}` : ''}. ` + withValue
+      .map(p => `${p.label} ${fmtNum(p.value)} ${p.unit}${knownStatusLabel(p.status) ? ` (${knownStatusLabel(p.status)})` : ''}`).join(', ') + '.'
     : `${section.name} dinilai dari observasi visual: ` + section.visuals.map(v => `${v.cardLabel} ${v.condition}${v.observation ? ` (${v.observation})` : ''}`).join('; ') + '.';
   const trended = withValue.filter(p => p.trendPerQuarter !== null);
   const analisisTren = trended.length
     ? trended.map(p => `${p.label}: ${p.note}`).join(' ')
-    : 'Laporan ini menjadi pengukuran baseline; tren dapat dihitung mulai laporan predictive berikutnya.';
+    : 'Pengukuran ini menjadi data awal (baseline); tren dihitung mulai pengukuran periode berikutnya.';
   const projected = withValue.filter(p => p.projection);
   const prediksiRisiko = projected.length
     ? projected.map(p => `${p.label} diperkirakan mencapai batas ${p.projection!.level === 'alarm' ? 'kritis' : 'peringatan'} ${fmtNum(p.projection!.limit)} ${p.unit} sekitar ${fmtMonthYear(p.projection!.date)} (keyakinan ${p.confidence.toLowerCase()}).`).join(' ')
@@ -561,7 +581,7 @@ export function fallbackNarrative(section: PmEquipmentSection): PmSectionNarrati
 export function fallbackSummary(unitLabel: string, sections: PmEquipmentSection[]): { ringkasan: string; prioritas: string[] } {
   const overall = worstStatus(sections.map(effectiveStatus));
   const flagged = sections.filter(s => STATUS_RANK[effectiveStatus(s)] >= STATUS_RANK.watch);
-  const ringkasan = `Unit ${unitLabel} secara keseluruhan berstatus ${STATUS_LABEL[overall]}. `
+  const ringkasan = (overall === 'unknown' ? `Hasil pengukuran unit ${unitLabel} tercatat sebagai data awal pemantauan. ` : `Unit ${unitLabel} secara keseluruhan berstatus ${STATUS_LABEL[overall]}. `)
     + (flagged.length
       ? `Equipment yang perlu perhatian: ${flagged.map(s => `${s.name} (${STATUS_LABEL[effectiveStatus(s)]})`).join(', ')}.`
       : 'Seluruh equipment yang diukur berada dalam batas acuan.');
@@ -581,13 +601,14 @@ export function sectionAIContext(unit: { unitType: string; unitLabel: string; ma
       tanggalPM: unit.date,
       nameplate: unit.nameplate,
     },
-    equipment: { nama: section.name, fungsi: section.role, status: STATUS_LABEL[effectiveStatus(section)] },
-    parameter: section.params.map(p => ({
+    equipment: { nama: section.name, fungsi: section.role, status: knownStatusLabel(effectiveStatus(section)) },
+    // Parameter tanpa angka tidak dicetak di laporan, jadi tidak dikirim ke AI.
+    parameter: section.params.filter(p => p.value !== null).map(p => ({
       nama: p.label,
       satuan: p.unit,
       nilai: p.value,
-      status: paramStatusLabel(p),
-      batasAcuan: p.limitText,
+      status: knownStatusLabel(p.status),
+      batasAcuan: p.limitText || null,
       jumlahTitikData: p.points,
       sebelumnya: p.previous ? { tanggal: p.previous.date, nilai: p.previous.value } : null,
       perubahan: p.change,
@@ -604,10 +625,10 @@ export function sectionAIContext(unit: { unitType: string; unitLabel: string; ma
 
 export function summaryAIContext(unit: { unitType: string; unitLabel: string; date: string }, sections: PmEquipmentSection[]) {
   return {
-    unit: { jenis: unit.unitType, nama: unit.unitLabel, tanggalPM: unit.date, statusKeseluruhan: STATUS_LABEL[worstStatus(sections.map(effectiveStatus))] },
+    unit: { jenis: unit.unitType, nama: unit.unitLabel, tanggalPM: unit.date, statusKeseluruhan: knownStatusLabel(worstStatus(sections.map(effectiveStatus))) },
     equipment: sections.map(s => ({
       nama: s.name,
-      status: STATUS_LABEL[effectiveStatus(s)],
+      status: knownStatusLabel(effectiveStatus(s)),
       kondisi: s.narrative.kondisi,
       prediksi: s.narrative.prediksiRisiko,
       rekomendasiUtama: s.narrative.rekomendasi.slice(0, 2),

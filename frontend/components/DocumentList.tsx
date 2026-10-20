@@ -11,7 +11,7 @@ import { useNavigationState, useFolderNavigation } from '@/hooks/useAppNavigatio
 import { FILE_FOLDER_LABELS } from '@/config/fileFolders';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye, ArrowLeft, Bot } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers, Upload, RotateCw, Calendar, RefreshCw, UserCheck, Eye, ArrowLeft, Bot, CalendarRange } from 'lucide-react';
 import { collection, query, getDocs, getDocsFromCache, getCountFromServer, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp, getDoc, getDocFromCache } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -47,6 +47,7 @@ import { HSEReportForm } from './HSEReportForm';
 import { isServiceReportSupported } from '@/config/serviceReportRegistry';
 import { safeStorage } from '@/utils/safeStorage';
 import { PmPredictiveModal, STATUS_BADGE as PM_STATUS_BADGE } from './PmPredictiveModal';
+import { PmPredictiveQuarterModal } from './PmPredictiveQuarterModal';
 import { resolvePmProfile } from '@/config/pmPredictiveProfiles';
 import { STATUS_LABEL as PM_STATUS_LABEL } from '@/utils/pmPredictiveEngine';
 
@@ -399,6 +400,7 @@ export function DocumentList({
   const [uploadSrModalDoc, setUploadSrModalDoc] = useState<ExcelDocument | null>(null);
   const [abnormalModalDoc, setAbnormalModalDoc] = useState<ExcelDocument | null>(null);
   const [pmPredictiveDoc, setPmPredictiveDoc] = useState<ExcelDocument | null>(null);
+  const [pmQuarterOpen, setPmQuarterOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; title: string } | null>(null);
   const [downloadChoiceDoc, setDownloadChoiceDoc] = useState<ExcelDocument | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2083,6 +2085,11 @@ export function DocumentList({
   // --------------------------------------------------------------------------
   // HSE Inspection Recap Computed & Handlers
   // --------------------------------------------------------------------------
+  // Laporan PM yang mendukung Predictive Report (mis. akun FCU) untuk generate per quarter.
+  const pmQuarterDocs = useMemo(() => (isEngineer || isAdmin)
+    ? documents.filter(d => d.documentType === 'pdf' && !d.deleteRequested && resolvePmProfile(d.createdBy, d.maintenanceName))
+    : [], [documents, isEngineer, isAdmin]);
+
   const hseInspectionDocs = useMemo(() => {
     return documents.filter(d => d.documentType === 'hse' || d.hseType === 'inspection');
   }, [documents]);
@@ -4393,16 +4400,29 @@ export function DocumentList({
                   : 'Semua berkas operasional, laporan preventive & corrective maintenance terpusat'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => fetchDocuments(true)}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 shadow-2xs"
-            title="Segarkan data arsip & laporan terbaru dari server"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : 'text-slate-600'}`} />
-            <span>Segarkan</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {pmQuarterDocs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setPmQuarterOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
+                title="Buat Predictive Report untuk seluruh laporan PM dalam satu quarter, lalu unduh satu dokumen gabungan"
+              >
+                <CalendarRange className="w-3.5 h-3.5" />
+                <span>Predictive per Quarter</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => fetchDocuments(true)}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 shadow-2xs"
+              title="Segarkan data arsip & laporan terbaru dari server"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : 'text-slate-600'}`} />
+              <span>Segarkan</span>
+            </button>
+          </div>
         </div>
 
         {/* Tier 1: Search Bar & Control Dropdowns */}
@@ -5007,6 +5027,14 @@ export function DocumentList({
           if (!pmPredictiveDoc) return;
           setDocuments(prev => prev.map(d => (d.id === pmPredictiveDoc.id ? { ...d, pmPredictive: marker } : d)));
         }}
+      />
+
+      <PmPredictiveQuarterModal
+        isOpen={pmQuarterOpen}
+        onClose={() => setPmQuarterOpen(false)}
+        documents={pmQuarterDocs}
+        readOnly={!(isEngineer || isAdmin)}
+        onSaved={(docId, marker) => setDocuments(prev => prev.map(d => (d.id === docId ? { ...d, pmPredictive: marker } : d)))}
       />
 
       <AbnormalReportModal

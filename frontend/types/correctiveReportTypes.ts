@@ -5,6 +5,8 @@
 //            dan pencetakan dokumen resmi DOCX & PDF (docxReportExport.ts & CMReportPdfExport.ts).
 // ============================================================================
 
+import type { RevisionHistoryEntry } from '@/utils/documentRevision';
+
 /** Items suku cadang/sparepart terpakai dalam perbaikan CM */
 export interface CMSparepartItem {
   no?: number;                              // Nomor urut item
@@ -97,4 +99,5 @@ export interface CMReportData {
   revisionNote?: string;                   // Catatan alasan/detail revisi dari reviewer/QC/admin
   revisionUpdatedAt?: any;                 // Timestamp kapan status revisi diupdate
   revisionUpdatedBy?: string;              // Nama/email yang mengupdate status revisi
+  revisionHistory?: RevisionHistoryEntry[]; // Riwayat tiap kali dikembalikan / disetujui (Revisi ke-N)
 }

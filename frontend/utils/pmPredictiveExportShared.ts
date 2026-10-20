@@ -1,18 +1,25 @@
 // ============================================================================
 // FILE: frontend/utils/pmPredictiveExportShared.ts
-// Deskripsi: Bahan bersama ekspor PDF & DOCX Predictive Report dari laporan PM:
-//            teks sel tabel parameter, dasar batas acuan, catatan metode, dan foto
-//            dokumentasi per equipment (diambil dari foto kartu laporan PM asal).
+// Deskripsi: Bahan bersama ekspor PDF & DOCX Predictive Report dari laporan PM
+//            (satu unit maupun gabungan satu quarter): teks sel tabel parameter,
+//            dasar batas acuan, catatan metode, ringkasan periode, dan foto
+//            dokumentasi per equipment. Dokumen hanya berisi isi laporan teknis:
+//            tanpa akun website, nomor internal, atau istilah alur aplikasi.
+//            Import nilai memakai path relatif .ts agar teks ekspor bisa diuji
+//            langsung dengan Node (scripts/test-pm-predictive-workflow.mjs).
 // ============================================================================
 
-import type { PmParamResult, PmPredictiveReport, PmStatus } from '@/types/pmPredictiveTypes';
-import { PM_PREDICTIVE_PROFILES } from '@/config/pmPredictiveProfiles';
-import { STATUS_LABEL, fmtNum, fmtDate, fmtMonthYear, matchCard } from '@/utils/pmPredictiveEngine';
-import { loadPmSourcePhotos, type PmSourcePhoto } from '@/utils/pmPredictiveService';
+import type { PmEquipmentSection, PmParamResult, PmPredictiveReport, PmStatus } from '@/types/pmPredictiveTypes';
+import type { PmSourcePhoto } from '@/utils/pmPredictiveService';
+import { PM_PREDICTIVE_PROFILES } from '../config/pmPredictiveProfiles.ts';
+import { STATUS_LABEL, STATUS_RANK, effectiveStatus, fmtNum, fmtDate, matchCard } from './pmPredictiveEngine.ts';
 
-export const METHOD_TEXT = 'Metode: angka pengukuran dibaca oleh AI dari foto dokumentasi PM lalu diperiksa dan dikonfirmasi engineer. '
-  + 'Status ditentukan dari batas acuan di atas. Tren dihitung dengan regresi linier atas riwayat pengukuran unit yang sama pada laporan predictive sebelumnya; '
-  + 'proyeksi waktu mencapai batas bersifat indikatif dan keyakinannya bergantung pada jumlah titik data (2 titik = rendah, 3 = sedang, ≥4 dengan tren konsisten = tinggi).';
+export const METHOD_TEXT = 'Metode: nilai parameter berasal dari pengukuran saat Preventive Maintenance dan dinilai terhadap batas acuan di atas. '
+  + 'Tren dihitung dengan regresi linier atas riwayat pengukuran unit yang sama pada periode sebelumnya; perkiraan waktu mencapai batas '
+  + 'bersifat indikatif dan keyakinannya bergantung pada jumlah titik data (2 titik = rendah, 3 = sedang, ≥4 dengan tren konsisten = tinggi).';
+
+/** Teks status di dokumen; tanpa batas acuan yang bisa dinilai dicetak "-". */
+export const exportStatusText = (status: PmStatus) => (status === 'unknown' ? '-' : STATUS_LABEL[status]);
 
 export function nameplateText(r: PmPredictiveReport): string {
   const n = r.nameplate || {};
@@ -25,9 +32,15 @@ export function nameplateText(r: PmPredictiveReport): string {
     n.phase ? `${n.phase} fasa` : '',
     n.frequencyHz ? `${fmtNum(n.frequencyHz)} Hz` : '',
   ].filter(Boolean);
-  if (!parts.length) return 'Data nameplate tidak terbaca';
-  return parts.join(' | ') + (n.source === 'predictive sebelumnya' ? ' (dari predictive sebelumnya)' : '');
+  return parts.length ? parts.join(' | ') : 'Data nameplate tidak terbaca';
 }
+
+/** Parameter yang dicetak: hanya yang punya angka pada laporan ini. */
+export const exportParams = (section: PmEquipmentSection): PmParamResult[] => section.params.filter(p => p.value !== null);
+
+/** Kolom Sebelumnya & Perubahan hanya dicetak bila ada pengukuran pembanding. */
+export const hasComparison = (report: PmPredictiveReport): boolean =>
+  report.sections.some(s => exportParams(s).some(p => p.previous));
 
 export interface PmParamRowText {
   label: string;
@@ -37,7 +50,6 @@ export interface PmParamRowText {
   limit: string;
   status: PmStatus;
   statusText: string;
-  projection: string;
 }
 
 /** Teks satu baris tabel parameter (sama persis di PDF dan DOCX). */
@@ -45,47 +57,53 @@ export function paramRowText(p: PmParamResult): PmParamRowText {
   const unit = p.unit === '%' ? '%' : ` ${p.unit}`;
   const change = p.change !== null
     ? `${p.change > 0 ? '+' : ''}${fmtNum(p.change)}${unit}${p.trendPerQuarter !== null && p.points >= 3 ? `\n${p.trendPerQuarter > 0 ? '+' : ''}${fmtNum(p.trendPerQuarter)}${unit}/kuartal` : ''}`
-    : 'Baseline';
-  const projection = p.projection
-    ? `${p.projection.level === 'alarm' ? 'Kritis' : 'Peringatan'} ${fmtNum(p.projection.limit)}${unit} ~${fmtMonthYear(p.projection.date)} (${p.confidence})`
-    : p.points >= 2 ? 'Tidak mengarah ke batas' : '-';
+    : '-';
   const status: PmStatus = p.value === null ? 'unknown' : p.status;
   return {
     label: p.label,
     value: p.value === null ? '-' : `${fmtNum(p.value)}${unit}`,
     previous: p.previous ? `${fmtNum(p.previous.value)}${unit}\n(${fmtDate(p.previous.date)})` : '-',
     change,
-    limit: p.limitText,
+    limit: p.limitText || '-',
     status,
-    statusText: status === 'unknown' && p.value !== null ? 'Info' : STATUS_LABEL[status],
-    projection,
+    statusText: exportStatusText(status),
   };
 }
 
-/** Parameter dengan dasar acuan yang sama (mis. 6 titik tegangan) digabung satu baris. */
-export function limitSourceRows(report: PmPredictiveReport): [string, string][] {
-  const profile = PM_PREDICTIVE_PROFILES.find(p => p.id === report.profileId);
-  const usedParams = Array.from(new Set(report.sections.flatMap(s => s.params.map(p => p.param))));
-  if (!profile || !usedParams.length) return [];
+/** Status per equipment untuk ringkasan, mis. "Motor Fan (Blower): Normal". */
+export const sectionStatusLines = (report: PmPredictiveReport): string =>
+  report.sections.map(s => `${s.name}: ${exportStatusText(effectiveStatus(s))}`).join('\n');
+
+/**
+ * Dasar batas acuan parameter yang dicetak. Parameter dengan dasar yang sama
+ * (mis. 6 titik tegangan) digabung satu baris; laporan gabungan memakai satu tabel.
+ */
+export function limitSourceRows(reports: PmPredictiveReport[]): [string, string][] {
   const bySource = new Map<string, string[]>();
-  for (const p of usedParams) {
-    const source = profile.params[p]?.source || '-';
-    bySource.set(source, [...(bySource.get(source) || []), profile.params[p]?.label || p]);
+  for (const report of reports) {
+    const profile = PM_PREDICTIVE_PROFILES.find(p => p.id === report.profileId);
+    if (!profile) continue;
+    for (const p of report.sections.flatMap(exportParams)) {
+      const def = profile.params[p.param];
+      if (!def) continue;
+      const labels = bySource.get(def.source) || [];
+      if (!labels.includes(def.label)) bySource.set(def.source, [...labels, def.label]);
+    }
   }
   return Array.from(bySource).map(([source, labels]) => [labels.join(', '), source]);
 }
 
-/** Nama equipment yang sengaja tidak dianalisis engineer. */
-export function excludedEquipmentNames(report: PmPredictiveReport): string[] {
-  const profile = PM_PREDICTIVE_PROFILES.find(p => p.id === report.profileId);
-  return (report.excludedEquipment || []).map(id =>
-    id === 'other' ? 'Observasi Visual Lainnya' : profile?.equipment.find(e => e.id === id)?.name || id);
+/** Equipment yang perlu perhatian (status Perlu Dipantau ke atas), untuk ringkasan periode. */
+export function attentionText(report: PmPredictiveReport): string {
+  const flagged = report.sections.filter(s => STATUS_RANK[effectiveStatus(s)] >= STATUS_RANK.watch);
+  return flagged.length ? flagged.map(s => `${s.name} (${STATUS_LABEL[effectiveStatus(s)]})`).join(', ') : 'Tidak ada';
 }
 
 // ─── Foto dokumentasi ────────────────────────────────────────────────────────
 
 export interface PmExportPhoto {
-  index: number;
+  /** Unik antar laporan (dipakai alias gambar PDF gabungan). */
+  key: string;
   caption: string;
   dataUrl: string; // JPEG
   width: number;
@@ -96,6 +114,9 @@ export interface PmExportPhotos {
   nameplate: PmExportPhoto[];
   bySection: Record<string, PmExportPhoto[]>;
 }
+
+export const countExportPhotos = (photos: PmExportPhotos) =>
+  photos.nameplate.length + Object.values(photos.bySection).reduce((n, list) => n + list.length, 0);
 
 /** Perkecil foto untuk dokumen: cukup jelas dibaca saat dicetak, ukuran file tetap wajar. */
 function shrinkPhoto(dataUrl: string, maxSide = 900, quality = 0.72): Promise<{ dataUrl: string; width: number; height: number } | null> {
@@ -126,19 +147,9 @@ function shrinkPhoto(dataUrl: string, maxSide = 900, quality = 0.72): Promise<{ 
 
 /**
  * Foto kartu laporan PM yang dipakai tiap bagian equipment (pengukuran + observasi
- * visual), serta foto nameplate. Foto yang sudah dimuat modal dipakai ulang agar
- * tidak membaca Firestore lagi.
+ * visual), serta foto nameplate. Pemanggil memuat foto laporan PM-nya.
  */
-export async function collectPmExportPhotos(report: PmPredictiveReport, loaded?: PmSourcePhoto[]): Promise<PmExportPhotos> {
-  let source = loaded && loaded.length ? loaded : [];
-  if (!source.length) {
-    try {
-      source = await loadPmSourcePhotos(report.sourceDocId, report.sourceCollection);
-    } catch (err) {
-      console.warn('Foto laporan PM tidak bisa dimuat untuk ekspor:', err);
-      source = [];
-    }
-  }
+export async function collectPmExportPhotos(report: PmPredictiveReport, source: PmSourcePhoto[]): Promise<PmExportPhotos> {
   const byIndex = new Map(source.map(p => [p.index, p]));
   const profile = PM_PREDICTIVE_PROFILES.find(p => p.id === report.profileId);
   const cache = new Map<number, Promise<{ dataUrl: string; width: number; height: number } | null>>();
@@ -147,7 +158,7 @@ export async function collectPmExportPhotos(report: PmPredictiveReport, loaded?:
     if (!photo) return null;
     if (!cache.has(index)) cache.set(index, shrinkPhoto(photo.photoBase64));
     const img = await cache.get(index)!;
-    return img ? { index, caption, ...img } : null;
+    return img ? { key: `${report.id}-${index}`, caption, ...img } : null;
   };
   const compact = (items: (PmExportPhoto | null)[]) => items.filter((p): p is PmExportPhoto => p !== null);
 
@@ -157,11 +168,9 @@ export async function collectPmExportPhotos(report: PmPredictiveReport, loaded?:
     const seen = new Set<number>();
     const tasks: Promise<PmExportPhoto | null>[] = [];
     for (const r of report.readings) {
-      if (!eq?.params.includes(r.param) || seen.has(r.photoIndex)) continue;
+      if (!eq?.params.includes(r.param) || seen.has(r.photoIndex) || r.value === null) continue;
       seen.add(r.photoIndex);
-      const label = profile?.params[r.param]?.label || r.cardLabel;
-      const value = r.value === null ? 'tidak ada angka' : `${fmtNum(r.value)} ${r.unit}`;
-      tasks.push(prepare(r.photoIndex, `${label}: ${value}`));
+      tasks.push(prepare(r.photoIndex, `${profile?.params[r.param]?.label || r.cardLabel}: ${fmtNum(r.value)} ${r.unit}`));
     }
     for (const v of section.visuals) {
       if (seen.has(v.photoIndex)) continue;
@@ -179,3 +188,20 @@ export async function collectPmExportPhotos(report: PmPredictiveReport, loaded?:
 export function safeFileName(s: string): string {
   return s.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
 }
+
+/** Satu laporan di dokumen gabungan beserta foto laporan PM-nya (dimuat bila kosong). */
+export interface PmBundleEntry {
+  report: PmPredictiveReport;
+  photos?: PmSourcePhoto[];
+}
+
+/** Keterangan periode dokumen gabungan, mis. { label: 'Q2 2026', months: 'April - Juni 2026' }. */
+export interface PmBundlePeriod {
+  label: string;
+  months: string;
+}
+
+/** Laporan gabungan diurutkan per tanggal PM lalu nama unit. */
+export const sortBundleReports = <T extends { report: PmPredictiveReport }>(entries: T[]): T[] =>
+  [...entries].sort((a, b) => a.report.maintenanceDate.localeCompare(b.report.maintenanceDate)
+    || a.report.unitLabel.localeCompare(b.report.unitLabel, 'id', { numeric: true }));
