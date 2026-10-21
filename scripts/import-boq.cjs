@@ -1,11 +1,23 @@
 // Builds frontend/data/boqItems.json from the per-equipment BOQ workbook (one sheet per equipment category).
 // Only the asset table left of each sheet's "PM DATE" column is imported; the PM schedule and service-report
 // tracking to its right are deliberately left out, as are the planning sheets listed in EXCLUDED_SHEETS.
+// Two things from the right-hand side are kept: the tab colour (what the drafter has to do with the sheet)
+// and the note column next to QTY ("Panel tidak ditemukan", "double dengan no 6", ...).
 const ExcelJS = require('exceljs');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const EXCLUDED_SHEETS = ['Progress MOS & Instal CM', 'consumable parts 2026', 'Plan ManPower Agu', 'Plan ManPower Sep', 'Progress', 'Resume Q3', '2026 Schedule', 'Sheet1'];
+// Tab colour → status agreed with the team (2026-10-21). An unknown colour stops the import.
+const STATUS_BY_TAB = {
+  FF7030A0: 'fix', // ungu: data sudah fix
+  FFFF0000: 'cek-lapangan', // merah: cek ke lapangan, hapus kalau tidak ada
+  FFFFC000: 'cek-kembali', // kuning: cek kembali (sama seperti merah)
+  FFFFFF00: 'cek-kembali',
+  FF00B0F0: 'samakan-habib', // biru: belum sama dengan data fix Habib
+};
+// PM progress, not a remark about the asset.
+const NOT_A_NOTE = /^report on process$/i;
 const MONTH = /^(jan(uary|uari)?|feb(ruary|ruari)?|mar(ch|et)?|apr(il)?|ma[iy]|jun[ei]?|jul[iy]?|aug(ust)?|agu(stus)?|sep(tember)?|o[ck]t(ober)?|nov(ember)?|de[cs](ember)?)$/i;
 // The signature block ends the BOQ; a bare "Note :" introduces rows marked as outside the BOQ (FSS).
 const FOOTER = /^(cikarang,|disiapkan oleh|diketahui oleh|disetujui oleh|note\s*:?$|\(\s*[a-z .]+\s*\)$)/i;
@@ -23,6 +35,8 @@ const text = value => {
   if (value.richText) return value.richText.map(part => part.text).join('').trim();
   if (value.error) return '';
   if ('result' in value || value.formula || value.sharedFormula) return text(value.result);
+  // Hyperlink cells: `text` is either a string or rich text.
+  if (value.text && typeof value.text === 'object') return text(value.text);
   return String(value.text ?? '').trim();
 };
 const columnLetter = column => { let s = ''; for (let n = column; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; };
@@ -53,10 +67,22 @@ function isHeaderRow(grid, r) {
   return values.slice(0, 3).some(v => v === 'no') && values.some(v => ['class id', 'ci name', 'ci description'].includes(v));
 }
 
-function buildTable(grid, headerRow, inheritedPm) {
+function buildTable(grid, headerRow, inherited) {
   let pm = 0;
   for (let c = 1; c <= grid.lastCol && !pm; c++) if (PM_HEADER.test(grid.merged(headerRow, c))) pm = c;
-  pm ||= inheritedPm || grid.lastCol + 1;
+  // Notes sit right of PM DATE / QTY under a numeric or empty heading, up to the first labelled PM column (DATE, Week 2…).
+  let noteColumns = [];
+  if (pm) {
+    for (let c = pm + 1; c <= grid.lastCol; c++) {
+      const label = grid.merged(headerRow, c).trim();
+      if (/^qty$/i.test(label)) continue;
+      if (label && !/^[\d.,]+$/.test(label)) break;
+      noteColumns.push(c);
+    }
+  } else if (inherited) {
+    ({ pm, noteColumns } = inherited);
+  }
+  pm ||= grid.lastCol + 1;
   const labels = [];
   let lastLabeled = 0;
   for (let c = 1; c < pm; c++) {
@@ -79,7 +105,16 @@ function buildTable(grid, headerRow, inheritedPm) {
     const nameColumn = columns.find(column => column.field === 'classId') || columns.find(column => column.field === 'ciDescription');
     if (nameColumn) nameColumn.field = 'ciName';
   }
-  return { headerRow, pm, columns };
+  return { headerRow, pm, noteColumns, columns };
+}
+
+function noteOf(grid, table, rows) {
+  const notes = [];
+  for (const r of rows) for (const c of table.noteColumns) {
+    const value = grid.merged(r, c);
+    if (/[a-z]{2}/i.test(value) && !NOT_A_NOTE.test(value) && !notes.includes(value)) notes.push(value);
+  }
+  return notes.join(' · ');
 }
 
 function importSheet(sheet, grid, key) {
@@ -91,7 +126,7 @@ function importSheet(sheet, grid, key) {
   let skipping = false;
   for (let r = 1; r <= grid.lastRow; r++) {
     if (isHeaderRow(grid, r)) {
-      table = buildTable(grid, r, table?.pm);
+      table = buildTable(grid, r, table);
       table.rows = [];
       table.section = section;
       tables.push(table);
@@ -138,6 +173,7 @@ function importSheet(sheet, grid, key) {
     table.rows.push(item);
     items.push(item);
   }
+  for (const t of tables) for (const item of t.rows) item.note = noteOf(grid, t, item.sourceRows || [item.sourceRow]);
   return { tables: tables.filter(t => t.rows.length), items };
 }
 
@@ -154,6 +190,9 @@ async function main() {
     const key = slug(sheet.name);
     if (!key || usedKeys.has(key)) throw new Error('Duplicate or empty sheet key: ' + sheet.name);
     usedKeys.add(key);
+    const tabColor = sheet.properties.tabColor?.argb?.toUpperCase() || '';
+    const status = STATUS_BY_TAB[tabColor];
+    if (!status) throw new Error(`Sheet "${sheet.name.trim()}": warna tab ${tabColor || '(tanpa warna)'} belum punya status. Tambahkan ke STATUS_BY_TAB.`);
     const { tables } = importSheet(sheet, readSheet(sheet), key);
     if (!tables.length) throw new Error('No asset table found in sheet ' + sheet.name);
     tables.forEach((table, index) => {
@@ -162,7 +201,7 @@ async function main() {
       const keep = table.columns.map((column, i) => !column.unlabeled || table.rows.some(item => item.values[i]));
       output.tables.push({
         id: key + (index ? '-' + (index + 1) : ''),
-        sheet: sheet.name.trim(), sheetKey: key, headerRow: table.headerRow,
+        sheet: sheet.name.trim(), sheetKey: key, headerRow: table.headerRow, status, tabColor,
         title: index ? `${sheet.name.trim()} — ${table.section || 'Tabel ' + (index + 1)}` : sheet.name.trim(),
         columns: table.columns.filter((_, i) => keep[i]).map(({ label, field }) => (field ? { label, field } : { label })),
       });
@@ -171,6 +210,7 @@ async function main() {
           id: item.id, table: tableIndex, sourceRow: item.sourceRow,
           ...(item.sourceRows ? { sourceRows: item.sourceRows } : {}),
           ...(item.section ? { section: item.section } : {}),
+          ...(item.note ? { note: item.note } : {}),
           values: item.values.filter((_, i) => keep[i]),
         });
       }
@@ -198,8 +238,10 @@ async function main() {
   }
   const target = path.resolve(__dirname, '../frontend/data/boqItems.json');
   fs.writeFileSync(target, JSON.stringify(output) + '\n', 'utf8');
-  const perSheet = {};
-  for (const item of output.items) { const sheet = output.tables[item.table].sheet; perSheet[sheet] = (perSheet[sheet] || 0) + 1; }
-  console.log(JSON.stringify({ target, tables: output.tables.length, items: output.items.length, roomLookups, perSheet }, null, 1));
+  const counts = {};
+  for (const item of output.items) { const sheet = output.tables[item.table].sheet; counts[sheet] = (counts[sheet] || 0) + 1; }
+  const perSheet = Object.fromEntries(Object.entries(counts).map(([sheet, count]) => [sheet, `${output.tables.find(table => table.sheet === sheet).status}: ${count}`]));
+  const notes = output.items.filter(item => item.note).length;
+  console.log(JSON.stringify({ target, tables: output.tables.length, items: output.items.length, roomLookups, notes, perSheet }, null, 1));
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });

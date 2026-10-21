@@ -2,13 +2,13 @@ import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraf
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
-import { ArrowLeft, Camera, Check, Download, Eye, Loader2, Plus, RefreshCw, Save, Scissors, Search, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Download, Eye, Loader2, Plus, RefreshCw, Save, Scissors, Search, StickyNote, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { getBOQPhotoURL, getBOQThumbURL, readBOQItem, readBOQPage, readBOQPhotos, readCustomBOQItems, readDeletedBOQIds } from '@/api/boq';
-import type { BOQEditableField, BOQFields, BOQItem, BOQOverride, BOQPhoto, NewBOQItemInput } from '@/types/boq';
-import { BOQ_EDITABLE_FIELDS, BOQ_FIELD_LABELS, BOQ_SOURCE, CUSTOM_CATEGORY, NO_ROOM, boqItems, boqTables, editableFieldsOf, fieldsOf, roomKeyOf, roomLabel, tableOrder } from '@/utils/boqCatalog';
+import { customBOQItemOf, getBOQPhotoURL, getBOQThumbURL, readBOQItem, readBOQPage, readBOQPhotos, readCustomBOQItems, watchBOQFlag } from '@/api/boq';
+import type { BOQEditableField, BOQFields, BOQItem, BOQOverride, BOQPhoto, BOQSheetStatus, NewBOQItemInput } from '@/types/boq';
+import { BOQ_EDITABLE_FIELDS, BOQ_FIELD_LABELS, BOQ_SOURCE, BOQ_STATUS, CUSTOM_CATEGORY, NO_ROOM, boqItems, boqSheets, canDeleteIn, editableFieldsOf, fieldsOf, needsFieldCheck, roomKeyOf, roomLabel, statusOfSheet, tableOf, tableOrder } from '@/utils/boqCatalog';
 import { boqErrorMessage } from '@/utils/boqValidation';
-import { cancelBOQPhotoUpload, onBOQOutboxEvent, queueBOQCreate, queueBOQPhotoDelete, queueBOQPhotos, queueBOQText, resolveBOQConflict, useBOQOutbox, type BOQTextOp } from '@/utils/boqOutbox';
+import { cancelBOQPhotoUpload, onBOQOutboxEvent, queueBOQCreate, queueBOQFlags, queueBOQPhotoDelete, queueBOQPhotos, queueBOQText, resolveBOQConflict, useBOQOutbox, type BOQTextChange, type BOQTextOp } from '@/utils/boqOutbox';
 import { useAuth } from './AuthContext';
 import { CameraModal } from './CameraModal';
 import { ImageEditor } from './ImageEditor';
@@ -17,6 +17,28 @@ const inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2
 const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium disabled:opacity-50';
 const fieldInputClass = (field: BOQEditableField) => inputClass + ' mt-1' + (field === 'serialNumber' || field === 'assetId' || field === 'tag' ? ' font-mono text-xs sm:text-sm' : '');
 const fieldMaxLength = (field: BOQEditableField) => field === 'ciDescription' ? 2000 : field === 'productionYear' ? 20 : 500;
+
+// Same colours as the workbook tabs; items added outside the workbook sheets are "tambahan".
+type StatusKey = BOQSheetStatus | 'tambahan';
+const STATUS_STYLE: Record<StatusKey, { dot: string; chip: string; card: string; banner: string; bar: string }> = {
+  'cek-lapangan': { dot: 'bg-red-500', chip: 'bg-red-100 text-red-800', card: 'border-l-red-500', banner: 'border-red-200 bg-red-50 text-red-900', bar: 'bg-red-500' },
+  'cek-kembali': { dot: 'bg-amber-400', chip: 'bg-amber-100 text-amber-900', card: 'border-l-amber-400', banner: 'border-amber-200 bg-amber-50 text-amber-900', bar: 'bg-amber-500' },
+  'samakan-habib': { dot: 'bg-sky-500', chip: 'bg-sky-100 text-sky-800', card: 'border-l-sky-500', banner: 'border-sky-200 bg-sky-50 text-sky-900', bar: 'bg-sky-500' },
+  'fix': { dot: 'bg-violet-600', chip: 'bg-violet-100 text-violet-800', card: 'border-l-violet-600', banner: 'border-violet-200 bg-violet-50 text-violet-900', bar: 'bg-violet-600' },
+  'tambahan': { dot: 'bg-emerald-500', chip: 'bg-emerald-100 text-emerald-800', card: 'border-l-emerald-500', banner: 'border-emerald-200 bg-emerald-50 text-emerald-900', bar: 'bg-emerald-500' },
+};
+const statusLabel = (status: StatusKey) => status === 'tambahan' ? 'Item tambahan' : BOQ_STATUS[status].label;
+// Field-check state of an item; "tidak-ada" is the deleted tombstone. Every state can be changed again.
+type CheckState = 'belum' | 'ada' | 'tidak-ada';
+
+// Remarks such as "Panel tidak ditemukan" point the drafter at likely deletions.
+const MISSING_NOTE = /tidak\s+(ada|ditemukan)|not\s+find|double|dobel/i;
+function NoteBox({ note, clamp }: { note: string; clamp?: boolean }) {
+  return <span className={'flex items-start gap-1.5 rounded-lg px-2 py-1 text-xs ' + (MISSING_NOTE.test(note) ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-900')}>
+    <StickyNote size={13} className="mt-0.5 shrink-0" />
+    <span className={'min-w-0 whitespace-pre-line break-words' + (clamp ? ' line-clamp-3' : '')}><span className="font-semibold">Catatan Excel:</span> {note}</span>
+  </span>;
+}
 
 function PhotoThumbnail({
   photo,
@@ -355,8 +377,13 @@ function ConflictPanel({ op, onResolve }: { op: BOQTextOp; onResolve: (choice: P
   </div>;
 }
 
-function BOQEditor({ item, uid, override, onClose }: { item: BOQItem; uid: string; override?: BOQOverride; onClose: () => void }) {
+function BOQEditor({ item, uid, override, checkState, onStatus, onClose }: {
+  item: BOQItem; uid: string; override?: BOQOverride;
+  // Red/yellow sheets only: the field-check state and a request to change it (the page asks for confirmation).
+  checkState?: CheckState; onStatus?: (next: CheckState) => void; onClose: () => void;
+}) {
   const editable = editableFieldsOf(item);
+  const status = statusOfSheet(item.sheet);
   const outbox = useBOQOutbox();
   const pending = outbox.texts[item.id];
   const initial = fieldsOf(override ? { ...item, ...override } : item);
@@ -500,6 +527,17 @@ function BOQEditor({ item, uid, override, onClose }: { item: BOQItem; uid: strin
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         <p className="mb-4 text-xs text-slate-500">{item.custom ? 'Item tambahan dari aplikasi' : `Sumber: sheet "${item.sheet}", baris ${item.sourceRows ? item.sourceRows.join(', ') : item.sourceRow}`} · Lantai {item.floor || '—'} · Class Id {item.classId || '—'}</p>
+        {status && <p className={'mb-3 rounded-xl border px-3 py-2 text-xs ' + STATUS_STYLE[status].banner}><span className="font-semibold">{BOQ_STATUS[status].label}</span> · {BOQ_STATUS[status].hint}</p>}
+        {item.note && <div className="mb-3"><NoteBox note={item.note} /></div>}
+        {onStatus && checkState && checkState !== 'tidak-ada' && <div className={'mb-5 flex flex-wrap items-center gap-2 rounded-xl border p-3 ' + (checkState === 'ada' ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50')}>
+          {checkState === 'ada'
+            ? <span className="inline-flex w-full items-center gap-1.5 text-sm font-semibold text-emerald-700 sm:w-auto sm:flex-1"><Check size={17} /> Sudah dicek: unit ada</span>
+            : <span className="w-full text-sm font-medium text-slate-700 sm:w-auto sm:flex-1">Unit ini ada di lapangan?</span>}
+          {checkState === 'ada'
+            ? <button type="button" className={buttonClass + ' !min-h-11 flex-1 sm:flex-none'} onClick={() => onStatus('belum')}><Undo2 size={16} /> Batal ada</button>
+            : <button type="button" className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white sm:flex-none" onClick={() => onStatus('ada')}><Check size={17} /> Ada</button>}
+          <button type="button" className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-700 sm:flex-none" onClick={() => onStatus('tidak-ada')}><X size={17} /> Tidak ada</button>
+        </div>}
         {pending?.status === 'conflict' && <ConflictPanel key={pending.conflict?.serverRevision} op={pending} onResolve={choice => resolveBOQConflict(item.id, choice)} />}
         {loading && <p className="mb-3 flex items-center gap-2 text-xs text-slate-500"><Loader2 className="animate-spin" size={14} /> Mengecek versi terbaru di server…</p>}
         {notice && <p className="mb-4 rounded-xl bg-sky-50 p-3 text-xs text-sky-900">{notice}</p>}
@@ -711,23 +749,41 @@ function AddItemModal({ rooms, categories, classIds, floorByRoom, initialRoom, i
   );
 }
 
-function DeleteItemModal({ item, deleting, onCancel, onConfirm }: { item: BOQItem; deleting: boolean; onCancel: () => void; onConfirm: () => void }) {
+// Asked before "Ada", "Tidak ada", "Ternyata ada" and a plain delete, with what identifies the unit on site.
+function StatusConfirmModal({ item, override, from, next, fieldCheck, busy, onCancel, onConfirm }: {
+  item: BOQItem; override?: BOQOverride; from: CheckState; next: 'ada' | 'tidak-ada'; fieldCheck: boolean; busy: boolean;
+  onCancel: () => void; onConfirm: () => void;
+}) {
+  const ada = next === 'ada';
+  const title = ada
+    ? (from === 'tidak-ada' ? 'Ternyata unit ini ada?' : 'Unit ini ada di lapangan?')
+    : !fieldCheck ? 'Hapus item dari BOQ?' : from === 'ada' ? 'Ubah jadi tidak ada?' : 'Unit tidak ada di lapangan?';
+  const text = ada
+    ? (from === 'tidak-ada' ? 'Item dikembalikan ke BOQ dan ditandai Ada.' : 'Cocokkan nama, S/N atau TAG dengan unit di lapangan. Item pindah ke daftar "Ada" dan masih bisa diubah.')
+    : (from === 'ada' ? 'Item ini sebelumnya ditandai Ada. ' : '') + 'Item dihapus dari daftar dan export Excel. '
+      + (fieldCheck ? 'Kalau ternyata ada, buka filter "Dihapus" lalu tekan "Ternyata ada".' : 'Bisa dikembalikan lewat filter "Dihapus".');
+  const confirmLabel = ada ? (from === 'tidak-ada' ? 'Ya, kembalikan' : 'Ya, ada') : fieldCheck ? 'Ya, tidak ada' : 'Ya, hapus';
+  const facts = itemFacts(item, override);
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Konfirmasi hapus item" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
-      onClick={() => !deleting && onCancel()} onKeyDown={event => { if (event.key === 'Escape' && !deleting) onCancel(); }}>
+    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      onClick={() => !busy && onCancel()} onKeyDown={event => { if (event.key === 'Escape' && !busy) onCancel(); }}>
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6" onClick={event => event.stopPropagation()}>
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600"><Trash2 size={22} /></div>
-          <div className="min-w-0"><h3 className="text-base font-bold text-slate-900">Hapus item dari ruangan?</h3><p className="text-xs text-slate-500">Item tidak akan tampil lagi di daftar dan export Excel</p></div>
+          <div className={'flex h-11 w-11 shrink-0 items-center justify-center rounded-full ' + (ada ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600')}>{ada ? <Check size={22} /> : fieldCheck ? <X size={22} /> : <Trash2 size={22} />}</div>
+          <div className="min-w-0"><h3 className="text-base font-bold text-slate-900">{title}</h3><p className="text-xs text-slate-500">{text}</p></div>
         </div>
         <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm">
-          <p className="break-words font-semibold text-slate-800">{item.ciName}</p>
-          <p className="mt-1 break-words text-xs text-slate-500">{item.sheet} · {item.classId || 'Tanpa Class Id'} · {item.room || NO_ROOM}</p>
+          <p className="break-words font-semibold text-slate-800">{override?.ciName || item.ciName}</p>
+          <p className="mt-1 break-words text-xs text-slate-500">{item.sheet} · {item.room ? roomLabel(item.room) : NO_ROOM}</p>
+          {facts.length > 0 && <p className="mt-2 flex flex-wrap gap-1.5">
+            {facts.map(([label, value]) => <span key={label} className="max-w-full break-all rounded-md bg-white px-1.5 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-200"><span className="text-slate-400">{label}</span> {value}</span>)}
+          </p>}
+          {item.note && <div className="mt-2"><NoteBox note={item.note} /></div>}
         </div>
         <div className="mt-5 flex items-center justify-end gap-2.5">
-          <button type="button" disabled={deleting} autoFocus onClick={onCancel} className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Batal</button>
-          <button type="button" disabled={deleting} onClick={onConfirm} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50">
-            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}<span>{deleting ? 'Menghapus…' : 'Ya, Hapus'}</span>
+          <button type="button" disabled={busy} autoFocus onClick={onCancel} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Batal</button>
+          <button type="button" disabled={busy} onClick={onConfirm} className={'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50 ' + (ada ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700')}>
+            {busy ? <Loader2 size={16} className="animate-spin" /> : ada ? <Check size={16} /> : fieldCheck ? <X size={16} /> : <Trash2 size={16} />}<span>{confirmLabel}</span>
           </button>
         </div>
       </div>
@@ -740,12 +796,20 @@ function DeleteItemModal({ item, deleting, onCancel, onConfirm }: { item: BOQIte
 const listLoadError = (error: unknown) => (error as { code?: string })?.code?.includes('permission-denied')
   ? boqErrorMessage(error)
   : 'Perubahan terbaru dari server belum termuat karena sinyal lemah. Data di HP tetap bisa dipakai dan diedit.';
-interface RoomGroup { key: string; label: string; count: number; categories: string[] }
+// One equipment = one workbook sheet. Custom items whose category is not a sheet form their own group.
+interface SheetGroup { sheet: string; status: StatusKey; total: number; checked: number; deleted: number }
+const STATUS_KEYS: StatusKey[] = ['cek-lapangan', 'cek-kembali', 'samakan-habib', 'fix', 'tambahan'];
+const sheetIndex = (sheet: string) => { const index = boqSheets.findIndex(entry => entry.sheet === sheet); return index < 0 ? boqSheets.length : index; };
+// 'dihapus' lists the equipment's deleted items so they can be restored.
+type CheckFilter = 'belum' | 'ada' | 'semua' | 'dihapus';
+const FILTER_LABELS: Record<CheckFilter, string> = { belum: 'Belum dicek', ada: 'Ada', semua: 'Semua', dihapus: 'Dihapus' };
+// Room filter value for items whose room is not known.
+const NO_ROOM_KEY = '__none__';
 const STEP = 40;
 const blank = (value: string) => !value || /^(n\/?a|-+)$/i.test(value.trim());
 
 function matchesSearch(item: BOQItem, override: BOQOverride | undefined, term: string) {
-  return [item.room, item.sheet, item.section, item.classId, ...item.values, ...BOQ_EDITABLE_FIELDS.map(field => item[field]), ...BOQ_EDITABLE_FIELDS.map(field => override?.[field])]
+  return [item.room, item.sheet, item.section, item.classId, item.note, ...item.values, ...BOQ_EDITABLE_FIELDS.map(field => item[field]), ...BOQ_EDITABLE_FIELDS.map(field => override?.[field])]
     .some(value => value?.toLowerCase().includes(term));
 }
 
@@ -762,48 +826,76 @@ function itemFacts(item: BOQItem, override?: BOQOverride): [string, string][] {
 }
 
 interface ItemSync { text?: 'pending' | 'conflict'; photos: number }
-function ItemRow({ item, override, sync, showRoom, onOpen, onDelete }: { item: BOQItem; override?: BOQOverride; sync?: ItemSync; showRoom: boolean; onOpen: () => void; onDelete: () => void }) {
+// `onStatus` is set on red/yellow sheets: the row then offers "Ada" / "Tidak ada" (or, once checked,
+// "Tidak ada" / "Batal ada") instead of a plain delete.
+function ItemRow({ item, override, sync, checked, showSheet, onOpen, onStatus, onDelete }: {
+  item: BOQItem; override?: BOQOverride; sync?: ItemSync; checked: boolean; showSheet: boolean;
+  onOpen: () => void; onStatus?: (next: CheckState) => void; onDelete?: () => void;
+}) {
   const name = override?.ciName || item.ciName;
   const description = (override?.ciDescription ?? item.ciDescription).split('\n')[0].trim();
-  const context = [showRoom ? (item.room ? roomLabel(item.room) : NO_ROOM) : '', showRoom || item.custom ? item.sheet : '', !blank(description) && description !== name ? description : ''].filter(Boolean);
-  return <li className="flex items-center gap-2 px-3 py-3 transition-colors hover:bg-slate-50 sm:gap-3 sm:px-4">
-    <button type="button" onClick={onOpen} className="min-w-0 flex-1 cursor-pointer text-left focus-visible:outline-none" aria-label={'Buka ' + name}>
-      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="break-words font-semibold text-slate-900">{name}</span>
-        {override && !item.custom && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Diedit</span>}
-        {item.custom && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">Tambahan</span>}
-        {sync?.text === 'conflict' && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">⚠️ Bentrok</span>}
-        {sync && sync.text !== 'conflict' && (sync.text || sync.photos > 0) && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">⏳ Belum terkirim{sync.photos ? ` · ${sync.photos} foto` : ''}</span>}
-      </span>
-      {context.length > 0 && <span className="mt-0.5 block break-words text-xs text-slate-500">{context.join(' · ')}</span>}
-      {itemFacts(item, override).length > 0 && <span className="mt-1.5 flex flex-wrap gap-1.5">
-        {itemFacts(item, override).map(([label, value]) => <span key={label} className="max-w-full break-all rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700"><span className="text-slate-400">{label}</span> {value}</span>)}
-      </span>}
-    </button>
-    <button type="button" onClick={onOpen} className={buttonClass + ' shrink-0 !min-h-10'} title="Foto & edit item" aria-label={'Foto dan edit ' + name}><Camera size={16} /><span className="hidden sm:inline">Foto & edit</span></button>
-    <button type="button" onClick={onDelete} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600" title="Hapus item dari ruangan ini" aria-label={'Hapus ' + name}><Trash2 size={17} /></button>
+  const context = [item.room ? roomLabel(item.room) : NO_ROOM, showSheet || item.custom ? item.sheet : '', !blank(description) && description !== name ? description : ''].filter(Boolean);
+  const facts = itemFacts(item, override);
+  return <li className={'px-3 py-3 transition-colors hover:bg-slate-50 sm:px-4' + (onStatus && checked ? ' bg-emerald-50/50' : '')}>
+    <div className="flex items-center gap-2 sm:gap-3">
+      <button type="button" onClick={onOpen} className="min-w-0 flex-1 cursor-pointer text-left focus-visible:outline-none" aria-label={'Buka ' + name}>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="break-words font-semibold text-slate-900">{name}</span>
+          {onStatus && checked && <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800"><Check size={11} /> Ada</span>}
+          {override && !item.custom && BOQ_EDITABLE_FIELDS.some(field => override[field] !== undefined && override[field] !== item[field]) && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Diedit</span>}
+          {item.custom && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">Tambahan</span>}
+          {sync?.text === 'conflict' && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">⚠️ Bentrok</span>}
+          {sync && sync.text !== 'conflict' && (sync.text || sync.photos > 0) && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">⏳ Belum terkirim{sync.photos ? ` · ${sync.photos} foto` : ''}</span>}
+        </span>
+        {context.length > 0 && <span className="mt-0.5 block break-words text-xs text-slate-500">{context.join(' · ')}</span>}
+        {facts.length > 0 && <span className="mt-1.5 flex flex-wrap gap-1.5">
+          {facts.map(([label, value]) => <span key={label} className="max-w-full break-all rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700"><span className="text-slate-400">{label}</span> {value}</span>)}
+        </span>}
+        {item.note && <span className="mt-1.5 block"><NoteBox note={item.note} clamp /></span>}
+      </button>
+      {!onStatus && <>
+        <button type="button" onClick={onOpen} className={buttonClass + ' shrink-0 !min-h-10'} title="Foto & edit item" aria-label={'Foto dan edit ' + name}><Camera size={16} /><span className="hidden sm:inline">Foto & edit</span></button>
+        {onDelete && <button type="button" onClick={onDelete} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600" title="Hapus item dari BOQ" aria-label={'Hapus ' + name}><Trash2 size={17} /></button>}
+      </>}
+    </div>
+    {onStatus && <div className="mt-2.5 flex flex-wrap gap-2">
+      {checked
+        ? <button type="button" onClick={() => onStatus('belum')} className={buttonClass + ' !min-h-10 flex-1 sm:flex-none'} aria-label={'Batalkan tanda ada ' + name}><Undo2 size={16} /> Batal ada</button>
+        : <button type="button" onClick={() => onStatus('ada')} className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 sm:flex-none" aria-label={name + ' ada di lapangan'}><Check size={16} /> Ada</button>}
+      <button type="button" onClick={() => onStatus('tidak-ada')} className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-700 hover:bg-red-100 sm:flex-none" aria-label={name + ' tidak ada di lapangan'}><X size={16} /> Tidak ada</button>
+      <button type="button" onClick={onOpen} className={buttonClass + ' !min-h-10 shrink-0 !px-3'} title="Foto & edit item" aria-label={'Foto dan edit ' + name}><Camera size={16} /><span className="hidden sm:inline">Foto & edit</span></button>
+    </div>}
   </li>;
 }
 
-function RoomCard({ group, onOpen }: { group: RoomGroup; onOpen: () => void }) {
-  const noRoom = !group.key;
+function SheetCard({ group, onOpen }: { group: SheetGroup; onOpen: () => void }) {
+  const style = STATUS_STYLE[group.status];
+  const fieldCheck = group.status !== 'tambahan' && needsFieldCheck(group.status);
+  // Deleted items count as checked ("Tidak ada").
+  const done = group.checked + group.deleted;
+  const of = group.total + group.deleted;
   return <button type="button" onClick={onOpen}
-    className={'group flex cursor-pointer flex-col rounded-2xl border px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ' + (noRoom ? 'border-dashed border-slate-300 bg-slate-50' : 'border-slate-200 bg-white shadow-sm')}>
+    className={'group flex cursor-pointer flex-col rounded-2xl border border-l-4 border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ' + style.card}>
     <span className="flex w-full items-start justify-between gap-2">
-      <span className={'break-words font-semibold ' + (noRoom ? 'text-slate-600' : 'text-slate-900')}>{group.label}</span>
-      <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">{group.count.toLocaleString('id-ID')}</span>
+      <span className="break-words font-semibold text-slate-900">{group.sheet}</span>
+      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">{group.total.toLocaleString('id-ID')}</span>
     </span>
-    <span className="mt-1.5 line-clamp-2 text-xs text-slate-500">
-      {noRoom ? 'Aset yang di BOQ tidak tercantum ruangannya' : group.categories.slice(0, 3).join(' · ') + (group.categories.length > 3 ? ` · +${group.categories.length - 3} lainnya` : '')}
-    </span>
+    {fieldCheck ? <>
+      <span className="mt-2.5 block h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><span className={'block h-full rounded-full ' + style.bar} style={{ width: (of ? Math.round(done / of * 100) : 100) + '%' }} /></span>
+      <span className="mt-1.5 text-xs text-slate-600">
+        {done === of ? '✓ Semua sudah dicek' : `${(of - done).toLocaleString('id-ID')} belum dicek`} · {group.checked} ada{group.deleted ? ` · ${group.deleted} dihapus` : ''}
+      </span>
+    </> : <span className="mt-1.5 text-xs text-slate-500">{group.total.toLocaleString('id-ID')} aset{group.deleted ? ` · ${group.deleted} dihapus` : ''}</span>}
   </button>;
 }
 
 export function BOQUpdate() {
   const { user } = useAuth();
-  // null = room overview; '' = the "no room" group.
-  const [roomKey, setRoomKey] = useState<string | null>(null);
-  const [category, setCategory] = useState('');
+  // null = equipment overview; otherwise the open sheet (one equipment of the workbook).
+  const [sheet, setSheet] = useState<string | null>(null);
+  // Inside an equipment: room key ('' = all, NO_ROOM_KEY = no room) and, on red/yellow sheets, the check state.
+  const [room, setRoom] = useState('');
+  const [checkFilter, setCheckFilter] = useState<CheckFilter>('semua');
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(STEP);
   const [overrides, setOverrides] = useState<Record<string, BOQOverride>>({});
@@ -813,28 +905,44 @@ export function BOQUpdate() {
   const [refresh, setRefresh] = useState(0);
   const [selected, setSelected] = useState<BOQItem | null>(null);
   const [customItems, setCustomItems] = useState<BOQItem[]>([]);
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  // Live from the server: tombstones (kept whole so the deleted list can say who deleted what) and items checked "Ada".
+  const [deletedItems, setDeletedItems] = useState<Record<string, BOQOverride>>({});
+  const [checkedItems, setCheckedItems] = useState<Record<string, BOQOverride>>({});
   const [addOpen, setAddOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
-  const [toDelete, setToDelete] = useState<BOQItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  // Status change waiting for the drafter's confirmation ("Ada", "Tidak ada", "Ternyata ada", delete).
+  const [confirming, setConfirming] = useState<{ item: BOQItem; next: 'ada' | 'tidak-ada' } | null>(null);
+  const [applying, setApplying] = useState(false);
 
-  useAppUpdateDraft('BOQUpdate', { selected, addOpen }, saved => {
+  useAppUpdateDraft('BOQUpdate', { selected, addOpen, sheet, room, checkFilter }, saved => {
     setSelected(saved.selected);
     setAddOpen(saved.addOpen);
+    setSheet(saved.sheet);
+    setRoom(saved.room);
+    setCheckFilter(saved.checkFilter);
   });
-  useAppUpdateBlocker(Boolean(adding || deleting));
+  useAppUpdateBlocker(Boolean(adding || applying));
 
   const [exportStatus, setExportStatus] = useState('');
   const exporting = exportStatus !== '';
   const outbox = useBOQOutbox();
+  // A queued restore wins over the server tombstone; a queued delete hides the item right away.
+  const isDeleted = (item: BOQItem) => { const op = outbox.texts[item.id]; return op?.restore ? false : !!op?.deleted || !!deletedItems[item.id]; };
+  // Items added on site exist by definition; workbook items count once a drafter tapped "Ada".
+  const isChecked = (item: BOQItem) => !!item.custom || (outbox.texts[item.id]?.checked ?? !!checkedItems[item.id]);
   // Workbook rows plus drafter-added items (including ones still waiting on the phone), minus deleted ones.
   const allItems = useMemo(() => {
     const known = new Set(customItems.map(item => item.id));
     const queuedCreates = Object.values(outbox.texts).filter(op => op.create && !known.has(op.itemId)).map(op => op.item);
-    return [...boqItems, ...customItems, ...queuedCreates].filter(item => !deletedIds.has(item.id) && !outbox.texts[item.id]?.deleted);
-  }, [customItems, deletedIds, outbox.texts]);
+    return [...boqItems, ...customItems, ...queuedCreates].filter(item => !isDeleted(item));
+  }, [customItems, deletedItems, outbox.texts]);
+  // Deleted items that can be restored, including deleted custom items rebuilt from their tombstone.
+  const deletedList = useMemo(() => {
+    const known = new Set(customItems.map(item => item.id));
+    const tombstones = Object.entries(deletedItems).filter(([id, value]) => value.custom && !known.has(id)).map(([id, value]) => customBOQItemOf(id, value));
+    return [...boqItems, ...customItems, ...tombstones].filter(isDeleted);
+  }, [customItems, deletedItems, outbox.texts]);
   // Queued edits are shown immediately, on top of the last known server version.
   const effectiveOverride = (item: BOQItem): BOQOverride | undefined => {
     const queued = outbox.texts[item.id];
@@ -848,17 +956,36 @@ export function BOQUpdate() {
   useEffect(() => onBOQOutboxEvent(event => {
     if (event.type !== 'text') return;
     setOverrides(previous => ({ ...previous, [event.itemId]: event.value }));
-    if (event.value.deleted) setDeletedIds(previous => new Set(previous).add(event.itemId));
+    // The listeners below see the same write; this keeps the flags right if a listener has failed.
+    const sync = (flag: boolean | undefined) => (previous: Record<string, BOQOverride>) => {
+      if (!!previous[event.itemId] === !!flag) return previous;
+      const next = { ...previous };
+      if (flag) next[event.itemId] = event.value; else delete next[event.itemId];
+      return next;
+    };
+    setDeletedItems(sync(event.value.deleted));
+    setCheckedItems(sync(event.value.checked));
   }), []);
   useEffect(() => {
     let active = true;
-    Promise.all([readCustomBOQItems(), readDeletedBOQIds()]).then(([custom, deleted]) => {
-      if (active) { setCustomItems(custom); setDeletedIds(deleted); }
-    }).catch(loadError => { if (active) setError(listLoadError(loadError)); });
-    return () => { active = false; };
+    const fail = (loadError: unknown) => { if (active) setError(listLoadError(loadError)); };
+    // Checked and deleted documents arrive whole, so their items need no separate read.
+    const remember = (values: Record<string, BOQOverride>) => {
+      Object.keys(values).forEach(id => loadedIds.current.add(id));
+      setOverrides(previous => ({ ...previous, ...values }));
+    };
+    readCustomBOQItems().then(custom => { if (active) setCustomItems(custom); }, fail);
+    const stopDeleted = watchBOQFlag('deleted', values => { setDeletedItems(values); remember(values); }, fail);
+    const stopChecked = watchBOQFlag('checked', values => { setCheckedItems(values); remember(values); }, fail);
+    return () => { active = false; stopDeleted(); stopChecked(); };
   }, [refresh]);
 
-  const openRoom = (key: string | null) => { setRoomKey(key); setCategory(''); setSearch(''); setLimit(STEP); window.scrollTo({ top: 0 }); };
+  const openSheet = (next: string | null) => {
+    setSheet(next); setRoom(''); setSearch(''); setLimit(STEP);
+    // Red/yellow sheets open on the items still to check.
+    setCheckFilter(next && needsFieldCheck(statusOfSheet(next)) ? 'belum' : 'semua');
+    window.scrollTo({ top: 0 });
+  };
   const reload = () => { loadedIds.current.clear(); setOverrides({}); setRefresh(value => value + 1); };
   const addItem = async (input: NewBOQItemInput) => {
     if (!user || adding) return;
@@ -867,23 +994,50 @@ export function BOQUpdate() {
       const created = await queueBOQCreate(input);
       setCustomItems(previous => [...previous, created]);
       setAddOpen(false);
-      openRoom(roomKeyOf(created.room));
-      toast.success(`"${created.ciName}" ditambahkan ke ${created.room}.`);
+      openSheet(created.sheet);
+      setCheckFilter('semua');
+      toast.success(`"${created.ciName}" ditambahkan ke ${created.sheet} · ${created.room}.`);
       setSelected(created);
     } catch (addFailure) { setAddError(boqErrorMessage(addFailure)); }
     finally { setAdding(false); }
   };
-  const confirmDelete = async () => {
-    if (!user || !toDelete || deleting) return;
-    setDeleting(true);
+  // Field check applies to workbook items of red/yellow sheets; blue sheets keep their items until Habib's data arrives.
+  const checkable = (item: BOQItem) => !item.custom && needsFieldCheck(statusOfSheet(item.sheet));
+  const deletable = (item: BOQItem) => !!item.custom || canDeleteIn(statusOfSheet(item.sheet));
+  const stateOf = (item: BOQItem): CheckState => isDeleted(item) ? 'tidak-ada' : checkable(item) && isChecked(item) ? 'ada' : 'belum';
+  // Status changes only touch the flags; leaving "tidak ada" also clears "Ada" so a restored item starts clean.
+  const applyState = async (item: BOQItem, next: CheckState, undoable = true) => {
+    const from = stateOf(item);
+    if (from === next) return;
+    const change: BOQTextChange = next === 'tidak-ada'
+      ? { deleted: true, checked: false }
+      : { checked: next === 'ada', ...(from === 'tidak-ada' ? { restore: true } : {}) };
     try {
-      const current = fieldsOf({ ...toDelete, ...effectiveOverride(toDelete) });
-      await queueBOQText(toDelete, current, current, true);
-      setDeletedIds(previous => new Set(previous).add(toDelete.id));
-      toast.success(`"${toDelete.ciName}" dihapus dari ${toDelete.room || 'daftar'}.`);
-      setToDelete(null);
-    } catch (deleteError) { toast.error('Gagal menghapus: ' + boqErrorMessage(deleteError)); }
-    finally { setDeleting(false); }
+      await queueBOQFlags(item, fieldsOf({ ...item, ...effectiveOverride(item) }), change);
+      if (next !== 'tidak-ada' && item.custom) setCustomItems(previous => previous.some(entry => entry.id === item.id) ? previous : [...previous, item]);
+      if (next === 'tidak-ada') setSelected(current => current?.id === item.id ? null : current);
+      const name = `"${effectiveOverride(item)?.ciName || item.ciName}"`;
+      if (!undoable) { toast.success(`${name} dikembalikan ke status sebelumnya.`); return; }
+      const done = next === 'ada' ? (from === 'tidak-ada' ? 'dikembalikan dan ditandai ada' : 'ditandai ada')
+        : next === 'tidak-ada' ? (checkable(item) ? 'ditandai tidak ada (dihapus)' : 'dihapus')
+        : from === 'tidak-ada' ? 'dikembalikan (belum dicek)' : 'kembali ke belum dicek';
+      // The undo runs against the state at the time it is pressed, not this render's.
+      // One toast per item: a newer change replaces the older toast and its stale "Batalkan".
+      toast.success(`${name} ${done}.`, { id: `boq-status-${item.id}`, action: { label: 'Batalkan', onClick: () => void applyLatest.current(item, from, false) } });
+    } catch (stateError) { toast.error('Gagal menyimpan: ' + boqErrorMessage(stateError)); }
+  };
+  const applyLatest = useRef(applyState);
+  applyLatest.current = applyState;
+  // "Ada" and "Tidak ada" (including "Ternyata ada" and a plain delete) ask first; "Batal ada" / "Kembalikan" do not.
+  const askState = (item: BOQItem, next: CheckState) => {
+    if (next === 'belum') void applyState(item, next);
+    else setConfirming({ item, next });
+  };
+  const confirmState = async () => {
+    if (!confirming || applying) return;
+    setApplying(true);
+    try { await applyState(confirming.item, confirming.next); }
+    finally { setApplying(false); setConfirming(null); }
   };
   const exportExcel = async () => {
     if (exporting) return;
@@ -891,7 +1045,7 @@ export function BOQUpdate() {
     try {
       const { exportDrafterBOQExcel } = await import('@/utils/boqDrafterExcelExport');
       const result = await exportDrafterBOQExcel(boqItems, setExportStatus);
-      toast.success(`${result.fileName}: ${result.itemCount} item, ${result.roomCount} ruangan, ${result.photoCount - result.failedPhotos} foto.`);
+      toast.success(`${result.fileName}: ${result.itemCount} item, ${result.sheetCount} equipment, ${result.photoCount - result.failedPhotos} foto.`);
       if (result.failedPhotos) toast.warning(`${result.failedPhotos} foto gagal dimuat dan ditandai di Excel.`);
       result.warnings.forEach(warning => toast.warning(warning));
     } catch (exportError) {
@@ -899,45 +1053,70 @@ export function BOQUpdate() {
     } finally { setExportStatus(''); }
   };
 
-  const roomGroups = useMemo(() => {
-    const groups = new Map<string, RoomGroup & { categorySet: Set<string> }>();
-    for (const item of allItems) {
-      const key = roomKeyOf(item.room);
-      const group = groups.get(key) || { key, label: key ? roomLabel(item.room) : NO_ROOM, count: 0, categories: [], categorySet: new Set<string>() };
-      group.count++;
-      group.categorySet.add(item.sheet);
-      groups.set(key, group);
-    }
-    return [...groups.values()]
-      .map(({ categorySet, ...group }) => ({ ...group, categories: [...categorySet] }))
-      .sort((a, b) => !a.key ? 1 : !b.key ? -1 : a.label.localeCompare(b.label, 'id', { numeric: true, sensitivity: 'base' }));
-  }, [allItems]);
+  // Red first, then yellow, blue, purple and items added outside the workbook sheets; workbook order within a colour.
+  const sheetRank = (name: string) => STATUS_KEYS.indexOf(statusOfSheet(name) || 'tambahan') * 1000 + sheetIndex(name);
+  const sheetGroups = useMemo(() => {
+    const groups = new Map<string, SheetGroup>();
+    const groupOf = (name: string) => {
+      let group = groups.get(name);
+      if (!group) groups.set(name, group = { sheet: name, status: statusOfSheet(name) || 'tambahan', total: 0, checked: 0, deleted: 0 });
+      return group;
+    };
+    for (const item of allItems) { const group = groupOf(item.sheet); group.total++; if (isChecked(item)) group.checked++; }
+    for (const item of deletedList) groupOf(item.sheet).deleted++;
+    return [...groups.values()].sort((a, b) => sheetRank(a.sheet) - sheetRank(b.sheet) || a.sheet.localeCompare(b.sheet));
+  }, [allItems, deletedList, checkedItems, outbox.texts]);
   const term = search.trim().toLowerCase();
-  const inRoom = roomKey !== null;
-  const currentRoom = inRoom ? roomGroups.find(group => group.key === roomKey) || { key: roomKey, label: roomKey || NO_ROOM, count: 0, categories: [] } : null;
-  const matchedRooms = useMemo(() => term ? roomGroups.filter(group => group.label.toLowerCase().includes(term)) : roomGroups, [roomGroups, term]);
-  const roomItems = useMemo(() => inRoom ? allItems.filter(item => roomKeyOf(item.room) === roomKey) : allItems, [allItems, inRoom, roomKey]);
-  const categories = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of roomItems) counts.set(item.sheet, (counts.get(item.sheet) || 0) + 1);
-    return [...counts].sort((a, b) => tableOrder(roomItems.find(item => item.sheet === a[0])!.tableId) - tableOrder(roomItems.find(item => item.sheet === b[0])!.tableId));
-  }, [roomItems]);
-  // In the overview the list only appears while searching; inside a room it lists the room's items.
+  const inSheet = sheet !== null;
+  const status: StatusKey = (sheet && statusOfSheet(sheet)) || 'tambahan';
+  const fieldCheck = status !== 'tambahan' && needsFieldCheck(status);
+  const currentGroup = sheetGroups.find(group => group.sheet === sheet) || { sheet: sheet || '', status, total: 0, checked: 0, deleted: 0 };
+  const matchedSheets = useMemo(() => term ? sheetGroups.filter(group => group.sheet.toLowerCase().includes(term)) : sheetGroups, [sheetGroups, term]);
+  const sheetItems = useMemo(() => inSheet ? allItems.filter(item => item.sheet === sheet) : allItems, [allItems, inSheet, sheet]);
+  const roomKeyOfItem = (item: BOQItem) => roomKeyOf(item.room) || NO_ROOM_KEY;
+  // Rooms of this equipment, with how many items are still unchecked in each (drafters work room by room).
+  const rooms = useMemo(() => {
+    const byKey = new Map<string, { label: string; total: number; open: number }>();
+    for (const item of sheetItems) {
+      const key = roomKeyOfItem(item);
+      const entry = byKey.get(key) || { label: key === NO_ROOM_KEY ? NO_ROOM : roomLabel(item.room), total: 0, open: 0 };
+      entry.total++;
+      if (!isChecked(item)) entry.open++;
+      byKey.set(key, entry);
+    }
+    return [...byKey].sort(([a, x], [b, y]) => a === NO_ROOM_KEY ? 1 : b === NO_ROOM_KEY ? -1 : x.label.localeCompare(y.label, 'id', { numeric: true, sensitivity: 'base' }));
+  }, [sheetItems, checkedItems, outbox.texts]);
+  const roomItems = useMemo(() => room ? sheetItems.filter(item => roomKeyOfItem(item) === room) : sheetItems, [sheetItems, room]);
+  const deletedInSheet = inSheet ? deletedList.filter(item => item.sheet === sheet && (!room || roomKeyOfItem(item) === room)) : [];
+  const deletedShown = deletedInSheet.filter(item => !term || matchesSearch(item, deletedItems[item.id], term));
+  const checkCounts = useMemo(() => {
+    const ada = roomItems.filter(isChecked).length;
+    return { belum: roomItems.length - ada, ada, semua: roomItems.length };
+  }, [roomItems, checkedItems, outbox.texts]);
+  const filterCount = (key: CheckFilter) => key === 'dihapus' ? deletedInSheet.length : checkCounts[key];
+  // Red/yellow sheets filter on the check state; any sheet with deleted items can list them.
+  const filters: CheckFilter[] = [
+    ...(fieldCheck ? ['belum', 'ada', 'semua'] as const : deletedInSheet.length || checkFilter === 'dihapus' ? ['semua'] as const : []),
+    ...(deletedInSheet.length || checkFilter === 'dihapus' ? ['dihapus'] as const : []),
+  ];
+  // In the overview the list only appears while searching; inside an equipment it lists its items.
   const listItems = useMemo(() => {
-    if (!inRoom && !term) return [];
+    if ((!inSheet && !term) || checkFilter === 'dihapus') return [];
     return roomItems
-      .filter(item => (!category || item.sheet === category) && (!term || matchesSearch(item, effectiveOverride(item), term)))
-      .sort((a, b) => tableOrder(a.tableId) - tableOrder(b.tableId) || a.sourceRow - b.sourceRow || a.ciName.localeCompare(b.ciName));
-  }, [inRoom, term, roomItems, category, overrides, outbox.texts]);
+      .filter(item => !fieldCheck || checkFilter === 'semua' || (checkFilter === 'ada') === isChecked(item))
+      .filter(item => !term || matchesSearch(item, effectiveOverride(item), term))
+      .sort((a, b) => sheetRank(a.sheet) - sheetRank(b.sheet) || tableOrder(a.tableId) - tableOrder(b.tableId) || a.sourceRow - b.sourceRow || a.ciName.localeCompare(b.ciName));
+  }, [inSheet, term, roomItems, fieldCheck, checkFilter, overrides, checkedItems, outbox.texts]);
   const shown = listItems.slice(0, limit);
+  // Sheets with a second table (e.g. Genset & Fuel System) list it under its own heading.
   const groups = useMemo(() => {
-    const bySheet = new Map<string, BOQItem[]>();
-    for (const item of shown) bySheet.set(item.sheet, [...(bySheet.get(item.sheet) || []), item]);
-    return [...bySheet];
+    const byTable = new Map<string, BOQItem[]>();
+    for (const item of shown) byTable.set(item.tableId, [...(byTable.get(item.tableId) || []), item]);
+    return [...byTable];
   }, [shown]);
-  const countBySheet = useMemo(() => {
+  const countByTable = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const item of listItems) counts.set(item.sheet, (counts.get(item.sheet) || 0) + 1);
+    for (const item of listItems) counts.set(item.tableId, (counts.get(item.tableId) || 0) + 1);
     return counts;
   }, [listItems]);
 
@@ -954,14 +1133,25 @@ export function BOQUpdate() {
     }).catch(loadError => setError(listLoadError(loadError))).finally(() => setLoading(false));
   }, [idsKey, refresh]);
 
+  const confirmModal = confirming && <StatusConfirmModal item={confirming.item} override={effectiveOverride(confirming.item)}
+    from={stateOf(confirming.item)} next={confirming.next} fieldCheck={checkable(confirming.item)} busy={applying}
+    onCancel={() => setConfirming(null)} onConfirm={() => void confirmState()} />;
+
   if (selected && user) {
     return <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <BOQEditor key={selected.id} item={selected} uid={user.uid} override={overrides[selected.id]} onClose={() => setSelected(null)} />
+      <BOQEditor key={selected.id} item={selected} uid={user.uid} override={overrides[selected.id]}
+        checkState={checkable(selected) ? stateOf(selected) : undefined}
+        onStatus={checkable(selected) ? next => askState(selected, next) : undefined}
+        onClose={() => setSelected(null)} />
+      {confirmModal}
     </section>;
   }
 
-  const itemList = (items: BOQItem[], showRoom: boolean) => <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
-    {items.map(item => <ItemRow key={item.id} item={item} override={effectiveOverride(item)} sync={syncOf(item)} showRoom={showRoom} onOpen={() => setSelected(item)} onDelete={() => setToDelete(item)} />)}
+  const itemList = (items: BOQItem[], showSheet: boolean) => <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    {items.map(item => <ItemRow key={item.id} item={item} override={effectiveOverride(item)} sync={syncOf(item)} checked={isChecked(item)} showSheet={showSheet}
+      onOpen={() => setSelected(item)}
+      onStatus={checkable(item) ? next => askState(item, next) : undefined}
+      onDelete={deletable(item) ? () => askState(item, 'tidak-ada') : undefined} />)}
   </ul>;
   const moreButton = listItems.length > shown.length && <button type="button" className={buttonClass + ' mt-4 w-full'} onClick={() => setLimit(value => value + STEP)}>
     Tampilkan lebih banyak ({(listItems.length - shown.length).toLocaleString('id-ID')} item lagi)
@@ -971,7 +1161,7 @@ export function BOQUpdate() {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
         <h1 className="text-xl font-bold sm:text-2xl">Update BOQ</h1>
-        <p className="mt-1 text-sm text-slate-500">{inRoom ? 'Klik item untuk update data dan foto.' : 'Pilih ruangan, lalu klik item untuk update data dan foto.'}</p>
+        <p className="mt-1 text-sm text-slate-500">{!inSheet ? 'Pilih equipment sesuai warna tab di Excel, lalu kerjakan item-itemnya.' : fieldCheck ? 'Cek tiap item di lapangan, lalu tandai Ada atau Tidak ada.' : 'Klik item untuk update data dan foto.'}</p>
       </div>
       <div className="flex w-full gap-2 sm:w-auto">
         <button className={buttonClass + ' flex-1 !border-blue-600 !bg-blue-600 text-white sm:flex-none'} disabled={exporting} onClick={() => { setAddError(''); setAddOpen(true); }}><Plus size={16} /> <span className="whitespace-nowrap">Tambah<span className="hidden sm:inline"> item</span></span></button>
@@ -981,54 +1171,103 @@ export function BOQUpdate() {
     </div>
     {error && <p role="status" className="mt-4 rounded-xl bg-sky-50 p-3 text-sm text-sky-900">{error}</p>}
 
-    {!inRoom ? <>
+    {!inSheet ? <>
       <div className="relative mt-5">
         <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input className={inputClass + ' !rounded-2xl !py-3.5 pl-12 text-base'} placeholder="Cari ruangan, nama aset, S/N atau TAG…" value={search} onChange={event => { setSearch(event.target.value); setLimit(STEP); }} aria-label="Cari ruangan atau aset" />
+        <input className={inputClass + ' !rounded-2xl !py-3.5 pl-12 text-base'} placeholder="Cari equipment, nama aset, S/N, TAG atau ruangan…" value={search} onChange={event => { setSearch(event.target.value); setLimit(STEP); }} aria-label="Cari equipment atau aset" />
       </div>
-      {(!term || matchedRooms.length > 0) && <>
-        <h2 className="mb-3 mt-6 text-sm font-semibold text-slate-700">{term ? `Ruangan yang cocok (${matchedRooms.length})` : `Pilih ruangan (${roomGroups.filter(group => group.key).length} ruangan · ${allItems.length.toLocaleString('id-ID')} aset)`}</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {matchedRooms.map(group => <RoomCard key={group.key || 'no-room'} group={group} onOpen={() => openRoom(group.key)} />)}
-        </div>
-      </>}
+      {(!term || matchedSheets.length > 0) && STATUS_KEYS.map(key => {
+        const list = matchedSheets.filter(group => group.status === key);
+        if (!list.length) return null;
+        const done = list.reduce((total, group) => total + group.checked + group.deleted, 0);
+        const of = list.reduce((total, group) => total + group.total + group.deleted, 0);
+        return <section key={key} className="mt-6">
+          <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
+            <span className={'h-3 w-3 shrink-0 rounded-full ' + STATUS_STYLE[key].dot} />{statusLabel(key)}
+          </h2>
+          <p className="mt-0.5 text-xs font-medium text-slate-600">
+            {key === 'tambahan' ? 'Kategori di luar Excel' : `Tab ${BOQ_STATUS[key].colour.toLowerCase()}`} · {list.length} equipment{key !== 'tambahan' && needsFieldCheck(key) ? ` · ${done.toLocaleString('id-ID')}/${of.toLocaleString('id-ID')} item sudah dicek` : ''}
+          </p>
+          {key !== 'tambahan' && !term && <p className="mt-0.5 text-xs text-slate-500">{BOQ_STATUS[key].hint}</p>}
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {list.map(group => <SheetCard key={group.sheet} group={group} onOpen={() => openSheet(group.sheet)} />)}
+          </div>
+        </section>;
+      })}
       {term && <>
         <h2 className="mb-3 mt-6 text-sm font-semibold text-slate-700">Aset yang cocok ({listItems.length.toLocaleString('id-ID')})</h2>
         {listItems.length ? itemList(shown, true) : <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Tidak ada aset yang cocok dengan "{search.trim()}".</p>}
         {moreButton}
       </>}
     </> : <>
-      <button type="button" onClick={() => openRoom(null)} className="mt-5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg py-1 text-sm font-semibold text-blue-700 hover:text-blue-900"><ArrowLeft size={16} /> Semua ruangan</button>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="break-words text-2xl font-bold text-slate-900">{currentRoom!.label}</h2>
-          <p className="text-sm text-slate-500">{roomItems.length.toLocaleString('id-ID')} aset · {categories.length} kategori{!roomKey && ' · ruangan tidak tercantum di BOQ'}</p>
-        </div>
+      <button type="button" onClick={() => openSheet(null)} className="mt-5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg py-1 text-sm font-semibold text-blue-700 hover:text-blue-900"><ArrowLeft size={16} /> Semua equipment</button>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="break-words text-2xl font-bold text-slate-900">{sheet}</h2>
+        <span className={'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ' + STATUS_STYLE[status].chip}><span className={'h-2 w-2 rounded-full ' + STATUS_STYLE[status].dot} />{statusLabel(status)}</span>
       </div>
+      <p className="text-sm text-slate-500">{sheetItems.length.toLocaleString('id-ID')} aset · {rooms.length} ruangan{currentGroup.deleted ? ` · ${currentGroup.deleted} dihapus` : ''}</p>
+      {status !== 'tambahan' && <p className={'mt-3 rounded-xl border px-3 py-2.5 text-sm ' + STATUS_STYLE[status].banner}>{BOQ_STATUS[status].hint}</p>}
+      {fieldCheck && (() => {
+        const done = currentGroup.checked + currentGroup.deleted;
+        const of = currentGroup.total + currentGroup.deleted;
+        return <div className="mt-3">
+          <div className="flex items-baseline justify-between gap-2 text-sm"><span className="font-semibold text-slate-800">{done.toLocaleString('id-ID')} dari {of.toLocaleString('id-ID')} item sudah dicek</span><span className="text-xs text-slate-500">{currentGroup.checked} ada · {currentGroup.deleted} dihapus</span></div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100"><div className={'h-full rounded-full transition-all ' + STATUS_STYLE[status].bar} style={{ width: (of ? Math.round(done / of * 100) : 100) + '%' }} /></div>
+        </div>;
+      })()}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1"><Search size={17} className="absolute left-3 top-3 text-slate-400" /><input className={inputClass + ' pl-9'} placeholder={'Cari di ' + currentRoom!.label + '…'} value={search} onChange={event => { setSearch(event.target.value); setLimit(STEP); }} aria-label="Cari aset di ruangan ini" /></div>
-        {categories.length > 1 && <select className={inputClass + ' sm:w-64'} value={category} onChange={event => { setCategory(event.target.value); setLimit(STEP); }} aria-label="Filter kategori">
-          <option value="">Semua kategori ({roomItems.length})</option>
-          {categories.map(([sheet, count]) => <option key={sheet} value={sheet}>{sheet} ({count})</option>)}
+        <div className="relative flex-1"><Search size={17} className="absolute left-3 top-3 text-slate-400" /><input className={inputClass + ' pl-9'} placeholder={'Cari di ' + sheet + '…'} value={search} onChange={event => { setSearch(event.target.value); setLimit(STEP); }} aria-label="Cari aset di equipment ini" /></div>
+        {rooms.length > 1 && <select className={inputClass + ' sm:w-72'} value={room} onChange={event => { setRoom(event.target.value); setLimit(STEP); }} aria-label="Filter ruangan">
+          <option value="">Semua ruangan ({sheetItems.length})</option>
+          {rooms.map(([key, entry]) => <option key={key} value={key}>{entry.label} ({fieldCheck ? (entry.open ? `${entry.open} belum dicek` : 'selesai') : entry.total})</option>)}
         </select>}
       </div>
-      {groups.map(([sheet, items]) => <section key={sheet} className="mt-5">
-        <h3 className="mb-2 flex items-baseline justify-between gap-2 text-sm font-bold text-slate-800">{sheet}<span className="text-xs font-normal text-slate-500">{countBySheet.get(sheet)} aset</span></h3>
-        {itemList(items, false)}
-      </section>)}
-      {!listItems.length && <p className="mt-5 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Tidak ada aset yang cocok.</p>}
-      {moreButton}
+      {filters.length > 0 && <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter status cek">
+        {filters.map(key => <button key={key} type="button" aria-pressed={checkFilter === key} onClick={() => { setCheckFilter(key); setLimit(STEP); }}
+          className={'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors ' + (checkFilter === key ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50')}>
+          {key === 'dihapus' && <Trash2 size={14} />}{FILTER_LABELS[key]}<span className="text-xs opacity-75">{filterCount(key).toLocaleString('id-ID')}</span>
+        </button>)}
+      </div>}
+      {checkFilter === 'dihapus' ? <>
+        <p className="mt-4 text-xs text-slate-500">Item yang dihapus tidak ikut di daftar dan export Excel.{fieldCheck ? ' Kalau unitnya ternyata ada, tekan "Ternyata ada"; "Kembalikan" mengembalikannya ke belum dicek.' : ' Tekan "Kembalikan" untuk memunculkannya lagi.'}</p>
+        {deletedShown.length ? <ul className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white">
+          {deletedShown.map(item => {
+            const tombstone = deletedItems[item.id];
+            const when = tombstone?.updatedAt?.toMillis?.();
+            const who = tombstone ? ['dihapus', tombstone.updatedByName, when ? formatTime(when) : ''].filter(Boolean).join(' ') : 'dihapus, menunggu dikirim';
+            const name = tombstone?.ciName || item.ciName;
+            return <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-2.5 px-3 py-3 sm:flex-nowrap sm:px-4">
+              <div className="min-w-0 flex-1 basis-full sm:basis-auto">
+                <p className="break-words text-sm font-semibold text-slate-500 line-through">{name}</p>
+                <p className="mt-0.5 break-words text-xs text-slate-500">{item.room ? roomLabel(item.room) : NO_ROOM} · {who}</p>
+                {item.note && <span className="mt-1.5 block"><NoteBox note={item.note} clamp /></span>}
+              </div>
+              {checkable(item) && <button type="button" onClick={() => askState(item, 'ada')} className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 sm:flex-none" aria-label={'Ternyata ada ' + name}><Check size={16} /> Ternyata ada</button>}
+              <button type="button" onClick={() => void applyState(item, 'belum')} className={buttonClass + ' !min-h-10 flex-1 sm:flex-none'} aria-label={'Kembalikan ' + name}><Undo2 size={15} /> Kembalikan</button>
+            </li>;
+          })}
+        </ul> : <p className="mt-3 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Tidak ada item yang dihapus{term ? ' yang cocok' : ''}.</p>}
+      </> : <>
+        {groups.map(([tableId, items]) => <section key={tableId} className="mt-4">
+          {groups.length > 1 && <h3 className="mb-2 flex items-baseline justify-between gap-2 text-sm font-bold text-slate-800">{tableOf(items[0]).title}<span className="text-xs font-normal text-slate-500">{countByTable.get(tableId)} aset</span></h3>}
+          {itemList(items, false)}
+        </section>)}
+        {!listItems.length && <p className="mt-5 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+          {fieldCheck && checkFilter === 'belum' && !term ? `✓ Semua item${room ? ' di ruangan ini' : ''} sudah dicek.` : 'Tidak ada aset yang cocok.'}
+        </p>}
+        {moreButton}
+      </>}
     </>}
 
     <p className="mt-6 border-t pt-3 text-xs text-slate-400">Sumber: {BOQ_SOURCE.file} (impor {BOQ_SOURCE.importedAt}).</p>
     {addOpen && <AddItemModal
-      rooms={roomGroups.filter(group => group.key).map(group => group.label)}
-      categories={[...new Set([...boqTables.map(table => table.sheet), CUSTOM_CATEGORY])]}
+      rooms={[...new Map(allItems.filter(item => roomKeyOf(item.room)).map(item => [roomKeyOf(item.room), roomLabel(item.room)])).values()].sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))}
+      categories={[...new Set([...boqSheets.map(entry => entry.sheet), CUSTOM_CATEGORY])]}
       classIds={[...new Set(allItems.map(item => item.classId).filter(Boolean))].sort()}
       floorByRoom={new Map(allItems.filter(item => item.floor).map(item => [roomKeyOf(item.room), item.floor]))}
-      initialRoom={currentRoom?.key ? currentRoom.label : ''}
-      initialCategory={category}
+      initialRoom={room && room !== NO_ROOM_KEY ? rooms.find(([key]) => key === room)?.[1].label || '' : ''}
+      initialCategory={sheet || ''}
       saving={adding} error={addError} onCancel={() => setAddOpen(false)} onSubmit={input => void addItem(input)} />}
-    {toDelete && <DeleteItemModal item={toDelete} deleting={deleting} onCancel={() => setToDelete(null)} onConfirm={() => void confirmDelete()} />}
+    {confirmModal}
   </section>;
 }

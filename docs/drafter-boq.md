@@ -7,24 +7,42 @@
 - Existing profile fields and other custom claims were preserved.
 - Firebase Admin service-account authentication failed with Invalid JWT Signature. The account update succeeded through the existing Firebase CLI OAuth login.
 - Frontend, security rules and Go backend changes have not been deployed. The user explicitly chose to keep these changes local.
+- 2026-10-21: per-equipment Update BOQ with field check, built from "Progres BOQ TERBARU 1.xlsx" (see below). Needs `firestore:rules` deployed before hosting, because the app now writes `checked`. Same day: confirmation pop-ups for "Ada" / "Tidak ada" and corrections in both directions.
 
 ## Interface
 
 Drafter sees exactly two modules: Management File and Update BOQ. The general AI widget and other dashboards are excluded.
 
-Update BOQ is organised by room first, in three steps:
+Update BOQ is organised per equipment (one workbook sheet), coloured like the workbook tabs:
 
-1. Room overview: a search box and a grid of room cards (item count, main categories). "Tanpa Ruangan" is last. Typing in the search shows matching rooms and matching assets (name, S/N, TAG, any BOQ column) across all rooms.
-2. Room page: the room's assets grouped by equipment category, as simple rows (name, description, Class / S/N / TAG / capacity). A search and a category select narrow the list; 40 rows load at a time.
-3. Item page: photos first, then the editable data. "Ambil foto" opens the same live camera as the engineer reports (`CameraModal`: watermark with asset name, room, time and GPS; Ulangi / Download / Pakai Foto), with `fullResolution` so it asks the camera for up to 4096×3072 and keeps "Kamera HP" photos at full size. "Upload" picks files from the gallery. The original workbook values are not repeated there; the Excel export keeps every other BOQ column in "Data BOQ lainnya". The editor fills the screen on small devices, supports Escape, and blocks closing during a save/upload.
+| Tab | Status | What the drafter does |
+| --- | --- | --- |
+| Merah | Cek ke lapangan | Check every item on site: "Ada" marks it checked, "Tidak ada" deletes it (both with confirmation, both correctable). |
+| Kuning | Cek kembali | Same as red. |
+| Biru | Samakan data Habib | Data is not yet equal to Habib's fixed data, which will follow. Edit and photos only; no delete. |
+| Ungu | Fix | Data is final. Full access as before (edit, photos, delete). |
 
-CI Name, CI Description, Capacity, Serial Number, Production Year, Manufacturer / Principle, Asset ID, TAG and Model/Version are editable, as far as the item's BOQ table has that column (CI Name always). Edited items carry a "Diedit" badge, and edited cells are highlighted in the Excel export. File Management uses the existing files collection and excludes corrective-report aggregation. Upload/download and requests to QC for file deletion remain available; permanent deletion remains a QC action.
+1. Overview: one section per colour, red first, then yellow, blue and purple; categories added in the app that are not a sheet come last ("Item tambahan"). Red/yellow cards show a progress bar ("x belum dicek · y ada · z dihapus"); the section heading sums it ("2/434 item sudah dicek"). Typing in the search shows matching equipment and matching assets (name, S/N, TAG, room, Excel note, any BOQ column).
+2. Equipment page: the colour's instruction, progress (red/yellow), a search, a room filter (each room shows how many items are still unchecked) and filter chips. Red/yellow sheets open on "Belum dicek"; the other chips are "Ada", "Semua" and "Dihapus". Purple/blue sheets show "Semua" / "Dihapus" once something was deleted. Sheets with a second table (Genset & Fuel System, Load & Cap Bank, Lift & Dock Level) list it under its own heading. 40 rows load at a time. Rows on red/yellow sheets carry "Ada" (or "Batal ada" once checked) / "Tidak ada" / camera buttons; others a camera and (except blue) a delete button.
+3. "Ada" and "Tidak ada" open a confirmation showing the item's name, equipment, room, S/N/TAG/capacity and Excel note; "Batal" has the focus. A wrong mark can be corrected at any time:
+   - Marked "Ada" by mistake: "Tidak ada" stays available (the pop-up says the item was marked Ada; deleting clears the Ada mark), and "Batal ada" returns it to "Belum dicek" without a pop-up.
+   - Marked "Tidak ada" by mistake: the "Dihapus" chip lists deleted items with who deleted them and when, with "Ternyata ada" (restore and mark Ada, with confirmation) and "Kembalikan" (restore to "Belum dicek").
+   - Every change shows a toast with "Batalkan" that returns the item to its previous state. A newer change to the same item replaces that toast, so an outdated "Batalkan" cannot be pressed.
+4. Each item shows its Excel note ("Catatan Excel"), the remark next to QTY in the workbook such as "Panel tidak ditemukan", "double dengan no 6", "PERUBAHAN NAMA MENJADI …". Notes that say an item is missing or duplicated are red.
+5. Item page: status banner, Excel note and, on red/yellow sheets, "Unit ini ada di lapangan? Ada / Tidak ada"; then photos first, then the editable data. "Ambil foto" opens the same live camera as the engineer reports (`CameraModal`: watermark with asset name, room, time and GPS; Ulangi / Download / Pakai Foto), with `fullResolution` so it asks the camera for up to 4096×3072 and keeps "Kamera HP" photos at full size. "Upload" picks files from the gallery. The original workbook values are not repeated there; the Excel export keeps every other BOQ column in "Data BOQ lainnya". The editor fills the screen on small devices, supports Escape, and blocks closing during a save/upload.
+
+CI Name, CI Description, Capacity, Serial Number, Production Year, Manufacturer / Principle, Asset ID, TAG and Model/Version are editable, as far as the item's BOQ table has that column (CI Name always). Items whose text differs from the workbook carry a "Diedit" badge, and edited cells are highlighted in the Excel export. File Management uses the existing files collection and excludes corrective-report aggregation. Upload/download and requests to QC for file deletion remain available; permanent deletion remains a QC action.
+
+Export Excel writes one worksheet per equipment in workbook order, with the sheet's own columns and tab colour, plus "Ruangan (aplikasi)", "Status cek" (red/yellow: Ada / Belum dicek / Tambahan), "Catatan Excel" and the photos. A second table in a sheet gets its own title and header row. The first worksheet "Ringkasan" lists per equipment: status, items, Ada, Belum dicek, Dihapus, items with photos. "Item Dihapus" lists deleted items with who deleted them and when.
 
 ## Source data
 
-Source: Google Sheets `Progres PM Q3 - 2026` (`1WGV1Mr9Zv0mG4OdQuU6XH8gOsVcHdH1V`), imported on 2026-10-05.
+Source: `Progres BOQ TERBARU 1.xlsx` (the updated "Progres PM Q3 - 2026"), imported on 2026-10-21. The earlier import (2026-10-05, Google Sheets `1WGV1Mr9Zv0mG4OdQuU6XH8gOsVcHdH1V`) had the same 41 tables and 2,652 item IDs; only Grounding rows 139/140 ("Perubahan CI Name" swapped) and the two hyperlink names below changed, so saved edits and photos stay attached.
 
 - Imported: the 38 equipment sheets (Trafo … Lighting), 41 asset tables, 2,652 items.
+- Tab colour → status (`STATUS_BY_TAB` in the importer): `FF7030A0` fix (27 sheets), `FFFF0000` cek-lapangan (LV Panel, Grounding, LDB-RDB Panel, PREACTION, Water Softener, STP & Plumbing, Pompa), `FF00B0F0` samakan-habib (Genset & Fuel System, Exhaust Fan, CT Water Treatment), `FFFFC000` cek-kembali (Physical Cooling Automation & T). A sheet with an unknown or missing tab colour stops the import.
+- Excel note: text in the columns right of PM DATE/QTY under a numeric or empty heading, up to the first labelled PM column (240 items). "Report on Process" (PM progress) is skipped.
+- Hyperlink cells with rich text (LDB-RDB Panel rows 100/101) are read as text: "PB ORG OFF 2", "PB.CC.2" (previously "[object Object]").
 - Not imported: the planning sheets Progress MOS & Instal CM, consumable parts 2026, Plan ManPower Agu/Sep, Progress, Resume Q3, 2026 Schedule and Sheet1; and in every sheet the PM block from the `PM DATE` column to the right (QTY, progress, Dokumen Service Report OCS/TDE, TOTAL, STATUS, REMARK).
 - Each sheet's asset table starts at its header row (`No` plus `Class Id`/`CI Name*`). A later header row in the same sheet starts a second table (Genset → Fuel System, Load Bank → Cap Bank, Lift → Dock Leveler). A row carrying its own `PM DATE` heading starts a titled block (Water & Fuel Leak → Fuel Leak).
 - The signature block (`Cikarang, …`, `Disiapkan oleh`, …) ends a sheet. In FSS, the rows after `Note : Tidak termasuk dalam BOQ` are therefore excluded.
@@ -35,7 +53,7 @@ Source: Google Sheets `Progres PM Q3 - 2026` (`1WGV1Mr9Zv0mG4OdQuU6XH8gOsVcHdH1V
 - Rooms are grouped ignoring case, spaces, hyphens, a leading `1F` prefix and a few typos (CHILER, TRAFOO, INTERCONECTING, KORIDOOR), so "Crac Room 1", "1f crac room 1" and "1F-CRAC ROOM 1" are one room (278 spellings → 222 rooms). Each room is labelled with its most common spelling; all-lowercase names are re-cased.
 - Stable ID: `boq-v2-{sheet key}-{sourceRow}`, e.g. `boq-v2-lv-panel-7`. Items added in the app use `boq-v2-custom-{32 hex}` and may carry a `category`.
 
-The generated baseline is `frontend/data/boqItems.json` (tables with column definitions, items with positional values). Regenerate with `node scripts/import-boq.cjs "<path to Progres PM Q3 - 2026.xlsx>"`; the room lookup reads `scripts/data/boqRoomItems.v1.json` (the former v1 baseline). Do not regenerate from a workbook whose rows were reordered without a migration, because IDs are row-based.
+The generated baseline is `frontend/data/boqItems.json` (tables with column definitions, status and tab colour; items with positional values and the Excel note). Regenerate with `node scripts/import-boq.cjs "<path to Progres BOQ TERBARU 1.xlsx>"`; the room lookup reads `scripts/data/boqRoomItems.v1.json` (the former v1 baseline). Do not regenerate from a workbook whose rows were reordered without a migration, because IDs are row-based.
 
 Firestore documents of the former v1 baseline (`room-v1-room-*`, `room-v1-no-room-*`) and their photos are no longer listed. Custom items created under v1 (`room-v1-custom-*`) still appear, under "Item Tambahan".
 
@@ -43,7 +61,9 @@ Firestore documents of the former v1 baseline (`room-v1-room-*`, `room-v1-no-roo
 
 `boq_items/{itemId}` stores only edited text, source identity, revision, updatedBy and server updatedAt. The initial workbook is bundled locally; opening the page never seeds 2,652 documents. Overrides are fetched only for listed items not fetched before (in batches of 30 IDs); "Muat ulang" clears them.
 
-All writes go through the offline outbox (see below); the stored `revision` must increase by exactly one, which the rules enforce together with immutable source identity. `updatedByName` records who saved last, for the conflict screen.
+All writes go through the offline outbox (see below); the stored `revision` must increase by exactly one, which the rules enforce together with immutable source identity. `updatedByName` records who saved last, for the conflict screen and the deleted list.
+
+Field check: `checked: true` marks an item confirmed on site ("Ada"); "Tidak ada" sets the existing `deleted: true` tombstone and clears `checked`; "Kembalikan" writes the document again without either, "Ternyata ada" without `deleted` and with `checked: true`. These flag-only changes (`queueBOQFlags`) keep the base and fields of a text edit still queued for the same item. While Update BOQ is open, two listeners follow the documents with `checked == true` and with `deleted == true` for the progress counts, so other drafters' work shows up live; those documents are not read again per list. The first listen costs one read per document; a listener resumed within 30 minutes (persistent cache) is billed only for changed documents, unlike a repeated query. In the outbox, `checked` is set only by an explicit change and otherwise keeps the server value, and restore is its own `restore` flag, because queued edits from earlier versions carry `deleted: false` without meaning "restore". Clients still on an older version rewrite a document without `checked`, so drafters should take the app update ("Perbarui Sekarang") after deploy.
 
 Photos are separate immutable documents at `boq_items/{itemId}/photos/{sha256}`. They can exist before the baseline item's first text edit. There are no photo arrays or base64 images in the item document. Photo metadata is read 20 records per page. Photo writes do not change the text revision.
 
@@ -80,4 +100,4 @@ Backend supports Drafter as an allowed role, preserves unrelated custom claims, 
 - A CLI dry run initially failed due a serviceusage.googleapis.com connection timeout; direct rules compiler validation succeeded.
 - No live BOQ edits or photo uploads were performed.
 - Firestore quota exhaustion still prevents reads/transactions. The interface reports failed saves and preserves local work; this feature does not bypass Firebase quota.
-- Deploy frontend and rules together after rollout approval: `firebase deploy --only hosting,firestore:rules,storage --project report-utt`. Deploy the Go backend through its normal release process.
+- Deploy after rollout approval, rules first: `firebase deploy --only firestore:rules --project report-utt`, then `firebase deploy --only hosting --project report-utt`. A new frontend on old rules gets every "Ada" rejected (it stays queued on the phone and is retried). Deploy the Go backend through its normal release process.

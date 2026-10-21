@@ -18,6 +18,9 @@ export interface BOQTextOp extends OpBase {
   // `base` is what the drafter saw before editing; together with the server version it tells
   // which fields each side changed.
   base: BOQFields; fields: BOQFields; deleted: boolean; create: boolean;
+  // Field check: `checked` sets or clears "Ada" (left out = keep the server value); `restore` undoes a delete.
+  // Separate from `deleted: false`, which older queued edits carry without meaning "restore".
+  checked?: boolean; restore?: boolean;
   status: 'pending' | 'conflict'; conflict?: BOQConflict;
 }
 interface PhotoOp extends OpBase {
@@ -314,7 +317,7 @@ async function processText(key: string) {
   const user = { uid: op.uid, name: userName };
   let value: BOQOverride;
   if (op.create && !server.exists) {
-    value = await withTimeout(putBOQItem(op.item, sent, 1, user, op.deleted), 30_000);
+    value = await withTimeout(putBOQItem(op.item, sent, 1, user, op.deleted, op.checked ?? false), 30_000);
   } else {
     // A retried create that already reached the server is our own version, not someone else's edit.
     const base = op.create && server.updatedBy === op.uid && server.revision === 1 ? server.fields : op.base;
@@ -325,12 +328,13 @@ async function processText(key: string) {
       await putOp(op);
       return;
     }
-    const deleted = op.deleted || server.deleted;
-    if (server.exists && sameFields(merged, server.fields) && deleted === server.deleted) {
-      value = { ...server.fields, revision: server.revision, ...(deleted ? { deleted } : {}) };
+    const deleted = op.restore ? false : op.deleted || server.deleted;
+    const checked = op.checked ?? server.checked;
+    if (server.exists && sameFields(merged, server.fields) && deleted === server.deleted && checked === server.checked) {
+      value = { ...server.fields, revision: server.revision, ...(deleted ? { deleted } : {}), ...(checked ? { checked } : {}) };
     } else {
       try {
-        value = await withTimeout(putBOQItem(op.item, merged, server.revision + 1, user, deleted), 30_000);
+        value = await withTimeout(putBOQItem(op.item, merged, server.revision + 1, user, deleted, checked), 30_000);
       } catch (error) {
         // Rejected because another drafter saved in between: read and merge again right away.
         if (codeOf(error).includes('permission-denied')) {
@@ -488,16 +492,28 @@ export async function cancelBOQPhotoUpload(key: string) {
   notify();
 }
 
-export async function queueBOQText(item: BOQItem, base: BOQFields, fields: BOQFields, deleted = false) {
+export interface BOQTextChange { deleted?: boolean; restore?: boolean; checked?: boolean }
+export async function queueBOQText(item: BOQItem, base: BOQFields, fields: BOQFields, change: BOQTextChange = {}) {
   const owner = requireUser();
   const clean = validateBOQFields(fields);
   const key = `text:${owner}:${item.id}`;
   const existing = ops.get(key) as BOQTextOp | undefined;
+  // The latest delete/restore wins; `checked` keeps a queued value unless this change sets it.
+  let deleted = existing?.deleted ?? false;
+  let restore = existing?.restore;
+  if (change.deleted) { deleted = true; restore = undefined; }
+  if (change.restore) { deleted = false; restore = true; }
+  const flags = { deleted, restore, checked: change.checked ?? existing?.checked };
   await putOp(existing
-    ? { ...existing, item, fields: clean, deleted: existing.deleted || deleted, attempts: 0, nextAttemptAt: 0, error: undefined }
-    : { key, kind: 'text', uid: owner, itemId: item.id, item, base: { ...base }, fields: clean, deleted, create: false, status: 'pending', createdAt: Date.now(), attempts: 0, nextAttemptAt: 0 });
+    ? { ...existing, item, fields: clean, ...flags, attempts: 0, nextAttemptAt: 0, error: undefined }
+    : { key, kind: 'text', uid: owner, itemId: item.id, item, base: { ...base }, fields: clean, ...flags, create: false, status: 'pending', createdAt: Date.now(), attempts: 0, nextAttemptAt: 0 });
   notify();
   void run();
+}
+// Ada / Tidak ada / restore change only flags: a text edit still queued keeps its base and fields.
+export function queueBOQFlags(item: BOQItem, current: BOQFields, change: BOQTextChange) {
+  const existing = ops.get(`text:${uid}:${item.id}`) as BOQTextOp | undefined;
+  return queueBOQText(item, existing?.base ?? current, existing?.fields ?? current, change);
 }
 export async function queueBOQCreate(input: NewBOQItemInput): Promise<BOQItem> {
   const owner = requireUser();

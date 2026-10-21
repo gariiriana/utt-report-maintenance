@@ -1,4 +1,4 @@
-import { Bytes, collection, collectionGroup, deleteDoc, doc, documentId, getDoc, getDocFromServer, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAfter, where, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { Bytes, collection, collectionGroup, deleteDoc, doc, documentId, getDoc, getDocFromServer, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, startAfter, where, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import type { BOQFields, BOQItem, BOQOverride, BOQPhoto, NewBOQItemInput } from '@/types/boq';
 import { BOQ_EDITABLE_FIELDS, validateBOQFields, validateNewBOQItem } from '@/utils/boqValidation';
@@ -36,10 +36,13 @@ export async function readCustomBOQItems(): Promise<BOQItem[]> {
     .map(snapshot => customBOQItemOf(snapshot.id, snapshot.data() as BOQOverride))
     .sort((a, b) => a.room.localeCompare(b.room) || a.classId.localeCompare(b.classId) || a.ciName.localeCompare(b.ciName));
 }
-// Baseline items hidden by a drafter. A tombstone is kept instead of removing the document.
-export async function readDeletedBOQIds(): Promise<Set<string>> {
-  const result = await getDocs(query(collection(db, 'boq_items'), where('deleted', '==', true)));
-  return new Set(result.docs.map(snapshot => snapshot.id));
+// Live set of items with a flag: `deleted` (tombstone kept so the item can be restored) or `checked`
+// (confirmed on site; feeds the progress of the red and yellow sheets). A listener resumed within
+// 30 minutes is billed only for changed documents, unlike a repeated getDocs, and shows other drafters' work live.
+export function watchBOQFlag(flag: 'deleted' | 'checked', onChange: (values: Record<string, BOQOverride>) => void, onError: (error: unknown) => void) {
+  return onSnapshot(query(collection(db, 'boq_items'), where(flag, '==', true)), result => {
+    onChange(Object.fromEntries(result.docs.map(snapshot => [snapshot.id, snapshot.data() as BOQOverride])));
+  }, onError);
 }
 export const newCustomBOQItemId = () => 'boq-v2-custom-' + crypto.randomUUID().replace(/-/g, '');
 export function customBOQItemFromInput(id: string, input: NewBOQItemInput): BOQItem {
@@ -51,25 +54,27 @@ export function customBOQItemFromInput(id: string, input: NewBOQItemInput): BOQI
 // merges per field and then writes the next revision. The rules reject a write whose revision
 // is not exactly one above the stored one, so concurrent edits are never silently overwritten.
 export interface ServerBOQItem {
-  exists: boolean; fields: BOQFields; revision: number; deleted: boolean;
+  exists: boolean; fields: BOQFields; revision: number; deleted: boolean; checked: boolean;
   updatedBy?: string; updatedByName?: string; updatedAt?: number;
 }
 export async function readBOQItemFromServer(item: BOQItem): Promise<ServerBOQItem> {
   const snapshot = await getDocFromServer(itemRef(item.id));
   // Older documents may lack newer fields; those keep the workbook value.
-  if (!snapshot.exists()) return { exists: false, fields: fieldsOfDoc(item), revision: 0, deleted: false };
+  if (!snapshot.exists()) return { exists: false, fields: fieldsOfDoc(item), revision: 0, deleted: false, checked: false };
   const data = snapshot.data();
   return {
-    exists: true, fields: fieldsOfDoc({ ...fieldsOfDoc(item), ...data }), revision: data.revision || 0, deleted: !!data.deleted,
+    exists: true, fields: fieldsOfDoc({ ...fieldsOfDoc(item), ...data }), revision: data.revision || 0, deleted: !!data.deleted, checked: !!data.checked,
     updatedBy: data.updatedBy, updatedByName: data.updatedByName, updatedAt: data.updatedAt?.toMillis?.(),
   };
 }
-export async function putBOQItem(item: BOQItem, fields: BOQFields, revision: number, user: { uid: string; name?: string }, deleted: boolean): Promise<BOQOverride> {
+// The document is rewritten as a whole, so flags not passed in are cleared.
+export async function putBOQItem(item: BOQItem, fields: BOQFields, revision: number, user: { uid: string; name?: string }, deleted: boolean, checked = false): Promise<BOQOverride> {
   const clean = validateBOQFields(fields);
   await setDoc(itemRef(item.id), {
     ...clean,
     ...customFieldsOf(item),
     ...(deleted ? { deleted: true } : {}),
+    ...(checked ? { checked: true } : {}),
     revision,
     sourceSheet: item.sourceSheet,
     sourceRow: item.sourceRow,
@@ -77,7 +82,11 @@ export async function putBOQItem(item: BOQItem, fields: BOQFields, revision: num
     ...(user.name ? { updatedByName: user.name.slice(0, 200) } : {}),
     updatedAt: serverTimestamp(),
   });
-  return { ...clean, revision, ...(deleted ? { deleted: true } : {}), ...(item.custom ? { custom: true, room: item.room, classId: item.classId, floor: item.floor } : {}) };
+  return {
+    ...clean, revision, ...(deleted ? { deleted: true } : {}), ...(checked ? { checked: true } : {}),
+    ...(user.name ? { updatedByName: user.name.slice(0, 200) } : {}),
+    ...(item.custom ? { custom: true, room: item.room, classId: item.classId, floor: item.floor } : {}),
+  };
 }
 
 export async function readBOQPhotos(id: string, cursor?: QueryDocumentSnapshot) {

@@ -3,8 +3,10 @@ import type { Bytes } from 'firebase/firestore';
 export type BOQEditableField = 'ciName' | 'ciDescription' | 'capacity' | 'serialNumber' | 'productionYear' | 'manufacturer' | 'assetId' | 'tag' | 'model';
 export type BOQColumnField = BOQEditableField | 'no' | 'classId' | 'room' | 'floor';
 export interface BOQColumn { label: string; field?: BOQColumnField }
+// What the drafter has to do with a sheet, taken from its tab colour (ungu / merah / kuning / biru).
+export type BOQSheetStatus = 'fix' | 'cek-lapangan' | 'cek-kembali' | 'samakan-habib';
 // One asset table of the BOQ workbook (a sheet, or a second table further down a sheet).
-export interface BOQTable { id: string; sheet: string; sheetKey: string; headerRow: number; title: string; columns: BOQColumn[] }
+export interface BOQTable { id: string; sheet: string; sheetKey: string; headerRow: number; title: string; columns: BOQColumn[]; status?: BOQSheetStatus; tabColor?: string }
 export type BOQFields = Record<BOQEditableField, string>;
 export interface BOQItem extends BOQFields {
   id: string;
@@ -15,6 +17,8 @@ export interface BOQItem extends BOQFields {
   sourceRow: number;
   sourceRows?: number[];
   section?: string;
+  // Remark next to QTY in the workbook ("Panel tidak ditemukan", "double dengan no 6", ...).
+  note?: string;
   // Original cell values, aligned with the table's columns (empty for custom items).
   values: string[];
   room: string;
@@ -25,11 +29,13 @@ export interface BOQItem extends BOQFields {
   // Items added by a drafter live only in Firestore (`custom: true`), not in the bundled workbook.
   custom?: boolean;
 }
-// `deleted` is a soft-delete tombstone; room/classId/floor/category are only stored on custom items.
+// `deleted` is a soft-delete tombstone; `checked` means a drafter confirmed the asset on site.
+// room/classId/floor/category are only stored on custom items.
 export interface BOQOverride extends Partial<BOQFields> {
   ciName: string; ciDescription: string; capacity: string;
-  revision: number; deleted?: boolean; custom?: boolean; room?: string; classId?: string; floor?: string; category?: string;
+  revision: number; deleted?: boolean; checked?: boolean; custom?: boolean; room?: string; classId?: string; floor?: string; category?: string;
   updatedByName?: string;
+  updatedAt?: { toMillis?: () => number };
 }
 export interface NewBOQItemInput extends BOQFields { room: string; classId: string; floor: string; category: string }
 export interface BOQPhoto {

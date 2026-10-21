@@ -17,6 +17,7 @@ service cloud.firestore {
 
     // Text, revision and audit fields shared by baseline and custom items.
     // `deleted` is a soft-delete tombstone; documents are never physically removed.
+    // `checked` marks an asset confirmed on site during the field check (red/yellow sheets).
     function validBOQCommon(data) {
       return isValidString(data.ciName, 500) && data.ciName.size() > 0
         && isValidString(data.ciDescription, 2000) && isValidString(data.capacity, 500)
@@ -27,6 +28,7 @@ service cloud.firestore {
         && (!('tag' in data.keys()) || isValidString(data.tag, 500))
         && (!('model' in data.keys()) || isValidString(data.model, 500))
         && (!('deleted' in data.keys()) || data.deleted is bool)
+        && (!('checked' in data.keys()) || data.checked is bool)
         && (!('updatedByName' in data.keys()) || isValidString(data.updatedByName, 200))
         && data.revision is int && data.revision > 0
         && data.sourceRow is int
@@ -37,7 +39,7 @@ service cloud.firestore {
     // where sourceSheet is the sheet key (e.g. "lv-panel") and the ID is derived from it and the source row.
     function validBOQItem(itemId, data) {
       return data.keys().hasAll(['ciName', 'ciDescription', 'capacity', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt'])
-        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'assetId', 'tag', 'model', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedByName', 'updatedAt'])
+        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'assetId', 'tag', 'model', 'deleted', 'checked', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedByName', 'updatedAt'])
         && validBOQCommon(data)
         && ((data.sourceSheet == 'ROOM' && data.sourceRow >= 3 && data.sourceRow <= 1738 && itemId == 'room-v1-room-' + string(data.sourceRow))
           || (data.sourceSheet == 'NO ROOM' && data.sourceRow >= 2 && data.sourceRow <= 680 && itemId == 'room-v1-no-room-' + string(data.sourceRow))
@@ -54,7 +56,7 @@ service cloud.firestore {
     // Items added by a drafter: not part of the bundled workbook, so they carry their own room/class placement.
     function validBOQCustomItem(itemId, data) {
       return data.keys().hasAll(['ciName', 'ciDescription', 'capacity', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedAt', 'custom', 'room', 'classId', 'floor'])
-        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'assetId', 'tag', 'model', 'deleted', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedByName', 'updatedAt', 'custom', 'room', 'classId', 'floor', 'category'])
+        && data.keys().hasOnly(['ciName', 'ciDescription', 'capacity', 'serialNumber', 'productionYear', 'manufacturer', 'assetId', 'tag', 'model', 'deleted', 'checked', 'revision', 'sourceSheet', 'sourceRow', 'updatedBy', 'updatedByName', 'updatedAt', 'custom', 'room', 'classId', 'floor', 'category'])
         && validBOQCommon(data)
         && (itemId.matches('room-v1-custom-[0-9a-f]{32}') || itemId.matches('boq-v2-custom-[0-9a-f]{32}'))
         && (!('category' in data.keys()) || isValidString(data.category, 100))
