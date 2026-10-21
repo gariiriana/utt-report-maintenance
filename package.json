@@ -8,7 +8,7 @@
     "build:prod": "vite build --mode production",
     "build:dev": "vite build --mode development",
     "test:navigation": "node --test scripts/test-app-navigation.mjs",
-    "test:pm-predictive": "node --test scripts/test-pm-predictive-engine.mjs scripts/test-pm-predictive-workflow.mjs",
+    "test:pm-predictive": "node --test scripts/test-pm-predictive-engine.mjs scripts/test-pm-predictive-workflow.mjs scripts/test-pm-predictive-profiles.mjs",
     "test:hse-weekly": "node --test scripts/test-hse-weekly-report.mjs",
     "test:ptw-filename": "node --test scripts/test-ptw-filename-parser.mjs",
     "test:document-revision": "node --test scripts/test-document-revision.mjs",

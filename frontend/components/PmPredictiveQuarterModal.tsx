@@ -1,7 +1,7 @@
 // ============================================================================
 // FILE: frontend/components/PmPredictiveQuarterModal.tsx
 // Deskripsi: Generate Predictive Report sekaligus untuk seluruh laporan PM dalam
-//            satu quarter (dibuka dari header Arsip Dokumen akun unit, mis. FCU).
+//            satu quarter (dibuka dari header Arsip Dokumen akun unit, mis. FCU, ATS, UPS).
 //            Alurnya sama dengan generate satu laporan: 1) pilih laporan & nama unit
 //            2) AI membaca angka dari foto setiap laporan, engineer memeriksa &
 //            mengonfirmasi angka per laporan  3) status & tren dihitung sistem, AI
@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { X, Bot, CheckCircle2, AlertTriangle, Loader2, FileDown, FileText, Save, ChevronRight, CalendarRange, Circle, RotateCw } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useModalScrollLock } from '@/utils/modalScrollLock';
-import { resolvePmProfile } from '@/config/pmPredictiveProfiles';
+import { resolvePmProfile, type PmProfile } from '@/config/pmPredictiveProfiles';
 import { unitKeyOf, fmtDate } from '@/utils/pmPredictiveEngine';
 import {
   loadPmSourcePhotos, getPmPredictive, findPreviousPmPredictive, savePmPredictive, readPlansWithAI, narrateSections,
@@ -83,16 +83,26 @@ export function PmPredictiveQuarterModal({ isOpen, onClose, documents, readOnly 
   const { user } = useAuth();
   useModalScrollLock(isOpen);
 
-  const accounts = useMemo(() => {
-    const counts = new Map<string, number>();
+  // Grup = akun + jenis unit. Akun tanpa profil sendiri (mis. standby engineer) bisa punya
+  // laporan beberapa jenis unit; tiap grup dianalisis dengan profilnya masing-masing.
+  const groups = useMemo(() => {
+    const map = new Map<string, { account: string; profile: PmProfile; docs: PmQuarterSourceDoc[] }>();
     for (const d of documents) {
-      const a = (d.createdBy || '').toLowerCase().trim();
-      counts.set(a, (counts.get(a) || 0) + 1);
+      const account = (d.createdBy || '').toLowerCase().trim();
+      const profile = resolvePmProfile(account, d.maintenanceName);
+      if (!profile) continue;
+      const key = `${account}|${profile.id}`;
+      const group = map.get(key) || { account, profile, docs: [] };
+      group.docs.push(d);
+      map.set(key, group);
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([a]) => a);
+    return [...map.entries()].sort((a, b) => b[1].docs.length - a[1].docs.length);
   }, [documents]);
-  const [account, setAccount] = useState('');
-  const accountDocs = useMemo(() => documents.filter(d => (d.createdBy || '').toLowerCase().trim() === account), [documents, account]);
+  const [groupKey, setGroupKey] = useState('');
+  const group = groups.find(([key]) => key === groupKey)?.[1] || null;
+  const account = group?.account || '';
+  const profile = group?.profile || null;
+  const accountDocs = useMemo(() => group?.docs || [], [group]);
   const quarters = useMemo(() => {
     const map = new Map<string, PmQuarter & { count: number }>();
     for (const d of accountDocs) {
@@ -104,7 +114,6 @@ export function PmPredictiveQuarterModal({ isOpen, onClose, documents, readOnly 
   }, [accountDocs]);
   const [qKey, setQKey] = useState('');
   const quarter = quarters.find(([k]) => k === qKey)?.[1] || null;
-  const profile = useMemo(() => (accountDocs[0] ? resolvePmProfile(account, accountDocs[0].maintenanceName) : null), [account, accountDocs]);
 
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<Record<string, Item>>({});
@@ -130,11 +139,11 @@ export function PmPredictiveQuarterModal({ isOpen, onClose, documents, readOnly 
     setActiveId(null);
   }, [isOpen]);
 
-  // Akun terbanyak & quarter terbaru dipilih otomatis.
+  // Grup dengan laporan terbanyak & quarter terbaru dipilih otomatis.
   useEffect(() => {
     if (!isOpen) return;
-    setAccount(a => (a && accounts.includes(a) ? a : accounts[0] || ''));
-  }, [isOpen, accounts]);
+    setGroupKey(k => (k && groups.some(([key]) => key === k) ? k : groups[0]?.[0] || ''));
+  }, [isOpen, groups]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -367,9 +376,9 @@ export function PmPredictiveQuarterModal({ isOpen, onClose, documents, readOnly 
           Hasilnya diunduh sebagai <strong>satu dokumen gabungan</strong> untuk quarter tersebut.
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          {accounts.length > 1 && (
-            <select value={account} onChange={e => setAccount(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white" aria-label="Akun unit">
-              {accounts.map(a => <option key={a} value={a}>{a}</option>)}
+          {groups.length > 1 && (
+            <select value={groupKey} onChange={e => setGroupKey(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white" aria-label="Akun & jenis unit">
+              {groups.map(([key, g]) => <option key={key} value={key}>{g.account} · {g.profile.unitType}</option>)}
             </select>
           )}
           <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700">
@@ -397,7 +406,7 @@ export function PmPredictiveQuarterModal({ isOpen, onClose, documents, readOnly 
               value={it.unitLabel}
               onChange={e => patch(it.doc.id, { unitLabel: e.target.value })}
               disabled={readOnly || !it.regenerate || !it.include}
-              placeholder="Nama unit, mis. FCU-01 Lt.2"
+              placeholder={`Nama unit, mis. ${profile?.unitExample || 'Unit-01'}`}
               className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold disabled:bg-slate-50 disabled:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-300"
               aria-label="Nama unit"
             />

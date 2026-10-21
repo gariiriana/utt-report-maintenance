@@ -16,7 +16,7 @@ import type {
 } from '@/types/pmPredictiveTypes';
 // Import nilai memakai path relatif .ts agar modul ini bisa dijalankan Node tanpa bundler.
 import {
-  matchCard, convertToCanonical, computeDerived, mergeHistory, buildSections, worstStatus, effectiveStatus,
+  matchCard, matchCardRanked, convertToCanonical, computeDerived, mergeHistory, buildSections, worstStatus, effectiveStatus,
   unitKeyOf, toISODate,
 } from './pmPredictiveEngine.ts';
 
@@ -171,14 +171,25 @@ export const quarterMonthsText = (q: PmQuarter) => `${MONTHS_ID[(q.quarter - 1) 
 
 // ─── Foto kartu & draf angka ─────────────────────────────────────────────────
 
-/** Peran tiap foto kartu: pengukuran (sekali per parameter), nameplate, atau visual. */
+/**
+ * Peran tiap foto kartu: pengukuran (sekali per parameter), nameplate, atau visual.
+ * Bila beberapa kartu cocok ke parameter yang sama, dipilih label paling persis
+ * ("Capacitance Measurement" mengalahkan "Inspection capacitance values"), lalu kata
+ * kunci paling spesifik ("Pressure Cylinder" mengalahkan "Pressure Switch"), lalu urutan kartu.
+ */
 export function planCards(profile: PmProfile, photos: PmSourcePhoto[]): CardPlan[] {
-  const usedParams = new Set<string>();
+  const matches = photos.map(photo => matchCardRanked(profile, photo.description));
+  const chosen = new Map<string, number>();
+  matches.forEach((m, i) => {
+    if (m?.card.kind !== 'measurement' || !m.card.param) return;
+    const cur = chosen.has(m.card.param) ? matches[chosen.get(m.card.param)!]! : null;
+    if (!cur || m.rank < cur.rank || (m.rank === cur.rank && m.keyLength > cur.keyLength)) chosen.set(m.card.param, i);
+  });
+  const measured = new Set(chosen.values());
   let hasNameplate = false;
-  return photos.map(photo => {
-    const m = matchCard(profile, photo.description);
-    if (m?.kind === 'measurement' && m.param && !usedParams.has(m.param)) {
-      usedParams.add(m.param);
+  return photos.map((photo, i) => {
+    const m = matches[i]?.card;
+    if (m?.kind === 'measurement' && m.param && measured.has(i)) {
       return { photo, kind: 'measurement' as const, param: m.param };
     }
     if (m?.kind === 'nameplate' && !hasNameplate) {

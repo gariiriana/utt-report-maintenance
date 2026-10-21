@@ -2085,7 +2085,7 @@ export function DocumentList({
   // --------------------------------------------------------------------------
   // HSE Inspection Recap Computed & Handlers
   // --------------------------------------------------------------------------
-  // Laporan PM yang mendukung Predictive Report (mis. akun FCU) untuk generate per quarter.
+  // Laporan PM yang mendukung Predictive Report (akun maintenance yang punya profil) untuk generate per quarter.
   const pmQuarterDocs = useMemo(() => (isEngineer || isAdmin)
     ? documents.filter(d => d.documentType === 'pdf' && !d.deleteRequested && resolvePmProfile(d.createdBy, d.maintenanceName))
     : [], [documents, isEngineer, isAdmin]);
@@ -4197,7 +4197,7 @@ export function DocumentList({
               </motion.button>
             )}
 
-            {/* Tombol Predictive Report dari laporan PM (pilot: FCU) */}
+            {/* Tombol Predictive Report dari laporan PM (akun unit yang punya profil predictive) */}
             {showPmPredictive && (
               <motion.button
                 whileHover={{ scale: 1.02 }}

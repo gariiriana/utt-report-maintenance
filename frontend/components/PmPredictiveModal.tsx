@@ -369,7 +369,7 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
                 value={unitLabel}
                 onChange={e => setUnitLabel(e.target.value)}
                 className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                placeholder="mis. FCU-01 Lt.2"
+                placeholder={`mis. ${profile?.unitExample || 'Unit-01'}`}
               />
             </label>
             <div className="flex items-start gap-1.5 text-slate-600">
@@ -493,7 +493,7 @@ export function PmPredictiveModal({ isOpen, onClose, document: srcDoc, readOnly 
 
         <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           {!profile && (
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-900">Predictive Report dari laporan PM saat ini baru tersedia untuk unit FCU.</div>
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-900">Jenis unit laporan PM ini belum dikenali (dari akun pembuat maupun nama maintenance), jadi Predictive Report belum tersedia.</div>
           )}
           {profile && (step === 'loading' || step === 'reading' || step === 'analyzing') && (
             <div className="py-10 flex flex-col items-center gap-3 text-center">

@@ -96,31 +96,50 @@ export function unitKeyOf(account: string, unitLabel: string): string {
   return `${(account || '').toLowerCase().trim()}|${unit || 'unit'}`;
 }
 
-const LABEL_PREFIXES = ['measurement', 'measure', 'pengukuran', 'checking', 'check', 'cek', 'cleaning', 'pembersihan', 'voltage', 'voltase', 'tegangan'];
+const LABEL_PREFIXES = [
+  'measurement', 'meassurement', 'measurment', 'measrument', 'measuring', 'measure', 'pengukuran', 'pengecekan',
+  'checking', 'check', 'cek', 'cleaning', 'pembersihan', 'voltage', 'voltase', 'tegangan',
+];
 
+/** Kartu pekerjaan (pembersihan, pengencangan, pelumasan) bukan foto alat ukur. */
+const WORK_LABEL_RE = /^(cleaning|clening|pembersihan|bersihkan|tightening|tigtening|pengencangan|lubrication|lubricant|pelumasan|greasing)/;
+const MEASURE_LABEL_RE = /(measurement|meassurement|measurment|measrument|measuring|pengukuran)/;
+
+/**
+ * Buang awalan umum berulang ("measurementvoltagers" -> "rs"). Awalan yang lebih panjang
+ * didahulukan dan label yang hanya berisi awalan dibiarkan ("measurement" tidak menjadi "ment").
+ */
 function stripLabelPrefixes(norm: string): string {
   let out = norm;
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const p of LABEL_PREFIXES) {
-      if (out.startsWith(p) && out.length > p.length) {
-        out = out.slice(p.length);
-        changed = true;
-      }
-    }
+  for (;;) {
+    const p = LABEL_PREFIXES.find(x => out.startsWith(x));
+    if (!p || out.length === p.length) return out;
+    out = out.slice(p.length);
   }
-  return out;
+}
+
+/**
+ * Cocokkan label kartu laporan PM ke pemetaan profil beserta mutu kecocokannya:
+ * rank 0 = label persis, 1 = kata kunci pada label pengukuran, 2 = kata kunci saja;
+ * keyLength = panjang kata kunci yang cocok (lebih panjang = lebih spesifik).
+ */
+export function matchCardRanked(profile: PmProfile, label: string): { card: PmCardMapping; rank: 0 | 1 | 2; keyLength: number } | null {
+  const norm = normalizeLabel(label);
+  const core = stripLabelPrefixes(norm);
+  if (!core) return null;
+  const cards = WORK_LABEL_RE.test(norm) ? profile.cards.filter(c => c.kind !== 'measurement') : profile.cards;
+  const exact = cards.find(c => c.match.includes(core));
+  if (exact) return { card: exact, rank: 0, keyLength: core.length };
+  // Label panjang/bervariasi ("Checking Humidity Ruang"): cocokkan kata kunci >= 4 huruf.
+  const hits = (c: PmCardMapping) => c.match.filter(m => m.length >= 4 && core.includes(m));
+  const partial = cards.find(c => hits(c).length > 0);
+  if (!partial) return null;
+  return { card: partial, rank: MEASURE_LABEL_RE.test(norm) ? 1 : 2, keyLength: Math.max(...hits(partial).map(m => m.length)) };
 }
 
 /** Cocokkan label kartu laporan PM ke pemetaan profil (null = kartu tidak dikenal). */
 export function matchCard(profile: PmProfile, label: string): PmCardMapping | null {
-  const core = stripLabelPrefixes(normalizeLabel(label));
-  if (!core) return null;
-  const exact = profile.cards.find(c => c.match.includes(core));
-  if (exact) return exact;
-  // Label panjang/bervariasi ("Checking Humidity Ruang"): cocokkan kata kunci >= 4 huruf.
-  return profile.cards.find(c => c.match.some(m => m.length >= 4 && core.includes(m))) || null;
+  return matchCardRanked(profile, label)?.card || null;
 }
 
 // ─── Satuan ──────────────────────────────────────────────────────────────────
@@ -170,11 +189,71 @@ export function convertToCanonical(value: number | null, fromUnit: string | unde
       if (['°f', 'f', 'degf'].includes(u)) return ok((value - 32) * 5 / 9);
       break;
     case 'bar':
-      if (u === 'bar') return ok(value);
-      if (u === 'psi') return ok(value * 0.0689476);
+      if (['bar', 'barg'].includes(u)) return ok(value);
+      if (['psi', 'psig'].includes(u)) return ok(value * 0.0689476);
       if (u === 'kpa') return ok(value / 100);
       if (u === 'mpa') return ok(value * 10);
       if (['kgf/cm2', 'kg/cm2', 'kgf/cm²', 'kg/cm²'].includes(u)) return ok(value * 0.980665);
+      break;
+    case 'psi':
+      if (['psi', 'psig'].includes(u)) return ok(value);
+      if (['bar', 'barg'].includes(u)) return ok(value * 14.5038);
+      if (u === 'kpa') return ok(value * 0.145038);
+      if (u === 'mpa') return ok(value * 145.038);
+      if (['kgf/cm2', 'kg/cm2', 'kgf/cm²', 'kg/cm²'].includes(u)) return ok(value * 14.2233);
+      break;
+    case 'kV':
+      if (u === 'kv') return ok(value);
+      if (['v', 'vac'].includes(u)) return ok(value / 1000);
+      break;
+    case 'ohm':
+      // MΩ/mΩ tidak dibedakan setelah huruf kecil, jadi tidak dikonversi.
+      if (['ohm', 'ohms', 'ω', 'ꭥ'].includes(u)) return ok(value);
+      if (['kω', 'kohm', 'kohms'].includes(u)) return ok(value * 1000);
+      break;
+    case 'Hz':
+      if (u === 'hz') return ok(value);
+      break;
+    case 'kW':
+      if (u === 'kw') return ok(value);
+      if (u === 'w') return ok(value / 1000);
+      break;
+    case 'PF':
+      if (['pf', 'cosφ', 'cosϕ', 'cosphi', 'cos'].includes(u)) return ok(value);
+      break;
+    case 'lux':
+      if (['lux', 'lx'].includes(u)) return ok(value);
+      if (['fc', 'footcandle'].includes(u)) return ok(value * 10.764);
+      break;
+    case 'rpm':
+      if (['rpm', 'r/min'].includes(u)) return ok(value);
+      break;
+    case 'µF':
+      if (['µf', 'μf', 'uf', 'mfd'].includes(u)) return ok(value);
+      if (u === 'nf') return ok(value / 1000);
+      break;
+    case 'mm':
+      if (u === 'mm') return ok(value);
+      if (u === 'cm') return ok(value * 10);
+      break;
+    case 'µSv/h':
+      if (['µsv/h', 'μsv/h', 'usv/h', 'µsv/hr', 'μsv/hr', 'usv/hr'].includes(u)) return ok(value);
+      if (['nsv/h', 'nsv/hr'].includes(u)) return ok(value / 1000);
+      // 1 mR ≈ 10 µSv (pendekatan yang lazim dipakai survei radiasi).
+      if (['mr/h', 'mr/hr'].includes(u)) return ok(value * 10);
+      break;
+    case 'kg':
+      if (u === 'kg') return ok(value);
+      if (['lb', 'lbs'].includes(u)) return ok(value * 0.453592);
+      break;
+    case 'mg/L':
+      // Air: 1 ppm ≈ 1 mg/L. Kesadahan: 1 gpg = 17,1 mg/L CaCO3, 1 °dH = 17,85 mg/L CaCO3.
+      if (['mg/l', 'mgl', 'ppm', 'mg/lcaco3', 'ppmcaco3'].includes(u)) return ok(value);
+      if (u === 'gpg') return ok(value * 17.1);
+      if (['°dh', 'dh', 'dgh'].includes(u)) return ok(value * 17.85);
+      break;
+    case 'pH':
+      if (u === 'ph') return ok(value);
       break;
     case '%':
       if (u === '%') return ok(value);
@@ -268,6 +347,20 @@ function nominalFor(rule: Extract<PmRule, { type: 'band' }>, np: PmNameplate): {
   return { nominal: rule.nominal, fromNameplate: false };
 }
 
+/** Batas zona ISO 10816-1 (mm/s RMS): B/C = awal zona C, C/D = awal zona D. */
+const ISO10816_ZONES: Record<1 | 2 | 3, { bc: number; cd: number }> = {
+  1: { bc: 1.8, cd: 4.5 },
+  2: { bc: 2.8, cd: 7.1 },
+  3: { bc: 4.5, cd: 11.2 },
+};
+
+/** Kelas mesin ISO 10816-1 dari daya nameplate (I <=15 kW, II 15-75 kW, III >75 kW). */
+function iso10816Class(rule: Extract<PmRule, { type: 'iso10816' }>, np: PmNameplate): { cls: 1 | 2 | 3; fromNameplate: boolean } {
+  const kw = np.ratedPowerKw;
+  if (kw && kw > 0) return { cls: kw <= 15 ? 1 : kw <= 75 ? 2 : 3, fromNameplate: true };
+  return { cls: rule.defaultClass || 1, fromNameplate: false };
+}
+
 /** Batas absolut sebuah aturan untuk nilai/riwayat saat ini (dipakai status & proyeksi). */
 function limitsOf(rule: PmRule, np: PmNameplate, baseline: number | null): Limit[] {
   const L: Limit[] = [];
@@ -290,6 +383,17 @@ function limitsOf(rule: PmRule, np: PmNameplate, baseline: number | null): Limit
       push('warning', rule.warning, 'above');
       push('alarm', rule.alarm, 'above');
       break;
+    case 'lower':
+      push('watch', rule.watch, 'below');
+      push('warning', rule.warning, 'below');
+      push('alarm', rule.alarm, 'below');
+      break;
+    case 'iso10816': {
+      const zone = ISO10816_ZONES[iso10816Class(rule, np).cls];
+      push('warning', zone.bc, 'above');
+      push('alarm', zone.cd, 'above');
+      break;
+    }
     case 'pctOfRatedCurrent': {
       const fla = np.ratedCurrent;
       if (fla && fla > 0) {
@@ -311,6 +415,13 @@ function limitsOf(rule: PmRule, np: PmNameplate, baseline: number | null): Limit
         push('watch', baseline * (1 - rule.watchPct / 100), 'below');
         push('warning', baseline * (1 - rule.warningPct / 100), 'below');
         if (rule.alarmPct !== undefined) push('alarm', baseline * (1 - rule.alarmPct / 100), 'below');
+      }
+      break;
+    case 'riseFromBaseline':
+      if (baseline !== null && baseline > 0) {
+        push('watch', baseline * (1 + rule.watchPct / 100), 'above');
+        push('warning', baseline * (1 + rule.warningPct / 100), 'above');
+        if (rule.alarmPct !== undefined) push('alarm', baseline * (1 + rule.alarmPct / 100), 'above');
       }
       break;
     case 'changeFromBaseline':
@@ -340,14 +451,19 @@ function ruleText(rule: PmRule, unit: string, np: PmNameplate, baseline: number 
   switch (rule.type) {
     case 'band': {
       const { nominal: nom, fromNameplate } = nominalFor(rule, np);
+      // Nominal kecil (frekuensi 50 Hz, 20 kV) butuh desimal agar batas tidak terbaca sama.
+      const dec = nom < 100 ? 1 : 0;
       const parts: string[] = [];
+      if (rule.watchPct !== undefined) {
+        parts.push(`pantau di luar ${fmtNum(nom * (1 - rule.watchPct / 100), dec)}-${fmtNum(nom * (1 + rule.watchPct / 100), dec)}${u}`);
+      }
       if (rule.warningPct !== undefined) {
         const lowPct = rule.warningLowPct ?? rule.warningPct;
         const tol = lowPct === rule.warningPct ? `±${rule.warningPct}%` : `+${rule.warningPct}%/-${lowPct}%`;
-        parts.push(`Normal ${fmtNum(nom * (1 - lowPct / 100), 0)}-${fmtNum(nom * (1 + rule.warningPct / 100), 0)}${u} (nominal ${fmtNum(nom, 0)}${u} ${tol})`);
+        parts.push(`Normal ${fmtNum(nom * (1 - lowPct / 100), dec)}-${fmtNum(nom * (1 + rule.warningPct / 100), dec)}${u} (nominal ${fmtNum(nom, dec)}${u} ${tol})`);
       }
       if (rule.alarmPct !== undefined) {
-        parts.push(`kritis di luar ${fmtNum(nom * (1 - rule.alarmPct / 100), 0)}-${fmtNum(nom * (1 + rule.alarmPct / 100), 0)}${u} (${fromNameplate ? 'rating nameplate' : 'nominal'} ${fmtNum(nom, 0)}${u} ±${rule.alarmPct}%)`);
+        parts.push(`kritis di luar ${fmtNum(nom * (1 - rule.alarmPct / 100), dec)}-${fmtNum(nom * (1 + rule.alarmPct / 100), dec)}${u} (${fromNameplate ? 'rating nameplate' : 'nominal'} ${fmtNum(nom, dec)}${u} ±${rule.alarmPct}%)`);
       }
       return parts.join('; ');
     }
@@ -357,6 +473,18 @@ function ruleText(rule: PmRule, unit: string, np: PmNameplate, baseline: number 
         `peringatan >${fmtNum(rule.warning)}${u}`,
         rule.alarm !== undefined ? `kritis >${fmtNum(rule.alarm)}${u}` : '',
       ].filter(Boolean).join('; ');
+    case 'lower':
+      return [
+        rule.watch !== undefined ? `pantau <${fmtNum(rule.watch)}${u}` : '',
+        `peringatan <${fmtNum(rule.warning)}${u}`,
+        rule.alarm !== undefined ? `kritis <${fmtNum(rule.alarm)}${u}` : '',
+      ].filter(Boolean).join('; ');
+    case 'iso10816': {
+      const { cls, fromNameplate } = iso10816Class(rule, np);
+      const zone = ISO10816_ZONES[cls];
+      const basis = fromNameplate ? `daya nameplate ${fmtNum(np.ratedPowerKw)} kW` : 'daya nameplate tidak tersedia';
+      return `ISO 10816-1 kelas ${['I', 'II', 'III'][cls - 1]} (${basis}): peringatan >${fmtNum(zone.bc)}${u}; kritis >${fmtNum(zone.cd)}${u}`;
+    }
     case 'pctOfRatedCurrent': {
       const fla = np.ratedCurrent;
       if (!fla || fla <= 0) return '';
@@ -364,16 +492,29 @@ function ruleText(rule: PmRule, unit: string, np: PmNameplate, baseline: number 
         rule.watchPct !== undefined ? `pantau >${fmtNum(fla * rule.watchPct / 100)}${u}` : '',
         `peringatan >${fmtNum(fla * rule.warningPct / 100)}${u}`,
         rule.alarmPct !== undefined ? `kritis >${fmtNum(fla * rule.alarmPct / 100)}${u}` : '',
-      ].filter(Boolean).join('; ') + ` (FLA nameplate ${fmtNum(fla)}${u})`;
+      ].filter(Boolean).join('; ') + ` (${rule.ratedLabel || 'FLA nameplate'} ${fmtNum(fla)}${u})`;
     }
-    case 'range':
-      return `Normal ${fmtNum(rule.lowWarning ?? rule.lowAlarm)}-${fmtNum(rule.highWatch ?? rule.highWarning)}${u}`
-        + (rule.highWarning !== undefined ? `; peringatan >${fmtNum(rule.highWarning)}${u}` : '')
-        + (rule.highAlarm !== undefined ? `; kritis >${fmtNum(rule.highAlarm)}${u}` : '');
+    case 'range': {
+      // Sisi bawah ikut dicetak (mis. pH <6.5, kelembapan <20%) karena juga menaikkan status.
+      const side = (low?: number, high?: number) =>
+        [low !== undefined ? `<${fmtNum(low)}` : '', high !== undefined ? `>${fmtNum(high)}` : ''].filter(Boolean).join(' atau ');
+      const warn = side(rule.lowWarning, rule.highWarning);
+      const alarm = side(rule.lowAlarm, rule.highAlarm);
+      return [
+        `Normal ${fmtNum(rule.lowWarning ?? rule.lowAlarm)}-${fmtNum(rule.highWatch ?? rule.highWarning)}${u}`,
+        rule.highWatch !== undefined ? `pantau >${fmtNum(rule.highWatch)}${u}` : '',
+        warn ? `peringatan ${warn}${u}` : '',
+        alarm ? `kritis ${alarm}${u}` : '',
+      ].filter(Boolean).join('; ');
+    }
     case 'dropFromBaseline':
       return baseline !== null
         ? `Turun >${rule.watchPct}% dari acuan awal ${fmtNum(baseline)}${u} = pantau; >${rule.warningPct}% = peringatan`
         : `Pengukuran pertama menjadi acuan; turun >${rule.watchPct}% pada pengukuran berikutnya = pantau`;
+    case 'riseFromBaseline':
+      return baseline !== null
+        ? `Naik >${rule.watchPct}% dari acuan awal ${fmtNum(baseline)}${u} = pantau; >${rule.warningPct}% = peringatan`
+        : `Pengukuran pertama menjadi acuan; naik >${rule.watchPct}% pada pengukuran berikutnya = pantau`;
     case 'changeFromBaseline':
       return baseline !== null
         ? `Berubah >${rule.watchPct}% dari acuan awal ${fmtNum(baseline)}${u} = pantau; >${rule.warningPct}% = peringatan`
@@ -415,7 +556,7 @@ export function evaluateParam({ param, def, series, value, date, nameplate }: Ev
 
   if (value === null) {
     base.note = def.derived === 'currentLoadPct'
-      ? 'FLA nameplate tidak tersedia; beban terhadap rating belum dapat dihitung.'
+      ? 'Arus nominal (FLA/In) nameplate tidak tersedia; beban terhadap rating belum dapat dihitung.'
       : 'Nilai tidak tersedia pada laporan ini.';
     return base;
   }
@@ -440,7 +581,7 @@ export function evaluateParam({ param, def, series, value, date, nameplate }: Ev
       }
       continue;
     }
-    if ((rule.type === 'dropFromBaseline' || rule.type === 'changeFromBaseline') && baseline === null) {
+    if ((rule.type === 'dropFromBaseline' || rule.type === 'riseFromBaseline' || rule.type === 'changeFromBaseline') && baseline === null) {
       notes.push('Titik data pertama, menjadi baseline unit ini.');
       continue;
     }

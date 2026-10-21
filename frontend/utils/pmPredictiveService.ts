@@ -180,7 +180,9 @@ export async function readPlansWithAI(
       index: p.photo.index,
       label: p.photo.description || `Foto #${p.photo.index}`,
       kind: p.kind,
-      expected: def?.expected || (p.kind === 'visual' ? profile.visualLabels[p.visualKey || ''] || 'Kondisi fisik yang terlihat' : undefined),
+      expected: def?.expected || (p.kind === 'visual'
+        ? profile.visualLabels[p.visualKey || ''] || 'Kondisi fisik yang terlihat'
+        : p.kind === 'nameplate' ? profile.nameplateHint : undefined),
       unit: def?.unit,
       imageBase64: await prepareImageForAI(p.photo.photoBase64),
     });

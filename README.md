@@ -29,7 +29,7 @@
 - [Tech Stack](#-tech-stack)
 - [Modul & Fitur](#-modul--fitur)
   - [AI Service Report & Chat Copilot](#-ai-service-report--chat-copilot)
-  - [Predictive Report dari Laporan PM (Pilot FCU)](#-predictive-report-dari-laporan-pm-pilot-fcu)
+  - [Predictive Report dari Laporan PM](#-predictive-report-dari-laporan-pm)
   - [Predictive Maintenance CM & Periodik](#-predictive-maintenance-cm--periodik)
   - [Monthly Report Generator (13 Bab)](#-monthly-report-generator-13-bab)
   - [SOP & EOP](#-sop--eop)
@@ -60,13 +60,14 @@
 
 ## 🆕 Pembaruan Terbaru
 
-Perubahan sejak pembaruan README terakhir (28 September 2026) sampai 15 Oktober 2026.
+Perubahan sejak pembaruan README terakhir (28 September 2026) sampai 21 Oktober 2026.
 
 | Tanggal | Pembaruan |
 | :--- | :--- |
+| 21 Okt | **[Predictive Report PM untuk semua akun maintenance](#-predictive-report-dari-laporan-pm)** (ATS, LDB/RDB, LV, MV, Trafo, PDU, UPS, Genset, CRAC, VRV, AHU, Pompa, Lift, X-Ray, PJU, FSS, Water Softener, dan lainnya), tidak lagi hanya FCU. Batas acuan dari standar SR perusahaan dan standar terkait. *Predictive per Quarter* dikelompokkan per akun + jenis unit |
 | 15 Okt | Predictive Report PM: **ekspor DOCX** selain PDF, **foto kartu ikut masuk** ke PDF/DOCX, **pilih equipment** yang dianalisis, dan **edit angka** hasil baca AI setelah disimpan |
 | 15 Okt | **Voice Agent dihapus** (frontend, endpoint `/api/voice/ws`, dan dependensi WebSocket). Mic *Voice Note* (dikte ke chat) tetap ada |
-| 15 Okt | **[Predictive Report dari laporan PM](#-predictive-report-dari-laporan-pm-pilot-fcu)** (pilot FCU) di Arsip Dokumen: AI membaca foto alat ukur, engineer mengonfirmasi angka, status dan proyeksi dihitung terhadap standar |
+| 15 Okt | **[Predictive Report dari laporan PM](#-predictive-report-dari-laporan-pm)** (pilot FCU) di Arsip Dokumen: AI membaca foto alat ukur, engineer mengonfirmasi angka, status dan proyeksi dihitung terhadap standar |
 | 14 Okt | **[Update aplikasi aman](#-pwa-offline--update-aplikasi)**: draft formulir disimpan sebelum aplikasi dimuat ulang, lalu dipulihkan |
 | 14 Okt | **[Navigasi tersinkron dengan riwayat browser](#-navigasi--uiux)**: menu dan folder punya URL sendiri, tombol Back/Forward berfungsi |
 | 12 Okt | **[Simpan offline](#-pwa-offline--update-aplikasi)**: data tersimpan di HP saat tanpa sinyal dan terkirim otomatis; penanda offline; upload foto dari HP diperbaiki |
@@ -178,14 +179,16 @@ Prinsip utama:
 - **Chat Copilot** (`AIChatWidget.tsx`) untuk semua role kecuali Drafter, dengan mic *Voice Note* untuk mendikte pertanyaan (speech-to-text bawaan browser).
 - **Pool key dan kuota**: backend memutar beberapa key Gemini secara bergilir dan mencatat kuota harian di `system_status/ai_limit_tracker`. Klien AI untuk MOP dan predictive juga merotasi model dan memberi cooldown pada key yang kena limit (429).
 
-### 🔮 Predictive Report dari Laporan PM (Pilot FCU)
+### 🔮 Predictive Report dari Laporan PM
 
-Predictive report dibuat langsung dari laporan Preventive Maintenance yang diisi engineer di **Buat Laporan**. Satu laporan PM menghasilkan **satu dokumen** dengan **satu bagian per equipment** di dalam unit. Untuk FCU ada 4 bagian: Suplai Listrik FCU, Motor Fan (Blower), Coil & Sirkulasi Chilled Water, serta Evaporator Coil & Aliran Udara.
+Predictive report dibuat langsung dari laporan Preventive Maintenance yang diisi engineer di **Buat Laporan**. Satu laporan PM menghasilkan **satu dokumen** dengan **satu bagian per equipment** di dalam unit. Untuk FCU ada 4 bagian: Suplai Listrik FCU, Motor Fan (Blower), Coil & Sirkulasi Chilled Water, serta Evaporator Coil & Aliran Udara. Untuk ATS ada 3: Suplai Tegangan ATS, Beban & Arus ATS, serta Terminasi, Busbar & Pembumian.
 
-**Alur** (Arsip Dokumen → kartu laporan PM akun `fcu@gmail.com` → tombol **Predictive AI**):
+**Akun yang didukung.** Semua akun maintenance (role engineer) yang punya profil di `config/pmPredictiveProfiles.ts`: FCU, ATS, LDB/RDB, LV, MV/RMU, Trafo, PDU, Capacitor Bank, Busduct, UPS, Genset, CRAC, VRV, AHU, AC Split, Cooling Tower, Pompa, Exhaust Fan, Lift, X-Ray, PJU, Lighting System, LPS, Grounding, Dock Leveler, Door, Gate, FSS & VESDA, Water Softener, WLD, dan FLD. Akun dikenali dari email persis, lalu dari potongan email seperti pemilihan template di **Buat Laporan** (email memuat `ahu`/`ahhu`, `dock`/`leveler`, `ldb`/`rdb`, atau `watersoftener`), lalu dari nama maintenance (mis. "PM Panel ATS"). Laporan PM yang jenis unitnya tidak dikenali (mis. Chiller) tidak menampilkan tombol predictive, sehingga tidak ada analisis dengan batas yang salah. WLD dan FLD hanya punya kartu visual, sehingga predictive-nya berisi observasi visual saja.
 
-1. Isi *Nama unit untuk riwayat* (mis. `FCU-01 Lt.2`). Sistem mencari predictive sebelumnya untuk unit yang sama.
-2. AI membaca foto kartu: angka display alat ukur, nameplate motor, dan kondisi visual evaporator.
+**Alur** (Arsip Dokumen → kartu laporan PM akun maintenance → tombol **Predictive AI**):
+
+1. Isi *Nama unit untuk riwayat* (mis. `FCU-01 Lt.2`, `ATS-01 Power Room A`). Sistem mencari predictive sebelumnya untuk unit yang sama.
+2. AI membaca foto kartu: angka display alat ukur, nameplate (petunjuk rating per jenis unit, mis. In panel atau arus sekunder trafo), dan kondisi visual kartu lainnya.
 3. Engineer memeriksa dan mengonfirmasi setiap angka (edit, zoom foto, isi manual, atau baca ulang foto yang gagal), lalu **mencentang equipment yang mau dianalisis**. Equipment yang terbaca AI otomatis tercentang; yang tidak dicentang tidak masuk analisis dan riwayatnya tidak bertambah, tetapi angkanya tetap disimpan. Angka baru masuk riwayat setelah dikonfirmasi.
 4. Sistem menghitung status, tren, dan proyeksi. AI menulis narasi per equipment dan ringkasan eksekutif.
 5. Narasi dan status bisa disunting, lalu disimpan dan diekspor ke **PDF** atau **DOCX**.
@@ -207,13 +210,52 @@ Predictive report dibuat langsung dari laporan Preventive Maintenance yang diisi
 | Aliran udara | turun 15 / 25 / 40 % dari baseline | Baseline unit |
 | ΔP chilled water | berubah 20 / 35 % dari baseline; nilai negatif = peringatan | Baseline unit |
 
+Akun lain memakai blok parameter bersama. Bila service report perusahaan (`sr.md`) mencantumkan kolom *Standard*, nilai itu yang dipakai lebih dulu:
+
+| Parameter | Batas acuan | Sumber |
+| :--- | :--- | :--- |
+| Tegangan panel & beban IT | 400/230 V +5% / −10%; kritis di luar ±10% | Standar SR, SNI 04-0227-2003, ITI (CBEMA) Curve |
+| Tegangan beban motor/kompresor | sama dengan FCU (SNI + ±10% rating nameplate) | SNI 04-0227-2003, NEMA MG-1 |
+| Arus panel vs In nameplate | 80 / 100 % | Standar SR (beban ≤80% pengaman) |
+| Ketidakseimbangan arus | 5 / 10 / 20 % | Standar SR (deviasi beban 10%) |
+| Tegangan N-G | 2 / 5 V | Praktik kualitas daya peralatan IT (batas internal) |
+| Suhu sambungan/breaker (thermal imager) | >40 °C peringatan, >70 °C kritis | Standar SR, NETA MTS-2019 Tabel 100.18 |
+| Resistans pembumian | <5 ohm (LPS <10 ohm) | Standar SR, IEC 60364 / PUIL 2011; IEC 62305-3 |
+| Getaran motor/pompa | awal zona C / D sesuai kelas daya nameplate (I ≤15 kW, II 15-75 kW, III >75 kW) | ISO 10816-1 |
+| Getaran genset | naik 25 / 50 % dari baseline | ISO 10816-1 kriteria II |
+| Kebisingan motor door/dock leveler | 75 dB(A), atau naik ≥3 dB | Standar SR |
+| Frekuensi | 49,8–50,2 Hz | Aturan Jaringan Jawa-Madura-Bali |
+| Faktor daya | <0,85 peringatan | Tarif PLN (Permen ESDM 28/2016) |
+| THD tegangan | 8 % | IEEE 519-2014 |
+| Tegangan 20 kV | +5% / −10% | SPLN 1:1995 |
+| Tegangan baterai | turun 2 / 3 / 5 % dari baseline | Kurva tegangan istirahat lead-acid |
+| Suhu baterai UPS | 27 / 33 °C | IEEE Std 1188 |
+| Beban UPS | 80 / 90 / 100 % | Praktik operasi UPS (batas internal) |
+| Iluminasi LED | turun 20 / 30 % dari baseline | IES LM-80/TM-21 (L70) |
+| Kapasitansi | berubah 5 / 10 % dari baseline | Standar SR (±10% nameplate) |
+| Tekanan R32 AC split | 115–145 psi | Template PM AC Split |
+| Leveling lift | 10 / 20 mm | EN 81-20:2014 |
+| Kebocoran radiasi X-ray | 0,5 / 5 µSv/jam | Perka BAPETEN 4/2013, 21 CFR 1020.40 |
+| Tabung agen FSS | tekanan turun 5 / 10 %, berat agen turun 3 / 5 % dari baseline | NFPA 2001 |
+| Kesadahan air hasil softener | >17,1 mg/L (1 gpg) peringatan, >60 mg/L kritis | NSF/ANSI 44, klasifikasi USGS |
+| pH air softener | 6,5–8,5 | Permenkes 2/2023 |
+| Pressure drop softener | >1 bar (15 psi) peringatan; nilai negatif = peringatan | NSF/ANSI 44 |
+
+Parameter tanpa standar absolut (arus netral, daya kW, arus 20 kV, suhu trafo isolasi, tegangan panel surya, tekanan refrigeran VRV/AHU, aliran sampling VESDA, kesadahan air baku, TDS, tekanan inlet/outlet softener) hanya dipantau trennya atau dibandingkan dengan baseline unit.
+
+**Pemetaan kartu.** Label kartu dicocokkan ke parameter: label persis dulu ("R-S", "Measurement Ampere N"), lalu kata kunci. Kartu pekerjaan (*Cleaning*, *Tightening*, *Lubrication*) tidak pernah dibaca sebagai alat ukur. Bila beberapa kartu cocok ke parameter yang sama, label paling persis yang dipakai ("Capacitance Measurement" mengalahkan "Inspection capacitance values"). Kartu yang tidak dikenali dinilai secara visual. Akun tanpa template kartu (FSS, Water Softener) memakai kata kunci istilah yang lazim ditulis engineer; kartu pertama yang cocok dipakai, jadi kartu spesifik (mis. "Hardness Inlet", "Pressure Outlet") ditaruh sebelum kata kunci umum ("Hardness", "Pressure").
+
+**Per quarter.** Tombol **Predictive per Quarter** di header Arsip Dokumen membuat predictive seluruh laporan PM dalam satu quarter sekaligus (alur sama: baca foto, konfirmasi angka per laporan, analisis urut tanggal), lalu mengunduh satu PDF/DOCX gabungan. Laporan dikelompokkan per **akun + jenis unit**: akun yang punya laporan beberapa jenis unit (mis. ATS dan Genset) memilih kelompoknya dulu, dan setiap kelompok dianalisis dengan profilnya sendiri.
+
+**VRV & AHU.** Unit indoor dan outdoor disimpan sebagai laporan PM terpisah. Beri nama unit berbeda (mis. `VRV-01 Indoor` dan `VRV-01 Outdoor`) agar riwayatnya tidak tercampur.
+
 **Riwayat hemat kuota.** Seluruh deret angka per parameter disimpan di dokumen predictive (`pm_predictive_reports`), sehingga kuartal berikutnya cukup membaca **satu** dokumen predictive sebelumnya, bukan laporan PM lama. Predictive pertama sebuah unit menjadi baseline. Kunci riwayat adalah akun + nama unit, jadi penamaan unit harus konsisten antar kuartal.
 
-**Biaya AI.** Sekitar 8 panggilan per predictive FCU (3 batch baca foto, 4 narasi equipment, 1 ringkasan), memakai pool key Gemini gratis yang sama dengan fitur AI lain. Bila AI tidak tersedia, angka bisa diisi manual dan narasi dibuat otomatis.
+**Biaya AI.** Sekitar 8 panggilan per predictive FCU (3 batch baca foto, 4 narasi equipment, 1 ringkasan), memakai pool key Gemini gratis yang sama dengan fitur AI lain. Akun lain bergantung jumlah kartu: satu batch baca per 6 foto, satu narasi per equipment, satu ringkasan (mis. ATS 19 kartu ≈ 4 + 4 + 1 = 9 panggilan; Cooling Tower 37 kartu ≈ 7 + 4 + 1). Bila AI tidak tersedia, angka bisa diisi manual dan narasi dibuat otomatis.
 
 **PDF & DOCX** (`utils/PmPredictivePdfExport.ts`, `utils/PmPredictiveWordExport.ts`, helper bersama `utils/pmPredictiveExportShared.ts`): kop surat di setiap halaman, identitas dan foto nameplate, ringkasan eksekutif (termasuk equipment yang tidak dianalisis), bagian per equipment (nilai, nilai sebelumnya, tren per kuartal, batas acuan, status, proyeksi, narasi, dan **dokumentasi foto** kartu PM yang dipakai beserta angka hasil bacanya), lampiran dasar batas acuan, dan lembar pengesahan. Foto diambil dari laporan PM sumber dan dikecilkan di browser sebelum dimasukkan ke dokumen.
 
-**Menambah jenis unit**: buat profil baru di `config/pmPredictiveProfiles.ts` (akun, pola nama, pemetaan kartu → parameter, batas acuan beserta sumbernya, pengelompokan equipment). Mesin hitung dan UI membaca profil tersebut, lalu uji dengan `npm run test:pm-predictive`.
+**Menambah jenis unit**: buat profil baru di `config/pmPredictiveProfiles.ts` (akun, potongan email bila perlu (`accountIncludes`), pola nama, pemetaan kartu → parameter, batas acuan beserta sumbernya, pengelompokan equipment, contoh nama unit, petunjuk nameplate). Blok bersama (`VOLTAGE_CARDS`, `voltageParams`, `currentParams`, `EARTH`, `THERMAL`, `vibrationParam`, dan lainnya) bisa dipakai ulang. Id parameter tegangan/arus harus tetap (`v_rs`, `i_r`, ...) karena parameter turunan dihitung dari id tersebut. Mesin hitung dan UI membaca profil tersebut, lalu uji dengan `npm run test:pm-predictive` (`scripts/test-pm-predictive-profiles.mjs` memeriksa integritas profil dan pemetaan kartu template tiap akun).
 
 ### 📈 Predictive Maintenance CM & Periodik
 
@@ -614,7 +656,7 @@ Setiap role diarahkan ke halaman tersendiri oleh `App.tsx`. Menu di dalamnya men
 
 Akun khusus:
 
-- **Akun maintenance per peralatan** (`ats@gmail.com`, `fcu@gmail.com`, ...): role `engineer` dengan template service report per akun. Akun `fcu@gmail.com` mendapat tombol Predictive AI di Arsip Dokumen.
+- **Akun maintenance per peralatan** (`ats@gmail.com`, `fcu@gmail.com`, ...): role `engineer` dengan template service report per akun. Akun yang punya profil di `config/pmPredictiveProfiles.ts` mendapat tombol Predictive AI di Arsip Dokumen.
 - **`dwimitra@co.id`**: SOP & EOP, Monthly Report, BA Report, Arsip Standby, Bilingual MOP.
 - **`johansmdme@dwimitra.id`**: Bilingual MOP.
 - **`pju@gmail.com` dan akun water softener**: preset template temuan abnormal manual.

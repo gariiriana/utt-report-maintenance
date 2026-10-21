@@ -164,18 +164,19 @@ Tugas Anda HANYA mencatat apa yang benar-benar terlihat di foto. Jangan menebak,
 Jawab hanya dengan JSON valid tanpa markdown.`
 
 const pmExtractRules = `ATURAN JENIS "measurement" (angka alat ukur):
-1. Baca angka utama pada layar/skala alat ukur (clamp meter, thermo-hygrometer, anemometer, sound level meter, vibration meter, pressure gauge).
+1. Baca angka utama pada layar/skala alat ukur (clamp meter, multimeter, earth tester, thermal imager, thermo-hygrometer, anemometer, sound level meter, vibration meter, pressure/manifold gauge, lux meter, tachometer, capacitance meter, survey meter radiasi, digital power meter, timbangan, TDS meter, pH meter, test kit kesadahan air).
 2. Layar 7-segmen: perhatikan titik desimal dengan sangat teliti ("226.0" berbeda dengan "2260"). Bila titik desimal atau digit tidak jelas, turunkan confidence.
 3. Pressure gauge jarum: baca posisi jarum terhadap skala; bila skala ganda, pakai skala bar.
-4. unit = satuan yang tampil di layar/skala (V, mV, A, mA, m/s, °C, °F, %RH, dB, mm/s, in/s, g, bar, psi, kPa). Jangan mengonversi satuan.
+4. unit = satuan yang tampil di layar/skala (V, mV, kV, A, mA, Hz, kW, PF, ohm, m/s, °C, °F, %RH, %, dB, mm/s, in/s, g, bar, psi, kPa, lux, rpm, uF, uSv/h, kg, mm, ppm, mg/L, gpg, pH). Jangan mengonversi satuan.
+   Thermal imager: ambil suhu tertinggi (max/spot) pada titik yang diperiksa, bukan suhu minimum atau rata-rata.
 5. Bila layar menampilkan beberapa angka, ambil yang sesuai "dicari". Tulis angka lain di raw.
 6. Bila tidak ada alat ukur, layar mati, "OL", atau angka tidak terbaca: value null, confidence "rendah", jelaskan singkat di observation.
 7. raw = teks persis di layar (mis. "226.0 V~", "OL", "0.42 in/s").
 8. confidence: "tinggi" (semua digit & titik desimal jelas), "sedang" (ada sedikit keraguan), "rendah" (tidak yakin).
 
-ATURAN JENIS "nameplate": salin data pelat nama ke objek nameplate: brand, model, serial, ratedVoltage (V), ratedCurrent (A, arus nominal/FLA motor fan), ratedPowerKw (kW; W boleh dikonversi ke kW), phase (1 atau 3), frequencyHz. Field yang tidak terbaca = null. Bila tegangan berupa rentang (mis. 380-415V), isi ratedVoltage dengan nilai tengah rentang dan tulis rentang lengkap di notes.
+ATURAN JENIS "nameplate": salin data pelat nama ke objek nameplate: brand, model, serial, ratedVoltage (V), ratedCurrent (A, arus nominal: FLA motor atau arus pengenal In panel/breaker), ratedPowerKw (kW; W boleh dikonversi ke kW), phase (1 atau 3), frequencyHz. Ikuti "dicari" bila ada (mis. sisi tegangan rendah trafo). Field yang tidak terbaca = null. Bila tegangan berupa rentang (mis. 380-415V), isi ratedVoltage dengan nilai tengah rentang dan tulis rentang lengkap di notes. Rating lain (kVA, kVAR, kelas isolasi) tulis di notes.
 
-ATURAN JENIS "visual": nilai kondisi fisik yang terlihat (kebersihan coil/filter, debu, kerak, korosi, kebocoran). condition salah satu: "baik" | "perlu perhatian" | "buruk" | "tidak jelas". observation = 1 kalimat faktual bahasa Indonesia.
+ATURAN JENIS "visual": nilai kondisi fisik yang terlihat (kebersihan coil/filter/panel, debu, kerak, korosi, kebocoran, kabel/terminal rusak atau gosong, komponen hilang). condition salah satu: "baik" | "perlu perhatian" | "buruk" | "tidak jelas". observation = 1 kalimat faktual bahasa Indonesia.
 
 FORMAT JAWABAN (JSON saja):
 {"items":[

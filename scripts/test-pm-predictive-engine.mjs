@@ -13,7 +13,7 @@ const fcu = PM_PREDICTIVE_PROFILES.find(p => p.id === 'fcu');
 test('profil FCU dipilih dari akun atau nama maintenance', () => {
   assert.equal(resolvePmProfile('FCU@gmail.com ')?.id, 'fcu');
   assert.equal(resolvePmProfile('someone@x.com', 'Maintenance FCU Lantai 2')?.id, 'fcu');
-  assert.equal(resolvePmProfile('ups@gmail.com', 'Maintenance UPS'), null);
+  assert.equal(resolvePmProfile('someone@x.com', 'Maintenance Bulanan'), null);
 });
 
 test('semua kartu template FCU terpetakan', () => {

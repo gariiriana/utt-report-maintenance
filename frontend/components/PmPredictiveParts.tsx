@@ -196,7 +196,7 @@ export function PmReadingsEditor({ profile, draft, onChange, photoByIndex, onZoo
           {draft.nameplatePhotoIndex !== null && <PmPhotoThumb photo={photoByIndex.get(draft.nameplatePhotoIndex)} title="Nameplate" onZoom={onZoom} />}
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
             {([
-              ['brand', 'Merk', 'text'], ['model', 'Model', 'text'], ['ratedVoltage', 'Tegangan (V)', 'num'], ['ratedCurrent', 'Arus FLA (A)', 'num'],
+              ['brand', 'Merk', 'text'], ['model', 'Model', 'text'], ['ratedVoltage', 'Tegangan (V)', 'num'], ['ratedCurrent', 'Arus nominal (A)', 'num'],
               ['ratedPowerKw', 'Daya (kW)', 'num'], ['phase', 'Fasa', 'num'], ['frequencyHz', 'Frek. (Hz)', 'num'], ['serial', 'Serial', 'text'],
             ] as const).map(([key, lbl, kind]) => (
               <label key={key} className="font-bold text-slate-600">
@@ -215,7 +215,7 @@ export function PmReadingsEditor({ profile, draft, onChange, photoByIndex, onZoo
           <p className="px-3 pb-3 text-[11px] text-violet-800">Kosong: akan memakai nameplate dari predictive sebelumnya ({[previousNameplate!.brand, previousNameplate!.model].filter(Boolean).join(' ') || 'data rating'}).</p>
         )}
         {!hasNameplateData(nameplate) && !hasNameplateData(previousNameplate) && (
-          <p className="px-3 pb-3 text-[11px] text-slate-500">Tanpa arus FLA nameplate, beban motor terhadap rating tidak dihitung (baris tersebut tidak dicetak).</p>
+          <p className="px-3 pb-3 text-[11px] text-slate-500">Tanpa arus nominal nameplate (FLA motor / In panel), beban terhadap rating tidak dihitung (baris tersebut tidak dicetak).</p>
         )}
       </div>
     </div>
