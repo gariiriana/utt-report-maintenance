@@ -405,6 +405,8 @@ export function DocumentList({
   const [downloadChoiceDoc, setDownloadChoiceDoc] = useState<ExcelDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // A collection whose server fetch outlived the timeout is still loading in the background.
+  const [slowLoading, setSlowLoading] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
@@ -603,6 +605,7 @@ export function DocumentList({
 
     try {
       setFetchError(null);
+      setSlowLoading(false);
 
       const cacheKey = `${(user?.email || 'anon').toLowerCase().trim()}_${filterOverride || 'all'}`;
 
@@ -891,13 +894,18 @@ export function DocumentList({
         ]);
       };
 
+      // A request that hits the timeout keeps running (Promise.race does not cancel it, and its reads
+      // are billed anyway); its result is applied when it arrives, see LATE RESULTS below.
+      const lateRequests: { [label: string]: Promise<any> } = {};
+
       const safeFetchFromServer = async (q: any, label: string) => {
         if (!q) return null;
         if (!navigator.onLine) {
           try { return await getDocsFromCache(q); } catch { return null; }
         }
+        const request = getDocs(q);
         try {
-          return await withTimeout(getDocs(q), 12000, label);
+          return await withTimeout(request, 12000, label);
         } catch (err: any) {
           const isQuota = err?.code === 'resource-exhausted' || err?.message?.toLowerCase().includes('quota');
           if (isQuota) {
@@ -905,6 +913,7 @@ export function DocumentList({
           } else {
             console.warn(`[DocumentList] Server fetch failed for ${label}, fallback to cache:`, err);
           }
+          if (err?.message === `TIMEOUT:${label}`) lateRequests[label] = request;
           try { return await getDocsFromCache(q); } catch { return null; }
         }
       };
@@ -937,16 +946,20 @@ export function DocumentList({
       }
 
       const hasAnyServerData = excelDocs.length > 0 || pdfDocs.length > 0 || hseDocs.length > 0;
+      const lateLabels = Object.keys(lateRequests);
 
       if (hasAnyServerData || failedCollections.length < 3) {
         // At least some server data retrieved successfully — update UI
         const sortedServer = await assembleAllDocs(excelDocs, pdfDocs, hseDocs);
         if (currentFetchId === fetchIdRef.current) {
           setDocuments(sortedServer);
-          memoryCachedDocs[cacheKey] = {
-            docs: sortedServer,
-            timestamp: Date.now(),
-          };
+          // An incomplete list (a collection still loading) stays out of the 10-minute memory cache.
+          if (lateLabels.length === 0) {
+            memoryCachedDocs[cacheKey] = {
+              docs: sortedServer,
+              timestamp: Date.now(),
+            };
+          }
           setFetchError(null);
           // Inform user about partial failures without blocking
           if (failedCollections.length > 0 && !cacheHadData) {
@@ -1004,6 +1017,32 @@ export function DocumentList({
         }
       }
       // else: cacheHadData is true and all server fetches failed → user keeps seeing cached data silently
+
+      // ============ LATE RESULTS ============
+      // Large collections (pdf_documents carries base64 photos and SR files) can need longer than the
+      // timeout on a slow connection. On a device with an empty cache the list would otherwise lack them
+      // until the next refresh, so apply the results when they arrive.
+      if (lateLabels.length > 0 && currentFetchId === fetchIdRef.current) {
+        setSlowLoading(true);
+        void Promise.allSettled(lateLabels.map(label => lateRequests[label])).then(async (results) => {
+          const latest: { [label: string]: any } = { excel_documents: serverExcel, pdf_documents: serverPdf, hse: serverHse };
+          results.forEach((result, index) => {
+            if (result.status === 'fulfilled') latest[lateLabels[index]] = result.value;
+            else console.warn(`[DocumentList] Late server fetch failed for ${lateLabels[index]}:`, result.reason);
+          });
+          const sortedLate = await assembleAllDocs(
+            parseSnapshot(latest.excel_documents, mapExcel),
+            parseSnapshot(latest.pdf_documents, mapPdf),
+            parseSnapshot(latest.hse, mapHse),
+          );
+          if (currentFetchId !== fetchIdRef.current) return;
+          setDocuments(sortedLate);
+          if (results.every(result => result.status === 'fulfilled')) {
+            memoryCachedDocs[cacheKey] = { docs: sortedLate, timestamp: Date.now() };
+          }
+          setSlowLoading(false);
+        });
+      }
 
       // ============ DME Badge Count: non-blocking background task ============
       if (isDME && currentFetchId === fetchIdRef.current) {
@@ -4811,6 +4850,13 @@ export function DocumentList({
           </div>
         )}
       </div>
+
+      {slowLoading && !loading && (
+        <div className="mb-3 sm:mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          <RotateCw className="w-3.5 h-3.5 shrink-0 animate-spin" />
+          <span>Sebagian dokumen masih dimuat karena koneksi lambat. Daftar diperbarui otomatis begitu selesai.</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
