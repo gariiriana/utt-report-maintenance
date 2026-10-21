@@ -11,6 +11,7 @@ import { useAppUpdateDraft, useAppUpdateBlocker } from '@/hooks/useAppUpdateDraf
 import { FILE_CATEGORIES, MAINTENANCE_TYPES, QUARTERS, FILE_FOLDER_LABELS, QUARTER_FOLDER_LABELS, MAINTENANCE_FOLDER_LABELS } from '@/config/fileFolders';
 import { useFolderNavigation } from '@/hooks/useAppNavigation';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     Upload,
@@ -2973,6 +2974,9 @@ export function FileManagement({
                 )}
             </motion.div>
 
+            {/* Modal dirender ke body: wrapper halaman induk (mis. DocumentList, main z-10) membuat
+                stacking context di bawah sidebar (z-40) & header (z-30), sehingga modal ikut tertutup. */}
+            {createPortal(<>
             {/* Modal Dialog Multi-Mode: Pengajuan Hapus ke QC DME / Persetujuan / Pembatalan / Hapus Permanen */}
             <AnimatePresence>
                 {deleteModalOpen && (fileToDelete || selectedFileIds.length > 0) && (
@@ -3501,6 +3505,7 @@ export function FileManagement({
                     </motion.div>
                 )}
             </AnimatePresence>
+            </>, document.body)}
 
             {/* Modal Rekap SLA Interaktif dengan Pilihan Rentang Tanggal & Bulan */}
             <SLAMonthlyRecapModal

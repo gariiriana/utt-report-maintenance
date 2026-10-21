@@ -4358,7 +4358,7 @@ export function DocumentList({
 
   if (selectedHseDoc) {
     return (
-      <div className={`w-full relative z-10 min-w-0 ${filterOverride === 'hse_utt' ? 'py-1 pb-16' : 'max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-32 sm:pb-16'}`}>
+      <div className={`w-full relative min-w-0 ${filterOverride === 'hse_utt' ? 'py-1 pb-16' : 'max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-32 sm:pb-16'}`}>
         <div className="mb-4">
           <button
             type="button"
@@ -4379,8 +4379,10 @@ export function DocumentList({
     );
   }
 
+  // Tanpa z-index: wrapper ber-z-index membuat stacking context sehingga modal fixed di dalamnya
+  // tertutup sidebar (z-40) & header (z-30) MainApp.
   return (
-    <div className={`w-full relative z-10 min-w-0 overflow-x-hidden ${filterOverride === 'hse_utt' ? 'py-1 pb-16' : 'max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-32 sm:pb-16'}`}>
+    <div className={`w-full relative min-w-0 overflow-x-hidden ${filterOverride === 'hse_utt' ? 'py-1 pb-16' : 'max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-32 sm:pb-16'}`}>
       { }
       <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 mb-3.5 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 w-full max-w-full overflow-hidden">
         <div className="mb-3.5 sm:mb-5 flex items-center justify-between flex-wrap gap-3">
