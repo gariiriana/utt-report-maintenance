@@ -17,7 +17,7 @@ import {
   Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save,
   Clock, Download, Eye
 } from 'lucide-react';
-import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, getDocsFromCache, setDoc, orderBy } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, getDocsFromCache, setDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { addDocQueued, toastWriteSuccess, commitBatchQueued, updateDocQueued, deleteDocQueued } from '@/utils/offlineWrite';
 import { toast } from 'sonner';
@@ -49,6 +49,18 @@ interface Personnel {
   nama: string;
   jabatan: string;
   category: string;
+  vendor?: string; // asal vendor, only for jabatan 'Vendor'
+}
+
+interface ChecklistItem {
+  nama: string;
+  jabatan: string;
+  kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
+  remark: string;
+  category?: string;
+  jamKerja: number;
+  vendor?: string;
+  skip?: boolean; // vendor rows stay out of the submission until admin marks their attendance
 }
 
 interface DocumentationRecord {
@@ -111,6 +123,24 @@ const TBM_LISTS: Record<'UTT Daily' | 'UTT Mobile' | 'DME', Array<{ nama: string
 };
 
 const JABATAN_OPTIONS = ['Harian', 'DME', 'Vendor', 'Shift Engineer'];
+const JABATAN_FILTERS = ['Semua', ...JABATAN_OPTIONS, 'Lainnya', 'Manual'];
+
+// Folds a stored jabatan into a form group: daily workers are Harian, Teknisi and the whole DME team are DME
+const getJabatanGroup = (jabatan: string, category?: string) => {
+  const j = (jabatan || '').trim().toLowerCase();
+  const exact = JABATAN_OPTIONS.find(o => o.toLowerCase() === j);
+  if (exact) return exact;
+  if (j.includes('daily worker') || j.includes('harian')) return 'Harian';
+  if (j.includes('shift engineer')) return 'Shift Engineer';
+  if (j.startsWith('vendor')) return 'Vendor';
+  if (category === 'DME' || j.includes('teknisi')) return 'DME';
+  return 'Lainnya';
+};
+
+const displayJabatan = (jabatan: string, category?: string) => {
+  const group = getJabatanGroup(jabatan, category);
+  return group === 'Lainnya' ? jabatan : group;
+};
 
 // Jabatan dropdown; a legacy free-text value (e.g. "Teknisi") stays visible as an extra option until admin picks a new one
 function JabatanSelect({ value, onChange, className }: { value: string; onChange: (value: string) => void; className?: string }) {
@@ -200,20 +230,33 @@ export function AbsenTBM() {
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonJabatan, setNewPersonJabatan] = useState('');
   const [newPersonCategory, setNewPersonCategory] = useState<'UTT Daily' | 'UTT Mobile' | 'DME'>('UTT Daily');
+  const [newPersonVendor, setNewPersonVendor] = useState('');
   const [editingPersonnelId, setEditingPersonnelId] = useState<string | null>(null);
   const [editPersonName, setEditPersonName] = useState('');
   const [editPersonJabatan, setEditPersonJabatan] = useState('');
   const [editPersonCategory, setEditPersonCategory] = useState<'UTT Daily' | 'UTT Mobile' | 'DME'>('UTT Daily');
+  const [editPersonVendor, setEditPersonVendor] = useState('');
+
+  // Quick-add row in the Vendor tab of the checklist
+  const [newVendorName, setNewVendorName] = useState('');
+  const [newVendorAsal, setNewVendorAsal] = useState('');
+  const pendingVendorTickRef = useRef<Set<string>>(new Set());
 
   const filteredPersonnelList = useMemo(() => {
     if (!personnelSearchTerm.trim()) return personnelList;
     const term = personnelSearchTerm.toLowerCase();
-    return personnelList.filter(p => 
-      p.nama.toLowerCase().includes(term) || 
-      p.jabatan.toLowerCase().includes(term) || 
-      p.category.toLowerCase().includes(term)
+    return personnelList.filter(p =>
+      p.nama.toLowerCase().includes(term) ||
+      p.jabatan.toLowerCase().includes(term) ||
+      p.category.toLowerCase().includes(term) ||
+      (p.vendor || '').toLowerCase().includes(term)
     );
   }, [personnelList, personnelSearchTerm]);
+
+  const vendorCompanies = useMemo(
+    () => Array.from(new Set(personnelList.map(p => p.vendor?.trim()).filter((v): v is string => !!v))).sort(),
+    [personnelList]
+  );
 
   const [formDate, setFormDate] = useState(() => {
     const d = new Date();
@@ -225,7 +268,7 @@ export function AbsenTBM() {
     }
     return d.toISOString().split('T')[0];
   });
-  const [formCategory, setFormCategory] = useState<'Semua' | 'UTT Daily' | 'UTT Mobile' | 'DME' | 'Manual'>('Semua');
+  const [formJabatan, setFormJabatan] = useState<string>('Semua');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionPhotos, setSubmissionPhotos] = useState<string[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -239,30 +282,16 @@ export function AbsenTBM() {
   const [editedJamKerja, setEditedJamKerja] = useState<number>(8);
 
   // Checklist state for standard personnel
-  const [checklist, setChecklist] = useState<Array<{
-    nama: string;
-    jabatan: string;
-    kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
-    remark: string;
-    category?: string;
-    jamKerja: number;
-  }>>([]);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
 
   // Checklist state for manual inputs
-  const [manualChecklist, setManualChecklist] = useState<Array<{
-    nama: string;
-    jabatan: string;
-    kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
-    remark: string;
-    category?: string;
-    jamKerja: number;
-  }>>([
+  const [manualChecklist, setManualChecklist] = useState<ChecklistItem[]>([
     { nama: '', jabatan: '', kehadiran: 'Hadir', remark: '', category: 'Manual', jamKerja: 8 }
   ]);
 
-  useAppUpdateDraft('AbsenTBM', { formDate, formCategory, submissionPhotos, checklist, manualChecklist, isPersonnelPanelOpen, newPersonName, newPersonJabatan, newPersonCategory, editingPersonnelId, editPersonName, editPersonJabatan, editPersonCategory, editingRecordId, editedNama, editedJabatan, editedKehadiran, editedRemark, editedJamKerja }, saved => {
+  useAppUpdateDraft('AbsenTBM', { formDate, formJabatan, submissionPhotos, checklist, manualChecklist, isPersonnelPanelOpen, newPersonName, newPersonJabatan, newPersonCategory, editingPersonnelId, editPersonName, editPersonJabatan, editPersonCategory, editingRecordId, editedNama, editedJabatan, editedKehadiran, editedRemark, editedJamKerja }, saved => {
     setFormDate(saved.formDate);
-    setFormCategory(saved.formCategory);
+    setFormJabatan(JABATAN_FILTERS.includes(saved.formJabatan) ? saved.formJabatan : 'Semua');
     setSubmissionPhotos(saved.submissionPhotos);
     setChecklist(saved.checklist);
     setManualChecklist(saved.manualChecklist);
@@ -284,16 +313,26 @@ export function AbsenTBM() {
   useAppUpdateBlocker(Boolean(isSubmitting || isCompressing));
 
 
-  // Derived visible checklist based on selected category
+  // Derived visible checklist based on selected jabatan, grouped in JABATAN_FILTERS order
   const visibleChecklist = useMemo(() => {
-    if (formCategory === 'Semua') {
-      return checklist;
-    } else if (formCategory === 'Manual') {
-      return manualChecklist;
-    } else {
-      return checklist.filter(item => item.category === formCategory);
-    }
-  }, [checklist, manualChecklist, formCategory]);
+    if (formJabatan === 'Manual') return manualChecklist;
+    const rank = (item: ChecklistItem) => JABATAN_FILTERS.indexOf(getJabatanGroup(item.jabatan, item.category));
+    const ordered = [...checklist].sort((a, b) => rank(a) - rank(b));
+    return formJabatan === 'Semua'
+      ? ordered
+      : ordered.filter(item => getJabatanGroup(item.jabatan, item.category) === formJabatan);
+  }, [checklist, manualChecklist, formJabatan]);
+
+  const jabatanCounts = useMemo(() => {
+    const counts: Record<string, number> = { Semua: checklist.length, Manual: manualChecklist.length };
+    checklist.forEach(item => {
+      const group = getJabatanGroup(item.jabatan, item.category);
+      counts[group] = (counts[group] || 0) + 1;
+    });
+    return counts;
+  }, [checklist, manualChecklist]);
+
+  const submitCount = formJabatan === 'Manual' ? manualChecklist.length : checklist.filter(item => !item.skip).length;
 
   // Load personnel list from Firestore
   useEffect(() => {
@@ -319,6 +358,7 @@ export function AbsenTBM() {
           nama: data.nama || '',
           jabatan: data.jabatan || '',
           category: data.category || '',
+          vendor: data.vendor || undefined,
         });
       });
 
@@ -378,6 +418,7 @@ export function AbsenTBM() {
   }, [personnelLoading, personnelList.length]);
 
   // Auto-fill checklist when personnelList or formDate changes
+  const checklistDateRef = useRef(formDate);
   useEffect(() => {
     if (personnelLoading) return;
     
@@ -389,15 +430,35 @@ export function AbsenTBM() {
     const day = getLocalDay(formDate);
     const defaultKehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur' = (day === 0 || day === 6) ? 'Libur' : 'Hadir';
 
+    // Same date: keep what admin already marked (e.g. a vendor added mid-checklist must not wipe the other rows)
+    const keepMarks = checklistDateRef.current === formDate;
+    checklistDateRef.current = formDate;
+
+    // Vendors just added from the Vendor tab start ticked
+    const justAdded = new Set(personnelList.map(e => e.nama).filter(n => pendingVendorTickRef.current.has(n)));
+    justAdded.forEach(n => pendingVendorTickRef.current.delete(n));
+
     // Populate all standard personnel
-    setChecklist(personnelList.map(e => ({
-      nama: e.nama,
-      jabatan: e.jabatan,
-      category: e.category,
-      kehadiran: defaultKehadiran,
-      remark: '',
-      jamKerja: defaultKehadiran === 'Hadir' ? 8 : 0
-    })));
+    setChecklist(prev => {
+      const prevByName = new Map(keepMarks ? prev.map(item => [item.nama, item] as const) : []);
+      return personnelList.map(e => {
+        const jabatan = displayJabatan(e.jabatan, e.category);
+        const kept = prevByName.get(e.nama);
+        const tickNow = justAdded.has(e.nama);
+        return {
+          nama: e.nama,
+          jabatan,
+          category: e.category,
+          vendor: e.vendor,
+          kehadiran: kept?.kehadiran ?? defaultKehadiran,
+          remark: kept?.remark ?? '',
+          jamKerja: kept?.jamKerja ?? (defaultKehadiran === 'Hadir' ? 8 : 0),
+          skip: kept ? kept.skip : jabatan === 'Vendor' && !tickNow,
+        };
+      });
+    });
+
+    if (keepMarks) return;
 
     // Reset manual list
     setManualChecklist([{
@@ -413,8 +474,9 @@ export function AbsenTBM() {
   const updateChecklistItem = (index: number, key: 'kehadiran' | 'remark' | 'nama' | 'jabatan' | 'jamKerja', value: any) => {
     const applyAutoJamKerja = (item: any, updatedKey: string, updatedValue: any) => {
       const updated = { ...item, [updatedKey]: updatedValue };
-      // Auto-set jamKerja when kehadiran changes
+      // Auto-set jamKerja when kehadiran changes; marking a vendor row includes it in the submission
       if (updatedKey === 'kehadiran') {
+        updated.skip = false;
         if (updatedValue === 'Hadir') {
           updated.jamKerja = 8;
         } else {
@@ -424,7 +486,7 @@ export function AbsenTBM() {
       return updated;
     };
 
-    if (formCategory === 'Manual') {
+    if (formJabatan === 'Manual') {
       setManualChecklist(prev => prev.map((item, idx) => {
         if (idx === index) {
           return applyAutoJamKerja(item, key, value);
@@ -1039,21 +1101,67 @@ export function AbsenTBM() {
       toast.error("Nama dan Jabatan tidak boleh kosong");
       return;
     }
+    const isVendor = newPersonJabatan === 'Vendor';
+    if (isVendor && !newPersonVendor.trim()) {
+      toast.error("Asal vendor tidak boleh kosong");
+      return;
+    }
+    if (isPersonnelNameTaken(newPersonName)) return;
 
     try {
       await addDocQueued(collection(db, 'absen_tbm'), {
         isPersonnel: true,
         nama: newPersonName.trim(),
         jabatan: newPersonJabatan.trim(),
-        category: newPersonCategory,
+        category: isVendor ? 'Vendor' : newPersonCategory,
+        ...(isVendor ? { vendor: newPersonVendor.trim() } : {}),
         createdAt: serverTimestamp()
       });
       toastWriteSuccess("Personil berhasil ditambahkan!");
       setNewPersonName('');
       setNewPersonJabatan('');
+      setNewPersonVendor('');
     } catch (err: any) {
       console.error("Error adding personnel:", err);
       toast.error("Gagal menambahkan personil: " + err.message);
+    }
+  };
+
+  // The personnel listener deletes same-name duplicates, so a clashing name must never be written
+  const isPersonnelNameTaken = (name: string) => {
+    const taken = personnelList.some(p => p.nama.trim().toUpperCase() === name.trim().toUpperCase());
+    if (taken) toast.error(`Nama "${name.trim()}" sudah terdaftar di daftar personil`);
+    return taken;
+  };
+
+  // Add a vendor person straight from the Vendor tab; they show up ticked for today's checklist
+  const handleAddVendor = async () => {
+    const nama = newVendorName.trim().toUpperCase();
+    const vendor = newVendorAsal.trim();
+    if (!nama || !vendor) {
+      toast.error("Nama dan asal vendor wajib diisi");
+      return;
+    }
+    if (isPersonnelNameTaken(nama)) return;
+
+    // Clear the name right away (asal vendor stays for the next colleague); the row appears from the local write
+    setNewVendorName('');
+    try {
+      pendingVendorTickRef.current.add(nama);
+      await addDocQueued(collection(db, 'absen_tbm'), {
+        isPersonnel: true,
+        nama,
+        jabatan: 'Vendor',
+        vendor,
+        category: 'Vendor',
+        createdAt: serverTimestamp()
+      });
+      toastWriteSuccess(`${nama} (${vendor}) ditambahkan`);
+    } catch (err: any) {
+      setNewVendorName(nama);
+      pendingVendorTickRef.current.delete(nama);
+      console.error("Error adding vendor:", err);
+      toast.error("Gagal menambahkan orang vendor: " + err.message);
     }
   };
 
@@ -1092,27 +1200,34 @@ export function AbsenTBM() {
       toast.error("Nama dan Jabatan tidak boleh kosong");
       return;
     }
-    
+    const isVendor = editPersonJabatan === 'Vendor';
+    if (isVendor && !editPersonVendor.trim()) {
+      toast.error("Asal vendor tidak boleh kosong");
+      return;
+    }
+    const oldPerson = personnelList.find(p => p.id === id);
+    if (oldPerson && oldPerson.nama.trim().toUpperCase() !== editPersonName.trim().toUpperCase() && isPersonnelNameTaken(editPersonName)) return;
+
     const toastId = toast.loading("Memperbarui data personil...");
     try {
       // 1. Update the personnel definition document in Firestore
       await updateDoc(doc(db, 'absen_tbm', id), {
         nama: editPersonName.trim(),
         jabatan: editPersonJabatan.trim(),
-        category: editPersonCategory
+        category: isVendor ? 'Vendor' : editPersonCategory,
+        vendor: isVendor ? editPersonVendor.trim() : deleteField()
       });
-      
+
       // 2. Update historical attendance records where name equals the old name
-      const oldPerson = personnelList.find(p => p.id === id);
       if (oldPerson && oldPerson.nama !== editPersonName.trim()) {
         const snapshot = await getDocs(query(collection(db, 'absen_tbm'), where('nama', '==', oldPerson.nama)));
         const batch = writeBatch(db);
         snapshot.docs.forEach(docSnap => {
           const data = docSnap.data();
           if (!data.isPersonnel && !data.isDocumentation) {
-            batch.update(docSnap.ref, { 
+            batch.update(docSnap.ref, {
               nama: editPersonName.trim(),
-              jabatan: editPersonJabatan.trim()
+              jabatan: isVendor ? `Vendor (${editPersonVendor.trim()})` : editPersonJabatan.trim()
             });
           }
         });
@@ -1130,17 +1245,18 @@ export function AbsenTBM() {
   // Handle Add Attendance Record
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const itemsToSubmit = formCategory === 'Manual' ? manualChecklist : checklist;
+    const itemsToSubmit = formJabatan === 'Manual' ? manualChecklist : checklist.filter(item => !item.skip);
     const invalid = itemsToSubmit.some(item => !item.nama.trim() || !item.jabatan.trim());
     if (invalid) {
       toast.error("Semua baris harus memiliki Nama dan Jabatan");
       return;
     }
+    const submittedVendorNames = new Set(itemsToSubmit.filter(item => item.category === 'Vendor').map(item => item.nama.trim()));
 
     setIsSubmitting(true);
     try {
       // Delete existing standard category attendance and documentation documents to prevent duplicates
-      if (formCategory !== 'Manual') {
+      if (formJabatan !== 'Manual') {
         const qExisting = query(
           collection(db, 'absen_tbm'),
           where('tanggal', '==', formDate)
@@ -1152,8 +1268,10 @@ export function AbsenTBM() {
           const data = docSnap.data();
           if (!data.isPersonnel) {
             const isStandardCategory = ['UTT Daily', 'UTT Mobile', 'DME', 'Semua'].includes(data.category);
+            // Vendor rows are only replaced for vendors marked in this submission
+            const isResubmittedVendor = data.category === 'Vendor' && submittedVendorNames.has(data.nama);
             // Delete attendance records of standard categories
-            if (!data.isDocumentation && isStandardCategory) {
+            if (!data.isDocumentation && (isStandardCategory || isResubmittedVendor)) {
               batch.delete(docSnap.ref);
               deleteCount++;
             }
@@ -1177,9 +1295,11 @@ export function AbsenTBM() {
           tanggal: formDate,
           nama: item.nama.trim(),
           kehadiran: item.kehadiran,
-          jabatan: item.jabatan.trim(),
+          // Vendor company goes into jabatan so the log and exports show where the person is from
+          jabatan: item.vendor ? `Vendor (${item.vendor.trim()})` : item.jabatan.trim(),
+          ...(item.vendor ? { vendor: item.vendor.trim() } : {}),
           remark: item.remark.trim(),
-          category: item.category || formCategory,
+          category: item.category || formJabatan,
           jamKerja: jk,
           isLembur: false,
           jamLembur: 0,
@@ -1188,24 +1308,13 @@ export function AbsenTBM() {
       });
       await Promise.all(batchPromises);
 
-      // Persist jabatan picked in the checklist back to the personnel master so it sticks for the next days
-      if (formCategory !== 'Manual') {
-        const jabatanUpdates = itemsToSubmit.flatMap(item => {
-          const person = personnelList.find(p => p.nama === item.nama);
-          return person && person.jabatan !== item.jabatan.trim()
-            ? [updateDocQueued(doc(db, 'absen_tbm', person.id), { jabatan: item.jabatan.trim() })]
-            : [];
-        });
-        await Promise.all(jabatanUpdates);
-      }
-
       // Save documentation photo if uploaded
       if (submissionPhotos.length > 0) {
         await addDocQueued(collection(db, 'absen_tbm'), {
           tanggal: formDate,
           isDocumentation: true,
           photos: submissionPhotos,
-          category: formCategory === 'Manual' ? 'Manual' : 'Semua',
+          category: formJabatan === 'Manual' ? 'Manual' : 'Semua',
           createdAt: serverTimestamp()
         });
       }
@@ -1221,7 +1330,7 @@ export function AbsenTBM() {
       const day = getLocalDay(formDate);
       const defaultKehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur' = (day === 0 || day === 6) ? 'Libur' : 'Hadir';
 
-      if (formCategory === 'Manual') {
+      if (formJabatan === 'Manual') {
         setManualChecklist([{
           nama: '',
           jabatan: '',
@@ -1234,7 +1343,7 @@ export function AbsenTBM() {
         const submittedNames = new Set(itemsToSubmit.map(item => item.nama));
         setChecklist(prev => prev.map(item => {
           if (submittedNames.has(item.nama)) {
-            return { ...item, remark: '', kehadiran: defaultKehadiran, jamKerja: defaultKehadiran === 'Hadir' ? 8 : 0 };
+            return { ...item, remark: '', kehadiran: defaultKehadiran, jamKerja: defaultKehadiran === 'Hadir' ? 8 : 0, skip: item.jabatan === 'Vendor' };
           }
           return item;
         }));
@@ -1300,7 +1409,7 @@ export function AbsenTBM() {
       await addDocQueued(collection(db, 'absen_tbm'), {
         tanggal: selectedDate,
         nama: person.nama,
-        jabatan: person.jabatan,
+        jabatan: displayJabatan(person.jabatan, person.category),
         kehadiran: editedKehadiran,
         remark: editedRemark.trim(),
         category: person.category || '',
@@ -3078,19 +3187,34 @@ export function AbsenTBM() {
                       className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">KATEGORI TIM</label>
-                    <select
-                      value={newPersonCategory}
-                      onChange={e => setNewPersonCategory(e.target.value as any)}
-                      title="Kategori Tim"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 font-bold font-sans"
-                    >
-                      <option value="UTT Daily">UTT Daily</option>
-                      <option value="UTT Mobile">UTT Mobile</option>
-                      <option value="DME">DME</option>
-                    </select>
-                  </div>
+                  {newPersonJabatan === 'Vendor' ? (
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">ASAL VENDOR</label>
+                      <input
+                        type="text"
+                        required
+                        list="tbm-vendor-companies"
+                        value={newPersonVendor}
+                        onChange={e => setNewPersonVendor(e.target.value)}
+                        placeholder="Contoh: PT Daikin..."
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">KATEGORI TIM</label>
+                      <select
+                        value={newPersonCategory}
+                        onChange={e => setNewPersonCategory(e.target.value as any)}
+                        title="Kategori Tim"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 font-bold font-sans"
+                      >
+                        <option value="UTT Daily">UTT Daily</option>
+                        <option value="UTT Mobile">UTT Mobile</option>
+                        <option value="DME">DME</option>
+                      </select>
+                    </div>
+                  )}
                   <button
                     type="submit"
                     className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-pink-500/10 active:scale-95 animate-none"
@@ -3161,16 +3285,27 @@ export function AbsenTBM() {
                                     />
                                   </td>
                                   <td className="px-2 py-2">
-                                    <select
-                                      value={editPersonCategory}
-                                      onChange={e => setEditPersonCategory(e.target.value as any)}
-                                      title="Edit Kategori"
-                                      className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 w-full"
-                                    >
-                                      <option value="UTT Daily">UTT Daily</option>
-                                      <option value="UTT Mobile">UTT Mobile</option>
-                                      <option value="DME">DME</option>
-                                    </select>
+                                    {editPersonJabatan === 'Vendor' ? (
+                                      <input
+                                        type="text"
+                                        list="tbm-vendor-companies"
+                                        value={editPersonVendor}
+                                        onChange={e => setEditPersonVendor(e.target.value)}
+                                        className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 w-full"
+                                        placeholder="Asal vendor"
+                                      />
+                                    ) : (
+                                      <select
+                                        value={editPersonCategory}
+                                        onChange={e => setEditPersonCategory(e.target.value as any)}
+                                        title="Edit Kategori"
+                                        className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 w-full"
+                                      >
+                                        <option value="UTT Daily">UTT Daily</option>
+                                        <option value="UTT Mobile">UTT Mobile</option>
+                                        <option value="DME">DME</option>
+                                      </select>
+                                    )}
                                   </td>
                                   <td className="px-3 py-2.5 text-center flex items-center justify-center gap-1.5">
                                     <button
@@ -3194,10 +3329,15 @@ export function AbsenTBM() {
                               ) : (
                                 <>
                                   <td className="px-3 py-2.5 font-bold text-slate-900">{p.nama}</td>
-                                  <td className="px-3 py-2.5 font-medium text-slate-600">{p.jabatan}</td>
+                                  <td className="px-3 py-2.5 font-medium text-slate-600">
+                                    {displayJabatan(p.jabatan, p.category)}
+                                    {displayJabatan(p.jabatan, p.category) !== p.jabatan && (
+                                      <span className="ml-1 text-[10px] text-slate-400">({p.jabatan})</span>
+                                    )}
+                                  </td>
                                   <td className="px-3 py-2.5">
                                     <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-md font-semibold text-[10px]">
-                                      {p.category}
+                                      {p.category === 'Vendor' ? p.vendor || 'Vendor' : p.category}
                                     </span>
                                   </td>
                                   <td className="px-3 py-2.5 text-center">
@@ -3208,7 +3348,8 @@ export function AbsenTBM() {
                                           setEditingPersonnelId(p.id);
                                           setEditPersonName(p.nama);
                                           setEditPersonJabatan(p.jabatan);
-                                          setEditPersonCategory(p.category as any);
+                                          setEditPersonCategory(p.category === 'Vendor' ? 'UTT Daily' : p.category as any);
+                                          setEditPersonVendor(p.vendor || '');
                                         }}
                                         className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition active:scale-90 cursor-pointer"
                                         title="Edit Personil"
@@ -3471,24 +3612,36 @@ export function AbsenTBM() {
                 className="bg-slate-50/90 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
               />
             </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">TIM / KATEGORI</label>
-              <select
-                value={formCategory}
-                onChange={e => setFormCategory(e.target.value as any)}
-                title="Kategori TBM"
-                className="bg-slate-50/90 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold font-sans"
-              >
-                <option value="Semua">Semua</option>
-                <option value="UTT Daily">UTT Daily</option>
-                <option value="UTT Mobile">UTT Mobile</option>
-                <option value="DME">DME</option>
-                <option value="Manual">Input Manual</option>
-              </select>
-            </div>
           </div>
         </div>
-        
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold text-slate-500 uppercase mr-1">Pilih Jabatan</span>
+          {JABATAN_FILTERS.filter(f => f !== 'Lainnya' || jabatanCounts.Lainnya).map(f => (
+            <button
+              type="button"
+              key={f}
+              onClick={() => setFormJabatan(f)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+                formJabatan === f
+                  ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white border-transparent shadow-md shadow-violet-500/20'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:text-violet-700'
+              }`}
+            >
+              {f === 'Manual' ? 'Input Manual' : f}
+              {f !== 'Manual' && (
+                <span className={`ml-1.5 text-[10px] ${formJabatan === f ? 'text-violet-100' : 'text-slate-400'}`}>
+                  {jabatanCounts[f] || 0}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <datalist id="tbm-vendor-companies">
+          {vendorCompanies.map(v => <option key={v} value={v} />)}
+        </datalist>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -3504,26 +3657,37 @@ export function AbsenTBM() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850">
+                {visibleChecklist.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-xs text-slate-400">
+                      {formJabatan === 'Vendor'
+                        ? 'Belum ada orang vendor terdaftar. Tambahkan lewat form di bawah tabel.'
+                        : `Belum ada personil dengan jabatan ${formJabatan}. Atur jabatan personil lewat tombol Kelola Personil TBM.`}
+                    </td>
+                  </tr>
+                )}
                 {(() => {
-                  let lastCategory = '';
+                  let lastGroup = '';
                   return visibleChecklist.map((item, index) => {
-                    const isNewCategory = formCategory === 'Semua' && item.category !== lastCategory;
-                    if (isNewCategory && item.category) {
-                      lastCategory = item.category;
+                    const group = formJabatan === 'Manual' ? '' : getJabatanGroup(item.jabatan, item.category);
+                    const isNewGroup = formJabatan === 'Semua' && group !== lastGroup;
+                    if (isNewGroup) {
+                      lastGroup = group;
                     }
+                    const isVendorRow = group === 'Vendor';
                     return (
                       <Fragment key={index}>
-                        {isNewCategory && item.category && (
+                        {isNewGroup && (
                           <tr className="bg-slate-50 text-slate-700 border-t border-slate-200">
                             <td colSpan={7} className="px-3 py-2 text-[10px] text-pink-600 font-black tracking-wider uppercase bg-slate-100">
-                              {item.category}
+                              {group}
                             </td>
                           </tr>
                         )}
-                        <tr className="hover:bg-blue-50/50 transition-colors">
+                        <tr className={`hover:bg-blue-50/50 transition-colors ${item.skip ? 'opacity-60' : ''}`}>
                            <td className="px-3 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
                           <td className="px-3 py-3.5 font-bold text-slate-900">
-                            {formCategory === 'Manual' ? (
+                            {formJabatan === 'Manual' ? (
                               <input
                                 type="text"
                                 value={item.nama}
@@ -3537,10 +3701,17 @@ export function AbsenTBM() {
                             )}
                           </td>
                           <td className="px-3 py-3.5 text-slate-600 font-medium font-sans">
-                            <JabatanSelect
-                              value={item.jabatan}
-                              onChange={v => updateChecklistItem(index, 'jabatan', v)}
-                            />
+                            {formJabatan === 'Manual' ? (
+                              <JabatanSelect
+                                value={item.jabatan}
+                                onChange={v => updateChecklistItem(index, 'jabatan', v)}
+                              />
+                            ) : (
+                              <>
+                                {item.jabatan}
+                                {item.vendor && <div className="text-[10px] text-slate-400 font-semibold">{item.vendor}</div>}
+                              </>
+                            )}
                           </td>
                           <td className="px-3 py-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
@@ -3548,7 +3719,7 @@ export function AbsenTBM() {
                                 type="button"
                                 onClick={() => updateChecklistItem(index, 'kehadiran', 'Hadir')}
                                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
-                                  item.kehadiran === 'Hadir'
+                                  !item.skip && item.kehadiran === 'Hadir'
                                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
                                     : 'bg-transparent text-slate-500 border-slate-700 hover:text-slate-400'
                                 }`}
@@ -3559,7 +3730,7 @@ export function AbsenTBM() {
                                 type="button"
                                 onClick={() => updateChecklistItem(index, 'kehadiran', 'Tidak Hadir')}
                                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
-                                  item.kehadiran === 'Tidak Hadir'
+                                  !item.skip && item.kehadiran === 'Tidak Hadir'
                                     ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-sm shadow-rose-500/10'
                                     : 'bg-transparent text-slate-500 border-slate-700 hover:text-slate-400'
                                 }`}
@@ -3570,7 +3741,7 @@ export function AbsenTBM() {
                                 type="button"
                                 onClick={() => updateChecklistItem(index, 'kehadiran', 'Libur')}
                                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
-                                  item.kehadiran === 'Libur'
+                                  !item.skip && item.kehadiran === 'Libur'
                                     ? 'bg-violet-500/20 text-violet-400 border-violet-500/40 shadow-sm shadow-violet-500/10'
                                     : 'bg-transparent text-slate-500 border-slate-700 hover:text-slate-400'
                                 }`}
@@ -3609,19 +3780,19 @@ export function AbsenTBM() {
                               min="0"
                               max="24"
                               step="0.5"
-                              value={item.jamKerja === 0 || item.jamKerja === undefined ? '' : item.jamKerja}
+                              value={item.skip || item.jamKerja === 0 || item.jamKerja === undefined ? '' : item.jamKerja}
                               onChange={e => {
                                 const v = parseFloat(e.target.value);
                                 updateChecklistItem(index, 'jamKerja', isNaN(v) ? 0 : v);
                               }}
                               className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-                              disabled={item.kehadiran !== 'Hadir'}
+                              disabled={item.skip || item.kehadiran !== 'Hadir'}
                               placeholder="-"
                               title="Masukkan angka desimal saja (contoh: 8, 8.5)"
                             />
                           </td>
                           <td className="px-3 py-3.5 text-center">
-                            {formCategory === 'Manual' ? (
+                            {formJabatan === 'Manual' ? (
                               <button
                                 type="button"
                                 onClick={() => removeManualRow(index)}
@@ -3631,14 +3802,26 @@ export function AbsenTBM() {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleDeletePersonnel(item.nama)}
-                                title={`Hapus / Resign: ${item.nama}`}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center justify-center gap-0.5">
+                                {isVendorRow && !item.skip && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setChecklist(prev => prev.map(c => c.nama === item.nama ? { ...c, skip: true } : c))}
+                                    title="Batal centang (tidak ikut disimpan)"
+                                    className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePersonnel(item.nama)}
+                                  title={`Hapus / Resign: ${item.nama}`}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -3649,6 +3832,49 @@ export function AbsenTBM() {
               </tbody>
             </table>
           </div>
+
+          {formJabatan === 'Vendor' && (
+            <div className="p-4 bg-violet-50/60 rounded-xl border border-violet-100 space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-violet-600" />
+                  Tambah Orang Vendor
+                </h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Klik status kehadiran untuk vendor yang datang hari ini. Vendor yang tidak diklik tidak ikut disimpan. Orang yang sudah ditambahkan tetap ada di daftar untuk hari berikutnya.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                <input
+                  type="text"
+                  value={newVendorName}
+                  onChange={e => setNewVendorName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendor(); } }}
+                  placeholder="Nama orang vendor..."
+                  title="Nama"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                />
+                <input
+                  type="text"
+                  list="tbm-vendor-companies"
+                  value={newVendorAsal}
+                  onChange={e => setNewVendorAsal(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendor(); } }}
+                  placeholder="Asal vendor (PT / perusahaan)..."
+                  title="Asal Vendor"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddVendor}
+                  className="px-4 py-2 bg-white hover:bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tambah
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
             <div>
@@ -3701,7 +3927,7 @@ export function AbsenTBM() {
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-white/10">
             <div>
-              {formCategory === 'Manual' && (
+              {formJabatan === 'Manual' && (
                 <button
                   type="button"
                   onClick={addManualRow}
@@ -3714,7 +3940,7 @@ export function AbsenTBM() {
             </div>
             <button
               type="submit"
-              disabled={isSubmitting || (formCategory === 'Manual' ? manualChecklist.length === 0 : checklist.length === 0)}
+              disabled={isSubmitting || submitCount === 0}
               className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-violet-500/25 active:scale-95 transition"
             >
               {isSubmitting ? (
@@ -3725,7 +3951,7 @@ export function AbsenTBM() {
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  Simpan Absensi Checklist ({formCategory === 'Manual' ? manualChecklist.length : checklist.length} Karyawan)
+                  Simpan Absensi Checklist ({submitCount} Karyawan)
                 </>
               )}
             </button>
@@ -4080,7 +4306,7 @@ export function AbsenTBM() {
                                       <tr key={person.nama} className="hover:bg-blue-50/50 transition-colors">
                                         <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
                                         <td className="px-4 py-3.5 font-bold text-slate-900">{person.nama}</td>
-                                        <td className="px-4 py-3.5 text-slate-600 font-medium font-sans">{person.jabatan}</td>
+                                        <td className="px-4 py-3.5 text-slate-600 font-medium font-sans">{displayJabatan(person.jabatan, person.category)}</td>
                                         <td className="px-4 py-3.5">
                                           {rec || isEditing ? (
                                             isEditing ? (
