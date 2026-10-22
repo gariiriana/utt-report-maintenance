@@ -110,6 +110,27 @@ const TBM_LISTS: Record<'UTT Daily' | 'UTT Mobile' | 'DME', Array<{ nama: string
   ]
 };
 
+const JABATAN_OPTIONS = ['Harian', 'DME', 'Vendor', 'Shift Engineer'];
+
+// Jabatan dropdown; a legacy free-text value (e.g. "Teknisi") stays visible as an extra option until admin picks a new one
+function JabatanSelect({ value, onChange, className }: { value: string; onChange: (value: string) => void; className?: string }) {
+  const isLegacy = !!value && !JABATAN_OPTIONS.includes(value);
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      title="Jabatan"
+      className={className ?? 'w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20'}
+    >
+      {!value && <option value="">Pilih Jabatan...</option>}
+      {isLegacy && <option value={value}>{value}</option>}
+      {JABATAN_OPTIONS.map(opt => (
+        <option key={opt} value={opt}>{opt}</option>
+      ))}
+    </select>
+  );
+}
+
 const getIndonesianMonthYear = (dateStr: string) => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -1166,6 +1187,17 @@ export function AbsenTBM() {
         });
       });
       await Promise.all(batchPromises);
+
+      // Persist jabatan picked in the checklist back to the personnel master so it sticks for the next days
+      if (formCategory !== 'Manual') {
+        const jabatanUpdates = itemsToSubmit.flatMap(item => {
+          const person = personnelList.find(p => p.nama === item.nama);
+          return person && person.jabatan !== item.jabatan.trim()
+            ? [updateDocQueued(doc(db, 'absen_tbm', person.id), { jabatan: item.jabatan.trim() })]
+            : [];
+        });
+        await Promise.all(jabatanUpdates);
+      }
 
       // Save documentation photo if uploaded
       if (submissionPhotos.length > 0) {
@@ -3040,12 +3072,9 @@ export function AbsenTBM() {
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 block mb-1">JABATAN</label>
-                    <input
-                      type="text"
-                      required
+                    <JabatanSelect
                       value={newPersonJabatan}
-                      onChange={e => setNewPersonJabatan(e.target.value)}
-                      placeholder="Contoh: Teknisi, Shift Engineer..."
+                      onChange={setNewPersonJabatan}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
                     />
                   </div>
@@ -3125,12 +3154,10 @@ export function AbsenTBM() {
                                     />
                                   </td>
                                   <td className="px-2 py-2">
-                                    <input
-                                      type="text"
+                                    <JabatanSelect
                                       value={editPersonJabatan}
-                                      onChange={e => setEditPersonJabatan(e.target.value)}
+                                      onChange={setEditPersonJabatan}
                                       className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 w-full"
-                                      placeholder="Jabatan"
                                     />
                                   </td>
                                   <td className="px-2 py-2">
@@ -3510,18 +3537,10 @@ export function AbsenTBM() {
                             )}
                           </td>
                           <td className="px-3 py-3.5 text-slate-600 font-medium font-sans">
-                            {formCategory === 'Manual' ? (
-                              <input
-                                type="text"
-                                value={item.jabatan}
-                                onChange={e => updateChecklistItem(index, 'jabatan', e.target.value)}
-                                placeholder="Jabatan..."
-                                title="Jabatan"
-                                className="w-full bg-slate-800/40 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
-                              />
-                            ) : (
-                              item.jabatan
-                            )}
+                            <JabatanSelect
+                              value={item.jabatan}
+                              onChange={v => updateChecklistItem(index, 'jabatan', v)}
+                            />
                           </td>
                           <td className="px-3 py-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
@@ -4272,11 +4291,9 @@ export function AbsenTBM() {
                                         </td>
                                         <td className="px-4 py-3.5 text-slate-300 font-medium font-sans">
                                           {isEditing ? (
-                                            <input
-                                              type="text"
+                                            <JabatanSelect
                                               value={editedJabatan}
-                                              onChange={e => setEditedJabatan(e.target.value)}
-                                              title="Jabatan"
+                                              onChange={setEditedJabatan}
                                               className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
                                             />
                                           ) : (
