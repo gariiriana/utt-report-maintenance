@@ -535,14 +535,9 @@ service cloud.firestore {
     }
 
     match /system_status/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow write: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isPrivilegedRole() || isStandbyEngineer() || getEmail().matches('.*dwimitra.*')));
-
-      match /logs/{logId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow write: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isPrivilegedRole() || isStandbyEngineer() || getEmail().matches('.*dwimitra.*')));
-      }
-    }
+      // wa_reminder_config berisi token Fonnte dari fitur WA reminder yang sudah dihapus; klien tidak perlu membacanya.
+      allow read: if !isDrafter() && (request.auth != null) && docId != 'wa_reminder_config';
+      allow write: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isPrivilegedRole() || isStandbyEngineer()));    }
 
     match /mop_workflows/{docId} {
       allow read: if !isDrafter() && (request.auth != null);

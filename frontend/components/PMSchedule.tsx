@@ -3,8 +3,7 @@
 // Deskripsi: Matriks Kalender Jadwal Pemeliharaan Berkala (PM Schedule 2026).
 //            Menampilkan 34 perangkat Data Center NeutraDC Cikarang lengkap dengan
 //            rentang tanggal eksekusi per bulan (Januari - Desember), lokasi spesifik,
-//            catatan prosedur pengujian khusus (Special Test / Offline Maintenance),
-//            serta integrasi tombol Pengingat WhatsApp Gateway otomatis.
+//            serta catatan prosedur pengujian khusus (Special Test / Offline Maintenance).
 // ============================================================================
 
 import { useState, useMemo } from 'react';
@@ -12,11 +11,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
   Info,
-  X,
-  MessageSquare
+  X
 } from 'lucide-react';
-import { useAuth } from '@/components/AuthContext';
-import { WAGatewayModal } from '@/components/WAGatewayModal';
 import { MASTER_PM_SCHEDULES } from '@/utils/monthlyReportData';
 
 // ─── SCHEDULE DATA (Synchronized from MASTER_PM_SCHEDULES / 2026 PM spreadsheet) ─────────
@@ -101,14 +97,10 @@ function getDeviceScopeBadges(remarks: string) {
 }
 
 export function PMSchedule() {
-  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [quarterFilter, setQuarterFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedRemarksItem, setSelectedRemarksItem] = useState<PMScheduleItem | null>(null);
-  const [isWaModalOpen, setIsWaModalOpen] = useState(false);
-
-  const isDwimitraAdmin = user?.email?.toLowerCase() === 'dwimitra@co.id';
 
   const currentMonth = getCurrentMonthIndex();
 
@@ -167,18 +159,8 @@ export function PMSchedule() {
           </p>
         </div>
 
-        {/* Stats Summary & WA Gateway Button */}
+        {/* Stats Summary */}
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          {isDwimitraAdmin && (
-            <button
-              onClick={() => setIsWaModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
-            >
-              <MessageSquare className="w-4 h-4 text-emerald-100" />
-              WhatsApp Gateway &amp; H-60 Reminders
-            </button>
-          )}
-
           <div className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
             <span className="text-slate-500 font-medium">Total Equipment: </span>
             <span className="font-bold text-slate-900">{totalDevices}</span>
@@ -435,14 +417,6 @@ export function PMSchedule() {
           </>
         )}
       </AnimatePresence>
-
-      {/* ── WhatsApp Gateway & Reminders Modal ── */}
-      <WAGatewayModal
-        isOpen={isWaModalOpen}
-        onClose={() => setIsWaModalOpen(false)}
-        currentUser={user}
-        pmScheduleData={SCHEDULE_DATA}
-      />
     </div>
   );
 }

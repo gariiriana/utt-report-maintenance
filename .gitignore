@@ -55,3 +55,8 @@ backend/*.log
 
 # Temporary
 tmp/
+
+# Laporan audit keamanan: repo ini publik, jangan di-push
+SECURITY_AUDIT_REPORT.md
+SECURITY_REMEDIATION_LOG.md
+SECURITY_TEST_PLAN.md

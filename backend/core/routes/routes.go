@@ -25,7 +25,6 @@ type AppDeps struct {
 	AICtrl                  *controllers.AIController
 	MOPCtrl                 *controllers.MOPController
 	PMPredictiveCtrl        *controllers.PMPredictiveController
-	WACtrl                  *controllers.WAController
 	RateLimiter             *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
 	ThrottleStandard        *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
@@ -69,8 +68,6 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	aiCtrl := controllers.NewAIController(aiSvc)
 	mopCtrl := controllers.NewMOPController(services.NewMOPTranslateService(aiSvc))
 	pmPredictiveCtrl := controllers.NewPMPredictiveController(services.NewPMPredictiveService(aiSvc))
-	waCtrl := controllers.NewWAController()
-
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
 	throttleHeavy := middlewares.NewThrottle(5, 10)     // expensive write/delete ops
 	throttleStandard := middlewares.NewThrottle(20, 40) // normal read ops
@@ -87,7 +84,6 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		AICtrl:                  aiCtrl,
 		MOPCtrl:                 mopCtrl,
 		PMPredictiveCtrl:        pmPredictiveCtrl,
-		WACtrl:                  waCtrl,
 		RateLimiter:             rateLimiter,
 		ThrottleHeavy:           throttleHeavy,
 		ThrottleStandard:        throttleStandard,

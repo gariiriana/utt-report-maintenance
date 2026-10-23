@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.1-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
-[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.27-00ADD8?style=flat-square&logo=go)](https://go.dev/)
 [![Vercel](https://img.shields.io/badge/Vercel-Go_Serverless-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore_&_Hosting-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![Google Gemini](https://img.shields.io/badge/Google_Gemini-Free_Tier-4285F4?style=flat-square&logo=googlegemini)](https://ai.google.dev/)
@@ -12,7 +12,6 @@
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-WAF_&_Turnstile-F38020?style=flat-square&logo=cloudflare)](https://cloudflare.com/)
 [![DOCX](https://img.shields.io/badge/DOCX-Word_Export-2B579A?style=flat-square&logo=microsoft-word)](https://github.com/dolanmiu/docx)
 [![ExcelJS](https://img.shields.io/badge/ExcelJS-Excel_Export-217346?style=flat-square&logo=microsoft-excel)](https://github.com/exceljs/exceljs)
-[![WhatsApp](https://img.shields.io/badge/WhatsApp-Fonnte_&_Baileys-25D366?style=flat-square&logo=whatsapp)](https://fonnte.com/)
 
 **DwimitraSystem** adalah sistem terintegrasi untuk dokumentasi pemeliharaan, analisis berbantuan AI, dan pelaporan operasional fasilitas *critical infrastructure* data center. Sistem ini dikembangkan untuk **PT Dwimitra Ekatama Mandiri** yang melayani **PT United Transworld Trading (UTT)** di fasilitas data center **Neutra DC Cikarang**.
 
@@ -104,12 +103,11 @@ Frontend SPA (React 18 + Vite 6 + Tailwind v4) ── Firebase Hosting
   │                          • Foto & berkas disimpan sebagai chunk di subkoleksi Firestore
   │                          • Realtime Database (status online)
   │
-  └── HTTPS /api/* + Firebase ID token ──► Backend Go 1.24 (Vercel Function api/index.go)
+  └── HTTPS /api/* + Firebase ID token ──► Backend Go 1.27 (Vercel Function api/index.go)
                                              middleware → routes → controllers → services → repositories
                                              • verifikasi token, Turnstile, kelola user & role
                                              • AI ──► Google Gemini (tier gratis, endpoint OpenAI-compatible,
                                              │        pool multi-key + rotasi model)
-                                             • WhatsApp ──► Fonnte API
                                              • Firestore (Admin SDK)
 ```
 
@@ -150,13 +148,11 @@ Prinsip utama:
 
 | Teknologi | Versi | Peran |
 | :--- | :--- | :--- |
-| **Go** | `1.24` | API backend |
+| **Go** | `1.27` | API backend |
 | **Vercel Functions** | `api/index.go`, maks 60 s | Hosting backend produksi, auto-deploy dari branch `main` |
 | **Firebase Admin SDK (Go)** | `v4.13` | Verifikasi ID token, custom claim role, Firestore |
 | **Google Gemini API** | endpoint OpenAI-compatible | Vision, reasoning, chat, terjemahan MOP, Predictive Report |
 | **go-playground/validator** | `v10.30` | Validasi DTO |
-| **Fonnte API** | — | Pengiriman WhatsApp dari server |
-| **Baileys** (Node.js) | `7.0.0-rc14` | WA Gateway lokal opsional (`npm run wagateway`, port 5001) |
 
 ### Cloud & Infrastruktur
 
@@ -369,7 +365,6 @@ Role HSE memakai `HSEApp.tsx`: Buat Inspeksi, Absen TBM, Safety Induction, Input
 
 - **Upload Service Report** (`UploadSRModal.tsx`): Excel (.xlsx/.xls) diparsing ke format service report (`excelSrParser.ts`) dan dirender ke PDF A4 yang mengikuti tampilan cetak Excel aslinya (`excelToPdfConverter.ts`). PDF siap jadi juga bisa diunggah.
 - **Paper Report Digitizer** (`PaperReportDigitizerModal.tsx`): foto checklist kertas diekstrak dengan Tesseract.js atau Gemini menjadi laporan digital.
-- **WhatsApp**: pengiriman lewat backend ke Fonnte API (`/api/wa/send`), atau WA Gateway lokal berbasis Baileys (`backend/wagateway.js`). Dipakai untuk notifikasi dan pengingat jadwal PM dari menu **PM Schedule**.
 
 ### 📱 PWA, Offline & Update Aplikasi
 
@@ -399,15 +394,14 @@ DwimitraSystem/
 │   ├── core/
 │   │   ├── config/               # Firebase, env helper, logger
 │   │   ├── controllers/          # ai, auth, report, user, archive, audit, finding, health,
-│   │   │                         # maintenance_progress, mop, pm_predictive, wa
+│   │   │                         # maintenance_progress, mop, pm_predictive
 │   │   ├── middlewares/          # RequestID, logger, panic recovery, security headers, CORS, rate limit, auth
 │   │   ├── models/               # DTO & validasi
 │   │   ├── repositories/         # Akses Firestore
 │   │   ├── routes/               # routes.go (dependency injection) & api_routes.go (dispatch + throttle)
 │   │   └── services/             # ai_service (key pool + kuota), mop_translate_*, pm_predictive_service,
 │   │                             # turnstile, report, user, dll.
-│   ├── pkg/                      # helpers, logger (slog), sanitizer
-│   └── wagateway.js              # WA Gateway lokal (Baileys, port 5001)
+│   └── pkg/                      # helpers, logger (slog), sanitizer
 ├── frontend/
 │   ├── App.tsx                   # Routing per role + viewer publik HSE (/hse/<id>)
 │   ├── main.tsx                  # Entry React + registrasi service worker
@@ -474,7 +468,6 @@ Tier throttle: 🔴 **Heavy** 5 rps (burst 10), 🟢 **Standard** 20 rps (burst 
 | `PATCH` | `/api/users/:id/role` | Ubah role (profil + custom claim) | 🔴 |
 | `DELETE` | `/api/users/:id` | Nonaktifkan akun | 🔴 |
 | `GET` | `/api/audit`, `/api/audit/me` | Jejak audit | 🟢 |
-| `POST` | `/api/wa/send` | Kirim WhatsApp lewat Fonnte | 🔴 |
 
 Batas fungsi Vercel: 60 detik per request dan body maksimal 4,5 MB. Karena itu foto predictive dikirim per batch dan dikompresi di browser.
 
@@ -542,7 +535,7 @@ Endpoint AI dan predictive menolak role Drafter. Ukuran body dan jumlah foto div
 ### Prasyarat
 
 - **Node.js 24** (dipakai juga oleh tes `node --test` yang mengimpor file TypeScript)
-- **Go 1.24+**
+- **Go 1.26+** (`toolchain go1.27.3` di `go.mod` diunduh otomatis)
 - **Firebase CLI** (`npm install -g firebase-tools`)
 - **Vercel CLI** (opsional, `npx vercel`)
 
@@ -574,9 +567,6 @@ VITE_TURNSTILE_SITE_KEY=your_turnstile_site_key
 
 # Kosongkan saat development (pakai proxy Vite). Produksi: https://utt-report-maintenance.vercel.app
 VITE_API_URL=
-
-# Opsional
-VITE_WA_GATEWAY_URL=http://localhost:5001
 ```
 
 Backend (lokal: `.env` atau `.env.local` di akar proyek; produksi: Environment Variables di Vercel):
@@ -628,7 +618,6 @@ UI sebaiknya diuji dengan Firebase Emulator agar tidak memakai kuota baca Firest
 | `npm run export:prod` / `npm run export:dev` | Build ke folder `export/production` / `export/development` |
 | `npm run backend` | Jalankan `backend\server.exe` |
 | `npm run backend:build` | Compile backend Go ke `backend\server.exe` |
-| `npm run wagateway` | Jalankan WA Gateway lokal (Baileys) |
 | `npm run test:navigation` | Tes navigasi |
 | `npm run test:pm-predictive` | Tes mesin Predictive Report |
 
