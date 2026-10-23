@@ -596,7 +596,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     return doc;
 }
 
-export async function generateHSEPdf(data: HSEFormData, _autoOpen = false, userRole?: string) {
+// download=false: PDF tidak diunduh, cukup dikembalikan (dipakai popup kirim ke WhatsApp)
+export async function generateHSEPdf(data: HSEFormData, _autoOpen = false, userRole?: string, download = true) {
     const dmeImg = logoDme;
     const secondaryImg = data.reportType === 'utt' ? logoUtt : logoNeutradc;
 
@@ -732,22 +733,27 @@ export async function generateHSEPdf(data: HSEFormData, _autoOpen = false, userR
     const fileName = `HSE_Integrated_${safeAktivitas}_${dateStr}.pdf`;
 
     const finalBlob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
-    const url = URL.createObjectURL(finalBlob);
 
-    // Always trigger download with the correct filename
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (download) {
+        const url = URL.createObjectURL(finalBlob);
 
-    // NOTE: window.open(url) was removed because blob URLs generate UUID filenames
-    // (e.g. 04cba595-9c22-4250-b32e-d62402832d7c.pdf) when shared from the new tab.
-    // The download via link.download already provides the correct filename.
+        // Trigger download with the correct filename
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-    // Delay revocation to ensure the browser has time to handle the download
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+        // NOTE: window.open(url) was removed because blob URLs generate UUID filenames
+        // (e.g. 04cba595-9c22-4250-b32e-d62402832d7c.pdf) when shared from the new tab.
+        // The download via link.download already provides the correct filename.
+
+        // Delay revocation to ensure the browser has time to handle the download
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    return { blob: finalBlob, fileName };
 }
 
 export async function generateHSEPdfBlob(data: HSEFormData, userRole?: string): Promise<Blob> {

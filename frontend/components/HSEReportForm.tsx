@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from '@/components/HSEPhotoEditor';
 import { generateHSEPdf, type HSEFormData } from '@/utils/HSEPdfExport';
+import { openSharePdfDialog } from '@/components/SharePdfDialog';
 import { db } from '@/api/firebase';
 import { addDocQueued, toastWriteSuccess } from '@/utils/offlineWrite';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
@@ -659,15 +660,21 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection', r
             formData.reportType = reportMode;
 
             const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
+            // Akun hse@gmail.com: PDF tidak diunduh, langsung muncul popup kirim ke grup WhatsApp
+            const shareToWhatsApp = user?.email?.toLowerCase() === 'hse@gmail.com';
+            const createPdf = () => generateHSEPdf(formData, shouldAutoOpen, userRole || undefined, !shareToWhatsApp)
+                .then(({ blob, fileName }) => {
+                    if (shareToWhatsApp) openSharePdfDialog(blob, fileName);
+                });
 
             if (readOnly) {
-                await generateHSEPdf(formData, shouldAutoOpen, userRole || undefined);
+                await createPdf();
                 toast.success(`PDF ${reportMode.toUpperCase()} berhasil dibuat!`, { id: toastId });
                 return;
             }
 
             const [, savedDocId] = await Promise.all([
-                generateHSEPdf(formData, shouldAutoOpen, userRole || undefined).catch((pdfErr) => {
+                createPdf().catch((pdfErr) => {
                     console.error('PDF generation failed:', pdfErr);
                     throw new Error(`Gagal membuat PDF: ${(pdfErr as Error)?.message || 'Terjadi kesalahan'}`);
                 }),
