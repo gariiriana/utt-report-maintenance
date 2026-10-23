@@ -139,6 +139,24 @@ service cloud.firestore {
       return request.auth.token.get('email', '');
     }
 
+    // Internal account: a role custom claim, a users/{uid} profile that has a role,
+    // or one of the official emails that other rules already trust.
+    function isKnownUser() {
+      return request.auth != null && (
+        request.auth.token.get('role', '') != ''
+        || getEmail().lower() in ['qcdme@dme.com', 'dwimitra@co.id']
+        || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') != '')
+      );
+    }
+
+    // Roles a user may set on their own first profile; must match getRoleFromEmail() in AuthContext.tsx.
+    function isSelfAssignableRole(role) {
+      return role == 'engineer'
+        || (role == 'Engineer_K2' && getEmail().lower().matches('.*k2.*'))
+        || (role == 'standby_engineer' && getEmail().lower() in ['agil@utt.com', 'krishna@utt.com', 'asep@utt.com', 'salman@utt.com', 'gilang@utt.com', 'dison@utt.com', 'riyan@utt.com']);
+    }
+
     function isAdminSafe() {
       return request.auth != null
              && request.auth.uid != null
@@ -194,7 +212,7 @@ service cloud.firestore {
              && (
                (exists(/databases/$(database)/documents/users/$(request.auth.uid))
                 && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['engineer', 'standby_engineer', 'tde', 'cbre', 'Engineer_K2', 'engineer_k2']))
-               || (getEmail().matches('(?i).*(engineer|standby|tde|cbre|k2|ahu|acp|ups|pac|chiller|me|genset|pln|trafo|cubicle|bms|fire|cctv|dme).*'))
+               || (isKnownUser() && getEmail().matches('(?i).*(engineer|standby|tde|cbre|k2|ahu|acp|ups|pac|chiller|me|genset|pln|trafo|cubicle|bms|fire|cctv|dme).*'))
              );
     }
 
@@ -245,10 +263,10 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.auth.uid == userId
                     && (!request.resource.data.keys().hasAny(['role'])
-                        || request.resource.data.role in ['engineer', 'standby_engineer', 'Engineer_K2']);
+                        || isSelfAssignableRole(request.resource.data.role));
 
-      allow get: if request.auth != null && (!isDrafter() || request.auth.uid == userId);
-      allow list: if request.auth != null && !isDrafter();
+      allow get: if request.auth != null && (request.auth.uid == userId || (!isDrafter() && isKnownUser()));
+      allow list: if !isDrafter() && isKnownUser();
 
       allow update: if request.auth != null
                     && (
@@ -263,7 +281,7 @@ service cloud.firestore {
     }
 
     match /excel_documents/{docId} {
-      allow create: if !isDrafter() && (request.auth != null
+      allow create: if !isDrafter() && (isKnownUser()
                     && (getEmail() != '' || request.resource.data.createdBy == getEmail() || isEngineer() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll([
                       'fileName',
@@ -279,24 +297,24 @@ service cloud.firestore {
                     && isValidString(request.resource.data.maintenanceName, 500)
                     && isValidString(request.resource.data.createdBy, 200));
 
-      allow read: if !isDrafter() && (request.auth != null);
+      allow read: if !isDrafter() && (isKnownUser());
 
       allow delete: if !isDrafter() && (isStrictQcDme());
 
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (getEmail() != '' || resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME())
                     && hasAcceptableFieldCount(request.resource.data, 60));
 
       match /photos/{photoId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create: if !isDrafter() && (request.auth != null
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create: if !isDrafter() && (isKnownUser()
                       && hasAcceptableFieldCount(request.resource.data, 10));
-        allow update, delete: if !isDrafter() && (request.auth != null);
+        allow update, delete: if !isDrafter() && (isKnownUser());
       }
     }
 
     match /pdf_documents/{docId} {
-      allow create: if !isDrafter() && (request.auth != null
+      allow create: if !isDrafter() && (isKnownUser()
                     && (getEmail() != '' || request.resource.data.createdBy == getEmail() || isEngineer() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll([
                       'fileName',
@@ -312,24 +330,24 @@ service cloud.firestore {
                     && isValidString(request.resource.data.maintenanceName, 500)
                     && isValidString(request.resource.data.createdBy, 200));
 
-      allow read: if !isDrafter() && (request.auth != null);
+      allow read: if !isDrafter() && (isKnownUser());
 
       allow delete: if !isDrafter() && (isStrictQcDme());
 
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (getEmail() != '' || resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME())
                     && hasAcceptableFieldCount(request.resource.data, 60));
 
       match /photos/{photoId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create: if !isDrafter() && (request.auth != null
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create: if !isDrafter() && (isKnownUser()
                       && hasAcceptableFieldCount(request.resource.data, 10));
-        allow update, delete: if !isDrafter() && (request.auth != null);
+        allow update, delete: if !isDrafter() && (isKnownUser());
       }
     }
 
     match /files/{fileId} {
-      allow create: if request.auth != null
+      allow create: if isKnownUser()
                     && (isDrafter() || !isStandbyEngineer())
                     && (isDrafter() || isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || request.auth.uid != null)
                     && request.resource.data.keys().hasAll([
@@ -346,9 +364,9 @@ service cloud.firestore {
                     && isValidString(request.resource.data.fileName, 500)
                     && isValidString(request.resource.data.fileType, 100);
 
-      allow read: if request.auth != null;
+      allow read: if isKnownUser();
 
-      allow update: if request.auth != null
+      allow update: if isKnownUser()
                     && (!isDrafter() || resource.data.uploadedBy == request.auth.uid
                         || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                           'deleteRequested', 'deleteRequestedBy', 'deleteRequestedRole',
@@ -382,54 +400,54 @@ service cloud.firestore {
       allow delete: if isStrictQcDme();
 
         match /chunks/{chunkId} {
-          allow create: if request.auth != null
+          allow create: if isKnownUser()
                       && (!isDrafter() || get(/databases/$(database)/documents/files/$(fileId)).data.uploadedBy == request.auth.uid)
                       && (isDrafter() || !isStandbyEngineer())
                       && (isDrafter() || isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || request.auth.uid != null)
                       && hasAcceptableFieldCount(request.resource.data, 10);
 
           // Idempotent retries may rewrite the same index after an acknowledged-write timeout.
-          allow update: if request.auth != null
+          allow update: if isKnownUser()
                         && get(/databases/$(database)/documents/files/$(fileId)).data.uploadedBy == request.auth.uid
                         && (isDrafter() || !isStandbyEngineer())
                         && hasAcceptableFieldCount(request.resource.data, 10)
                         && request.resource.data.index == resource.data.index;
 
-        allow read: if request.auth != null;
+        allow read: if isKnownUser();
 
         allow delete: if isStrictQcDme();
       }
     }
 
     match /service_reports/{reportId} {
-      allow create: if !isDrafter() && (request.auth != null && isAdminOrQcDme()
+      allow create: if !isDrafter() && (isKnownUser() && isAdminOrQcDme()
                     && hasAcceptableFieldCount(request.resource.data, 20));
 
-      allow read: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser()
                   && (isAdminOrQcDme()
                       || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
                          && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'tde'
                              || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'cbre'))));
 
-      allow update: if !isDrafter() && (request.auth != null && isAdminOrQcDme());
+      allow update: if !isDrafter() && (isKnownUser() && isAdminOrQcDme());
 
-      allow delete: if !isDrafter() && (request.auth != null && isAdminOrQcDme());
+      allow delete: if !isDrafter() && (isKnownUser() && isAdminOrQcDme());
 
       match /chunks/{chunkId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create, delete: if !isDrafter() && (request.auth != null && isAdminOrQcDme());
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create, delete: if !isDrafter() && (isKnownUser() && isAdminOrQcDme());
       }
     }
 
     match /service_report_templates/{templateId} {
-      allow write: if !isDrafter() && (request.auth != null && isAdminOrQcDme()
+      allow write: if !isDrafter() && (isKnownUser() && isAdminOrQcDme()
                    && hasAcceptableFieldCount(request.resource.data, 30));
 
-      allow read: if !isDrafter() && (request.auth != null);
+      allow read: if !isDrafter() && (isKnownUser());
     }
 
     match /hse/{reportId} {
-      allow create: if !isDrafter() && (request.auth != null
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isHSE() || isAdminOrQcDme() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll(['aktivitas', 'lokasi', 'createdAt', 'authorEmail'])
                     && request.resource.data.authorEmail == getEmail()
@@ -439,9 +457,9 @@ service cloud.firestore {
                     && isValidString(request.resource.data.authorEmail, 200));
 
       allow get: if true;
-      allow list: if !isDrafter() && (request.auth != null);
+      allow list: if !isDrafter() && (isKnownUser());
 
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme()
                         || (isHSE() && resource.data.authorEmail == getEmail())
                         || (isPrivilegedRole() && resource.data.authorEmail == getEmail()))
@@ -451,27 +469,27 @@ service cloud.firestore {
 
       match /photos/{photoId} {
         allow get: if true;
-        allow list: if !isDrafter() && (request.auth != null);
-        allow create: if !isDrafter() && (request.auth != null
+        allow list: if !isDrafter() && (isKnownUser());
+        allow create: if !isDrafter() && (isKnownUser()
                       && hasAcceptableFieldCount(request.resource.data, 8)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl)));
-        allow update, delete: if !isDrafter() && (request.auth != null
+        allow update, delete: if !isDrafter() && (isKnownUser()
                               && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == getEmail() || isAdminOrQcDme() || isPrivilegedRole()));
       }
     }
 
     match /{division}/{fileId} {
-      allow create: if !isDrafter() && (request.auth != null
+      allow create: if !isDrafter() && (isKnownUser()
                     && division in ['pmo', 'sales', 'presales', 'purchasing']
                     && (isAdminOrQcDme() || isDivision(division) || isPrivilegedRole())
                     && request.resource.data.keys().hasAll(['fileName', 'fileSize', 'fileType', 'uploadedBy', 'uploadedAt'])
                     && hasAcceptableFieldCount(request.resource.data, 20));
 
-      allow read: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser()
                   && division in ['pmo', 'sales', 'presales', 'purchasing']
                   && (isAdminOrQcDme() || isDivision(division) || isDirector() || isPrivilegedRole()));
 
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                       && division in ['pmo', 'sales', 'presales', 'purchasing']
                       && (
                         isAdminOrQcDme()
@@ -492,19 +510,19 @@ service cloud.firestore {
       allow delete: if !isDrafter() && (isStrictQcDme());
 
         match /chunks/{chunkId} {
-          allow create: if !isDrafter() && (request.auth != null
+          allow create: if !isDrafter() && (isKnownUser()
                       && division in ['pmo', 'sales', 'presales', 'purchasing']
                       && (isAdminOrQcDme() || isDivision(division) || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10));
 
-          allow update: if !isDrafter() && (request.auth != null
+          allow update: if !isDrafter() && (isKnownUser()
                         && division in ['pmo', 'sales', 'presales', 'purchasing']
                         && get(/databases/$(database)/documents/$(division)/$(fileId)).data.uploadedBy == request.auth.uid
                         && (isAdminOrQcDme() || isDivision(division) || isPrivilegedRole())
                         && hasAcceptableFieldCount(request.resource.data, 10)
                         && request.resource.data.index == resource.data.index);
 
-        allow read: if !isDrafter() && (request.auth != null
+        allow read: if !isDrafter() && (isKnownUser()
                     && division in ['pmo', 'sales', 'presales', 'purchasing']
                     && (isAdminOrQcDme() || isDivision(division) || isDirector() || isPrivilegedRole()));
 
@@ -513,13 +531,13 @@ service cloud.firestore {
     }
 
     match /findings/{findingId} {
-      allow create: if !isDrafter() && (request.auth != null
+      allow create: if !isDrafter() && (isKnownUser()
                     && (getEmail() != '' || isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || isStandbyEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 30));
 
-      allow read: if !isDrafter() && (request.auth != null);
+      allow read: if !isDrafter() && (isKnownUser());
 
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (getEmail() != '' || isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || isStandbyEngineer() || resource.data.createdBy == request.auth.uid)
                     && hasAcceptableFieldCount(request.resource.data, 30));
 
@@ -527,8 +545,8 @@ service cloud.firestore {
     }
 
     match /maintenance_progress/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow write: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow write: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme()
                         || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager'
                         || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_manager'));
@@ -536,60 +554,61 @@ service cloud.firestore {
 
     match /system_status/{docId} {
       // wa_reminder_config berisi token Fonnte dari fitur WA reminder yang sudah dihapus; klien tidak perlu membacanya.
-      allow read: if !isDrafter() && (request.auth != null) && docId != 'wa_reminder_config';
-      allow write: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isPrivilegedRole() || isStandbyEngineer()));    }
+      allow read: if !isDrafter() && (isKnownUser()) && docId != 'wa_reminder_config';
+      allow write: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isPrivilegedRole() || isStandbyEngineer()));
+    }
 
     match /mop_workflows/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 25));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 25));
-      allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
+      allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
 
       match /draft_chunks/{chunkId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create: if !isDrafter() && (request.auth != null
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create: if !isDrafter() && (isKnownUser()
                       && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10));
-        allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
+        allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
       }
 
       match /ocs_approved_chunks/{chunkId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create: if !isDrafter() && (request.auth != null
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create: if !isDrafter() && (isKnownUser()
                       && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10));
-        allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
+        allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
       }
 
       match /tde_approved_chunks/{chunkId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create: if !isDrafter() && (request.auth != null
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create: if !isDrafter() && (isKnownUser()
                       && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10));
-        allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
+        allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole()));
       }
     }
 
     match /ptw_records/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 15));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 15));
-      allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isEngineer()));
+      allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isEngineer()));
 
       match /chunks/{chunkId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create: if !isDrafter() && (request.auth != null
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create: if !isDrafter() && (isKnownUser()
                       && (isAdminOrQcDme() || isEngineer())
                       && hasAcceptableFieldCount(request.resource.data, 10));
-        allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isEngineer()));
+        allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isEngineer()));
       }
     }
 
@@ -632,13 +651,13 @@ service cloud.firestore {
     }
 
     match /absen_tbm/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow write: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isPrivilegedRole()));
+      allow read: if !isDrafter() && (isKnownUser());
+      allow write: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isPrivilegedRole()));
     }
 
     match /absen_induction/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isHSE() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 10)
                     && (
@@ -653,16 +672,16 @@ service cloud.firestore {
                       )
                     )
                     && isValidString(request.resource.data.tanggal, 20));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isHSE() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 10));
-      allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isHSE()));
+      allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isHSE()));
     }
 
     match /absen_induction_chunks/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create, update: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isHSE() || isPrivilegedRole()));
-      allow delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isHSE()));
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create, update: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isHSE() || isPrivilegedRole()));
+      allow delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isHSE()));
     }
 
     match /notifications/{docId} {
@@ -673,32 +692,32 @@ service cloud.firestore {
         && request.resource.data.uploadedBy == getEmail()
         && isValidString(request.resource.data.reason, 2000)
         && request.resource.data.createdAt == request.time;
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create, update, delete: if !isDrafter() && (request.auth != null);
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create, update, delete: if !isDrafter() && (isKnownUser());
     }
 
     match /uploaded_files/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create, update, delete: if !isDrafter() && (request.auth != null);
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create, update, delete: if !isDrafter() && (isKnownUser());
     }
 
     match /sparepart_logs/{logId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME())
                     && hasAcceptableFieldCount(request.resource.data, 20));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.createdBy == request.auth.uid)
                     && hasAcceptableFieldCount(request.resource.data, 20));
-      allow delete: if !isDrafter() && (request.auth != null
+      allow delete: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isPrivilegedRole() || resource.data.createdBy == request.auth.uid || isStandbyEngineer()));
     }
 
     match /corrective_reports/{reportId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME()));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.reportedBy == request.auth.uid || resource.data.createdBy == request.auth.uid));
       allow delete: if !isDrafter() && (isStrictQcDme());
     }
@@ -708,10 +727,10 @@ service cloud.firestore {
     // Akses: Admin, QC DME, Engineer, Standby Engineer, DME & Privileged can CRUD
     // ============================================================================
     match /predictive_reports/{reportId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME()));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.createdBy == getEmail() || resource.data.createdBy == request.auth.uid));
       allow delete: if !isDrafter() && (isStrictQcDme());
     }
@@ -721,8 +740,8 @@ service cloud.firestore {
     // id dokumen = id laporan PM asal; akun unit pemilik laporan boleh membuat/memperbarui
     // ============================================================================
     match /pm_predictive_reports/{reportId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create, update: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create, update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME()
                         || request.resource.data.account == getEmail().lower())
                     && request.resource.data.sourceDocId == reportId
@@ -735,17 +754,17 @@ service cloud.firestore {
     // Akses: Admin, QC DME, Engineer, Standby Engineer, DME & Privileged can CRUD
     // ============================================================================
     match /periodic_predictive_reports/{reportId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME()));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.createdBy == getEmail() || resource.data.createdBy == request.auth.uid));
       allow delete: if !isDrafter() && (isStrictQcDme());
     }
 
     match /standby_kpi_inputs/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create, update, delete: if !isDrafter() && (request.auth != null && (isAdminOrQcDme() || isStandbyEngineer() || isPrivilegedRole() || isEngineer() || isDME()));
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create, update, delete: if !isDrafter() && (isKnownUser() && (isAdminOrQcDme() || isStandbyEngineer() || isPrivilegedRole() || isEngineer() || isDME()));
     }
 
     // ============================================================================
@@ -753,8 +772,8 @@ service cloud.firestore {
     // Akses: HSE Officer, Admin, Engineer, Standby & Privileged bisa CRUD. Auth users bisa read.
     // ============================================================================
     match /hse_findings/{findingId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isHSE() || isPrivilegedRole() || isEngineer() || isStandbyEngineer() || isDME())
                     && request.resource.data.keys().hasAll([
                       'title',
@@ -770,7 +789,7 @@ service cloud.firestore {
                     && isValidString(request.resource.data.title, 500)
                     && isValidString(request.resource.data.location, 500)
                     && request.resource.data.status in ['open', 'close']);
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isHSE() || isPrivilegedRole() || isEngineer() || isStandbyEngineer() || isDME()
                         || resource.data.reportedBy == getEmail())
                     && hasAcceptableFieldCount(request.resource.data, 30)
@@ -783,10 +802,10 @@ service cloud.firestore {
     // Akses: Admin, DME, Engineer, Standby & Privileged can CRUD. Auth users can read.
     // ============================================================================
     match /berita_acara/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isDME() || isSiteManagerDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || request.auth.uid != null));
-      allow update: if !isDrafter() && (request.auth != null
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isDME() || isSiteManagerDME() || isEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail()));
       allow delete: if !isDrafter() && (isStrictQcDme());
     }
@@ -796,21 +815,21 @@ service cloud.firestore {
     // Akses: Admin, DME, Site Manager, Engineer, Standby dapat CRUD. Auth users read.
     // ============================================================================
     match /monthly_reports/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null);
-      allow update: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser());
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail() || request.resource.data.createdBy == getEmail()));
       allow delete: if !isDrafter() && (isStrictQcDme());
 
       // Subkoleksi: assets — gambar arsip (foto RCA, photo log) dipisah per dokumen
       // supaya dokumen utama laporan tidak melewati batas 1 MiB Firestore.
       match /assets/{assetId} {
-        allow read: if !isDrafter() && (request.auth != null);
-        allow create, update: if !isDrafter() && (request.auth != null)
+        allow read: if !isDrafter() && (isKnownUser());
+        allow create, update: if !isDrafter() && (isKnownUser())
                       && request.resource.data.keys().hasOnly(['data', 'createdAt'])
                       && request.resource.data.data is string
                       && request.resource.data.data.size() <= 1000000;
-        allow delete: if !isDrafter() && (request.auth != null);
+        allow delete: if !isDrafter() && (isKnownUser());
       }
     }
 
@@ -819,9 +838,9 @@ service cloud.firestore {
     // Akses: Admin, DME, Site Manager, Engineer, Standby dapat CRUD. Auth users read.
     // ============================================================================
     match /sop_eop_documents/{docId} {
-      allow read: if !isDrafter() && (request.auth != null);
-      allow create: if !isDrafter() && (request.auth != null);
-      allow update: if !isDrafter() && (request.auth != null
+      allow read: if !isDrafter() && (isKnownUser());
+      allow create: if !isDrafter() && (isKnownUser());
+      allow update: if !isDrafter() && (isKnownUser()
                     && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail() || request.resource.data.createdBy == getEmail()));
       allow delete: if !isDrafter() && (isStrictQcDme());
     }

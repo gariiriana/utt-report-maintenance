@@ -28,6 +28,7 @@ const doc = (fields) => ({ fields: Object.fromEntries(Object.entries(fields).map
 await call('PATCH', 'system_status/ai_limit_tracker', 'owner', doc({ date: '2026-10-23' }));
 await call('PATCH', 'system_status/wa_reminder_config', 'owner', doc({ fonnte_token: 'dummy' }));
 await call('PATCH', 'system_status/wa_reminder_config/logs/l1', 'owner', doc({ msg: 'x' }));
+await call('PATCH', 'users/random', 'owner', doc({ role: 'engineer', email: 'random.user@gmail.com' }));
 
 const attacker = idToken('attacker', 'dwimitra.attacker@gmail.com');
 const random = idToken('random', 'random.user@gmail.com');
@@ -40,6 +41,7 @@ const cases = [
   ['signed-in user reads wa_reminder_config (Fonnte token)', 'GET', 'system_status/wa_reminder_config', random, null, 403],
   ['signed-in user reads reminder logs', 'GET', 'system_status/wa_reminder_config/logs/l1', random, null, 403],
   ['unauthenticated reads ai_limit_tracker', 'GET', 'system_status/ai_limit_tracker', null, null, 403],
+  ['signed-in account without profile reads ai_limit_tracker', 'GET', 'system_status/ai_limit_tracker', attacker, null, 403],
 ];
 
 let failed = 0;
