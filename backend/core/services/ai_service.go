@@ -62,6 +62,15 @@ type aiService struct {
 	firestoreClient *firestore.Client
 }
 
+func containsKey(keys []string, key string) bool {
+	for _, existing := range keys {
+		if existing == key {
+			return true
+		}
+	}
+	return false
+}
+
 // NewAIService creates a new AI service with multi-key and multi-model support.
 func NewAIService(firestoreClient *firestore.Client) IAIService {
 	svc := &aiService{
@@ -72,13 +81,13 @@ func NewAIService(firestoreClient *firestore.Client) IAIService {
 		firestoreClient: firestoreClient,
 	}
 
-	// Load API keys: prefer multi-key pool, fallback to single key
-	multiKeys := config.EnvString("NVIDIA_NIM_API_KEYS", "")
-	if multiKeys != "" {
-		for _, k := range strings.Split(multiKeys, ",") {
+	// Load API keys: prefer multi-key pool, fallback to single key.
+	// NVIDIA_NIM_API_KEYS_EXTRA holds keys added later (Secret env can't be read back to append).
+	for _, envName := range []string{"NVIDIA_NIM_API_KEYS", "NVIDIA_NIM_API_KEYS_EXTRA"} {
+		for _, k := range strings.Split(config.EnvString(envName, ""), ",") {
 			k = strings.TrimSpace(k)
 			// Filter out disabled service account keys
-			if k != "" && !strings.HasSuffix(k, "SXUg") {
+			if k != "" && !strings.HasSuffix(k, "SXUg") && !containsKey(svc.apiKeys, k) {
 				svc.apiKeys = append(svc.apiKeys, k)
 			}
 		}
@@ -98,15 +107,7 @@ func NewAIService(firestoreClient *firestore.Client) IAIService {
 	}
 	for _, b64 := range backupKeysB64 {
 		if raw, err := base64.StdEncoding.DecodeString(b64); err == nil && len(raw) > 0 {
-			keyStr := string(raw)
-			exists := false
-			for _, existing := range svc.apiKeys {
-				if existing == keyStr {
-					exists = true
-					break
-				}
-			}
-			if !exists {
+			if keyStr := string(raw); !containsKey(svc.apiKeys, keyStr) {
 				svc.apiKeys = append(svc.apiKeys, keyStr)
 			}
 		}
