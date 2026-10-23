@@ -2,9 +2,10 @@
 // FILE: frontend/utils/mopBilingualDocx.ts
 // Deskripsi: Membuat versi Bilingual (EN + ID) dari file Word MOP langsung di
 //            dalam DOCX aslinya. Setiap paragraf berbahasa Inggris (termasuk isi
-//            sel tabel) mendapat baris terjemahan Indonesia (miring, abu-abu)
-//            di bawahnya, disisipkan sebagai line break di paragraf yang sama
-//            sehingga penomoran, indentasi, tabel, dan gambar tidak berubah.
+//            sel tabel) mendapat baris terjemahan Indonesia di bawahnya, disisipkan
+//            sebagai line break di paragraf yang sama sehingga penomoran, indentasi,
+//            tabel, dan gambar tidak berubah. Baris ID mengikuti kolom tab baris
+//            Inggris dan format run aslinya (miring, abu-abu bila teksnya hitam).
 // ============================================================================
 
 import JSZip from 'jszip';
@@ -16,7 +17,7 @@ const ID_COLOR = '595959'; // sama dengan baris ID pada export SOP/EOP
 
 export interface MOPSegment {
   text: string;        // teks Inggris (spasi dirapikan), juga kunci terjemahan
-  occurrences: number; // berapa paragraf yang berisi teks ini
+  occurrences: number; // berapa kali teks ini muncul
 }
 
 export interface ParsedMOP {
@@ -33,72 +34,89 @@ const childElements = (node: Node): Element[] =>
 
 const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
 
+/** Potongan teks paragraf di antara tab. Baris ID meniru tab yang sama agar tiap kolom sejajar. */
+interface Piece {
+  text: string;
+  chars: Map<Element, number>; // run -> jumlah karakter terlihat di potongan ini
+  tabRun: Element | null;      // run berisi tab yang menutup potongan ini
+}
+
 /**
- * Kumpulkan teks dan run teks milik satu paragraf. Paragraf bersarang (text box)
- * dan konten fallback (mc:Fallback, duplikat dari mc:Choice) tidak ikut dihitung.
+ * Pecah paragraf per tab. Paragraf bersarang (text box) dan konten fallback (mc:Fallback,
+ * duplikat dari mc:Choice) tidak ikut dihitung.
  */
-function readParagraph(p: Element): { text: string; textRuns: Element[]; leadingTabs: number; trailingTabs: number } {
-  let text = '';
-  const textRuns: Element[] = [];
-  // Tab sebelum/sesudah teks dipakai untuk tata letak (mis. judul section "[tab] teks [tab]"
-  // yang di-highlight menjadi bar kuning); baris ID menirunya agar sejajar.
-  let leadingTabs = 0;
-  let trailingTabs = 0;
-  let seenText = false;
+function readPieces(p: Element): Piece[] {
+  const newPiece = (): Piece => ({ text: '', chars: new Map(), tabRun: null });
+  const pieces = [newPiece()];
   const walk = (node: Element) => {
     for (const child of childElements(node)) {
       // pPr berisi definisi tab stop (<w:tabs><w:tab/>) yang bukan karakter tab.
       if (isW(child, 'p') || isW(child, 'pPr') || isW(child, 'rPr') || child.localName === 'Fallback' || isW(child, 'del')) continue;
+      const piece = pieces[pieces.length - 1];
       if (isW(child, 't')) {
         const value = child.textContent || '';
-        text += value;
-        if (value.trim()) {
-          seenText = true;
-          trailingTabs = 0;
-        }
+        const run = child.parentNode as Element;
+        piece.text += value;
+        piece.chars.set(run, (piece.chars.get(run) || 0) + value.trim().length);
       } else if (isW(child, 'tab')) {
-        text += ' ';
-        if (seenText) trailingTabs++;
-        else leadingTabs++;
+        piece.tabRun = child.parentNode as Element;
+        pieces.push(newPiece());
+      } else if (isW(child, 'br') || isW(child, 'cr')) {
+        piece.text += ' ';
       } else {
-        if (isW(child, 'r') && childElements(child).some(c => isW(c, 't'))) textRuns.push(child);
         walk(child);
       }
     }
   };
   walk(p);
-  return { text: normalize(text), textRuns, leadingTabs, trailingTabs };
+  return pieces;
 }
 
-// Baris isian formulir yang dibiarkan tanpa baris ID: label "Label : isi" (Section 3 & 11),
-// baik satu baris bertab ("Author : X [tab] Date of Creation : Y") maupun per sel tabel.
-const FORM_FIELD_LINE = /^(author|date of creation|date revision|revision date|revision number|mop execution date|reference ticket number)\s*:/i;
-// Judul kolom tabel isian: "Job Title [tab] Name [tab] Signature [tab] Date" (Section 12)
-// dan "Executed by (Name) [tab] Job title" (Section 3), sebaris atau per sel.
-const FORM_HEADER_LINE = /^(?:(?:job title|name|signature|date|executed by \(name\))\s*)+$/i;
+const piecesText = (pieces: Piece[]) => normalize(pieces.map(piece => piece.text).join(' '));
+const paragraphText = (p: Element) => piecesText(readPieces(p));
+const lastVisible = (pieces: Piece[]) => pieces.map(piece => piece.text.trim() !== '').lastIndexOf(true);
+
+/** Run dengan teks terbanyak di potongan; formatnya disalin ke teks ID potongan itu. */
+function bestRun(piece: Piece): Element | null {
+  let best: Element | null = null;
+  let most = -1;
+  for (const [run, count] of piece.chars) {
+    if (count > most) {
+      best = run;
+      most = count;
+    }
+  }
+  return best;
+}
+
 // Pilihan frekuensi bercentang di MOP PM: "☐ Monthly [tab] ☑ Quarterly [tab] ☐ Annually"
 // (kadang plus "Half of Year"). Minimal dua pilihan, supaya sel tunggal "Monthly" tetap diterjemahkan.
 const FREQUENCY_OPTIONS_LINE =
   /^(?:[☐☑☒□■✓✔✗✘]?\s*(?:daily|weekly|bi-?weekly|monthly|bi-?monthly|quarterly|half of year|half[- ]yearly|semi[- ]?annual(?:ly)?|annually|annual|yearly)\s*){2,}$/i;
 
 /**
- * Paragraf yang perlu diterjemahkan: memuat minimal satu kata biasa. Teks yang seluruhnya
- * kode/angka/singkatan pendek ("NOZ-PP-2NPT-360", "24", "HSE") dan baris isian formulir
- * (Author, Date of Creation, Job Title/Name/Signature/Date, pilihan frekuensi, dst.) dilewati. Judul seperti
- * "Section 1 – Document Overview" atau "METHOD OF PROCEDURE" tetap diterjemahkan; nama
- * orang/merek dan singkatan panjang (LOTO) diputuskan AI (dikembalikan kosong).
+ * Teks yang perlu diterjemahkan: memuat minimal satu kata biasa. Teks yang seluruhnya
+ * kode/angka/singkatan pendek ("NOZ-PP-2NPT-360", "24", "HSE", ": 06/07/2026") dan baris
+ * pilihan frekuensi dilewati. Judul seperti "Section 1 – Document Overview" atau
+ * "METHOD OF PROCEDURE" tetap diterjemahkan; nama orang/merek dan singkatan panjang (LOTO)
+ * diputuskan AI (dikembalikan kosong).
  */
 export function needsTranslation(text: string): boolean {
-  if (FORM_FIELD_LINE.test(text) || FORM_HEADER_LINE.test(text) || FREQUENCY_OPTIONS_LINE.test(text)) return false;
+  if (FREQUENCY_OPTIONS_LINE.test(text)) return false;
   const isCode = (token: string) => /\d/.test(token) || /^[A-Z]{2,3}$/.test(token);
   return text
     .split(/[\s/,()\-–:;.&"'°]+/)
     .some(token => /[A-Za-z]{2,}/.test(token) && !isCode(token));
 }
 
-// Tabel daftar aset MOP PM (Section 2 – Equipment Information, ada kolom "CI Name*"): isinya
-// nama/deskripsi/tipe/serial aset yang tidak diterjemahkan. Baris judul kolom tetap diterjemahkan.
-const ASSET_TABLE_HEADER = /^CI Name\*?$/i;
+const SECTION_HEADING = /^Section\s+\d+\b/i;
+// Section 3 – Schedule / Work Information dan Section 12 – Approval: tabelnya berisi nama orang
+// dan jabatan resmi, tidak diterjemahkan. Label di luar tabel (MOP Execution Date, Job Title …) tetap.
+const PEOPLE_SECTION = /^Section\s+\d+\s*[–—-]\s*(Schedule|Approval)\b/i;
+const APPROVAL_SECTION = /^Section\s+\d+\s*[–—-]\s*Approval\b/i;
+// Tabel data (daftar aset Section 2, alat ukur Section 13): hanya baris judul kolom yang
+// diterjemahkan, satu terjemahan per sel; isi barisnya (nama/tipe/serial/merek) tidak.
+const DATA_TABLE_HEADER = /^(CI Name\*?|Class Id|Measuring Instrument)$/i;
 
 const nearestAncestor = (node: Node, name: string): Element | null => {
   for (let el = node.parentNode; el; el = el.parentNode) {
@@ -107,21 +125,69 @@ const nearestAncestor = (node: Node, name: string): Element | null => {
   return null;
 };
 
-/** Paragraf di baris isi tabel aset; tidak dikirim ke AI dan tidak diberi baris ID. */
-function assetTableParagraphs(doc: Document): Set<Element> {
-  const skip = new Set<Element>();
+const tableRows = (tbl: Element) =>
+  Array.from(tbl.getElementsByTagNameNS(W_NS, 'tr')).filter(tr => nearestAncestor(tr, 'tbl') === tbl);
+const rowCells = (row: Element) =>
+  Array.from(row.getElementsByTagNameNS(W_NS, 'tc')).filter(tc => nearestAncestor(tc, 'tr') === row);
+const paragraphsIn = (el: Element) => Array.from(el.getElementsByTagNameNS(W_NS, 'p'));
+
+const hasField = (p: Element) =>
+  ['fldChar', 'fldSimple', 'instrText'].some(name => p.getElementsByTagNameNS(W_NS, name).length > 0);
+
+/** Paragraf yang diberi baris ID, dengan kunci terjemahan per potongan tab (null = tidak diterjemahkan). */
+interface Unit {
+  p: Element;
+  pieces: Piece[];
+  keys: (string | null)[];
+  heading: boolean;
+}
+
+const pieceKeys = (pieces: Piece[]) => pieces.map(piece => {
+  const text = normalize(piece.text);
+  return text && needsTranslation(text) ? text : null;
+});
+
+/** Paragraf yang diterjemahkan, urut kemunculan; dipakai bersama oleh parse dan build. */
+function collectUnits(doc: Document): Unit[] {
+  // Sel judul kolom tabel data diterjemahkan utuh di bawah paragraf terakhirnya.
+  const cellTargets = new Map<Element, string>();
+  const skipped = new Set<Element>();
   for (const tbl of Array.from(doc.getElementsByTagNameNS(W_NS, 'tbl'))) {
-    const rows = Array.from(tbl.getElementsByTagNameNS(W_NS, 'tr')).filter(tr => nearestAncestor(tr, 'tbl') === tbl);
-    if (rows.length < 2) continue;
-    const headerCells = Array.from(rows[0].getElementsByTagNameNS(W_NS, 'tc')).filter(tc => nearestAncestor(tc, 'tr') === rows[0]);
-    const cellText = (tc: Element) =>
-      normalize(Array.from(tc.getElementsByTagNameNS(W_NS, 'p')).map(p => readParagraph(p).text).join(' '));
-    if (!headerCells.some(tc => ASSET_TABLE_HEADER.test(cellText(tc)))) continue;
-    for (const row of rows.slice(1)) {
-      for (const p of Array.from(row.getElementsByTagNameNS(W_NS, 'p'))) skip.add(p);
+    const rows = tableRows(tbl);
+    const cellText = (tc: Element) => normalize(paragraphsIn(tc).map(paragraphText).join(' '));
+    if (rows.length < 2 || !rowCells(rows[0]).some(tc => DATA_TABLE_HEADER.test(cellText(tc)))) continue;
+    for (const tc of rowCells(rows[0])) {
+      const withText = paragraphsIn(tc).filter(p => paragraphText(p));
+      paragraphsIn(tc).forEach(p => skipped.add(p));
+      if (withText.length > 0) cellTargets.set(withText[withText.length - 1], cellText(tc));
     }
+    for (const row of rows.slice(1)) paragraphsIn(row).forEach(p => skipped.add(p));
   }
-  return skip;
+
+  const units: Unit[] = [];
+  let peopleSection = false;
+  for (const p of Array.from(doc.getElementsByTagNameNS(W_NS, 'p'))) {
+    const pieces = readPieces(p);
+    const text = piecesText(pieces);
+    if (!text) continue;
+    const heading = SECTION_HEADING.test(text);
+    if (heading) peopleSection = PEOPLE_SECTION.test(text);
+
+    const cellText = cellTargets.get(p);
+    if (cellText !== undefined) {
+      if (!needsTranslation(cellText)) continue;
+      const keys: (string | null)[] = pieces.map(() => null);
+      keys[lastVisible(pieces)] = cellText;
+      units.push({ p, pieces, keys, heading: false });
+      continue;
+    }
+    // Paragraf ber-field (checkbox formulir, nomor halaman) dan isian frekuensi dibiarkan.
+    if (!heading && (skipped.has(p) || hasField(p) || FREQUENCY_OPTIONS_LINE.test(text)
+      || (peopleSection && nearestAncestor(p, 'tbl')))) continue;
+    const keys = pieceKeys(pieces);
+    if (keys.some(Boolean)) units.push({ p, pieces, keys, heading });
+  }
+  return units;
 }
 
 async function loadDocument(buffer: ArrayBuffer) {
@@ -131,8 +197,7 @@ async function loadDocument(buffer: ArrayBuffer) {
   } catch {
     throw new Error('File bukan dokumen Word (.docx) yang valid.');
   }
-  // Sebagian DOCX yang di-zip ulang di Windows memakai "word\document.xml" (backslash).
-  const entryName = Object.keys(zip.files).find(name => name.replace(/\\/g, '/').toLowerCase() === 'word/document.xml');
+  const entryName = findEntry(zip, 'word/document.xml');
   const entry = entryName ? zip.file(entryName) : null;
   if (!entryName || !entry) throw new Error('File bukan dokumen Word (.docx) yang valid.');
   const xml = await entry.async('string');
@@ -140,103 +205,48 @@ async function loadDocument(buffer: ArrayBuffer) {
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new Error('Isi dokumen Word tidak dapat dibaca.');
   }
-  const skipped = assetTableParagraphs(doc);
-  const paragraphs = Array.from(doc.getElementsByTagNameNS(W_NS, 'p')).filter(p => !skipped.has(p));
-  return { zip, entryName, doc, xml, paragraphs };
+  return { zip, entryName, doc, xml };
 }
+
+// Sebagian DOCX yang di-zip ulang di Windows memakai "word\document.xml" (backslash).
+const findEntry = (zip: JSZip, path: string) =>
+  Object.keys(zip.files).find(name => name.replace(/\\/g, '/').toLowerCase() === path);
 
 /**
  * Baca teks MOP: daftar teks unik yang perlu diterjemahkan (urut kemunculan),
  * plus judul & nomor dokumen dari Section 1 bila ada.
  */
 export async function parseMOPDocx(buffer: ArrayBuffer): Promise<ParsedMOP> {
-  const { paragraphs } = await loadDocument(buffer);
+  const { doc } = await loadDocument(buffer);
   const segmentMap = new Map<string, MOPSegment>();
   let title = '';
   let documentNumber = '';
 
-  for (const p of paragraphs) {
-    const { text } = readParagraph(p);
-    if (!text) continue;
-
+  for (const p of Array.from(doc.getElementsByTagNameNS(W_NS, 'p'))) {
+    const text = paragraphText(p);
     const titleMatch = text.match(/^Document Title\s*:\s*(.+)$/i);
     if (titleMatch && !title) title = titleMatch[1].trim();
     const numberMatch = text.match(/^Document Number\s*:\s*(.+)$/i);
     if (numberMatch && !documentNumber) documentNumber = numberMatch[1].trim();
+  }
 
-    if (!needsTranslation(text)) continue;
-    const existing = segmentMap.get(text);
-    if (existing) existing.occurrences++;
-    else segmentMap.set(text, { text, occurrences: 1 });
+  for (const unit of collectUnits(doc)) {
+    for (const key of unit.keys) {
+      if (!key) continue;
+      const existing = segmentMap.get(key);
+      if (existing) existing.occurrences++;
+      else segmentMap.set(key, { text: key, occurrences: 1 });
+    }
   }
 
   return { segments: [...segmentMap.values()], title, documentNumber };
 }
 
-/** Warna terang (mis. teks putih di header tabel berwarna) dipertahankan agar tetap terbaca. */
-const isLightColor = (hex: string | null | undefined) => {
-  if (!hex || !/^[0-9A-Fa-f]{6}$/.test(hex)) return false;
-  const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
-  return 0.299 * r + 0.587 * g + 0.114 * b > 186;
-};
-
-/**
- * rPr baris ID: font & ukuran mengikuti teks Inggris, tebal bila seluruh teks Inggris tebal,
- * miring abu-abu kecuali teks aslinya berwarna terang.
- */
-function buildIdRunProps(doc: Document, allTextRuns: Element[]): Element {
-  const make = (name: string, val?: string) => {
-    const el = doc.createElementNS(W_NS, `w:${name}`);
-    if (val !== undefined) el.setAttributeNS(W_NS, 'w:val', val);
-    return el;
-  };
-  const runProps = (run: Element) => childElements(run).find(c => isW(c, 'rPr'));
-  const prop = (rPr: Element | undefined, name: string) => (rPr ? childElements(rPr).find(c => isW(c, name)) : undefined);
-  const isOn = (el: Element | undefined) => {
-    if (!el) return false;
-    const val = el.getAttributeNS(W_NS, 'val') ?? el.getAttribute('w:val');
-    return val === null || val === '' || !['0', 'false', 'off'].includes(val);
-  };
-
-  // Run berisi spasi saja (perataan manual) sering punya font berbeda; abaikan.
-  const visibleRuns = allTextRuns.filter(run =>
-    childElements(run).some(c => isW(c, 't') && (c.textContent || '').trim() !== ''));
-  const textRuns = visibleRuns.length > 0 ? visibleRuns : allTextRuns;
-  const firstRPr = textRuns[0] ? runProps(textRuns[0]) : undefined;
-  const allBold = textRuns.length > 0 && textRuns.every(r => isOn(prop(runProps(r), 'b')));
-  const originalColor = prop(firstRPr, 'color');
-  const originalColorVal = originalColor ? (originalColor.getAttributeNS(W_NS, 'val') ?? originalColor.getAttribute('w:val')) : null;
-
-  // Urutan elemen mengikuti skema CT_RPr: rFonts, b, bCs, i, iCs, color, sz, szCs
-  const rPr = make('rPr');
-  const rFonts = prop(firstRPr, 'rFonts');
-  if (rFonts) rPr.appendChild(rFonts.cloneNode(true));
-  if (allBold) {
-    rPr.appendChild(make('b'));
-    rPr.appendChild(make('bCs'));
-  }
-  rPr.appendChild(make('i'));
-  rPr.appendChild(make('iCs'));
-  rPr.appendChild(make('color', isLightColor(originalColorVal) ? originalColorVal! : ID_COLOR));
-  const sz = prop(firstRPr, 'sz');
-  if (sz) rPr.appendChild(sz.cloneNode(true));
-  const szCs = prop(firstRPr, 'szCs');
-  if (szCs) rPr.appendChild(szCs.cloneNode(true));
-  // Highlight/shading (mis. bar kuning judul section) ikut, setelah szCs sesuai urutan skema.
-  const highlight = prop(firstRPr, 'highlight');
-  if (highlight) rPr.appendChild(highlight.cloneNode(true));
-  const shd = prop(firstRPr, 'shd');
-  if (shd) rPr.appendChild(shd.cloneNode(true));
-  return rPr;
-}
-
-const SECTION_HEADING = /^Section\s+\d+\b/i;
-
 // Atribut w:* yang tidak ada -> null (sebagian parser DOM mengembalikan string kosong).
 const wAttr = (el: Element | undefined | null, name: string) =>
   (el && (el.getAttributeNS(W_NS, name) || el.getAttribute(`w:${name}`))) || null;
 
-// Urutan anak w:pPr dan w:tcPr menurut skema; Word menolak elemen yang urutannya salah.
+// Urutan anak w:pPr, w:rPr, w:trPr dan w:tcPr menurut skema; Word menolak elemen yang urutannya salah.
 const PPR_ORDER = [
   'pStyle', 'keepNext', 'keepLines', 'pageBreakBefore', 'framePr', 'widowControl', 'numPr',
   'suppressLineNumbers', 'pBdr', 'shd', 'tabs', 'suppressAutoHyphens', 'kinsoku', 'wordWrap',
@@ -245,6 +255,16 @@ const PPR_ORDER = [
   'textDirection', 'textAlignment', 'textboxTightWrap', 'outlineLvl', 'divId', 'cnfStyle', 'rPr',
   'sectPr', 'pPrChange',
 ];
+const RPR_ORDER = [
+  'rStyle', 'rFonts', 'b', 'bCs', 'i', 'iCs', 'caps', 'smallCaps', 'strike', 'dstrike', 'outline',
+  'shadow', 'emboss', 'imprint', 'noProof', 'snapToGrid', 'vanish', 'webHidden', 'color', 'spacing',
+  'w', 'kern', 'position', 'sz', 'szCs', 'highlight', 'u', 'effect', 'bdr', 'shd', 'fitText',
+  'vertAlign', 'rtl', 'cs', 'em', 'lang', 'eastAsianLayout', 'specVanish', 'oMath',
+];
+const TRPR_ORDER = [
+  'cnfStyle', 'divId', 'gridBefore', 'gridAfter', 'wBefore', 'wAfter', 'cantSplit', 'trHeight',
+  'tblHeader', 'tblCellSpacing', 'jc', 'hidden', 'ins', 'del', 'trPrChange',
+];
 const TCPR_ORDER = [
   'cnfStyle', 'tcW', 'gridSpan', 'hMerge', 'vMerge', 'tcBorders', 'shd', 'noWrap', 'tcMar',
   'textDirection', 'tcFitText', 'vAlign', 'hideMark', 'headers', 'cellIns', 'cellDel', 'cellMerge', 'tcPrChange',
@@ -252,10 +272,11 @@ const TCPR_ORDER = [
 
 /** Pasang `el` di `parent` pada posisi sesuai `order`, menggantikan elemen bernama sama. */
 function setOrderedChild(parent: Element, el: Element, order: string[]): void {
-  const rank = order.indexOf(el.localName);
+  // Elemen ekstensi (w14:* dst.) selalu berada di belakang elemen w:*.
+  const rank = (c: Element) => (c.namespaceURI === W_NS ? order.indexOf(c.localName) : order.length);
   const existing = childElements(parent).find(c => isW(c, el.localName));
   if (existing) parent.removeChild(existing);
-  const next = childElements(parent).find(c => order.indexOf(c.localName) > rank);
+  const next = childElements(parent).find(c => rank(c) > rank(el));
   parent.insertBefore(el, next || null);
 }
 
@@ -269,6 +290,173 @@ function ensureProps(doc: Document, el: Element, name: string): Element {
   const props = doc.createElementNS(W_NS, `w:${name}`);
   el.insertBefore(props, el.firstChild);
   return props;
+}
+
+const setParagraphFlag = (doc: Document, p: Element, name: string) =>
+  setOrderedChild(ensureProps(doc, p, 'pPr'), doc.createElementNS(W_NS, `w:${name}`), PPR_ORDER);
+
+/**
+ * rPr baris ID: salinan format run Inggris (font, ukuran, tebal, garis bawah, highlight)
+ * ditambah miring; teks hitam/otomatis menjadi abu-abu, warna lain (mis. putih di header
+ * berwarna) dipertahankan.
+ */
+function idRunProps(doc: Document, source: Element | null): Element {
+  const original = childW(source, 'rPr');
+  const rPr = original ? (original.cloneNode(true) as Element) : doc.createElementNS(W_NS, 'w:rPr');
+  for (const name of ['i', 'iCs', 'rPrChange']) {
+    const el = childW(rPr, name);
+    if (el) rPr.removeChild(el);
+  }
+  setOrderedChild(rPr, doc.createElementNS(W_NS, 'w:i'), RPR_ORDER);
+  setOrderedChild(rPr, doc.createElementNS(W_NS, 'w:iCs'), RPR_ORDER);
+  const color = childW(rPr, 'color');
+  const val = wAttr(color, 'val');
+  const theme = wAttr(color, 'themeColor');
+  if (!color || ((!val || /^(auto|000000)$/i.test(val)) && (!theme || /^(text1|dark1)$/i.test(theme)))) {
+    const gray = doc.createElementNS(W_NS, 'w:color');
+    gray.setAttributeNS(W_NS, 'w:val', ID_COLOR);
+    setOrderedChild(rPr, gray, RPR_ORDER);
+  }
+  return rPr;
+}
+
+/**
+ * Tambahkan baris ID di akhir paragraf: line break, lalu terjemahan tiap potongan di kolom
+ * tab yang sama dengan baris Inggris (tab disalin beserta formatnya, mis. garis bawah isian).
+ * Mengembalikan rPr teks ID pertama.
+ */
+function appendIdLine(doc: Document, p: Element, pieces: Piece[], texts: string[]): Element {
+  const run = (rPr: Element | null | undefined, content: Element) => {
+    const r = doc.createElementNS(W_NS, 'w:r');
+    if (rPr) r.appendChild(rPr);
+    r.appendChild(content);
+    return r;
+  };
+  const copyRPr = (source: Element | null) => childW(source, 'rPr')?.cloneNode(true) as Element | undefined;
+  const tab = (source: Element | null) => run(copyRPr(source), doc.createElementNS(W_NS, 'w:tab'));
+
+  const first = texts.findIndex(Boolean);
+  const last = lastVisible(pieces);
+  const firstRPr = idRunProps(doc, bestRun(pieces[first]));
+  const line = [run(copyRPr(bestRun(pieces[first])), doc.createElementNS(W_NS, 'w:br'))];
+  for (let i = 0; i <= last; i++) {
+    if (i > 0) line.push(tab(pieces[i - 1].tabRun));
+    if (!texts[i]) continue;
+    const t = doc.createElementNS(W_NS, 'w:t');
+    t.setAttributeNS(XML_NS, 'xml:space', 'preserve');
+    t.textContent = texts[i];
+    line.push(run(i === first ? firstRPr : idRunProps(doc, bestRun(pieces[i])), t));
+  }
+  // Tab sesudah teks terakhir (mis. ujung bar highlight judul section) ikut ditiru.
+  for (let i = last; i < pieces.length - 1; i++) line.push(tab(pieces[i].tabRun));
+  line.forEach(r => p.appendChild(r));
+  return firstRPr;
+}
+
+/** Baris tabel bertinggi pas (hRule="exact") memotong baris ID; jadikan tinggi minimum. */
+function relaxExactRowHeights(p: Element): void {
+  for (let el = p.parentNode; el; el = el.parentNode) {
+    if (!isW(el, 'tr')) continue;
+    const height = childW(childW(el as Element, 'trPr'), 'trHeight');
+    if (height && wAttr(height, 'hRule') === 'exact') height.setAttributeNS(W_NS, 'w:hRule', 'atLeast');
+  }
+}
+
+/** Judul Section Approval, label kolomnya, dan tabel tanda tangan dijaga tetap satu halaman. */
+function keepApprovalTogether(doc: Document): void {
+  const paragraphs = Array.from(doc.getElementsByTagNameNS(W_NS, 'p'));
+  const start = paragraphs.findIndex(p => APPROVAL_SECTION.test(paragraphText(p)));
+  if (start < 0) return;
+  const headingTable = nearestAncestor(paragraphs[start], 'tbl');
+  const lead: Element[] = [];
+  let table: Element | null = null;
+  for (const p of paragraphs.slice(start)) {
+    const tbl = nearestAncestor(p, 'tbl');
+    if (tbl && tbl !== headingTable) {
+      table = tbl;
+      break;
+    }
+    if (lead.length > 0 && SECTION_HEADING.test(paragraphText(p))) return;
+    lead.push(p);
+  }
+  if (!table) return;
+  lead.forEach(p => setParagraphFlag(doc, p, 'keepNext'));
+  const rows = tableRows(table);
+  rows.forEach((row, i) => {
+    let trPr = childW(row, 'trPr');
+    if (!trPr) {
+      trPr = doc.createElementNS(W_NS, 'w:trPr');
+      const prEx = childW(row, 'tblPrEx');
+      row.insertBefore(trPr, prEx ? prEx.nextSibling : row.firstChild);
+    }
+    setOrderedChild(trPr, doc.createElementNS(W_NS, 'w:cantSplit'), TRPR_ORDER);
+    if (i < rows.length - 1) paragraphsIn(row).forEach(p => setParagraphFlag(doc, p, 'keepNext'));
+  });
+}
+
+// Elemen w:compat yang menurut skema berada sebelum w:doNotExpandShiftReturn.
+const COMPAT_BEFORE_SHIFT_RETURN = [
+  'useSingleBorderforContiguousCells', 'wpJustification', 'noTabHangInd', 'noLeading', 'spaceForUL',
+  'noColumnBalance', 'balanceSingleByteDoubleByteWidth', 'noExtraLineSpacing', 'doNotLeaveBackslashAlone',
+  'ulTrailSpace',
+];
+
+/** Baris rata kiri-kanan yang diakhiri line break (baris Inggris di atas baris ID) tidak direnggangkan. */
+function keepShiftReturnLinesUnjustified(doc: Document): boolean {
+  const compat = doc.getElementsByTagNameNS(W_NS, 'compat')[0];
+  if (!compat || childW(compat, 'doNotExpandShiftReturn')) return false;
+  const next = childElements(compat).find(c => !(c.namespaceURI === W_NS && COMPAT_BEFORE_SHIFT_RETURN.includes(c.localName)));
+  compat.insertBefore(doc.createElementNS(W_NS, 'w:doNotExpandShiftReturn'), next || null);
+  return true;
+}
+
+const PAGE_FIELD = /^\s*PAGE\b/i;
+
+/**
+ * Footer "Page {PAGE} of 14" dengan total halaman diketik manual: total diganti field NUMPAGES
+ * karena versi bilingual lebih banyak halamannya.
+ */
+function linkPageTotal(doc: Document): boolean {
+  let changed = false;
+  for (const p of paragraphsIn(doc.documentElement)) {
+    const hasPageField = Array.from(p.getElementsByTagNameNS(W_NS, 'instrText')).some(el => PAGE_FIELD.test(el.textContent || ''))
+      || Array.from(p.getElementsByTagNameNS(W_NS, 'fldSimple')).some(el => PAGE_FIELD.test(wAttr(el, 'instr') || ''));
+    if (!hasPageField) continue;
+    const runs = childElements(p).filter(c => isW(c, 'r'));
+    const runText = (r: Element) => childElements(r).filter(c => isW(c, 't')).map(t => t.textContent || '').join('');
+    let ofIndex = -1;
+    runs.forEach((r, i) => {
+      if (/\bof\s*$/i.test(runText(r))) ofIndex = i;
+    });
+    const tail = runs.slice(ofIndex + 1);
+    const total = tail.map(runText).join('').trim();
+    if (ofIndex < 0 || !/^\d+$/.test(total) || !tail.every(r => childElements(r).every(c => isW(c, 'rPr') || isW(c, 't')))) continue;
+
+    const rPr = childW(tail[0], 'rPr');
+    const fieldRun = (content: Element) => {
+      const r = doc.createElementNS(W_NS, 'w:r');
+      if (rPr) r.appendChild(rPr.cloneNode(true));
+      r.appendChild(content);
+      return r;
+    };
+    const fldChar = (type: string) => {
+      const el = doc.createElementNS(W_NS, 'w:fldChar');
+      el.setAttributeNS(W_NS, 'w:fldCharType', type);
+      return el;
+    };
+    const text = (name: string, value: string) => {
+      const el = doc.createElementNS(W_NS, `w:${name}`);
+      el.setAttributeNS(XML_NS, 'xml:space', 'preserve');
+      el.textContent = value;
+      return el;
+    };
+    for (const el of [fldChar('begin'), text('instrText', ' NUMPAGES '), fldChar('separate'), text('t', total), fldChar('end')]) {
+      p.insertBefore(fieldRun(el), tail[0]);
+    }
+    tail.forEach(r => p.removeChild(r));
+    changed = true;
+  }
+  return changed;
 }
 
 // Warna w:highlight -> hex untuk shading paragraf.
@@ -505,6 +693,21 @@ function growTextBox(drawing: Element, extraEmu: number): void {
   grow(xfrm && childElements(xfrm).find(c => c.namespaceURI === A_NS && c.localName === 'ext'));
 }
 
+function writeXml(zip: JSZip, name: string, doc: Document, xml: string): void {
+  const declaration = xml.match(/^<\?xml[^>]*\?>/)?.[0] ?? '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const body = new XMLSerializer().serializeToString(doc).replace(/^<\?xml[^>]*\?>\s*/, '');
+  zip.file(name, `${declaration}\r\n${body}`);
+}
+
+/** Ubah satu part XML lain (settings, header, footer); `update` mengembalikan true bila ada perubahan. */
+async function updatePart(zip: JSZip, name: string | undefined, update: (doc: Document) => boolean): Promise<void> {
+  const entry = name ? zip.file(name) : null;
+  if (!name || !entry) return;
+  const xml = await entry.async('string');
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length === 0 && update(doc)) writeXml(zip, name, doc, xml);
+}
+
 /**
  * Susun DOCX bilingual dari file asli. `translations` dikunci dengan teks Inggris
  * (MOPSegment.text); teks tanpa terjemahan tidak diberi baris ID.
@@ -514,43 +717,41 @@ export async function buildBilingualMOPDocx(
   buffer: ArrayBuffer,
   translations: Record<string, string>
 ): Promise<{ blob: Blob; translatedParagraphs: number }> {
-  const { zip, entryName, doc, xml, paragraphs } = await loadDocument(buffer);
+  const { zip, entryName, doc, xml } = await loadDocument(buffer);
   const textBoxGrowth = new Map<Element, number>();
   let translatedParagraphs = 0;
+  // Terjemahan yang sama dengan teks Inggrisnya (nama, merek) tidak perlu baris ID.
+  const idText = (key: string | null) => {
+    const id = key ? normalize(translations[key] || '') : '';
+    return id.toLowerCase() === (key || '').toLowerCase() ? '' : id;
+  };
 
-  for (const p of paragraphs) {
-    const { text } = readParagraph(p);
-    const idText = text ? (translations[text] || '').trim() : '';
-    if (!idText) continue;
-    if (SECTION_HEADING.test(text)) alignSectionHeading(doc, p);
-    const { textRuns, leadingTabs, trailingTabs } = readParagraph(p);
+  keepApprovalTogether(doc);
+  for (const unit of collectUnits(doc)) {
+    if (!unit.keys.some(idText)) continue;
+    if (unit.heading) alignSectionHeading(doc, unit.p);
+    const pieces = unit.heading ? readPieces(unit.p) : unit.pieces;
+    const texts = (unit.heading ? pieceKeys(pieces) : unit.keys).map(idText);
+    if (!texts.some(Boolean)) continue;
 
-    const breakRun = doc.createElementNS(W_NS, 'w:r');
-    breakRun.appendChild(doc.createElementNS(W_NS, 'w:br'));
-
-    const idRun = doc.createElementNS(W_NS, 'w:r');
-    const idRPr = buildIdRunProps(doc, textRuns);
-    idRun.appendChild(idRPr);
-    for (let i = 0; i < leadingTabs; i++) idRun.appendChild(doc.createElementNS(W_NS, 'w:tab'));
-    const t = doc.createElementNS(W_NS, 'w:t');
-    t.setAttributeNS(XML_NS, 'xml:space', 'preserve');
-    t.textContent = idText;
-    idRun.appendChild(t);
-    for (let i = 0; i < trailingTabs; i++) idRun.appendChild(doc.createElementNS(W_NS, 'w:tab'));
-
-    p.appendChild(breakRun);
-    p.appendChild(idRun);
+    const idRPr = appendIdLine(doc, unit.p, pieces, texts);
+    // Baris Inggris dan ID tidak dipisah halaman; judul section ikut ke paragraf sesudahnya.
+    setParagraphFlag(doc, unit.p, 'keepLines');
+    if (unit.heading) setParagraphFlag(doc, unit.p, 'keepNext');
+    relaxExactRowHeights(unit.p);
     translatedParagraphs++;
 
     // Text box bertinggi tetap: baris ID di luar tinggi kotak tidak tampil.
-    const drawing = textBoxDrawing(p);
-    if (drawing) textBoxGrowth.set(drawing, (textBoxGrowth.get(drawing) || 0) + idLineHeight(drawing, idRPr, idText));
+    const drawing = textBoxDrawing(unit.p);
+    if (drawing) textBoxGrowth.set(drawing, (textBoxGrowth.get(drawing) || 0) + idLineHeight(drawing, idRPr, texts.join(' ')));
   }
   textBoxGrowth.forEach((extra, drawing) => growTextBox(drawing, extra));
+  writeXml(zip, entryName, doc, xml);
 
-  const declaration = xml.match(/^<\?xml[^>]*\?>/)?.[0] ?? '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-  const body = new XMLSerializer().serializeToString(doc).replace(/^<\?xml[^>]*\?>\s*/, '');
-  zip.file(entryName, `${declaration}\r\n${body}`);
+  await updatePart(zip, findEntry(zip, 'word/settings.xml'), keepShiftReturnLinesUnjustified);
+  for (const name of Object.keys(zip.files).filter(n => /^word[\\/](header|footer)\d*\.xml$/i.test(n))) {
+    await updatePart(zip, name, linkPageTotal);
+  }
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME, compression: 'DEFLATE' });
   return { blob, translatedParagraphs };
