@@ -28,7 +28,7 @@ import { exportPIRReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { ImageEditor } from './ImageEditor';
-import { EquipmentSeverityPicker } from './EquipmentSeverityPicker';
+import { EquipmentSeverityPicker, buildSeverityComment } from './EquipmentSeverityPicker';
 import {
   PREPARED_BY_SIGNATURES,
   ARIF_BUDIMAN_SIGNATURE_BASE64,
@@ -221,6 +221,23 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
   const removeDMEAttendee = (index: number) => {
     setFormData((prev) => ({ ...prev, attendeesDME: prev.attendeesDME.filter((_, i) => i !== index) }));
   };
+
+  // Komentar severity ikut equipment & level selama masih kosong / belum diedit manual
+  const autoSeverityComment = (data: PIRReportData) =>
+    buildSeverityComment(data.severityEquipment || '', data.severityLevel);
+
+  const applySeverity = (patch: Pick<Partial<PIRReportData>, 'severityEquipment' | 'severityLevel'>) => {
+    setFormData(prev => {
+      const next = { ...prev, ...patch };
+      const current = (prev.severityComments || '').trim();
+      if (!current || current === autoSeverityComment(prev)) {
+        next.severityComments = autoSeverityComment(next);
+      }
+      return next;
+    });
+  };
+
+  const generatedSeverityComment = autoSeverityComment(formData);
 
   // Handlers for Corrective Actions
   const handleActionChange = (index: number, field: keyof PIRCorrectiveAction, value: string) => {
@@ -834,14 +851,18 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
               <AlertTriangle className="w-4 h-4 text-red-600" /> Incident Severity Level
             </h3>
 
-            <EquipmentSeverityPicker onPick={(level) => setFormData(prev => ({ ...prev, severityLevel: level }))} />
+            <EquipmentSeverityPicker
+              value={formData.severityEquipment}
+              onPick={(equipment, level) => applySeverity({ severityEquipment: equipment, severityLevel: level })}
+              onClear={() => applySeverity({ severityEquipment: '' })}
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(['HIGH', 'MEDIUM', 'LOW', 'OTHER'] as const).map((lvl) => (
                 <button
                   key={lvl}
                   type="button"
-                  onClick={() => setFormData({ ...formData, severityLevel: lvl })}
+                  onClick={() => applySeverity({ severityLevel: lvl })}
                   className={`p-3 rounded-xl border text-center font-bold text-xs transition ${
                     formData.severityLevel === lvl
                       ? 'bg-red-600 text-white border-red-600 shadow-md'
@@ -854,9 +875,20 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                ADDITIONAL COMMENTS REGARDING INCIDENT SEVERITY
-              </label>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase">
+                  ADDITIONAL COMMENTS REGARDING INCIDENT SEVERITY
+                </label>
+                {generatedSeverityComment && (formData.severityComments || '').trim() !== generatedSeverityComment && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, severityComments: generatedSeverityComment }))}
+                    className="shrink-0 text-[11px] font-bold text-red-600 hover:text-red-700"
+                  >
+                    Isi otomatis
+                  </button>
+                )}
+              </div>
               <textarea
                 rows={3}
                 value={formData.severityComments}

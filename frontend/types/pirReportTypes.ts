@@ -56,6 +56,7 @@ export interface PIRReportData {
     // Tingkat Keparahan Dampak Insiden (Severity)
     severityLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'OTHER'; // Level keparahan
     severityComments: string;               // Catatan penilaian keparahan
+    severityEquipment?: string;             // Equipment terganggu (katalog SLA) dasar severity & komentar otomatis
 
     // Halaman 2: Ringkasan Eksekutif Insiden (Executive Summary)
     summary: string;                        // Ringkasan singkat penyebab & dampak kejadian
