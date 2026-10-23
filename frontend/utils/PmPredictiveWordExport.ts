@@ -19,6 +19,7 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import type { PmPredictiveReport, PmStatus } from '@/types/pmPredictiveTypes';
 import { loadPmSourcePhotos, type PmSourcePhoto } from '@/utils/pmPredictiveService';
 import { STATUS_LABEL, effectiveStatus, fmtDate } from '@/utils/pmPredictiveEngine';
+import { normalizeReport } from '@/utils/pmPredictiveWorkflow';
 import {
   METHOD_TEXT, nameplateText, paramRowText, exportParams, hasComparison, exportStatusText, sectionStatusLines,
   limitSourceRows, attentionText, collectPmExportPhotos, countExportPhotos, safeFileName, sortBundleReports,
@@ -243,10 +244,11 @@ const headCell = (text: string, width: number, fill = COLOR_PRIMARY) => cell(tex
 /** Identitas, ringkasan, dan analisis per equipment satu unit. */
 function reportBlocks(report: PmPredictiveReport, photos: PmExportPhotos, nums: { identity: string; summary: string; analysis: string }): (Paragraph | Table)[] {
   const idW = [1900, 3333, 1900, 3333];
+  const nameplate = nameplateText(report);
   const identity = table(idW, [
     new TableRow({ children: [labelCell('Nama Unit', idW[0]), cell(report.unitLabel, { width: idW[1], bold: true }), labelCell('Jenis Unit', idW[2]), cell(report.unitType, { width: idW[3] })] }),
     new TableRow({ children: [labelCell('Laporan PM', idW[0]), cell(report.maintenanceName, { width: idW[1] }), labelCell('Tanggal PM', idW[2]), cell(fmtDate(report.maintenanceDate), { width: idW[3] })] }),
-    new TableRow({ children: [labelCell('Nameplate', idW[0]), cell(nameplateText(report), { width: idW[1] + idW[2] + idW[3], colSpan: 3 })] }),
+    ...(nameplate ? [new TableRow({ children: [labelCell('Nameplate', idW[0]), cell(nameplate, { width: idW[1] + idW[2] + idW[3], colSpan: 3 })] })] : []),
   ]);
 
   const sumW = [2600, CONTENT_W - 2600];
@@ -441,9 +443,10 @@ async function buildDocument(title: string, headerLine: string, footerLabel: str
   return Packer.toBlob(doc);
 }
 
-export async function exportPmPredictiveToDocx(report: PmPredictiveReport, loadedPhotos?: PmSourcePhoto[]): Promise<void> {
+export async function exportPmPredictiveToDocx(stored: PmPredictiveReport, loadedPhotos?: PmSourcePhoto[]): Promise<void> {
   const toastId = toast.loading('Membuat DOCX Predictive Report...');
   try {
+    const report = normalizeReport(stored);
     const photos = await exportPhotosOf(report, loadedPhotos);
     const limits = limitBlocks([report], '4');
     const blob = await buildDocument(
@@ -469,7 +472,7 @@ export async function exportPmPredictiveBundleToDocx(entries: PmBundleEntry[], p
   if (!entries.length) return;
   const toastId = toast.loading(`Membuat DOCX gabungan ${period.label}...`);
   try {
-    const sorted = sortBundleReports(entries);
+    const sorted = sortBundleReports(entries.map(e => ({ ...e, report: normalizeReport(e.report) })));
     const reports = sorted.map(e => e.report);
     const sumW = [800, 2900, 1500, 1500, CONTENT_W - 6700];
     const children: (Paragraph | Table)[] = [

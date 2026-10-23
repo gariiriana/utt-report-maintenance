@@ -15,12 +15,14 @@ import { PM_PREDICTIVE_PROFILES } from '../config/pmPredictiveProfiles.ts';
 import { STATUS_LABEL, STATUS_RANK, effectiveStatus, fmtNum, fmtDate, matchCard } from './pmPredictiveEngine.ts';
 
 export const METHOD_TEXT = 'Metode: nilai parameter berasal dari pengukuran saat Preventive Maintenance dan dinilai terhadap batas acuan di atas. '
+  + 'Parameter tanpa batas acuan absolut dinilai terhadap pengukuran pertama unit yang sama (batas internal: berubah >20% = Perlu Dipantau, >35% = Peringatan). '
   + 'Tren dihitung dengan regresi linier atas riwayat pengukuran unit yang sama pada periode sebelumnya; perkiraan waktu mencapai batas '
   + 'bersifat indikatif dan keyakinannya bergantung pada jumlah titik data (2 titik = rendah, 3 = sedang, ≥4 dengan tren konsisten = tinggi).';
 
-/** Teks status di dokumen; tanpa batas acuan yang bisa dinilai dicetak "-". */
+/** Teks status di dokumen; status kosong (hanya bagian tanpa angka & observasi jelas) dicetak "-". */
 export const exportStatusText = (status: PmStatus) => (status === 'unknown' ? '-' : STATUS_LABEL[status]);
 
+/** Data nameplate untuk tabel identitas; kosong bila tidak ada yang terbaca (baris & foto tidak dicetak). */
 export function nameplateText(r: PmPredictiveReport): string {
   const n = r.nameplate || {};
   const parts = [
@@ -32,7 +34,7 @@ export function nameplateText(r: PmPredictiveReport): string {
     n.phase ? `${n.phase} fasa` : '',
     n.frequencyHz ? `${fmtNum(n.frequencyHz)} Hz` : '',
   ].filter(Boolean);
-  return parts.length ? parts.join(' | ') : 'Data nameplate tidak terbaca';
+  return parts.join(' | ');
 }
 
 /** Parameter yang dicetak: hanya yang punya angka pada laporan ini. */
@@ -180,7 +182,7 @@ export async function collectPmExportPhotos(report: PmPredictiveReport, source: 
     bySection[section.id] = compact(await Promise.all(tasks));
   }
 
-  const nameplatePhoto = profile ? source.find(p => matchCard(profile, p.description)?.kind === 'nameplate') : undefined;
+  const nameplatePhoto = profile && nameplateText(report) ? source.find(p => matchCard(profile, p.description)?.kind === 'nameplate') : undefined;
   const nameplate = nameplatePhoto ? compact([await prepare(nameplatePhoto.index, 'Nameplate motor')]) : [];
   return { nameplate, bySection };
 }

@@ -6,7 +6,8 @@
 //            - equipment: pengelompokan parameter ke equipment di dalam unit.
 //            Batas acuan sengaja ditulis di sini (bukan dikarang AI) agar status dan
 //            proyeksi selalu bisa ditelusuri ke standar. Parameter tanpa standar absolut
-//            dinilai terhadap baseline unit atau hanya dipantau trennya. File ini tanpa
+//            dinilai terhadap baseline unit; parameter tanpa aturan sama sekali memakai
+//            batas internal DEFAULT_TREND_RULE di pmPredictiveEngine.ts. File ini tanpa
 //            import nilai supaya bisa diuji langsung dengan Node (scripts/test-pm-predictive-engine.mjs).
 // ============================================================================
 
@@ -24,7 +25,9 @@ export type PmCanonicalUnit = 'V' | 'kV' | 'A' | '%' | 'mm/s' | 'dB(A)' | 'm/s' 
  * - changeFromBaseline: perubahan % (dua arah) dari baseline.
  * - riseFromPrevious: kenaikan absolut dari periode sebelumnya.
  * - nonNegative: nilai negatif menandakan kejanggalan pembacaan/aliran.
- * - pctOfRatedCurrent: % dari arus nominal nameplate (FLA motor / In panel); tanpa itu tidak dinilai.
+ * - pctOfRatedCurrent: % dari arus nominal nameplate (FLA motor / In panel); tanpa itu aturan dilewati.
+ * - phaseBalance: selisih arus satu fasa dari rata-rata 3 fasa (%); hanya dipakai bila arus
+ *   nominal nameplate tidak tersedia, dan bila rata-rata minimal minBasis A.
  */
 export type PmRule =
   | { type: 'band'; nominal: number; nominalFrom?: 'ratedVoltageLL' | 'ratedVoltageLN'; watchPct?: number; warningPct?: number; warningLowPct?: number; alarmPct?: number }
@@ -32,6 +35,7 @@ export type PmRule =
   | { type: 'lower'; watch?: number; warning: number; alarm?: number }
   | { type: 'iso10816'; defaultClass?: 1 | 2 | 3 }
   | { type: 'pctOfRatedCurrent'; watchPct?: number; warningPct: number; alarmPct?: number; ratedLabel?: string }
+  | { type: 'phaseBalance'; watchPct: number; warningPct: number; alarmPct?: number; minBasis?: number }
   | { type: 'range'; lowAlarm?: number; lowWarning?: number; highWatch?: number; highWarning?: number; highAlarm?: number }
   | { type: 'dropFromBaseline'; watchPct: number; warningPct: number; alarmPct?: number }
   | { type: 'riseFromBaseline'; watchPct: number; warningPct: number; alarmPct?: number }
@@ -99,9 +103,11 @@ const VOLTAGE_LN_RULES: PmRule[] = [
   { type: 'band', nominal: 230, nominalFrom: 'ratedVoltageLN', alarmPct: 10 },
 ];
 
-// Arus per fasa dibanding FLA nameplate (ambang sama dengan beban %FLA); tanpa FLA tidak dinilai.
-const PHASE_CURRENT_RULES: PmRule[] = [{ type: 'pctOfRatedCurrent', watchPct: 80, warningPct: 90, alarmPct: 100 }];
-const PHASE_CURRENT_SOURCE = 'Arus per fasa dibanding arus nominal (FLA) nameplate: >80% pantau, >90% peringatan, >100% kritis. Keseimbangan antar fasa dinilai pada baris ketidakseimbangan arus.';
+// Arus per fasa dibanding FLA nameplate (ambang sama dengan beban %FLA); tanpa FLA dinilai dari
+// selisihnya terhadap rata-rata 3 fasa (ambang sama dengan ketidakseimbangan arus).
+const PHASE_BALANCE_RULE: PmRule = { type: 'phaseBalance', watchPct: 5, warningPct: 10, alarmPct: 20, minBasis: 0.5 };
+const PHASE_CURRENT_RULES: PmRule[] = [{ type: 'pctOfRatedCurrent', watchPct: 80, warningPct: 90, alarmPct: 100 }, PHASE_BALANCE_RULE];
+const PHASE_CURRENT_SOURCE = 'Arus per fasa dibanding arus nominal (FLA) nameplate: >80% pantau, >90% peringatan, >100% kritis. Tanpa data FLA, tiap fasa dinilai dari selisihnya terhadap rata-rata 3 fasa: >5% pantau, >10% peringatan, >20% kritis.';
 
 const FCU_PROFILE: PmProfile = {
   id: 'fcu',
@@ -290,8 +296,8 @@ function lineVoltageParams(basis: VoltageBasis, where: string): ParamMap {
   };
 }
 
-const PANEL_CURRENT_RULES: PmRule[] = [{ type: 'pctOfRatedCurrent', warningPct: 80, alarmPct: 100, ratedLabel: 'In nameplate' }];
-const PANEL_CURRENT_SOURCE = 'Standar service report: beban maksimal 80% kapasitas pengaman. Arus per fasa dibanding arus pengenal (In) panel/breaker pada nameplate: >80% peringatan, >100% kritis.';
+const PANEL_CURRENT_RULES: PmRule[] = [{ type: 'pctOfRatedCurrent', warningPct: 80, alarmPct: 100, ratedLabel: 'In nameplate' }, PHASE_BALANCE_RULE];
+const PANEL_CURRENT_SOURCE = 'Standar service report: beban maksimal 80% kapasitas pengaman. Arus per fasa dibanding arus pengenal (In) panel/breaker pada nameplate: >80% peringatan, >100% kritis. Tanpa data In, tiap fasa dinilai dari selisihnya terhadap rata-rata 3 fasa (deviasi beban antar fasa maksimal 10%): >5% pantau, >10% peringatan, >20% kritis.';
 const CURRENT_UNBALANCE_SOURCE = 'Standar service report: deviasi beban antar fasa maksimal 10%; >5% mulai dipantau, >20% (batas internal) perlu investigasi segera (terminal, belitan, pembagian beban).';
 const NEUTRAL_SOURCE = 'Dipantau tren: kenaikan arus netral menandakan beban antar fasa tidak seimbang atau harmonisa kelipatan tiga dari beban elektronik (SMPS).';
 

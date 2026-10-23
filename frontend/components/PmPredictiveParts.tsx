@@ -215,7 +215,7 @@ export function PmReadingsEditor({ profile, draft, onChange, photoByIndex, onZoo
           <p className="px-3 pb-3 text-[11px] text-violet-800">Kosong: akan memakai nameplate dari predictive sebelumnya ({[previousNameplate!.brand, previousNameplate!.model].filter(Boolean).join(' ') || 'data rating'}).</p>
         )}
         {!hasNameplateData(nameplate) && !hasNameplateData(previousNameplate) && (
-          <p className="px-3 pb-3 text-[11px] text-slate-500">Tanpa arus nominal nameplate (FLA motor / In panel), beban terhadap rating tidak dihitung (baris tersebut tidak dicetak).</p>
+          <p className="px-3 pb-3 text-[11px] text-slate-500">Tanpa arus nominal nameplate (FLA motor / In panel), arus per fasa dinilai dari keseimbangan antar fasa dan beban terhadap rating tidak dihitung. Baris nameplate tidak dicetak di dokumen.</p>
         )}
       </div>
     </div>

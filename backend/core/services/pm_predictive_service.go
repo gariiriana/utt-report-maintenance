@@ -176,7 +176,7 @@ const pmExtractRules = `ATURAN JENIS "measurement" (angka alat ukur):
 
 ATURAN JENIS "nameplate": salin data pelat nama ke objek nameplate: brand, model, serial, ratedVoltage (V), ratedCurrent (A, arus nominal: FLA motor atau arus pengenal In panel/breaker), ratedPowerKw (kW; W boleh dikonversi ke kW), phase (1 atau 3), frequencyHz. Ikuti "dicari" bila ada (mis. sisi tegangan rendah trafo). Field yang tidak terbaca = null. Bila tegangan berupa rentang (mis. 380-415V), isi ratedVoltage dengan nilai tengah rentang dan tulis rentang lengkap di notes. Rating lain (kVA, kVAR, kelas isolasi) tulis di notes.
 
-ATURAN JENIS "visual": nilai kondisi fisik yang terlihat (kebersihan coil/filter/panel, debu, kerak, korosi, kebocoran, kabel/terminal rusak atau gosong, komponen hilang). condition salah satu: "baik" | "perlu perhatian" | "buruk" | "tidak jelas". observation = 1 kalimat faktual bahasa Indonesia.
+ATURAN JENIS "visual": nilai kondisi fisik yang terlihat (kebersihan coil/filter/panel, debu, kerak, korosi, kebocoran, kabel/terminal rusak atau gosong, komponen hilang). condition salah satu: "baik" | "perlu perhatian" | "buruk" | "tidak jelas". observation = 1 kalimat faktual bahasa Indonesia yang tegas (tanpa kata "mungkin" atau "kemungkinan").
 
 FORMAT JAWABAN (JSON saja):
 {"items":[
@@ -298,25 +298,26 @@ DATA yang Anda terima sudah final:
 
 ATURAN INTEGRITAS:
 1. Gunakan hanya angka, tanggal, dan batas yang ada di DATA. Dilarang mengarang nilai, merk, part number, jam operasi, atau riwayat kerusakan.
-2. Bila parameter hanya punya 1 titik data, sebut sebagai pengukuran baseline dan nyatakan tren belum dapat dihitung.
-3. Proyeksi waktu hanya boleh dikutip dari field "proyeksi" beserta tingkat keyakinannya. Bila tidak ada proyeksi, jangan membuat perkiraan tanggal.
-4. Bedakan fakta (dari data) dan kemungkinan penyebab (pakai kata "kemungkinan", "indikasi", "perlu diverifikasi").
-5. Bila status Normal dan tren stabil, tulis ringkas dan jangan dibesar-besarkan.
-6. Bahasa Indonesia teknis yang baku dan formal. Jangan memakai singkatan SLA. Tanpa markdown, tanpa simbol bullet di dalam teks.`
+2. Bila parameter baru punya 1 titik data, cukup tulis di analisisTren bahwa pengukuran ini menjadi acuan awal tren unit. Jangan menulis tentang kurangnya data historis, keterbatasan titik data, atau tren yang belum dapat dihitung.
+3. Proyeksi waktu hanya boleh dikutip dari field "proyeksi" beserta tingkat keyakinannya. Bila tidak ada proyeksi, jangan membuat perkiraan tanggal dan jangan menyebut bahwa proyeksi tidak tersedia; langsung jelaskan risiko berdasarkan status dan nilai saat ini.
+4. Jangan menyebut data yang tidak tersedia atau tidak terbaca (nameplate, FLA, riwayat). Tulis hanya apa yang ditunjukkan DATA.
+5. Tulis tegas dan tidak rancu. DILARANG memakai kata "mungkin", "kemungkinan", "memungkinkan", "barangkali", "sepertinya", "tampaknya", "diduga", atau "bisa jadi". Penyebab yang belum terbukti ditulis sebagai "indikasi" disertai langkah verifikasinya; dampak bila dibiarkan ditulis sebagai risiko, mis. "berisiko menyebabkan ...".
+6. Bila status Normal dan tren stabil, tulis ringkas dan jangan dibesar-besarkan.
+7. Bahasa Indonesia teknis yang baku dan formal. Jangan memakai singkatan SLA. Tanpa markdown, tanpa simbol bullet di dalam teks.`
 
 const pmSectionTask = `TUGAS: tulis bagian laporan untuk SATU equipment di DATA.
 Rekomendasi harus spesifik untuk komponen equipment ini, dapat dikerjakan teknisi, dan menyebut waktu pelaksanaan (mis. "pada PM berikutnya", "dalam 2 minggu").
 
 FORMAT (JSON saja):
 {"kondisi":"2-4 kalimat kondisi saat ini; sebut angka kunci dan statusnya",
- "analisisTren":"2-4 kalimat perubahan terhadap periode sebelumnya, arah dan laju tren; atau pernyataan baseline",
- "prediksiRisiko":"2-4 kalimat kapan diperkirakan menyentuh batas (kutip proyeksi) dan mode kegagalan yang mungkin terjadi bila dibiarkan",
+ "analisisTren":"2-4 kalimat perubahan terhadap periode sebelumnya, arah dan laju tren; bila semua parameter baru 1 titik data, cukup 1 kalimat bahwa pengukuran ini menjadi acuan awal tren unit",
+ "prediksiRisiko":"2-4 kalimat: kutip proyeksi bila ada, lalu mode kegagalan yang terjadi bila kondisi dibiarkan (mis. 'Bila dibiarkan, getaran ini berisiko merusak bearing motor.'); tanpa proyeksi langsung tulis risikonya, tanpa menyebut ketiadaan proyeksi atau data historis",
  "rekomendasi":["2-5 butir tindakan"]}`
 
 const pmSummaryTask = `TUGAS: tulis ringkasan eksekutif untuk seluruh unit berdasarkan hasil per equipment di DATA, untuk dibaca manajemen fasilitas.
 
 FORMAT (JSON saja):
-{"ringkasan":"3-5 kalimat: kondisi umum unit, equipment yang perlu perhatian beserta alasannya, dan proyeksi terdekat bila ada",
+{"ringkasan":"3-5 kalimat: kondisi umum unit, equipment yang perlu perhatian beserta alasannya, dan proyeksi terdekat bila ada (tanpa menyebut ketiadaan proyeksi atau data historis)",
  "prioritas":["1-4 tindakan, urut dari yang paling mendesak"]}`
 
 func buildPMAnalysisMessages(task string, data json.RawMessage) []map[string]interface{} {

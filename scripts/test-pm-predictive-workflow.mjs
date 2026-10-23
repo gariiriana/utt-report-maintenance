@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   quarterFromText, detectQuarter, quarterLabel, quarterMonthsText, maintenanceDateOf, planCards, initDraft,
-  applyExtraction, composeAnalysis, buildPmReport, draftStats, latestEarlier,
+  applyExtraction, composeAnalysis, buildPmReport, draftStats, latestEarlier, normalizeReport,
 } from '../frontend/utils/pmPredictiveWorkflow.ts';
 import {
   METHOD_TEXT, paramRowText, exportParams, hasComparison, nameplateText, sectionStatusLines, limitSourceRows, attentionText,
@@ -114,10 +114,14 @@ test('teks ekspor: tanpa Info, Belum Dapat Dinilai, Proyeksi, akun, atau baselin
   const printed = exportParams(fan);
   assert.ok(!printed.some(p => p.param === 'i_load_pct'), 'beban %FLA tanpa nameplate FLA tidak dicetak');
   const phaseR = paramRowText(printed.find(p => p.param === 'i_r'));
-  assert.deepEqual([phaseR.value, phaseR.previous, phaseR.change, phaseR.limit, phaseR.statusText], ['2.7 A', '-', '-', '-', '-']);
+  assert.deepEqual([phaseR.value, phaseR.previous, phaseR.change, phaseR.statusText], ['2.7 A', '-', '-', 'Normal'], 'tanpa FLA: dinilai dari keseimbangan antar fasa');
+  assert.match(phaseR.limit, /^Rata-rata 3 fasa 2.7 A: Normal /);
   const unbalance = paramRowText(printed.find(p => p.param === 'i_unbalance'));
   assert.equal(unbalance.statusText, 'Normal');
   assert.ok(!('projection' in phaseR));
+  for (const s of report.sections) {
+    for (const p of exportParams(s)) assert.notEqual(paramRowText(p).statusText, '-', `${s.id}.${p.param} tanpa status`);
+  }
 
   const allText = [
     METHOD_TEXT, nameplateText(report), sectionStatusLines(report), attentionText(report),
@@ -128,6 +132,44 @@ test('teks ekspor: tanpa Info, Belum Dapat Dinilai, Proyeksi, akun, atau baselin
     assert.ok(!allText.includes(banned), `teks ekspor tidak boleh memuat "${banned}"`);
   }
   assert.equal(nameplateText({ ...report, nameplate: { ...report.nameplate, source: 'predictive sebelumnya' } }), 'Daikin FWW | 3 fasa | 50 Hz');
+  assert.equal(nameplateText({ ...report, nameplate: { source: 'foto' } }), '', 'nameplate tidak terbaca: tanpa baris nameplate');
+});
+
+test('predictive lama dinormalisasi: status arus fasa terisi, narasi tanpa "mungkin" dan tanpa kalimat riwayat kosong', () => {
+  const fresh = generate('pm-q2', '2026-05-12', null).report;
+  // Bentuk dokumen sebelum perbaikan: arus fasa tanpa status, narasi AI dengan kata ragu.
+  const old = {
+    ...fresh,
+    sections: fresh.sections.map(s => ({
+      ...s,
+      params: s.params.map(p => (['i_r', 'i_s', 'i_t', 'p_supply', 'p_return'].includes(p.param) ? { ...p, status: 'unknown', limitText: 'Dinilai dari tren' } : p)),
+      narrative: {
+        kondisi: 'Kondisi motor kemungkinan baik.',
+        analisisTren: 'Pengukuran ini menjadi acuan awal tren unit.',
+        prediksiRisiko: 'Proyeksi waktu untuk mencapai batas kritis tidak tersedia karena keterbatasan titik data historis. Namun, mode kegagalan yang mungkin terjadi adalah keausan bearing.',
+        rekomendasi: ['Periksa bearing sesegera mungkin.', ''],
+      },
+    })),
+    summary: { ringkasan: 'Unit dalam kondisi baik. Tidak terdapat proyeksi karena data historis belum tersedia.', prioritas: ['Pantau getaran.'], source: 'ai' },
+  };
+  const n = normalizeReport(old);
+  const params = n.sections.flatMap(s => s.params);
+  for (const key of ['i_r', 'i_s', 'i_t', 'p_supply', 'p_return']) {
+    const p = params.find(x => x.param === key);
+    assert.equal(p.status, 'normal', key);
+    assert.notEqual(p.limitText, 'Dinilai dari tren', key);
+  }
+  const fan = n.sections.find(s => s.id === 'fan_motor');
+  assert.deepEqual(fan.narrative, {
+    kondisi: 'Kondisi motor terindikasi baik.',
+    analisisTren: 'Pengukuran ini menjadi acuan awal tren unit.',
+    prediksiRisiko: 'Mode kegagalan yang dapat terjadi adalah keausan bearing.',
+    rekomendasi: ['Periksa bearing segera.'],
+  });
+  assert.equal(n.summary.ringkasan, 'Unit dalam kondisi baik.');
+  assert.equal(n.summary.source, 'ai');
+  assert.ok(!JSON.stringify(n).match(/mungkin|kemungkinan/i));
+  assert.deepEqual(normalizeReport(n), n, 'aman dipanggil berulang');
 });
 
 test('dasar batas acuan gabungan: satu baris per sumber untuk banyak laporan', () => {

@@ -3,7 +3,8 @@
 // Deskripsi: Mesin hitung deterministik Predictive Report dari laporan PM.
 //            Pemetaan kartu, konversi satuan, parameter turunan, status terhadap
 //            batas acuan profil, tren regresi linier, dan proyeksi tanggal mencapai
-//            batas. AI tidak menghitung apa pun di sini; ia hanya menarasikan hasilnya.
+//            batas. AI tidak menghitung apa pun di sini; ia hanya menarasikan hasilnya,
+//            lalu narasinya dirapikan di sini agar tegas (firmNarrative: tanpa "mungkin").
 //            Hanya import tipe (terhapus saat runtime) agar bisa diuji langsung
 //            dengan Node: scripts/test-pm-predictive-engine.mjs.
 // ============================================================================
@@ -18,6 +19,14 @@ const DAY_MS = 86400000;
 const QUARTER_DAYS = 91;
 /** Proyeksi lebih jauh dari ini tidak dilaporkan (terlalu spekulatif). */
 const MAX_PROJECTION_DAYS = 3 * 365;
+
+/**
+ * Parameter tanpa aturan yang berlaku (tanpa standar absolut, atau aturannya butuh rating
+ * nameplate yang tidak ada) dinilai terhadap pengukuran pertamanya sendiri, sehingga setiap
+ * angka yang dicetak selalu punya status. Ambang sama dengan batas internal selisih tekanan.
+ */
+export const DEFAULT_TREND_RULE: PmRule = { type: 'changeFromBaseline', watchPct: 20, warningPct: 35 };
+export const DEFAULT_TREND_SOURCE = 'Batas internal: berubah >20% dari pengukuran pertama unit ini = pantau, >35% = peringatan.';
 
 export const STATUS_RANK: Record<PmStatus, number> = { unknown: -1, normal: 0, watch: 1, warning: 2, alarm: 3 };
 
@@ -272,6 +281,13 @@ function maxDeviationPct(vals: (number | null | undefined)[], minBasis = 0): num
   return Math.max(...nums.map(v => Math.abs(v - avg))) / avg * 100;
 }
 
+/** Rata-rata arus fasa R, S, T; null bila salah satu fasa tidak berangka. */
+export function phaseAverageOf(values: Record<string, number | null | undefined>): number | null {
+  const phases = [values.i_r, values.i_s, values.i_t];
+  if (phases.some(v => typeof v !== 'number' || !Number.isFinite(v))) return null;
+  return (phases as number[]).reduce((a, b) => a + b, 0) / phases.length;
+}
+
 /** Hitung parameter turunan (ketidakseimbangan, beban %FLA, selisih tekanan). */
 export function computeDerived(profile: PmProfile, values: Record<string, number | null>, nameplate: PmNameplate): Record<string, number | null> {
   const out: Record<string, number | null> = { ...values };
@@ -362,7 +378,7 @@ function iso10816Class(rule: Extract<PmRule, { type: 'iso10816' }>, np: PmNamepl
 }
 
 /** Batas absolut sebuah aturan untuk nilai/riwayat saat ini (dipakai status & proyeksi). */
-function limitsOf(rule: PmRule, np: PmNameplate, baseline: number | null): Limit[] {
+function limitsOf(rule: PmRule, np: PmNameplate, baseline: number | null, phaseAvg: number | null): Limit[] {
   const L: Limit[] = [];
   const push = (level: Limit['level'], value: number | undefined, side: Limit['side']) => {
     if (value !== undefined && Number.isFinite(value)) L.push({ level, value, side });
@@ -403,6 +419,15 @@ function limitsOf(rule: PmRule, np: PmNameplate, baseline: number | null): Limit
       }
       break;
     }
+    case 'phaseBalance':
+      if (phaseAvg !== null && phaseAvg > 0) {
+        for (const [level, pct] of [['watch', rule.watchPct], ['warning', rule.warningPct], ['alarm', rule.alarmPct]] as const) {
+          if (pct === undefined) continue;
+          push(level, phaseAvg * (1 + pct / 100), 'above');
+          push(level, phaseAvg * (1 - pct / 100), 'below');
+        }
+      }
+      break;
     case 'range':
       push('warning', rule.lowWarning, 'below');
       push('alarm', rule.lowAlarm, 'below');
@@ -446,7 +471,7 @@ function statusFromLimits(value: number, limits: Limit[]): PmStatus {
   return s;
 }
 
-function ruleText(rule: PmRule, unit: string, np: PmNameplate, baseline: number | null): string {
+function ruleText(rule: PmRule, unit: string, np: PmNameplate, baseline: number | null, phaseAvg: number | null): string {
   const u = unit === '%' ? '%' : ` ${unit}`;
   switch (rule.type) {
     case 'band': {
@@ -482,8 +507,17 @@ function ruleText(rule: PmRule, unit: string, np: PmNameplate, baseline: number 
     case 'iso10816': {
       const { cls, fromNameplate } = iso10816Class(rule, np);
       const zone = ISO10816_ZONES[cls];
-      const basis = fromNameplate ? `daya nameplate ${fmtNum(np.ratedPowerKw)} kW` : 'daya nameplate tidak tersedia';
-      return `ISO 10816-1 kelas ${['I', 'II', 'III'][cls - 1]} (${basis}): peringatan >${fmtNum(zone.bc)}${u}; kritis >${fmtNum(zone.cd)}${u}`;
+      const basis = fromNameplate ? ` (daya nameplate ${fmtNum(np.ratedPowerKw)} kW)` : '';
+      return `ISO 10816-1 kelas ${['I', 'II', 'III'][cls - 1]}${basis}: peringatan >${fmtNum(zone.bc)}${u}; kritis >${fmtNum(zone.cd)}${u}`;
+    }
+    case 'phaseBalance': {
+      if (phaseAvg === null || phaseAvg <= 0) return '';
+      return [
+        `Rata-rata 3 fasa ${fmtNum(phaseAvg)}${u}: Normal ${fmtNum(phaseAvg * (1 - rule.watchPct / 100))}-${fmtNum(phaseAvg * (1 + rule.watchPct / 100))}${u} (±${rule.watchPct}%)`,
+        `pantau selisih >${rule.watchPct}%`,
+        `peringatan >${rule.warningPct}%`,
+        rule.alarmPct !== undefined ? `kritis >${rule.alarmPct}%` : '',
+      ].filter(Boolean).join('; ');
     }
     case 'pctOfRatedCurrent': {
       const fla = np.ratedCurrent;
@@ -533,10 +567,22 @@ export interface EvaluateInput {
   value: number | null;
   date: string;
   nameplate: PmNameplate;
+  /** Rata-rata arus 3 fasa laporan ini (phaseAverageOf), untuk aturan phaseBalance. */
+  phaseAverage?: number | null;
+}
+
+/** Aturan yang berlaku untuk data laporan ini; tidak pernah kosong (lihat DEFAULT_TREND_RULE). */
+function applicableRules(def: PmParamDef, nameplate: PmNameplate, phaseAvg: number | null): PmRule[] {
+  const fla = nameplate.ratedCurrent ?? 0;
+  const rules = def.rules.filter(r => (r.type !== 'pctOfRatedCurrent' || fla > 0)
+    && (r.type !== 'phaseBalance' || (phaseAvg !== null && phaseAvg > 0 && phaseAvg >= (r.minBasis ?? 0))));
+  // Keseimbangan antar fasa hanya pengganti saat arus nominal nameplate tidak tersedia.
+  if (rules.some(r => r.type === 'pctOfRatedCurrent')) return rules.filter(r => r.type !== 'phaseBalance');
+  return rules.length ? rules : [DEFAULT_TREND_RULE];
 }
 
 /** Status, perubahan, tren, dan proyeksi satu parameter. */
-export function evaluateParam({ param, def, series, value, date, nameplate }: EvaluateInput): PmParamResult {
+export function evaluateParam({ param, def, series, value, date, nameplate, phaseAverage = null }: EvaluateInput): PmParamResult {
   const unit = def.unit;
   const earlier = series.filter(p => p.date < date);
   const previous = earlier.length ? earlier[earlier.length - 1] : null;
@@ -549,10 +595,8 @@ export function evaluateParam({ param, def, series, value, date, nameplate }: Ev
     change: null, changePct: null, trendPerQuarter: null, projection: null, confidence: 'Rendah', note: '',
   };
 
-  // Aturan berbasis FLA hanya berlaku bila nameplate memuat arus nominal; parameter tanpa
-  // aturan yang berlaku (mis. tekanan supply/return) dinilai lewat parameter turunannya.
-  const rules = def.rules.filter(r => r.type !== 'pctOfRatedCurrent' || (nameplate.ratedCurrent ?? 0) > 0);
-  base.limitText = rules.map(r => ruleText(r, unit, nameplate, baseline)).filter(Boolean).join('; ');
+  const rules = applicableRules(def, nameplate, phaseAverage);
+  base.limitText = rules.map(r => ruleText(r, unit, nameplate, baseline, phaseAverage)).filter(Boolean).join('; ');
 
   if (value === null) {
     base.note = def.derived === 'currentLoadPct'
@@ -562,7 +606,7 @@ export function evaluateParam({ param, def, series, value, date, nameplate }: Ev
   }
 
   // Status dari aturan absolut / relatif.
-  let status: PmStatus = rules.length ? 'normal' : 'unknown';
+  let status: PmStatus = 'normal';
   const allLimits: Limit[] = [];
   for (const rule of rules) {
     if (rule.type === 'nonNegative') {
@@ -585,8 +629,9 @@ export function evaluateParam({ param, def, series, value, date, nameplate }: Ev
       notes.push('Titik data pertama, menjadi baseline unit ini.');
       continue;
     }
-    const limits = limitsOf(rule, nameplate, baseline);
-    allLimits.push(...limits);
+    const limits = limitsOf(rule, nameplate, baseline, phaseAverage);
+    // Batas keseimbangan ikut bergeser bersama rata-rata fasa, jadi tidak dipakai untuk proyeksi.
+    if (rule.type !== 'phaseBalance') allLimits.push(...limits);
     const s = statusFromLimits(value, limits);
     if (STATUS_RANK[s] > STATUS_RANK[status]) status = s;
   }
@@ -673,10 +718,11 @@ export function buildSections(
   date: string,
   nameplate: PmNameplate,
 ): PmEquipmentSection[] {
+  const phaseAverage = phaseAverageOf(values);
   const sections: PmEquipmentSection[] = profile.equipment.map(eq => {
     const params = eq.params
       .filter(p => profile.params[p])
-      .map(p => evaluateParam({ param: p, def: profile.params[p], series: history[p] || [], value: values[p] ?? null, date, nameplate }))
+      .map(p => evaluateParam({ param: p, def: profile.params[p], series: history[p] || [], value: values[p] ?? null, date, nameplate, phaseAverage }))
       // Parameter tanpa angka sama sekali (tidak ada di laporan & riwayat) tidak ditampilkan.
       .filter(r => r.value !== null || r.points > 0 || profile.params[r.param].derived === 'currentLoadPct');
     const eqVisuals = visuals.filter(v => eq.visualKeys?.includes(v.key));
@@ -709,14 +755,152 @@ export function fallbackNarrative(section: PmEquipmentSection): PmSectionNarrati
   const analisisTren = trended.length
     ? trended.map(p => `${p.label}: ${p.note}`).join(' ')
     : 'Pengukuran ini menjadi data awal (baseline); tren dihitung mulai pengukuran periode berikutnya.';
-  const projected = withValue.filter(p => p.projection);
-  const prediksiRisiko = projected.length
-    ? projected.map(p => `${p.label} diperkirakan mencapai batas ${p.projection!.level === 'alarm' ? 'kritis' : 'peringatan'} ${fmtNum(p.projection!.limit)} ${p.unit} sekitar ${fmtMonthYear(p.projection!.date)} (keyakinan ${p.confidence.toLowerCase()}).`).join(' ')
-    : 'Tidak ada parameter yang trennya mengarah ke batas acuan dalam 3 tahun ke depan berdasarkan data yang tersedia.';
   const rekomendasi = flagged.length
     ? flagged.map(p => `Verifikasi ${p.label.toLowerCase()} (${fmtNum(p.value)} ${p.unit}) dan telusuri penyebabnya sebelum PM berikutnya.`)
     : ['Lanjutkan preventive maintenance sesuai jadwal dan pertahankan pengukuran pada titik yang sama agar tren tetap sebanding.'];
-  return { kondisi, analisisTren, prediksiRisiko, rekomendasi };
+  return { kondisi, analisisTren, prediksiRisiko: riskText(section), rekomendasi };
+}
+
+const RISK_NEXT: Record<'watch' | 'warning' | 'alarm', string> = {
+  watch: 'berisiko berlanjut hingga batas peringatan',
+  warning: 'berisiko berlanjut hingga batas kritis',
+  alarm: 'berisiko menyebabkan kerusakan atau gangguan operasi equipment',
+};
+
+/**
+ * Prediksi & risiko dari data saja: proyeksi bila ada, risiko parameter/observasi yang
+ * sudah melewati batas, atau pernyataan tegas bahwa tidak ada risiko yang teridentifikasi.
+ * Tidak pernah menyebut kurangnya riwayat data.
+ */
+export function riskText(section: PmEquipmentSection): string {
+  const withValue = section.params.filter(p => p.value !== null);
+  const projected = withValue.filter(p => p.projection);
+  if (projected.length) {
+    return projected.map(p => `${p.label} diperkirakan mencapai batas ${p.projection!.level === 'alarm' ? 'kritis' : 'peringatan'} ${fmtNum(p.projection!.limit)} ${p.unit} sekitar ${fmtMonthYear(p.projection!.date)} (keyakinan ${p.confidence.toLowerCase()}).`).join(' ');
+  }
+  const flagged = withValue.filter(p => STATUS_RANK[p.status] >= STATUS_RANK.watch);
+  const badVisuals = section.visuals.filter(v => STATUS_RANK[visualStatus(v.condition)] >= STATUS_RANK.watch);
+  if (flagged.length || badVisuals.length) {
+    return [
+      ...flagged.map(p => `${p.label} ${fmtNum(p.value)} ${p.unit} berstatus ${STATUS_LABEL[p.status]}; bila tidak ditindaklanjuti, kondisi ini ${RISK_NEXT[p.status as keyof typeof RISK_NEXT]}.`),
+      ...badVisuals.map(v => `${v.cardLabel} dalam kondisi ${v.condition}; bila dibiarkan, kondisi ini berisiko menurunkan kinerja ${section.name}.`),
+    ].join(' ');
+  }
+  if (withValue.some(p => p.trendPerQuarter !== null)) return 'Tidak ada parameter yang trennya mengarah ke batas acuan dalam 3 tahun ke depan.';
+  return withValue.length
+    ? 'Seluruh parameter berada dalam batas acuan; tidak ada risiko kegagalan yang teridentifikasi pada pengukuran ini.'
+    : 'Kondisi visual baik; tidak ada risiko kegagalan yang teridentifikasi pada pemeriksaan ini.';
+}
+
+// ─── Bahasa laporan: tegas, tanpa kata ragu ──────────────────────────────────
+
+/**
+ * Padanan "mungkin"/"kemungkinan" menurut kata sesudahnya: sebelum kata kerja (terjadi,
+ * disebabkan, menyebabkan) = "dapat"; sebelum kata benda (kerusakan, penyumbatan, ini) =
+ * `noun`; sebelum kata sifat/keadaan (baik, aus, kotor) = "terindikasi".
+ */
+function firmHedge(next: string, noun: string): string {
+  const w = next.toLowerCase();
+  if (['ini', 'itu', 'tersebut', 'yang'].includes(w)) return noun;
+  if (/^(ter|di|me|ber)/.test(w) && !w.endsWith('nya')) return 'dapat';
+  if (/(an|nya)$/.test(w) || /^(ke|pe)/.test(w)) return noun;
+  return 'terindikasi';
+}
+
+/**
+ * Kata ragu diganti padanan yang tegas ("yang mungkin terjadi" -> "yang dapat terjadi",
+ * "kemungkinan penyebab" -> "indikasi penyebab", "sesegera mungkin" -> "segera").
+ * Urutan berpengaruh: frasa khusus lebih dulu dari kata tunggal.
+ */
+const HEDGE_REPLACEMENTS: [RegExp, string | ((...m: string[]) => string)][] = [
+  [/\bsesegera\s+mungkin\b/gi, 'segera'],
+  [/\bse(?:dapat|bisa)\s+mungkin\b/gi, ''],
+  [/\bse(cepat|dini|baik|lama|rendah|tinggi|kecil|minimal|maksimal|optimal|akurat|teliti)\s+mungkin\b/gi, (_m, w) => `se${w.toLowerCase()}-${w.toLowerCase()}nya`],
+  [/\btidak\s+memungkinkan\b/gi, 'tidak memberi peluang'],
+  [/\bdimungkinkan\b/gi, 'dapat terjadi'],
+  [/\bmemungkinkan\b/gi, 'memberi peluang'],
+  [/\bkemungkinannya\b/gi, 'potensinya'],
+  [/\bkemungkinan\s+besar\b/gi, ''],
+  [/\bkemungkinan\s+(penyebab\w*|bahwa)\b/gi, (_m, w) => `indikasi ${w}`],
+  [/\b(?:kemungkinan|mungkin)\s+(?:akan|dapat|bisa)\b/gi, 'dapat'],
+  [/\bkemungkinan(\s+)([a-z]+)/gi, (_m, sp, w) => `${firmHedge(w, 'potensi')}${sp}${w}`],
+  [/\bkemungkinan\b/gi, 'potensi'],
+  [/\btidak\s+mungkin\b/gi, 'tidak dapat'],
+  [/\bmungkin\s+(perlu|harus|sebaiknya)\b/gi, '$1'],
+  [/\bmungkin(\s+)([a-z]+)/gi, (_m, sp, w) => `${firmHedge(w, 'terindikasi')}${sp}${w}`],
+  [/\bmungkin\b/gi, 'dapat'],
+  [/\bbarangkali\b/gi, ''],
+  [/\bbisa\s+jadi\b/gi, 'dapat'],
+  [/\bdiduga\b/gi, 'terindikasi'],
+];
+
+/** Kalimat bahwa proyeksi/tren belum ada karena riwayat data belum cukup. */
+const NO_HISTORY_SENTENCE: RegExp[] = [
+  /\b(proyeksi|perkiraan|estimasi|prediksi)\b[^.!?]*\b(tidak|belum)\s+(tersedia|ada|(dapat|bisa)\s+(dihitung|dibuat|ditentukan|dilakukan|diberikan|diperkirakan|diproyeksikan))\b/i,
+  /\b(tidak|belum)\s+(terdapat|ada|tersedia)\b[^.!?]*\b(proyeksi|perkiraan waktu|estimasi waktu|data historis|riwayat (data|pengukuran))\b/i,
+  /\b(keterbatasan|kurangnya|minimnya|terbatasnya|ketiadaan)\s+(jumlah\s+)?(data|riwayat|titik data)\b/i,
+  /\btren\b[^.!?]*\b(tidak|belum)\s+(dapat|bisa)\s+(dihitung|ditentukan|dianalisis)\b/i,
+];
+
+/** Kalimat bahwa data nameplate/arus nominal tidak terbaca atau tidak tersedia. */
+const NAMEPLATE_GAP_SENTENCE: RegExp[] = [
+  /\b(nameplate|FLA|arus nominal)\b[^.!?]*\b(tidak|belum)\s+(terbaca|tersedia|diketahui)\b/i,
+  /\b(tanpa|tidak adanya|ketiadaan)\s+(data\s+)?(rating\s+)?(nameplate|FLA|arus nominal)\b/i,
+];
+
+const LEADING_CONNECTOR = /^(namun|akan tetapi|tetapi|meskipun demikian|meski demikian|walaupun demikian|walau demikian|meskipun begitu|meski begitu|walaupun begitu|kendati demikian|oleh karena itu|oleh sebab itu|karena itu|dengan demikian|sementara itu|di sisi lain)\s*,?\s*/i;
+
+/** Kalimat beserta spasi pemisah di depannya; titik desimal ("2.2 mm/s") bukan akhir kalimat. */
+const splitSentences = (text: string): string[] => text.match(/[\s\S]*?[.!?](?=\s|$)|[\s\S]+$/g) || [];
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * Teks laporan yang tegas: kata ragu ("mungkin", "kemungkinan") diganti, dan kalimat yang
+ * cocok dengan pola `drop` dibuang (kata sambung di awal kalimat berikutnya ikut dibuang).
+ * Huruf kapital awal kalimat dipertahankan. Hasil kosong bila semua kalimat terbuang.
+ */
+export function firmText(text: string, drop: RegExp[] = []): string {
+  let out = '';
+  let afterDrop = false;
+  for (const part of splitSentences(text || '')) {
+    const lead = part.match(/^\s*/)![0];
+    const original = part.slice(lead.length);
+    if (!original) continue;
+    if (drop.some(re => re.test(original))) {
+      afterDrop = true;
+      continue;
+    }
+    let s = HEDGE_REPLACEMENTS.reduce((acc, [re, to]) => acc.replace(re, to as any), afterDrop ? original.replace(LEADING_CONNECTOR, '') : original);
+    s = s.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+([,.;:!?])/g, '$1').replace(/,(\s*,)+/g, ',').replace(/^[\s,;:]+/, '');
+    if (afterDrop || /^[A-Z]/.test(original)) s = capitalize(s);
+    afterDrop = false;
+    if (s) out += (out ? lead || ' ' : '') + s;
+  }
+  return out.trim();
+}
+
+/**
+ * Narasi equipment yang tegas. Prediksi & risiko tanpa kalimat "proyeksi tidak tersedia karena
+ * keterbatasan data historis" / "nameplate tidak terbaca"; bila semuanya terbuang (atau kosong),
+ * diisi dari data (riskText).
+ */
+export function firmNarrative(section: PmEquipmentSection, n: PmSectionNarrative): PmSectionNarrative {
+  return {
+    kondisi: firmText(n.kondisi),
+    analisisTren: firmText(n.analisisTren),
+    prediksiRisiko: firmText(n.prediksiRisiko, [...NO_HISTORY_SENTENCE, ...NAMEPLATE_GAP_SENTENCE]) || riskText(section),
+    rekomendasi: (n.rekomendasi || []).map(r => firmText(r)).filter(Boolean),
+  };
+}
+
+/** Ringkasan eksekutif yang tegas (tanpa kalimat tentang proyeksi/riwayat yang belum ada). */
+export function firmSummary(s: { ringkasan: string; prioritas: string[] }, unitLabel: string, sections: PmEquipmentSection[]): { ringkasan: string; prioritas: string[] } {
+  const ringkasan = firmText(s.ringkasan, NO_HISTORY_SENTENCE);
+  return {
+    ringkasan: ringkasan || ((s.ringkasan || '').trim() ? fallbackSummary(unitLabel, sections).ringkasan : ''),
+    prioritas: (s.prioritas || []).map(p => firmText(p)).filter(Boolean),
+  };
 }
 
 export function fallbackSummary(unitLabel: string, sections: PmEquipmentSection[]): { ringkasan: string; prioritas: string[] } {

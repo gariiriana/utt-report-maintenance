@@ -13,8 +13,8 @@ import { getApiEndpoint } from '@/utils/apiConfig';
 import { offlineReportStorage } from '@/utils/offlineReportStorage';
 import { compressBase64Image } from '@/utils/imageCompression';
 import type { PmProfile } from '@/config/pmPredictiveProfiles';
-import { fallbackNarrative, fallbackSummary, sectionAIContext, summaryAIContext } from '@/utils/pmPredictiveEngine';
-import { runPool, type CardPlan } from '@/utils/pmPredictiveWorkflow';
+import { fallbackNarrative, fallbackSummary, firmNarrative, firmSummary, sectionAIContext, summaryAIContext } from '@/utils/pmPredictiveEngine';
+import { runPool, normalizeReport, type CardPlan } from '@/utils/pmPredictiveWorkflow';
 import type { PmExtractResult, PmPredictiveReport, PmSectionNarrative, PmCardKind, PmEquipmentSection, PmNameplate } from '@/types/pmPredictiveTypes';
 
 export const PM_PREDICTIVE_COLLECTION = 'pm_predictive_reports';
@@ -222,7 +222,7 @@ export async function narrateSections(
   const narrated = await runPool(sections.map(section => async () => {
     o.onSection?.(section.id, 'running');
     try {
-      const narrative = await analyzeSectionAI(sectionAIContext(unitInfo, section));
+      const narrative = firmNarrative(section, await analyzeSectionAI(sectionAIContext(unitInfo, section)));
       o.onSection?.(section.id, 'ai');
       return { ...section, narrative, narrativeSource: 'ai' as const };
     } catch (err) {
@@ -234,7 +234,7 @@ export async function narrateSections(
   o.onProgress?.('AI menulis ringkasan eksekutif...');
   let summary: PmPredictiveReport['summary'];
   try {
-    summary = { ...(await analyzeSummaryAI(summaryAIContext(unitInfo, narrated))), source: 'ai' };
+    summary = { ...firmSummary(await analyzeSummaryAI(summaryAIContext(unitInfo, narrated)), unitInfo.unitLabel, narrated), source: 'ai' };
   } catch {
     summary = { ...fallbackSummary(unitInfo.unitLabel, narrated), source: 'otomatis' };
   }
@@ -243,9 +243,10 @@ export async function narrateSections(
 
 // ─── Firestore ───────────────────────────────────────────────────────────────
 
+/** Predictive tersimpan, disesuaikan dengan aturan status & bahasa laporan terbaru (normalizeReport). */
 export async function getPmPredictive(sourceDocId: string): Promise<PmPredictiveReport | null> {
   const snap = await getDoc(doc(db, PM_PREDICTIVE_COLLECTION, sourceDocId));
-  return snap.exists() ? ({ ...(snap.data() as PmPredictiveReport), id: snap.id }) : null;
+  return snap.exists() ? normalizeReport({ ...(snap.data() as PmPredictiveReport), id: snap.id }) : null;
 }
 
 /**

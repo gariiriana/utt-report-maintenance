@@ -16,6 +16,7 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import type { PmPredictiveReport, PmStatus } from '@/types/pmPredictiveTypes';
 import { loadPmSourcePhotos, type PmSourcePhoto } from '@/utils/pmPredictiveService';
 import { STATUS_LABEL, effectiveStatus, fmtDate } from '@/utils/pmPredictiveEngine';
+import { normalizeReport } from '@/utils/pmPredictiveWorkflow';
 import {
   METHOD_TEXT, nameplateText, paramRowText, exportParams, hasComparison, exportStatusText, sectionStatusLines,
   limitSourceRows, attentionText, collectPmExportPhotos, countExportPhotos, safeFileName, sortBundleReports,
@@ -255,12 +256,13 @@ function renderReportBody(w: PdfWriter, report: PmPredictiveReport, photos: PmEx
   const doc = w.doc;
 
   w.sectionTitle(nums.identity, 'Identitas Unit & Laporan PM', 35);
+  const nameplate = nameplateText(report);
   w.table({
     columnStyles: { 0: { cellWidth: 34 }, 2: { cellWidth: 34 } },
     body: [
       [label('Nama Unit'), { content: t(report.unitLabel), styles: { fontStyle: 'bold' } }, label('Jenis Unit'), t(report.unitType)],
       [label('Laporan PM'), t(report.maintenanceName), label('Tanggal PM'), t(fmtDate(report.maintenanceDate))],
-      [label('Nameplate'), { content: t(nameplateText(report)), colSpan: 3 }],
+      ...(nameplate ? [[label('Nameplate'), { content: t(nameplate), colSpan: 3 }]] : []),
     ],
   });
   w.photoGrid('Foto nameplate', photos.nameplate);
@@ -384,9 +386,10 @@ function renderSignatures(w: PdfWriter, sig: PmPredictiveReport['signatures'], n
   });
 }
 
-export async function exportPmPredictiveToPdf(report: PmPredictiveReport, loadedPhotos?: PmSourcePhoto[]): Promise<void> {
+export async function exportPmPredictiveToPdf(stored: PmPredictiveReport, loadedPhotos?: PmSourcePhoto[]): Promise<void> {
   const toastId = toast.loading('Membuat PDF Predictive Report...');
   try {
+    const report = normalizeReport(stored);
     const [w, photos] = await Promise.all([createWriter(), exportPhotosOf(report, loadedPhotos)]);
     renderReportBody(w, report, photos, { identity: '1', summary: '2', analysis: '3' });
     const hasLimits = renderLimits(w, [report], '4');
@@ -405,7 +408,7 @@ export async function exportPmPredictiveBundleToPdf(entries: PmBundleEntry[], pe
   if (!entries.length) return;
   const toastId = toast.loading(`Membuat PDF gabungan ${period.label}...`);
   try {
-    const sorted = sortBundleReports(entries);
+    const sorted = sortBundleReports(entries.map(e => ({ ...e, report: normalizeReport(e.report) })));
     const reports = sorted.map(e => e.report);
     const w = await createWriter();
 

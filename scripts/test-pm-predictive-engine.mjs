@@ -4,7 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   matchCard, unitKeyOf, convertToCanonical, computeDerived, mergeHistory,
-  evaluateParam, buildSections, worstStatus, fallbackNarrative, fallbackSummary,
+  evaluateParam, buildSections, worstStatus, fallbackNarrative, fallbackSummary, phaseAverageOf,
+  firmText, firmNarrative, firmSummary,
 } from '../frontend/utils/pmPredictiveEngine.ts';
 import { resolvePmProfile, PM_PREDICTIVE_PROFILES } from '../frontend/config/pmPredictiveProfiles.ts';
 
@@ -111,16 +112,78 @@ test('baseline pertama: tanpa tren dan tanpa proyeksi', () => {
   assert.match(r.note, /baseline/i);
 });
 
-test('arus per fasa dinilai terhadap FLA nameplate; tanpa FLA tidak dinilai', () => {
-  const at = (value, nameplate) => evaluateParam({ param: 'i_r', def: fcu.params.i_r, series: [], value, date: '2026-07-10', nameplate });
+test('arus per fasa dinilai terhadap FLA nameplate; tanpa FLA dari keseimbangan antar fasa', () => {
+  const at = (value, nameplate, phaseAverage = null, series = []) =>
+    evaluateParam({ param: 'i_r', def: fcu.params.i_r, series, value, date: '2026-07-10', nameplate, phaseAverage });
   assert.equal(at(2.7, { ratedCurrent: 4 }).status, 'normal');
   assert.equal(at(3.5, { ratedCurrent: 4 }).status, 'watch', '87.5% FLA');
   assert.equal(at(3.7, { ratedCurrent: 4 }).status, 'warning', '92.5% FLA');
   assert.equal(at(4.2, { ratedCurrent: 4 }).status, 'alarm', 'di atas FLA');
   assert.equal(at(2.7, { ratedCurrent: 4 }).limitText, 'pantau >3.2 A; peringatan >3.6 A; kritis >4 A (FLA nameplate 4 A)');
-  const noFla = at(2.7, {});
-  assert.equal(noFla.status, 'unknown');
-  assert.equal(noFla.limitText, '');
+  const withFla = at(2.7, { ratedCurrent: 4 }, 2.0);
+  assert.equal(withFla.status, 'normal', 'dengan FLA, keseimbangan dinilai di baris ketidakseimbangan arus');
+  assert.equal(withFla.limitText, 'pantau >3.2 A; peringatan >3.6 A; kritis >4 A (FLA nameplate 4 A)');
+
+  // Kasus laporan FCU: 2 / 2 / 2.1 A tanpa nameplate.
+  const avg = phaseAverageOf({ i_r: 2, i_s: 2, i_t: 2.1 });
+  assert.equal(at(2.1, {}, avg).status, 'normal', 'selisih 3.3% dari rata-rata');
+  assert.match(at(2, {}, avg).limitText, /^Rata-rata 3 fasa 2.03 A: Normal 1.93-2.1\d A \(±5%\); pantau selisih >5%; peringatan >10%; kritis >20%$/);
+  assert.equal(at(2.6, {}, 2.2).status, 'warning', 'selisih 18% dari rata-rata 2.2 A');
+  assert.equal(at(2.0, {}, 2.2).status, 'watch', 'selisih 9%');
+  assert.equal(at(1.5, {}, 2.0).status, 'alarm', 'selisih 25%');
+  assert.equal(at(2.0, {}, 2.0, [{ date: '2026-04-10', value: 1.5, reportId: 'q2' }]).projection, null, 'batas keseimbangan tidak diproyeksikan');
+
+  // Fasa tidak lengkap atau arus sangat kecil: dinilai terhadap pengukuran pertamanya.
+  for (const phaseAverage of [null, 0.3]) {
+    const r = at(0.3, {}, phaseAverage);
+    assert.equal(r.status, 'normal');
+    assert.equal(r.limitText, 'Pengukuran pertama menjadi acuan; berubah >20% pada pengukuran berikutnya = pantau');
+  }
+  assert.equal(phaseAverageOf({ i_r: 2, i_s: 2 }), null);
+});
+
+test('parameter tanpa batas absolut (tekanan supply/return) dinilai terhadap pengukuran pertamanya', () => {
+  const at = (value, series = []) => evaluateParam({ param: 'p_supply', def: fcu.params.p_supply, series, value, date: '2026-07-10', nameplate: {} });
+  assert.equal(at(3.0).status, 'normal');
+  const base = [{ date: '2026-04-10', value: 3.0, reportId: 'q2' }];
+  assert.equal(at(2.8, base).status, 'normal', 'turun 6.7%');
+  assert.equal(at(2.3, base).status, 'watch', 'turun 23%');
+  assert.equal(at(1.8, base).status, 'warning', 'turun 40%');
+  assert.equal(at(2.8, base).limitText, 'Berubah >20% dari acuan awal 3 bar = pantau; >35% = peringatan');
+});
+
+test('bahasa laporan: tanpa "mungkin" dan tanpa kalimat proyeksi/riwayat yang belum ada', () => {
+  const section = (params = [], visuals = []) => ({ id: 'x', name: 'Motor Fan (Blower)', role: '', status: 'normal', params, visuals, narrative: {}, narrativeSource: 'ai' });
+  const narrative = prediksiRisiko => ({ kondisi: '', analisisTren: '', prediksiRisiko, rekomendasi: [] });
+
+  const s3 = firmNarrative(section(), narrative('Proyeksi waktu untuk mencapai batas kritis tidak tersedia karena keterbatasan titik data historis. Namun, kondisi getaran yang melampaui batas peringatan memberikan indikasi awal adanya potensi kegagalan mekanis seperti ketidakseimbangan pada fan, ketidaksejajaran poros, atau indikasi awal keausan bearing yang dapat memburuk jika dibiarkan tanpa intervensi.'));
+  assert.equal(s3.prediksiRisiko, 'Kondisi getaran yang melampaui batas peringatan memberikan indikasi awal adanya potensi kegagalan mekanis seperti ketidakseimbangan pada fan, ketidaksejajaran poros, atau indikasi awal keausan bearing yang dapat memburuk jika dibiarkan tanpa intervensi.');
+  const s4 = firmNarrative(section(), narrative('Tidak terdapat proyeksi waktu untuk mencapai batas kritis karena data saat ini masih merupakan pengukuran baseline. Mode kegagalan yang mungkin terjadi di masa depan jika selisih tekanan meningkat drastis adalah penyumbatan pada strainer atau penurunan efisiensi pertukaran panas pada coil.'));
+  assert.equal(s4.prediksiRisiko, 'Mode kegagalan yang dapat terjadi di masa depan jika selisih tekanan meningkat drastis adalah penyumbatan pada strainer atau penurunan efisiensi pertukaran panas pada coil.');
+
+  const normal = { param: 'noise', label: 'Kebisingan', unit: 'dB(A)', value: 60.6, status: 'normal', points: 1, trendPerQuarter: null, projection: null };
+  const onlyNoHistory = firmNarrative(section([normal]), narrative('Belum tersedia data historis untuk membuat proyeksi.'));
+  assert.equal(onlyNoHistory.prediksiRisiko, 'Seluruh parameter berada dalam batas acuan; tidak ada risiko kegagalan yang teridentifikasi pada pengukuran ini.');
+  const vib = { param: 'vibration', label: 'Getaran motor fan', unit: 'mm/s', value: 2.2, status: 'warning', points: 1, trendPerQuarter: null, projection: null };
+  assert.match(firmNarrative(section([normal, vib]), narrative('')).prediksiRisiko, /^Getaran motor fan 2.2 mm\/s berstatus Peringatan; bila tidak ditindaklanjuti, kondisi ini berisiko berlanjut hingga batas kritis\.$/);
+
+  const cases = [
+    ['Kemungkinan besar penyebabnya filter kotor.', 'Penyebabnya filter kotor.'],
+    ['Kenaikan ini kemungkinan disebabkan oleh debu pada coil.', 'Kenaikan ini dapat disebabkan oleh debu pada coil.'],
+    ['Ada kemungkinan kerusakan bearing.', 'Ada potensi kerusakan bearing.'],
+    ['Kemungkinan penyebabnya adalah belt aus.', 'Indikasi penyebabnya adalah belt aus.'],
+    ['Lakukan pengecekan sesegera mungkin.', 'Lakukan pengecekan segera.'],
+    ['Getaran 2.2 mm/s mungkin akan naik.', 'Getaran 2.2 mm/s dapat naik.'],
+    ['Mungkin perlu penggantian bearing.', 'Perlu penggantian bearing.'],
+    ['Kondisi ini memungkinkan debu masuk ke motor.', 'Kondisi ini memberi peluang debu masuk ke motor.'],
+    ['Jaga beban serendah mungkin agar umur motor panjang.', 'Jaga beban serendah-rendahnya agar umur motor panjang.'],
+    ['Arus naik diduga akibat belt kendor. Mode kegagalan yang mungkin terjadi adalah belt putus.', 'Arus naik terindikasi akibat belt kendor. Mode kegagalan yang dapat terjadi adalah belt putus.'],
+  ];
+  for (const [input, want] of cases) assert.equal(firmText(input), want, input);
+  assert.equal(firmText('Ganti filter (mis. filter G4) pada PM berikutnya.'), 'Ganti filter (mis. filter G4) pada PM berikutnya.', 'singkatan tidak diubah');
+
+  const summary = firmSummary({ ringkasan: 'Unit FCU-01 berstatus Peringatan. Proyeksi belum dapat dihitung karena keterbatasan data. Getaran motor fan perlu perhatian.', prioritas: ['Periksa bearing sesegera mungkin.'] }, 'FCU-01', []);
+  assert.deepEqual(summary, { ringkasan: 'Unit FCU-01 berstatus Peringatan. Getaran motor fan perlu perhatian.', prioritas: ['Periksa bearing segera.'] });
 });
 
 test('getaran, kebisingan, dan selisih tekanan negatif', () => {

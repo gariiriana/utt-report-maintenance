@@ -228,7 +228,21 @@ test('getaran ISO 10816-1: kelas dari daya nameplate, cadangan kelas profil', ()
   assert.equal(at(pump, 'vibration', 7.5, { ratedPowerKw: 37 }).status, 'alarm');
   assert.equal(at(pump, 'vibration', 7.5, { ratedPowerKw: 90 }).status, 'warning', '90 kW = kelas III');
   assert.equal(at(pump, 'vibration', 2.5, { ratedPowerKw: 37 }).limitText, 'ISO 10816-1 kelas II (daya nameplate 37 kW): peringatan >2.8 mm/s; kritis >7.1 mm/s');
-  assert.match(at(byId('exhaustfan'), 'vibration', 1).limitText, /kelas I \(daya nameplate tidak tersedia\)/);
+  assert.equal(at(byId('exhaustfan'), 'vibration', 1).limitText, 'ISO 10816-1 kelas I: peringatan >1.8 mm/s; kritis >4.5 mm/s', 'tanpa tulisan "nameplate tidak tersedia"');
+});
+
+test('setiap parameter berangka selalu punya status, juga tanpa nameplate dan tanpa riwayat', () => {
+  for (const p of PM_PREDICTIVE_PROFILES) {
+    for (const [key, def] of Object.entries(p.params)) {
+      const r = at(p, key, 1);
+      assert.notEqual(r.status, 'unknown', `${p.id}.${key} (${def.label})`);
+      assert.ok(r.limitText, `${p.id}.${key}: batas acuan kosong`);
+    }
+  }
+  const ldb = byId('ldbrdb');
+  assert.equal(at(ldb, 'i_n', 35).limitText, 'Pengukuran pertama menjadi acuan; berubah >20% pada pengukuran berikutnya = pantau');
+  assert.equal(at(ldb, 'i_n', 50, {}, [{ date: '2026-04-10', value: 35, reportId: 'q2' }]).status, 'warning', 'arus netral naik 43% dari acuan awal');
+  assert.equal(at(ldb, 'i_n', 40, {}, [{ date: '2026-04-10', value: 35, reportId: 'q2' }]).status, 'normal', 'naik 14%');
 });
 
 test('aturan baseline & batas bawah: baterai, getaran genset, lux, faktor daya, frekuensi', () => {
@@ -300,6 +314,11 @@ test('alur lengkap akun ATS: foto -> draf -> analisis -> dokumen & teks ekspor',
   const conn = report.sections.find(s => s.id === 'conn');
   assert.deepEqual(exportParams(conn).map(p => paramRowText(p).value), ['36.5 °C', '1.8 ohm']);
   assert.ok(limitSourceRows([report]).some(([labels, source]) => labels.includes('Resistans pembumian') && source.includes('5 ohm')));
-  assert.equal(nameplateText(report), 'Data nameplate tidak terbaca');
+  assert.equal(nameplateText(report), '', 'nameplate tidak terbaca: baris nameplate tidak dicetak');
   assert.match(sectionStatusLines(report), /Suplai Tegangan ATS: Normal/);
+  for (const s of report.sections) {
+    for (const p of exportParams(s)) assert.notEqual(paramRowText(p).statusText, '-', `${s.id}.${p.param} tanpa status`);
+  }
+  const load = report.sections.find(s => s.id === 'load');
+  assert.match(paramRowText(exportParams(load).find(p => p.param === 'i_t')).limit, /^Rata-rata 3 fasa 408.33 A: Normal/, 'tanpa In nameplate: dinilai dari keseimbangan fasa');
 });

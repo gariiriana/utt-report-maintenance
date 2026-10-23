@@ -15,9 +15,10 @@ import type {
   PmEquipmentSection, PmCardKind, PmExtractResult, PmHistory, PmSignatory,
 } from '@/types/pmPredictiveTypes';
 // Import nilai memakai path relatif .ts agar modul ini bisa dijalankan Node tanpa bundler.
+import { PM_PREDICTIVE_PROFILES } from '../config/pmPredictiveProfiles.ts';
 import {
   matchCard, matchCardRanked, convertToCanonical, computeDerived, mergeHistory, buildSections, worstStatus, effectiveStatus,
-  unitKeyOf, toISODate,
+  unitKeyOf, toISODate, evaluateParam, phaseAverageOf, visualStatus, firmText, firmNarrative, firmSummary,
 } from './pmPredictiveEngine.ts';
 
 export interface PmPredictiveSourceDoc {
@@ -257,7 +258,7 @@ export function applyExtraction(draft: PmReadingDraft, profile: PmProfile, resul
     if (failed.has(row.photoIndex)) return { ...row, state: 'failed' as const };
     const r = byIndex.get(row.photoIndex);
     if (!r) return row;
-    return { ...row, condition: (r.condition || 'tidak jelas') as PmVisualCondition, observation: r.observation || '', aiConfidence: r.confidence, state: 'done' as const };
+    return { ...row, condition: (r.condition || 'tidak jelas') as PmVisualCondition, observation: firmText(r.observation || ''), aiConfidence: r.confidence, state: 'done' as const };
   });
   let { nameplate, nameplateState } = draft;
   const npIndex = draft.nameplatePhotoIndex;
@@ -472,6 +473,38 @@ export function buildPmReport(o: BuildReportInput): PmPredictiveReport {
     signatures: o.current?.signatures || o.existing?.signatures || defaultSignatures(o.previous),
     generatedBy: o.generatedBy,
     createdAt: o.existing?.createdAt,
+  };
+}
+
+/**
+ * Predictive tersimpan disesuaikan dengan aturan terbaru sebelum ditampilkan atau diekspor:
+ * parameter berangka yang dulu belum berstatus dinilai dari angka & riwayatnya (status bagian
+ * dan keseluruhan ikut dihitung ulang), dan narasi dibersihkan dari kata ragu serta kalimat
+ * "proyeksi tidak tersedia karena data historis terbatas". Aman dipanggil berulang.
+ */
+export function normalizeReport(report: PmPredictiveReport): PmPredictiveReport {
+  const profile = PM_PREDICTIVE_PROFILES.find(p => p.id === report.profileId);
+  const values = Object.fromEntries(report.sections.flatMap(s => s.params).map(p => [p.param, p.value]));
+  const phaseAverage = phaseAverageOf(values);
+  const sections = report.sections.map(section => {
+    const params = section.params.map(p => {
+      const def = profile?.params[p.param];
+      if (p.value === null || p.status !== 'unknown' || !def) return p;
+      const r = evaluateParam({
+        param: p.param, def, series: report.history?.[p.param] || [], value: p.value,
+        date: report.maintenanceDate, nameplate: report.nameplate || {}, phaseAverage,
+      });
+      return { ...p, status: r.status, limitText: r.limitText };
+    });
+    const visuals = section.visuals.map(v => ({ ...v, observation: firmText(v.observation) }));
+    const assessed = { ...section, params, visuals, status: worstStatus([...params.map(p => p.status), ...visuals.map(v => visualStatus(v.condition))]) };
+    return { ...assessed, narrative: firmNarrative(assessed, section.narrative) };
+  });
+  return {
+    ...report,
+    sections,
+    overallStatus: worstStatus(sections.map(effectiveStatus)),
+    summary: { ...report.summary, ...firmSummary(report.summary, report.unitLabel, sections) },
   };
 }
 
