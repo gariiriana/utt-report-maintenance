@@ -123,12 +123,12 @@ const TBM_LISTS: Record<'UTT Daily' | 'UTT Mobile' | 'DME', Array<{ nama: string
   ]
 };
 
-const JABATAN_OPTIONS = ['Harian', 'DME', 'Vendor', 'Shift Engineer', 'Admin'];
+const JABATAN_OPTIONS = ['Harian', 'DME', 'Vendor', 'Shift Engineer', 'Mobile'];
 const JABATAN_FILTERS = ['Semua', ...JABATAN_OPTIONS, 'Manual'];
 // Jabatan an employee can be moved to from the checklist; becoming a vendor needs an asal vendor, so that goes through Kelola Personil
 const SWITCH_JABATAN_OPTIONS = JABATAN_OPTIONS.filter(o => o !== 'Vendor');
 
-// Folds a stored jabatan into a form group: daily workers are Harian, admin staff are Admin, everyone else (Teknisi, PM, koordinator, DME team) is DME
+// Folds a stored jabatan into a form group: daily workers are Harian, mobile staff (formerly "Admin") are Mobile, everyone else (Teknisi, PM, koordinator, DME team) is DME
 const getJabatanGroup = (jabatan: string) => {
   const j = (jabatan || '').trim().toLowerCase();
   const exact = JABATAN_OPTIONS.find(o => o.toLowerCase() === j);
@@ -136,7 +136,7 @@ const getJabatanGroup = (jabatan: string) => {
   if (j.includes('daily worker') || j.includes('harian')) return 'Harian';
   if (j.includes('shift engineer')) return 'Shift Engineer';
   if (j.startsWith('vendor')) return 'Vendor';
-  if (j.includes('admin')) return 'Admin';
+  if (j.includes('mobile') || j.includes('admin')) return 'Mobile';
   return 'DME';
 };
 
