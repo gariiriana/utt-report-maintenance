@@ -28,6 +28,7 @@ import { exportPIRReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { ImageEditor } from './ImageEditor';
+import { EquipmentSeverityPicker } from './EquipmentSeverityPicker';
 import {
   PREPARED_BY_SIGNATURES,
   ARIF_BUDIMAN_SIGNATURE_BASE64,
@@ -832,6 +833,8 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
             <h3 className="font-bold text-slate-900 text-base flex items-center gap-2 border-b border-slate-200 pb-2">
               <AlertTriangle className="w-4 h-4 text-red-600" /> Incident Severity Level
             </h3>
+
+            <EquipmentSeverityPicker onPick={(level) => setFormData(prev => ({ ...prev, severityLevel: level }))} />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(['HIGH', 'MEDIUM', 'LOW', 'OTHER'] as const).map((lvl) => (
