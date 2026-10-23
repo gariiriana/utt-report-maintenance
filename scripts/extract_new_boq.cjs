@@ -81,10 +81,11 @@ while ((m = itemRegex.exec(existingBoqContent)) !== null) {
 }
 console.log(`Loaded ${existingLocationMap.size} location mappings.`);
 
-async function extractBOQ() {
+// Reads every BOQ equipment tab of the inspection spreadsheet into BOQ categories.
+// Also used by scripts/sync_monthly_report_boq.cjs (Monthly Report's own BOQ data).
+async function extractBOQCategories(xlsxPath) {
   const wb = new ExcelJS.Workbook();
-  // Usage: node scripts/extract_new_boq.cjs [path-to-xlsx]  (defaults to temp_sheet.xlsx)
-  await wb.xlsx.readFile(process.argv[2] || 'temp_sheet.xlsx');
+  await wb.xlsx.readFile(xlsxPath);
 
   const categoriesConfig = [
     { id: 'cat_1', name: 'Trafo', group: 'Power & Distribution', sheet: 'Trafo' },
@@ -126,7 +127,8 @@ async function extractBOQ() {
     { id: 'cat_37', name: 'STP & Plumbing', group: 'Fire Safety & Mechanical', sheet: 'STP & Plumbing' },
     { id: 'cat_38', name: 'Road Blocker', group: 'Security & Building Facility', sheet: 'Road Blocker' },
     { id: 'cat_39', name: 'Door', group: 'Security & Building Facility', sheet: 'Door' },
-    { id: 'cat_40', name: 'X-RAY', group: 'Security & Building Facility', sheet: 'X-RAY' },
+    // One X-ray unit gets one row per scheduled PM ("PM Xray per 2 bulan 1X"), so keep it once.
+    { id: 'cat_40', name: 'X-RAY', group: 'Security & Building Facility', sheet: 'X-RAY', dedupeByCI: true },
     { id: 'cat_41', name: 'Lighting', group: 'Grounding, Protection & Leak', sheet: 'Lighting' },
   ];
 
@@ -134,11 +136,13 @@ async function extractBOQ() {
 
   // Tabs are matched by NAME, never by position: the spreadsheet owners reorder and insert tabs.
   // These tabs hold planning/progress data, not BOQ assets, and are never imported.
-  const EXCLUDED_TABS = ['Progress MOS & Instal CM', 'consumable parts 2026', 'Plan ManPower Agu', 'Plan ManPower Agustus', 'Plan ManPower Sep', 'Progress', 'Resume Q3', '2026 Schedule', 'Sheet1'];
+  const EXCLUDED_TABS = ['Progress MOS & Instal CM', 'consumable parts 2026', 'Plan ManPower Agu', 'Plan ManPower Agustus', 'Plan ManPower Sep', 'Progress', '2026 Schedule', 'Sheet1'];
   const norm = name => name.trim().toLowerCase();
   const usedTabs = new Set(categoriesConfig.map(cfg => norm(cfg.sheet)));
   const excluded = new Set(EXCLUDED_TABS.map(norm));
-  const unmapped = wb.worksheets.filter(w => !usedTabs.has(norm(w.name)) && !excluded.has(norm(w.name)));
+  // The quarterly summary tab is renamed every quarter (Resume Q3, Resume Q4, ...).
+  const isExcluded = name => excluded.has(norm(name)) || /^resume q\d$/.test(norm(name));
+  const unmapped = wb.worksheets.filter(w => !usedTabs.has(norm(w.name)) && !isExcluded(w.name));
   if (unmapped.length) {
     console.warn(`WARNING: ${unmapped.length} tab(s) are neither imported nor excluded: ${unmapped.map(w => JSON.stringify(w.name)).join(', ')}. Add them to categoriesConfig or EXCLUDED_TABS.`);
   }
@@ -282,6 +286,8 @@ async function extractBOQ() {
         rowObj['Class Id'] = rawCI;
       }
 
+      if (cfg.dedupeByCI && items.some(it => it['CI Name*'] === rowObj['CI Name*'])) continue;
+
       // If No is missing, assign index
       if (!rowObj['No']) {
         rowObj['No'] = String(items.length + 1);
@@ -351,8 +357,11 @@ async function extractBOQ() {
   categories.forEach(c => {
     console.log(`- ${c.id}: "${c.name}" -> ${c.itemCount} items`);
   });
+  return categories;
+}
 
-  const tsContent = `// ============================================================================
+function writeBoqAssetData(categories) {
+  const tsContent =`// ============================================================================
 // FILE: boqAssetData.ts
 // Deskripsi: Master Data BOQ & Asset Critical Facility NeutraDC Cikarang
 //            Dihasilkan dari analisis 41 kategori aset worksheet spreadsheet resmi
@@ -406,4 +415,11 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = ${JSON.stringify(categories, n
   console.log('Successfully wrote frontend/data/boqAssetData.ts!');
 }
 
-extractBOQ().catch(err => console.error(err));
+module.exports = { extractBOQCategories };
+
+if (require.main === module) {
+  // Usage: node scripts/extract_new_boq.cjs [path-to-xlsx]  (defaults to temp_sheet.xlsx)
+  extractBOQCategories(process.argv[2] || 'temp_sheet.xlsx')
+    .then(writeBoqAssetData)
+    .catch(err => console.error(err));
+}

@@ -421,7 +421,7 @@ DwimitraSystem/
 │   ├── service_reports/          # Generator PDF/Excel service report per jenis peralatan
 │   ├── types/                    # DTO per modul
 │   ├── utils/                    # Ekspor dokumen, klien AI, offline & PWA, navigasi, predictive engine
-│   ├── data/                     # boqItems.json (baseline BOQ), boqAssetData.ts
+│   ├── data/                     # boqItems.json (baseline BOQ), boqAssetData.ts, monthlyReportBoqData.ts (BOQ Monthly Report, scripts/sync_monthly_report_boq.cjs)
 │   └── themes/                   # Tailwind & tema
 ├── firebase/
 │   ├── firestore.rules           # Security Rules per koleksi & role

@@ -129,7 +129,7 @@ export default defineConfig({
       output: {
         // Pemisahan bundle library besar menjadi terpisah untuk pemuatan halaman cepat
         manualChunks(id) {
-          if (id.includes('boqAssetData')) {
+          if (id.includes('boqAssetData') || id.includes('monthlyReportBoqData')) {
             return 'boq-data';
           }
           if (id.includes('xlsx')) {

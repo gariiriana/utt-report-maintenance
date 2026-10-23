@@ -57,7 +57,7 @@ import { useAuth } from '@/components/AuthContext';
 import { db } from '@/api/firebase';
 import { collection, query, orderBy, onSnapshot, setDoc, deleteDoc, updateDoc, doc, Timestamp, serverTimestamp, deleteField } from 'firebase/firestore';
 import { offloadReportAssets, hydrateReportAssets, deleteReportAssets } from '@/utils/monthlyReportArchiveAssets';
-import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
+import { MONTHLY_REPORT_BOQ_CATEGORIES } from '@/data/monthlyReportBoqData';
 
 import {
   aggregateMonthlyReportData,
@@ -338,7 +338,7 @@ export function MonthlyReportGenerator() {
   // baris section bulan ("Juli", "Agustus", ...) dibuang & CI duplikat per bulan digabung,
   // karena bulan laporan sudah ditentukan dari Periode.
   const MAINTENANCE_BOQ_CATEGORIES = useMemo(() => {
-    return BOQ_CATEGORIES_DATA
+    return MONTHLY_REPORT_BOQ_CATEGORIES
       .filter(cat => !cat.isSparepart)
       .map(cat => ({ ...cat, items: getSelectableBOQItems(cat.items) }));
   }, []);
@@ -1024,7 +1024,7 @@ export function MonthlyReportGenerator() {
           return s;
         });
         // Auto select all CIs in this category
-        const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+        const cat = MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === catId);
         if (cat) {
           const all = new Set(getSelectableBOQItems(cat.items).map(it => getBOQItemIdentifier(it)).filter(Boolean));
           setSelectedCINames(old => {
@@ -1060,7 +1060,7 @@ export function MonthlyReportGenerator() {
   }, []);
 
   const selectAllCINames = useCallback((catId: string) => {
-    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+    const cat = MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === catId);
     if (!cat) return;
     setSelectedCINames(prev => {
       const m = new Map(prev);
@@ -1086,7 +1086,7 @@ export function MonthlyReportGenerator() {
 
     const selections: CustomBOQSelection[] = [];
     for (const catId of selectedCategoryIds) {
-      const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+      const cat = MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === catId);
       if (!cat) continue;
       const cis = selectedCINames.get(catId);
       const ciList = cis ? Array.from(cis) : [];
@@ -1280,7 +1280,7 @@ export function MonthlyReportGenerator() {
   // ─── Modal "Tambah Tabel Scope Baru dari BOQ" Handlers ───────────
   const handleAddNewScopeTable = useCallback((catId: string) => {
     if (!reportData) return;
-    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+    const cat = MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === catId);
     if (!cat) return;
 
     const validItems = cat.items.filter(isValidBOQItem);

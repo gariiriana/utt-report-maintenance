@@ -11,7 +11,7 @@
 import { collection, getDocs, query, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/api/firebase';
 import { getApiEndpoint } from '@/utils/apiConfig';
-import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
+import { MONTHLY_REPORT_BOQ_CATEGORIES } from '@/data/monthlyReportBoqData';
 import { SparepartLogItem } from '@/types/sparepartTypes';
 import { AbnormalItem, fetchAbnormalItemsForMonth, getItemMonthData, getAbnormalItemPhotos } from '@/utils/abnormalFindingsData';
 
@@ -1954,129 +1954,129 @@ export function findBOQCategoryForScope(scopeName: string) {
 
   // 1. Explicit Alias Mapping for Schedule Scopes vs BOQ Categories
   if (clean.includes('ac split') || clean.includes('splitwall') || clean.includes('split wall')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_25' || c.name.toLowerCase() === 'splitwall');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_25' || c.name.toLowerCase() === 'splitwall');
   }
   if (clean.includes('cooling tower water treatment') || clean.includes('ct water treatment')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_34' || c.name.toLowerCase().includes('ct water treatment'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_34' || c.name.toLowerCase().includes('ct water treatment'));
   }
   if (clean.includes('cooling tower') || clean === 'ct') {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_16' || c.name === 'CT');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_16' || c.name === 'CT');
   }
   if (clean.includes('cooling pump')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_18' || c.name.toLowerCase() === 'cooling pump');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_18' || c.name.toLowerCase() === 'cooling pump');
   }
   if (clean.includes('chiller')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_21' || c.name.toLowerCase() === 'chiller');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_21' || c.name.toLowerCase() === 'chiller');
   }
   if (clean.includes('trafo') || clean.includes('transformer')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_1' || c.name.toLowerCase() === 'trafo');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_1' || c.name.toLowerCase() === 'trafo');
   }
   if (clean.includes('genset') || clean.includes('generator')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_10' || c.name.toLowerCase() === 'genset');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_10' || c.name.toLowerCase() === 'genset');
   }
   if (clean.includes('mv') || clean.includes('rmu')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_3' || c.name.toLowerCase().includes('mv'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_3' || c.name.toLowerCase().includes('mv'));
   }
   if (clean.includes('lv panel') || clean === 'lv') {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_4' || c.name.toLowerCase() === 'lv panel');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_4' || c.name.toLowerCase() === 'lv panel');
   }
   if (clean.includes('ups')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_8' || c.name.toLowerCase() === 'ups');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_8' || c.name.toLowerCase() === 'ups');
   }
   if (clean.includes('ats')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_2' || c.name.toLowerCase() === 'ats');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_2' || c.name.toLowerCase() === 'ats');
   }
   if (clean.includes('pdu')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_6' || c.name.toLowerCase() === 'pdu');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_6' || c.name.toLowerCase() === 'pdu');
   }
   if (clean.includes('capacitor bank') || clean.includes('cap bank') || clean.includes('capacitor') || clean.includes('apfcr')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_13' || c.name.toLowerCase().includes('cap bank'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_13' || c.name.toLowerCase().includes('cap bank'));
   }
   if (clean.includes('crac') || /\bpac\b/i.test(clean) || clean.includes('precision air')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_19' || c.name.toLowerCase() === 'crac');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_19' || c.name.toLowerCase() === 'crac');
   }
   if (clean.includes('fcu')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_20' || c.name.toLowerCase() === 'fcu');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_20' || c.name.toLowerCase() === 'fcu');
   }
   if (clean.includes('ahu') || clean.includes('pahu')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_23' || c.name.toLowerCase() === 'pahu');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_23' || c.name.toLowerCase() === 'pahu');
   }
   if (clean.includes('vrv') || clean.includes('vrf')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_22' || c.name.toLowerCase() === 'vrv');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_22' || c.name.toLowerCase() === 'vrv');
   }
   if (clean.includes('fss') || clean.includes('inergen') || clean.includes('suppression')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_26' || c.name.toLowerCase() === 'fss');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_26' || c.name.toLowerCase() === 'fss');
   }
   if (clean.includes('preaction') || clean.includes('pre-action')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_28' || c.name.toLowerCase() === 'preaction');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_28' || c.name.toLowerCase() === 'preaction');
   }
   if (clean.includes('hydrant')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_29' || c.name.toLowerCase() === 'hydrant actual') ||
-           BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_27');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_29' || c.name.toLowerCase() === 'hydrant actual') ||
+           MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_27');
   }
   if (clean.includes('lightning') || clean.includes('lps')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_9' || c.name.toLowerCase().includes('lightning'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_9' || c.name.toLowerCase().includes('lightning'));
   }
   if (clean.includes('grounding')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_5' || c.name.toLowerCase() === 'grounding');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_5' || c.name.toLowerCase() === 'grounding');
   }
   if (clean.includes('lift') || clean.includes('elevator')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_30' || c.name.toLowerCase() === 'lift');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_30' || c.name.toLowerCase() === 'lift');
   }
   if (clean.includes('dock leveler')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_31' || c.name.toLowerCase() === 'dock leveler');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_31' || c.name.toLowerCase() === 'dock leveler');
   }
   if (clean.includes('road blocker')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_38' || c.name.toLowerCase().includes('road blocker'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_38' || c.name.toLowerCase().includes('road blocker'));
   }
   if (clean.includes('gate') || clean.includes('auto gate')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_36' || c.name.toLowerCase() === 'gate');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_36' || c.name.toLowerCase() === 'gate');
   }
   if (clean.includes('ldb') || clean.includes('rdb')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_7' || c.name.toLowerCase().includes('ldb'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_7' || c.name.toLowerCase().includes('ldb'));
   }
   if (clean.includes('pressurization') || clean.includes('degassing')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_24' || c.name.toLowerCase().includes('degassing'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_24' || c.name.toLowerCase().includes('degassing'));
   }
   if (clean.includes('cooling automation') || clean.includes('physical cooling')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_17' || c.name.toLowerCase().includes('cooling automation'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_17' || c.name.toLowerCase().includes('cooling automation'));
   }
   if (clean.includes('door')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_39' || c.name.toLowerCase() === 'door');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_39' || c.name.toLowerCase() === 'door');
   }
   if (clean.includes('x-ray') || clean.includes('xray')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_40' || c.name.toLowerCase() === 'x-ray');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_40' || c.name.toLowerCase() === 'x-ray');
   }
   if (clean.includes('water softener')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_33' || c.name.toLowerCase() === 'water softener');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_33' || c.name.toLowerCase() === 'water softener');
   }
   if (clean.includes('exhaust')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_14' || c.name.toLowerCase().includes('exhaust'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_14' || c.name.toLowerCase().includes('exhaust'));
   }
   if (clean.includes('busduct')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_15' || c.name.toLowerCase() === 'busduct');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_15' || c.name.toLowerCase() === 'busduct');
   }
   if (clean.includes('load bank')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_12' || c.name.toLowerCase() === 'load bank');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_12' || c.name.toLowerCase() === 'load bank');
   }
   if (clean.includes('fuel system') || clean.includes('fuel tank')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_11' || c.name.toLowerCase() === 'fuel system');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_11' || c.name.toLowerCase() === 'fuel system');
   }
   if (clean.includes('lighting') || clean.includes('pju')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_41' || c.name.toLowerCase() === 'lighting');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_41' || c.name.toLowerCase() === 'lighting');
   }
   if (clean.includes('pompa') || clean.includes('pump')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_35' || c.name.toLowerCase() === 'pompa');
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_35' || c.name.toLowerCase() === 'pompa');
   }
   if (clean.includes('stp') || clean.includes('plumbing')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_37' || c.name.toLowerCase().includes('stp'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_37' || c.name.toLowerCase().includes('stp'));
   }
   if (clean.includes('water leak') || clean.includes('fuel leak')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_32' || c.name.toLowerCase().includes('leak'));
+    return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === 'cat_32' || c.name.toLowerCase().includes('leak'));
   }
 
   // 2. Fallback fuzzy search
-  return BOQ_CATEGORIES_DATA.find(c => 
+  return MONTHLY_REPORT_BOQ_CATEGORIES.find(c => 
     c.name.toLowerCase().includes(clean) || clean.includes(c.name.toLowerCase())
   );
 }
@@ -5087,7 +5087,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   ];
 
   CRITICAL_EQUIPMENT_CATEGORIES.forEach(cfg => {
-    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === cfg.id);
+    const cat = MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === cfg.id);
     if (!cat) return;
 
     let items = cat.items.filter(isValidBOQItem);
@@ -6069,7 +6069,7 @@ export function buildCustomScopeTablesFromBOQ(
   let tableCounter = 2;
 
   selections.forEach(sel => {
-    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === sel.categoryId || c.name.toLowerCase() === sel.categoryName.toLowerCase());
+    const cat = MONTHLY_REPORT_BOQ_CATEGORIES.find(c => c.id === sel.categoryId || c.name.toLowerCase() === sel.categoryName.toLowerCase());
     if (!cat) return;
 
     const ciSet = new Set(sel.selectedCINames);
